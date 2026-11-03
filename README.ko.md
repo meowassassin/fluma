@@ -7,7 +7,7 @@
 **편집자처럼 유튜브 쇼츠를 만드는 에이전트 — 먼저 잘 되는 쇼츠를 분석하고, 실제 제작 툴로 장면을 만들고, 올린 뒤의 실제 성과로 다음 영상을 고칩니다.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-5b5bd6)](LICENSE)
-[![Quick start](https://img.shields.io/badge/quick%20start-10%20min-2fb67c)](QUICKSTART.md)
+[![Quick start](https://img.shields.io/badge/quick%20start-10%20min-2fb67c)](QUICKSTART.ko.md)
 ![Tested on](https://img.shields.io/badge/tested-Linux-555)
 ![Pipeline](https://img.shields.io/badge/pipeline-Craft%20apps-555)
 
