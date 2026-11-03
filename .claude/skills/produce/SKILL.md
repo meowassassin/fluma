@@ -6,7 +6,8 @@ order: 2
 
 # 제작 (Craft 파이프라인)
 
-엔진은 Craft 하나다(콘티 `engine: "craft"`). HyperFrames 화면 구성(compose 스킬 · `scene.js` · `direct.py`)은 쓰지 않는다 — Craft 앱이 없는 환경에서만.
+엔진은 Craft 하나다(콘티 `engine: "craft"`). HyperFrames 화면 구성(compose 스킬 · `scene.js`)은 쓰지 않는다 — Craft 앱이 없는 환경에서만.
+**색 · 배치는 레퍼런스에서**: 레퍼런스를 `ref_style.py` 로 분석했으면 `python3 scripts/direct.py storyboards/<id>.json --write` 로 콘티 `direction`(배경색 · 자막 위치 등)을 적는다. 안 했으면 엔진이 레퍼런스 장면 프레임에서 배경 톤을 잰다 — 어느 쪽이든 파란 기본색으로 두지 않는다.
 화면은 '템플릿에 칸 채우기'가 아니라 **장면마다 무엇이 보여야 하는지(재료)** 를 정하는 것이다. 좌표 · 툴 이름은 쓰지 않는다.
 
 ## 순서

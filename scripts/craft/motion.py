@@ -176,10 +176,16 @@ PLACE = {"full": (0.5, 0.5, 1.0, 1.0), "center": (0.5, 0.47, 0.82, 0.5), "left":
          "right": (0.7, 0.55, 0.5, 0.45), "top": (0.5, 0.3, 0.86, 0.32), "bottom": (0.5, 0.66, 0.86, 0.32)}
 
 
-def scene_materials(sid: str, n: int) -> list[dict]:
+def scene_materials(sid: str, n: int, sc: dict | None = None) -> list[dict]:
+    """이 장면의 재료 기록 — 콘티에 지금 있는 재료만(지운 재료의 기록이 남아 있어도 그리지 않는다), 콘티 순서대로"""
     d = ROOT / "compositions" / sid / "craft" / "materials" / f"s{n:02d}"
     recs = [json.loads(f.read_text("utf-8")) for f in sorted(d.glob("*.json"))] if d.exists() else []
-    return [r for r in recs if isinstance(r, dict) and r.get("type") and r.get("key")]   # 재료 기록만(보조 파일 제외)
+    recs = [r for r in recs if isinstance(r, dict) and r.get("type") and r.get("key")]   # 재료 기록만(보조 파일 제외)
+    if sc is None:
+        return recs
+    order = [str(m.get("id") or f"m{i + 1}") for i, m in enumerate(sc.get("materials") or [])]
+    by = {r["id"]: r for r in recs}
+    return [by[i] for i in order if i in by]
 
 
 def palette_list(sid: str) -> list[list[float]]:
@@ -224,6 +230,8 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
             J(f"vt.property('Source Text').expression = 'var v = linear(time, {ti:.2f}, {ti + 0.55:.2f}, 0, {v}); (Math.round(v * 10) / 10) + {js(unit)}';")
             J(f"vt.property('Transform').property('Opacity').setValueAtTime({max(0.0, ti - 0.01):.2f}, 0); vt.property('Transform').property('Opacity').setValueAtTime({ti + 0.1:.2f}, 100);")
             J(f"txt(c, {js(f'Label {mid} {i}')}, {js(str(lab))}, {js(font)}, 44, [0.92, 0.92, 0.95], null, 0, [{cx:.0f}, {base + 64:.0f}]);")
+        if t_out is not None and t_out < sec - 0.05:   # 다음 재료가 나오면 차트 전체(막대 · 숫자 · 이름 · 제목)가 비킨다
+            J(f"for (var li = 1; li <= c.numLayers; li++) {{ var Lc = c.layer(li); if (/ {mid}( |$)/.test(Lc.name)) {{ var oc = Lc.property('Transform').property('Opacity'); oc.setValueAtTime({max(t0 + 0.2, t_out - 0.18):.2f}, 100); oc.setValueAtTime({t_out:.2f}, 0); }} }}")
         return
     # 관절 인형은 콘티에 동작(action)을 적은 캐릭터만 — 사물 · 장면 그림(메뉴판 · 폰 · 문서)은 통째로 한 장(글자까지 그대로)
     if typ == "illustration" and rec.get("rig") and sp.get("action") and sp.get("action") != "still":
@@ -334,13 +342,48 @@ function popIn(layer, t, dur) {
 """
 
 
+NEUTRAL_BG = "#16151d"   # 레퍼런스가 없을 때(L30 예외) — 특정 색을 고르지 않은 어두운 중립
+
+
+def ref_background(sb: dict) -> str | None:
+    """콘티에 연결된 레퍼런스 쇼츠에서 배경 톤을 잰다.
+    1) ref_style.py 카드(style/style.json)의 배경색이 있으면 그것
+    2) 없으면 X-ray 가 남긴 장면 프레임(shots/*.jpg)의 위 · 아래 가장자리 색 중앙값 — 띠 배치(가운데 내용 · 위아래 단색)면 그 단색,
+       화면 가득 영상이면 그 영상의 어두운 톤이 나온다"""
+    import numpy as np
+    from PIL import Image
+    cols = []
+    for rid in [r for r in (sb.get("reference") or []) if isinstance(r, str)]:
+        d = ROOT / "public" / "trends" / "xray" / rid
+        st = d / "style" / "style.json"
+        if st.exists():
+            try:
+                bgc = (json.loads(st.read_text("utf-8")).get("layout") or {}).get("background")
+                if isinstance(bgc, str) and bgc.startswith("#"):
+                    return bgc
+            except ValueError:
+                pass
+        for f in sorted((d / "shots").glob("*.jpg"))[:24]:
+            try:
+                a = np.asarray(Image.open(f).convert("RGB").resize((54, 96)), dtype=float)
+            except OSError:
+                continue
+            edge = np.concatenate([a[:9].reshape(-1, 3), a[-9:].reshape(-1, 3)])
+            cols.append(np.median(edge, axis=0))
+    if not cols:
+        return None
+    c = np.median(np.array(cols), axis=0)
+    return "#%02x%02x%02x" % tuple(int(round(v)) for v in c)
+
+
 def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: Path, *, width: int = 1080, height: int = 1920, fps: int = 30,
               font: str = "Pretendard-Black") -> str:
     """콘티 → JSX(EffectCraft 스크립트). 실행하면 out_project 에 .ecproj 가 저장된다"""
     sid = sb["id"]
     g = grammar(sb)
     d = sb.get("direction") or {}
-    bg = rgb(d.get("color_bg", "#0f4b7d"))
+    # 배경: 디자인 방향(direct.py) > 레퍼런스 쇼츠에서 잰 톤 > 중립 어두운색 (예전엔 늘 #0f4b7d 파랑이었다)
+    bg = rgb(d.get("color_bg") or ref_background(sb) or NEUTRAL_BG)
     total = round(sum(float(s["sec"]) for s in sb["scenes"]), 3)
     W, H = width, height
     J = Jsx()
@@ -373,14 +416,14 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         arts = art_files(sid, n)
         figs = [f for f in (sc.get("figures") or []) if isinstance(f, dict)]
         drew = [puppet(J, sid, f, sec, words, start, end, W, H, i) for i, f in enumerate(figs)]
-        mats = scene_materials(sid, n)
+        mats = scene_materials(sid, n, sc)
         if mats:
             colors = palette_list(sid)
             te0 = element(sc, "훅 제목", "제목")
             nl = len(quoted(te0.get("what", ""))) if te0 else 0
             top = (g["title"]["y"] + nl * g["title"]["h"] * 1.6 * 1.25 + 0.02) if nl else 0.2
             # 한 장면에 보이는 재료가 여럿이면 겹치지 않게 차례로: 각자 cue 낱말 시각부터 다음 재료가 나올 때까지(cue 가 없으면 장면을 나눠)
-            seqs = [r for r in mats if r.get("type") != "chart"]
+            seqs = [r for r in mats if r.get("type") != "text"]   # 차트도 차례에 넣는다(안 넣으면 그림과 겹침)
             slots = {}
             if len(seqs) == 1:   # 하나뿐이면 장면 처음부터 — 낱말을 기다리는 동안 화면이 비면 넘겨진다
                 slots[seqs[0]["id"]] = (0.0, None)

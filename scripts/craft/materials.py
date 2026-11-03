@@ -195,7 +195,25 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
     base = ROOT / "compositions" / sid / "craft" / "materials"
     made = []
     scs = sb.get("scenes") or []
-    for n, sc in zip([i + 1 for i in indices] if indices else range(1, len(scs) + 1), scs):
+    nums = [i + 1 for i in indices] if indices else list(range(1, len(scs) + 1))
+    if not indices and base.exists():   # 전체 빌드: 콘티에 없는 장면 폴더(장면이 줄었을 때)는 지운다
+        for d in base.glob("s[0-9][0-9]"):
+            if int(d.name[1:]) > len(scs):
+                import shutil
+                shutil.rmtree(d, ignore_errors=True)
+    for n, sc in zip(nums, scs):
+        # 콘티에서 빠진 재료(기록 · 파일 · 뼈대)는 지운다 — 남겨 두면 움직임 단계가 지운 재료까지 그린다
+        d0 = base / f"s{n:02d}"
+        keep = {str(m.get("id") or f"m{i + 1}") for i, m in enumerate(sc.get("materials") or [])}
+        if d0.exists():
+            for f in list(d0.iterdir()):
+                stem = f.name.split(".")[0]
+                if stem and stem not in keep:
+                    if f.is_dir():
+                        import shutil
+                        shutil.rmtree(f, ignore_errors=True)
+                    else:
+                        f.unlink(missing_ok=True)
         for i, m in enumerate(sc.get("materials") or []):
             m = {"id": m.get("id") or f"m{i + 1}", **m}
             t = m.get("type")
