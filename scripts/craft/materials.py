@@ -149,7 +149,8 @@ def illustration(m: dict, out: Path, work: Path) -> dict:
         svg = work / f"{m['id']}.edited.svg"
         _run([cli("vectorcraft"), "convert", keep, svg], work)
         src = svg
-    _run([cli("vectorcraft"), "convert", src, out, "--scale", str(m.get("scale", 2))], work)
+    scale = m.get("scale") or (40 if m.get("type") == "icon" else 2)    # 아이콘 SVG 는 24px 짜리라 크게 변환해야 흐리지 않다
+    _run([cli("vectorcraft"), "convert", src, out, "--scale", str(scale)], work)
     if not src.name.endswith(".edited.svg"):
         _run([cli("vectorcraft"), "convert", src, keep], work)
     info = {"app": "vectorcraft", "editable": str(keep.relative_to(ROOT)), "editable_hash": _hash(keep)}
@@ -175,15 +176,89 @@ def photo(m: dict, out: Path, work: Path) -> dict:
     return {"app": "photocraft", "cutout": bool(m.get("cutout"))}
 
 
+def read_text_boxes(f: Path) -> list[dict]:
+    """[{text, box:[x, y, w, h](0~1)}] — 글자 인식이 없으면(가벼운 설치) 빈 목록"""
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(ROOT / "scripts"))
+        import ocr
+        return [{"text": o["text"], "box": o["box"]} for o in ocr.read(f)][:80]
+    except Exception as e:   # noqa: BLE001 — 글자 인식은 보조: 실패해도 재료는 쓴다
+        print(f"[재료] 글자 인식 건너뜀({f.name}): {e}")
+        return []
+
+
+def find_upload(sid: str, m: dict) -> Path | None:
+    """사용자가 올린 파일 중 이 재료의 것: 정확한 경로가 없으면 public/uploads/<id>/ 에서 이름에 재료 id 가 든 최신 파일"""
+    if m.get("src") and _abs(m["src"]).exists():
+        return _abs(m["src"])
+    up = ROOT / "public" / "uploads" / sid
+    if not up.exists():
+        return None
+    want = (".mp4", ".mov", ".webm", ".mkv", ".m4v") if m.get("type") in ("screen", "video") else (".png", ".jpg", ".jpeg", ".webp", ".mp4", ".mov", ".webm")
+    key = str(m.get("id") or "").lower()
+    hits = [f for f in up.iterdir() if f.is_file() and f.suffix.lower() in want and key and key in f.stem.lower()]
+    return max(hits, key=lambda f: f.stat().st_mtime) if hits else None
+
+
+def element_video(el: Path, dst: Path, hold: float = 1.2, crop: list | None = None) -> bool:
+    """도구가 만든 요소 폴더(public/elements/<id>/<이름>/) → 영상 하나.
+    짤(meme.py): f0001.png … (meta.fps) · 웹 녹화(webrec.py): 상태 화면 s000.png … 을 hold 초씩 + 실제 녹화 구간 r01/f*.jpg"""
+    meta = _load(el / "meta.json")
+    frames = sorted(el.glob("f[0-9]*.png"))
+    states = sorted(el.glob("s[0-9][0-9][0-9].png"))
+    cx, cy_, cw, ch = (crop or [0, 0, 1, 1])
+    cf = f"crop=iw*{cw}:ih*{ch}:iw*{cx}:ih*{cy_}," if crop else ""
+    enc = ["-vf", f"{cf}scale='min(1440,iw)':-2,tpad=stop_mode=clone:stop_duration=20,format=yuv420p", "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", str(dst)]
+    if len(frames) > 1:
+        cmd = ["ffmpeg", "-v", "error", "-y", "-framerate", str(meta.get("fps", 15)), "-i", str(el / "f%04d.png"), *enc]
+    elif frames or states:
+        # 정지 화면 목록 → hold 초씩 이어 붙이기(실제 녹화 구간이 있으면 그 상태 다음에)
+        lst = work_list = el / ".concat.txt"
+        rows = []
+        for i, s in enumerate(states or frames):
+            rows += [f"file '{s.as_posix()}'", f"duration {hold}"]
+            rec = el / f"r{i + 1:02d}"
+            for f in sorted(rec.glob("f*.jpg"))[::1] if rec.exists() else []:
+                rows += [f"file '{f.as_posix()}'", "duration 0.0333"]
+        rows.append(rows[-2])        # concat 규칙: 마지막 파일을 한 번 더
+        work_list.write_text("\n".join(rows) + "\n", "utf-8")
+        cmd = ["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-fps_mode", "cfr", "-r", "30", *enc]
+    else:
+        return False
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    (el / ".concat.txt").unlink(missing_ok=True)
+    if r.returncode != 0:
+        print(f"[재료] {el.name} 영상 만들기 실패: {r.stderr[-300:]}")
+    return r.returncode == 0
+
+
 def passthrough(m: dict, out: Path, work: Path) -> dict:
-    """이미 만들어진 재료(웹 녹화 · 사용자 영상 · 이미지)는 그대로 쓴다"""
+    """이미 만들어진 재료(웹 녹화 · 사용자 영상 · 이미지 · 짤)는 그대로 쓴다"""
     src = _abs(m["src"])
+    if src.is_dir():                       # 짤 · 웹 녹화 요소 폴더
+        hold = float(m.get("hold", 1.2))
+        if element_video(src, out.with_suffix(".mp4"), hold, m.get("crop")):   # crop: [x, y, w, h] 0~1 (쿠키 안내 · 빈 곳 잘라내기)
+            meta = _load(src / "meta.json")
+            # 웹 녹화 단계(동작 → 그 결과 상태가 보이는 시각): 움직임 단계가 '1. 주소 입력' 꼬리표를 띄운다
+            steps = [{"t": round(hold * int(a.get("to", 0)) - 0.15, 2), "t_end": round(hold * (int(a.get("to", 0)) + 1), 2), "label": a.get("label")}
+                     for a in meta.get("actions") or [] if a.get("label")]
+            return {"app": None, "file_suffix": ".mp4", "source": meta.get("source") or meta.get("sources"), "steps": steps, "mobile": bool(meta.get("mobile"))}
+        raise RuntimeError(f"요소 폴더에 프레임이 없습니다: {m['src']}")
+    if src.suffix.lower() in (".mp4", ".mov", ".webm", ".mkv", ".m4v"):
+        # 영상: 마지막 프레임을 20초 늘린다(장면보다 짧은 녹화가 끝나면 화면이 비지 않게) · 소리는 뺀다(나레이션과 겹침)
+        dst = out.with_suffix(".mp4")
+        r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(src), "-vf", "tpad=stop_mode=clone:stop_duration=20,format=yuv420p",
+                            "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", str(dst)], capture_output=True, text=True)
+        if r.returncode == 0:
+            return {"app": None, "file_suffix": ".mp4"}
     out.with_suffix(src.suffix).write_bytes(src.read_bytes())
     return {"app": None, "file_suffix": src.suffix}
 
 
-ADAPTERS = {"chart": chart, "doc_quote": doc_quote, "illustration": illustration, "photo": photo}
-PASSTHROUGH = {"screen", "video", "image"}
+MAT_VERSION = "2"     # 재료를 만드는 방식이 바뀌면 올린다(열쇠에 들어가 예전 결과를 다시 만든다) — 2: 아이콘 고해상도 · 영상 마지막 프레임 유지 · 요소 폴더
+ADAPTERS = {"chart": chart, "doc_quote": doc_quote, "illustration": illustration, "photo": photo, "icon": illustration}   # icon: icons.py 로 받은 SVG
+PASSTHROUGH = {"screen", "video", "image", "meme", "web"}    # meme: meme.py fetch 폴더 · web: webrec.py 폴더
 
 
 # ---------------------------------------------------------------- 디스패처
@@ -222,28 +297,50 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             out = d / f"{m['id']}.png"
             meta_p = d / f"{m['id']}.json"
             # 열쇠 = 요청 + 원본 파일 내용 + 사람이 고친 편집 파일 → 무엇이든 바뀌면 다시 만든다
-            srcs = [_hash(_abs(m[k])) for k in ("src", "csv", "xlsx", "pdf") if isinstance(m.get(k), str)]
+            srcs = [_hash(_abs(m[k])) if not _abs(m[k]).is_dir() else "|".join(f"{f.name}:{f.stat().st_size}" for f in sorted(_abs(m[k]).iterdir()))
+                    for k in ("src", "csv", "xlsx", "pdf") if isinstance(m.get(k), str)]
             srcs.append(_hash(out.with_suffix(".vectorcraft")) if t == "illustration" else "")
+            if m.get("ask"):                   # 사용자가 올린 파일(이름으로 찾은 것)도 열쇠에 — 새로 올리면 다시 만든다
+                up_f = find_upload(sid, m)
+                srcs.append(f"{up_f.name}:{_hash(up_f)}" if up_f else "missing")
             old = _load(meta_p)
             if t == "illustration" and old.get("editable_hash") == srcs[-1]:
                 srcs[-1] = ""                  # 우리가 만든 그대로면 열쇠에 넣지 않는다
-            key = hashlib.sha1(json.dumps([m, srcs], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
+            key = hashlib.sha1(json.dumps([m, srcs, MAT_VERSION], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
             if old.get("key") == key and (not old.get("file") or (ROOT / old["file"]).exists()):
+                # 예전 기록(글자 인식 전)에는 글자 위치가 없다 → 채워 둔다(짚기 · 재료 검사가 쓴다)
+                if "ocr" not in old and old.get("file") and t in ("image", "photo", "screen") and Path(old["file"]).suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+                    old["ocr"] = read_text_boxes(ROOT / old["file"])
+                    meta_p.write_text(json.dumps(old, ensure_ascii=False, indent=1), "utf-8")
                 made.append(old)
                 continue
+            if t in PASSTHROUGH and m.get("ask") and not find_upload(sid, m):
+                # 사용자 녹화 대기: 자동 브라우저로 못 찍는 화면(로그인 · 측정 결과 · 앱)은 사용자에게 부탁한다(검사 L36).
+                # 그동안 렌더는 이 재료 없이(장면 핵심어 화면으로) 진행한다
+                rec = {"scene": n, "id": m["id"], "type": t, "key": "missing", "spec": m, "file": None, "missing": True, "ask": m["ask"],
+                       "upload_hint": f"public/uploads/{sid}/ 에 이름에 '{m['id']}' 가 든 파일(예: {m['id']}.mp4)"}
+                meta_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
+                made.append(rec)
+                print(f"[재료] {n}장면 {m['id']}: 사용자 녹화 대기 — {m['ask']}")
+                continue
             if t in PASSTHROUGH:
+                if m.get("ask"):
+                    m = {**m, "src": str(find_upload(sid, m).relative_to(ROOT))}
                 info = passthrough(m, out, d)
                 file = out.with_suffix(info.pop("file_suffix"))
             elif t in ADAPTERS:
-                if t not in reg:
+                if (t if t != "icon" else "illustration") not in reg:
                     raise RuntimeError(f"'{t}' 재료를 만들 Craft 앱이 설치되지 않았습니다(Craft 앱 화면에서 설치)")
                 info = ADAPTERS[t](m, out, d)
                 file = out if out.exists() else None
-            elif t == "text":
+            elif t in ("text", "stat"):            # 글자 · 수치 카드는 움직임 단계가 바로 그린다(앱 없음)
                 info, file = {"app": None}, None
             else:
-                raise RuntimeError(f"모르는 재료 종류: {t} (chart · doc_quote · illustration · photo · screen · video · image · text)")
+                raise RuntimeError(f"모르는 재료 종류: {t} (chart · stat · doc_quote · illustration · icon · photo · screen · web · video · meme · image · text)")
             rec = {"scene": n, "id": m["id"], "type": t, "key": key, "spec": m, "file": str(file.relative_to(ROOT)) if file else None, **info}
+            # 캡처 · 사진 속 글자 위치(글자 인식) — 움직임 단계가 '말하는 낱말을 화면에서 짚기(확대 · 동그라미)'에 쓴다
+            if file and t in ("image", "photo", "screen") and file.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+                rec["ocr"] = read_text_boxes(file)
             meta_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
             made.append(rec)
     return made

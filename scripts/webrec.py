@@ -363,12 +363,18 @@ def cmd_run(a):
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
+    if spec.get("mobile") and "viewport" not in spec:
+        spec["viewport"] = [390, 844]          # iPhone 13 화면(녹화기 · meta 도 같은 크기로)
     vw, vh = spec.get("viewport", [1280, 800])
     scale = float(spec.get("scale", 2))
 
     with sync_playwright() as p:
         opts = dict(viewport={"width": vw, "height": vh}, device_scale_factor=scale, locale=spec.get("locale", "ko-KR"),
                     color_scheme=spec.get("theme", "light"))
+        if spec.get("mobile"):   # 폰으로 보는 화면(모바일 사이트 · 터치) — 세로 영상에 가득 채운다
+            dev = p.devices.get(spec.get("device", "iPhone 13"), {})
+            opts.update({k: dev[k] for k in ("user_agent", "is_mobile", "has_touch") if k in dev})
+            opts["viewport"] = dev.get("viewport", {"width": 390, "height": 844}) if "viewport" not in spec else opts["viewport"]
         if profile:
             ctx = p.chromium.launch_persistent_context(str(PROFILES / spec["profile"]), headless=True, **opts)
             hosts = profile["hosts"]
@@ -408,7 +414,7 @@ def cmd_run(a):
     first = out / "s000.png"
     w, h = (int(vw * scale), int(vh * scale))
     meta = {"kind": "web", "engine": "playwright", "frames": 1, "fps": FPS, "ext": "png", "pad": 3, "w": w, "h": h,
-            "viewport": [vw, vh], "scale": scale, "states": rec.states, "actions": rec.actions,
+            "viewport": [vw, vh], "scale": scale, "states": rec.states, "actions": rec.actions, "mobile": bool(spec.get("mobile")),
             "masked": rec.masked, "profile": spec.get("profile"), "sources": rec.sources,
             "license": "웹 화면 캡처 — 출처: " + ", ".join(rec.sources[:5]), "commercial": "출처 표기 · 인용 범위에서"}
     if err:

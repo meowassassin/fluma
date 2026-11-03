@@ -747,11 +747,15 @@
               "type": {
                 "enum": [
                   "chart",
+                  "stat",
                   "doc_quote",
                   "illustration",
+                  "icon",
                   "photo",
                   "screen",
+                  "web",
                   "video",
+                  "meme",
                   "image",
                   "text"
                 ]

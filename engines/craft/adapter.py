@@ -5,6 +5,7 @@ compositions/<id>/craft/craft.json 에 생성 때의 해시를 적는다. 그 �
 다시 생성하지 않고 고친 프로젝트를 그대로 렌더한다(덮어쓰기 금지). 다시 생성하려면 craft.json 의 motion 항목을 지운다.
 """
 import hashlib
+import re
 import json
 import os
 import sys
@@ -59,7 +60,9 @@ def build(job) -> Path:
     build_materials(job.sb, [int(t.get("index", i)) for i, t in enumerate(job.scenes)])        # 장면 재료(차트 · 문서 인용 · 일러스트 · 사진 · 화면) → 능력 목록대로 Craft 앱이 만든다
     build_art(job.sb["id"])        # 형태(forms/*.form.json) → 부품 레이어 SVG + 뼈대(그림이 바뀌면 JSX 도 바뀌어 다시 만든다)
     jsx = build_jsx(job.sb, job.captions, job.scenes, proj, fps=job.fps)
-    src_key = hashlib.sha1(jsx.encode()).hexdigest()
+    # 열쇠 = 스크립트 + 불러오는 파일의 내용 — 같은 경로의 재료가 바뀌어도(새로 올린 녹화 · 다시 그린 그림) 다시 만든다
+    refs = sorted(set(re.findall(r'new File\("((?:[^"\\]|\\.)*)"\)', jsx)))
+    src_key = hashlib.sha1((jsx + "".join(_sha(Path(json.loads(f'"{r}"'))) for r in refs)).encode()).hexdigest()
     if proj.exists() and mo.get("hash") and _sha(proj) != mo["hash"]:
         print(f"[craft] {proj.relative_to(ROOT)} 은 사람이 고쳤습니다 — 다시 만들지 않고 그대로 렌더합니다", file=sys.stderr)
         mo["edited"] = True

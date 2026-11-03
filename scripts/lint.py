@@ -46,6 +46,92 @@ def _keywords(text: str):
     return {t for t in re.findall(r"[가-힣A-Za-z0-9]{2,}", text)}
 
 
+def material_kind(rec: dict) -> str:
+    """재료 종류(시청자가 보는 화면의 종류): 문서 캡처 · 그래픽 · 그림/사진 · 화면/영상"""
+    t = rec.get("type")
+    if t in ("chart", "text", "stat", "icon"):
+        return "그래픽"
+    if t == "meme":
+        return "짤 · 반응"
+    if t in ("screen", "video", "web"):
+        return "화면 · 영상"
+    if t == "doc_quote":
+        return "문서 캡처"
+    if t == "illustration":
+        return "그림 · 사진"
+    ocr = rec.get("ocr") or []
+    chars = sum(len(o.get("text") or "") for o in ocr)
+    area = sum((o.get("box") or [0, 0, 0, 0])[2] * (o.get("box") or [0, 0, 0, 0])[3] for o in ocr)
+    if len(ocr) >= 4 and (chars >= 60 or area >= 0.12):
+        return "문서 캡처"
+    return "그림 · 사진" if t in ("image", "photo") else "그래픽"
+
+
+def material_checks(sb: dict) -> list:
+    """L33 같은 재료 반복 · L34 글자 캡처 위주 · L35 재료 종류 부족 · T35 외국어 캡처 — 재료 단계의 기록(글자 인식 포함)으로"""
+    sid = sb.get("id", "")
+    base = ROOT / "compositions" / sid / "craft" / "materials"
+    if not sid or not base.exists():
+        return []
+    recs = []
+    for n, sc in enumerate(sb.get("scenes") or [], 1):
+        for k, m in enumerate(sc.get("materials") or []):
+            f = base / f"s{n:02d}" / f"{m.get('id') or f'm{k + 1}'}.json"
+            if f.exists():
+                try:
+                    r = json.loads(f.read_text("utf-8"))
+                    if isinstance(r, dict):
+                        recs.append(r)
+                except ValueError:
+                    pass
+    out = []
+    # L36 사용자 녹화 대기: 자동으로 못 찍는 화면 — 사용자에게 부탁하고(무엇을 · 몇 초 · 어디에 올리는지) 받은 뒤 다시 렌더
+    for r in recs:
+        if r.get("missing"):
+            out.append(("L36", r.get("scene"), f"사용자 녹화가 필요: {r.get('ask')} → 편집기에 파일을 올려 달라고 부탁(이름에 '{r.get('id')}' 포함). 받기 전 초안은 이 재료 없이 렌더됨"))
+    recs = [r for r in recs if not r.get("missing")]
+    if len(recs) < 2:
+        return out
+    by_src: dict[str, set] = {}
+    for r in recs:
+        sp = r.get("spec") or {}
+        src = sp.get("src") or sp.get("csv") or r.get("file")
+        if src:
+            by_src.setdefault(src, set()).add(r.get("scene"))
+    for src, scs in by_src.items():
+        if len(scs) >= 3:
+            out.append(("L33", None, f"같은 재료가 {len(scs)}개 장면에 반복: {Path(src).name} (장면 {', '.join(str(x) for x in sorted(scs))}) — 장면마다 다른 화면으로"))
+    kinds = [material_kind(r) for r in recs]
+    docs = kinds.count("문서 캡처")
+    if docs * 2 > len(kinds):
+        out.append(("L34", None, f"재료 {len(kinds)}개 중 {docs}개가 글자 빽빽한 문서 캡처 — 세로 화면에서 안 읽힌다. 핵심 수치는 그래픽(chart)으로, 근거는 문장 하나만 짚는 doc_quote 로, 나머지는 실제 화면 · 사진 · 그림으로"))
+    dur = sum(float(x.get("sec") or 0) for x in sb.get("scenes") or [])
+    if dur >= 20 and len(set(kinds)) < 3:
+        out.append(("L35", None, f"재료 종류가 {len(set(kinds))}가지({', '.join(sorted(set(kinds)))}) — 레퍼런스 쇼츠는 화면 종류를 섞는다. 문서 캡처 · 그래픽(stat · chart · icon) · 그림/사진 · 화면/영상(web · screen) · 짤(meme) 중 3가지 이상"))
+    # L37 재료 개수: 레퍼런스 설명 쇼츠는 10초에 4번 남짓 화면이 바뀐다 → 3초에 하나 이상(같은 파일은 한 번만 셈)
+    uniq = len({(r.get("spec") or {}).get("src") or (r.get("spec") or {}).get("csv") or f"{r.get('scene')}/{r.get('id')}" for r in recs})
+    need = int(dur // 3)
+    if dur >= 15 and uniq < need:
+        out.append(("L37", None, f"서로 다른 재료 {uniq}개 / {dur:.0f}초 — {need}개 이상 필요(문장마다 하나: 짤 · 웹 녹화 · 아이콘 · 수치 카드 · 그림을 섞어서, cue 로 그 낱말에 등장)"))
+    # T37 같은 종류가 네 번 연속
+    run_k, run_n = None, 0
+    for k in kinds:
+        run_n = run_n + 1 if k == run_k else 1
+        run_k = k
+        if run_n == 4:
+            out.append(("T37", None, f"'{k}' 가 네 번 연속 — 사이에 다른 종류(짤 · 그래픽 · 화면)를 끼우기"))
+            break
+    if sb.get("language", "ko") == "ko":
+        def latin_heavy(r):
+            txt = "".join(o.get("text") or "" for o in (r.get("ocr") or []))
+            lat, han = len(re.findall(r"[A-Za-z]", txt)), len(re.findall(r"[가-힣]", txt))
+            return len(txt) >= 30 and lat > han * 3
+        en = sum(1 for r in recs if latin_heavy(r))
+        if en * 3 >= len(recs):
+            out.append(("T35", None, f"영어 글자가 대부분인 캡처가 {en}개 — 한국어 시청자에게 안 읽힌다. 핵심 수치는 한국어 그래픽으로 다시 그리기"))
+    return out
+
+
 def lint(sb: dict, recent_titles=None) -> list:
     fails = []
 
@@ -100,7 +186,13 @@ def lint(sb: dict, recent_titles=None) -> list:
         # L05 훅 길이 — 레퍼런스 스타일 카드가 있으면 그 영상의 첫 컷 길이(+0.5초)까지 허용
         hook_max = max(LIM["hook_sec_max"], ref_first_shot(sb) + 0.5)
         if s.get("role") == "hook" and sec > hook_max:
-            fails.append(("L05", i, f"hook {sec}s > {hook_max:g}s"))
+            # 시청자는 3초 안에 '화면 글자'로 무엇인지 안다 — 훅 제목이 뜨면 나레이션은 4.6초까지 권고로만
+            # (2026-11-03: 3초를 맞추려 문장을 자르고 1.35배속 → '너무 빠르다')
+            titled = any(isinstance(e, dict) and re.search(r"훅 제목|제목", str(e.get("name", ""))) for e in (s.get("elements") or []))
+            if titled and sec <= hook_max + 1.6:
+                fails.append(("T05", i, f"hook {sec}s > {hook_max:g}s — 훅 제목이 3초 안에 뜨면 괜찮음(나레이션을 자르거나 배속을 올리지 말 것)"))
+            else:
+                fails.append(("L05", i, f"hook {sec}s > {hook_max:g}s"))
 
         # L06 금칙어
         for b in BANNED:
@@ -180,6 +272,10 @@ def lint(sb: dict, recent_titles=None) -> list:
                 fails.append((code, None, f"[마지막 렌더] {msg}"))
         except (ValueError, OSError, ImportError):
             pass
+
+    # L33 ~ L35 · T35 재료(시청자 기준): 재료 단계가 남긴 기록(compositions/<id>/craft/materials/sNN/*.json, 글자 인식 포함)으로 본다.
+    #     재료를 만들기 전이면 건너뛴다. (2026-11-03: 영어 문서 캡처 9장 · 같은 그래프 3번 → '슬라이드 넘기기' 같은 영상)
+    fails += material_checks(sb)
 
     # L30 레퍼런스: 같은 주제 · 형식의 실제 쇼츠를 분석(scripts/shorts_xray.py → public/trends/xray/<id>/xray.json)하고 콘티 reference 에 건다.
     #     조사 없이 '그냥 만들면' 대사 · 리듬 · 화면이 어색하다(2026-11-03 사용자 평가). 사용자가 레퍼런스 없이 만들라고 했을 때만 reference_skip 에 그 말을 적는다
