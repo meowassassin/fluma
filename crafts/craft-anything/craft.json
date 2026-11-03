@@ -1,0 +1,19 @@
+{
+ "name": "craft-anything",
+ "title": "Craft Anything",
+ "repo": "storytold/craft-anything",
+ "kind": "소프트웨어 동작 분석 · 직접 만들기",
+ "use": "도구 동작 조사",
+ "order": 15,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "craft-anything",
+ "cli": "craft-anything-cli",
+ "mcp": [
+  "mcp"
+ ],
+ "web": true,
+ "kind_en": "See how any software works, then build your own",
+ "use_en": "Research how a tool behaves",
+ "sandbox": false
+}

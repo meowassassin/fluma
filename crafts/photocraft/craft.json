@@ -1,0 +1,29 @@
+{
+ "name": "photocraft",
+ "title": "PhotoCraft",
+ "repo": "storytold/photocraft",
+ "kind": "이미지 편집 · 레이어 · PSD (Photoshop 류)",
+ "use": "누끼 · 합성 · 레이어 효과 · 썸네일, PSD 레이어를 장면 재료로",
+ "order": 3,
+ "license": "MIT OR Apache-2.0",
+ "agent": true,
+ "bin": "photocraft",
+ "cli": "photocraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "Image editing, layers, PSD (Photoshop-style)",
+ "use_en": "Cut-outs, compositing, layer styles, thumbnails; PSD layers as scene material",
+ "provides": [
+  {
+   "material": "photo",
+   "in": "사진 · 캡처",
+   "out": "누끼(투명 png) 또는 정리한 png"
+  }
+ ]
+}

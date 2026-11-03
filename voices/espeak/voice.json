@@ -1,0 +1,44 @@
+{
+ "name": "espeak",
+ "title": "eSpeak NG",
+ "vendor": "eSpeak NG 프로젝트",
+ "kind": "local",
+ "runtime": "시스템 프로그램 · 즉시",
+ "status": "adapter",
+ "license": {
+  "code": "GPL-3.0",
+  "model": "GPL-3.0 (규칙 기반)",
+  "commercial": "가능",
+  "note": "만든 음성 파일은 자유롭게 쓸 수 있다. 프로그램을 함께 배포할 때만 GPL 적용",
+  "url": "https://github.com/espeak-ng/espeak-ng"
+ },
+ "korean": true,
+ "words": false,
+ "speed": "즉시",
+ "quality": "기계음",
+ "size": "시스템 설치됨",
+ "voices": [
+  {
+   "id": "ko",
+   "title": "기본",
+   "gender": "M"
+  },
+  {
+   "id": "ko+f3",
+   "title": "여성 톤",
+   "gender": "F"
+  }
+ ],
+ "install": "sudo dnf install espeak-ng",
+ "summary": "규칙 기반 합성기. 기계음이지만 설치 · 네트워크 없이 즉시 — 초안 타이밍 확인용.",
+ "setup": {
+  "type": "system",
+  "bin": "espeak-ng",
+  "steps": {
+   "linux-dnf": "sudo dnf install espeak-ng",
+   "linux-apt": "sudo apt install espeak-ng",
+   "mac": "brew install espeak-ng",
+   "windows": "winget install --id eSpeak-NG.eSpeak-NG -e"
+  }
+ }
+}

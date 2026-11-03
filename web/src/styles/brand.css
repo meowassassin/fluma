@@ -1,0 +1,151 @@
+/* Fluma 브랜드 층 — 로고(기울어진 둥근 카드 두 장 · 보라 · 크림 · 눈 두 개)의 디자인 언어를 화면 전체에 입힌다.
+   다른 스타일 파일 다음에 불러와 덮어쓴다. 규칙은 네 가지:
+   1) 선택됨 = '접힌 카드' — 옅은 보라 면 + 가장자리에 작게 기울어진 보라 카드 표식. 밑줄 · 왼쪽 막대 · 하늘색 테두리를 쓰지 않는다.
+   2) 태그 = 작은 카드 — 모서리 6px, 앞에 기울어진 색 카드 점, 글자는 Wanted Sans.
+   3) 글자 — 제목 · 숫자 · 버튼 · 브랜드 순간은 Wanted Sans(--display), 본문은 Pretendard(--font).
+   4) 카드는 겹쳐 보인다 — 고른 것 · 올려 둔 것 뒤로 보라 카드가 비친다(캔버스 · 장면 썸네일 · 영상 카드). */
+
+/* ---------- 1. 글자 ---------- */
+h1, h2, h3, .page-head h1, .dialog-t, .pg-sub, .set-nav h1, .home-sec-h h2, .sheet-sec h4, .sheet-info > b,
+.btn, .seg button, .tab, .stp-in, .sect-t, .title-btn b, .frame-label b, .mode b, .provbox-h b, .set-item b,
+.pcard-t, .clip, .tc, .tc-r, .ruler span, .czoom-v, .dock-h b, .lint-h, .empty b {
+  font-family: var(--display);
+}
+.page-head h1 { font-size: var(--fs-xl); font-weight: 800; letter-spacing: -0.01em; }
+.sect-t { font-size: 12.5px; font-weight: 700; letter-spacing: 0.01em; color: var(--tx-2); }
+.btn { font-weight: 650; letter-spacing: 0.005em; }
+.tc, .tc-r { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ---------- 2. 선택됨 = 접힌 카드 ---------- */
+:root { --fold: var(--primary); }
+.fold-on, .seg button.on, .tab.on, .set-item.on, .scene-row.on, .layer-row.on, .look-row.on, .look-opt.on,
+.mode.on, .ecard.on, .fchip.on, .ibtn.on {
+  background: var(--select-soft); color: var(--sel-tx); box-shadow: inset 0 0 0 1px var(--sel-line);
+}
+.set-item.on b, .scene-row.on .scene-c, .layer-row.on, .mode.on b { color: var(--tx-1); }
+.mode.on, .ecard.on, .fchip.on { border-color: var(--sel-line); }
+/* 가장자리 표식: 작게 기울어진 보라 카드 (로고의 뒤 카드) */
+.tab, .set-item, .scene-row, .layer-row, .rail-b, .look-row { position: relative; }
+.tab.on::before, .set-item.on::before, .scene-row.on::before, .layer-row.on::before, .rail-b.on::before, .look-row.on::before {
+  content: ""; position: absolute; left: -3px; top: 50%; width: 6px; height: 16px; margin-top: -8px;
+  border-radius: 3px; background: var(--fold); box-shadow: 0 2px 6px rgba(88, 80, 248, 0.45);
+}
+.rail-b.on::before { left: -6px; height: 20px; margin-top: -10px; }
+.tab.on::before { left: 8px; top: auto; bottom: -3px; width: 16px; height: 5px; margin: 0; }
+.tab.on { padding-left: 12px; }
+/* 세그먼트: 고른 칸이 카드처럼 떠오름 */
+.seg { background: var(--bg-1); border-color: var(--line-1); }
+.seg button.on { box-shadow: inset 0 0 0 1px var(--sel-line), 0 2px 8px -2px rgba(88, 80, 248, 0.5); }
+.seg button { transition: background var(--t-fast), color var(--t-fast), transform var(--t-mid) var(--ease); }
+/* 고른 카드형 항목(라이브러리 · 엔진 등) */
+.tw.on .tw-im, .lcard.on .lposter, .lcard.on .lcard-im, .lcard.on .bcard-im, .lcard.on .ccard-im { box-shadow: 0 0 0 2px var(--select), -6px 6px 0 0 var(--primary); }
+.switch.on { background: var(--primary); border-color: var(--primary); }
+
+/* ---------- 3. 태그 = 작은 카드 ---------- */
+.tag {
+  height: 20px; padding: 0 7px 0 6px; gap: 5px; border-radius: 6px;
+  font: 650 12.5px/1 var(--display); letter-spacing: 0.01em;
+}
+.tag::before { content: ""; width: 6px; height: 6px; border-radius: 2px; background: currentColor; transform: rotate(-16deg); flex: none; opacity: 0.9; }
+.tag-select { background: var(--select-soft); color: var(--sel-tx); }
+.tag-brand { background: var(--primary-soft); color: var(--sel-tx); }
+
+/* ---------- 메뉴 · 레일 ---------- */
+.rail-b.on { background: var(--bg-3); }
+.menu-i[data-highlighted] { background: var(--select-soft); color: var(--tx-1); }
+
+/* ---------- 홈: 로고 · 입력 하나 ---------- */
+.home { display: flex; flex-direction: column; justify-content: center; min-height: 100%; padding-bottom: 12vh; }
+.hero { padding-top: 0; }
+.hero-logo { margin-bottom: var(--s6); }
+.prompt { border-radius: 18px; position: relative; }
+.prompt::before {   /* 입력칸 뒤로 비치는 보라 카드 */
+  content: ""; position: absolute; inset: 10px -6px -8px 10px; z-index: -1; border-radius: 18px;
+  background: linear-gradient(160deg, rgba(104, 92, 255, 0.55), rgba(64, 56, 184, 0.35)); transform: rotate(-1.6deg);
+}
+.hero { position: relative; z-index: 0; }
+.prompt:focus-within { border-color: var(--sel-line); box-shadow: 0 0 0 3px rgba(104, 92, 255, 0.16), 0 20px 60px -30px rgba(0, 0, 0, 0.8); }
+.ideas button { border-radius: 10px; }
+.ideas .ic { color: var(--brand); }
+
+/* ---------- 영상 화면 ---------- */
+.videos-body { padding: var(--s5) var(--s6) var(--s10); }
+.videos-body .home-sec { margin-top: 0; max-width: none; }
+.videos-body .home-sec-h h2 { display: none; }
+.pcard-poster { border-radius: 14px; }
+.pcard-hit:hover .pcard-poster { transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--line-3), -6px 6px 0 0 var(--primary), 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
+
+/* ---------- 4. 편집기 ---------- */
+/* 진행 단계: 기울어진 카드 표식 (끝남 = 보라 · 걸림 = 주황 · 남음 = 빈 카드) */
+.stepper { background: var(--bg-1); border-color: var(--line-1); border-radius: 12px; }
+.stp-in i { width: 9px; height: 9px; border-radius: 2.5px; background: transparent; box-shadow: inset 0 0 0 1.5px var(--line-3); transform: rotate(-14deg); }
+.stp.done .stp-in { color: var(--tx-1); }
+.stp.done .stp-in i { background: var(--primary); box-shadow: none; }
+.stp.warn .stp-in i { background: var(--warn); box-shadow: none; }
+.title-btn b { font-size: var(--fs-md); font-weight: 750; }
+
+/* 장면 목록: 번호는 기울어진 배지, 고른 장면은 썸네일 뒤로 보라 카드가 비친다 */
+.scene-row { padding: 7px 7px 7px 8px; border-radius: 10px; }
+.scene-m b { display: inline-grid; place-items: center; min-width: 20px; height: 18px; padding: 0 5px; border-radius: 5px;
+  background: var(--bg-4); color: var(--tx-1); font: 750 12px/1 var(--display); transform: rotate(-6deg); }
+.scene-row.on .scene-m b { background: var(--primary); color: #fff; }
+.scene-th { border-radius: 6px; transition: transform var(--t-mid) var(--ease), box-shadow var(--t-mid) var(--ease); }
+.scene-row.on .scene-th { box-shadow: -4px 4px 0 0 var(--primary); }
+.scene-row.playing { box-shadow: none; }
+.scene-row.playing .scene-th { outline: 2px solid var(--playhead); outline-offset: 1px; }
+.scene-row.on.playing { box-shadow: inset 0 0 0 1px var(--sel-line); }
+
+/* 캔버스: 영상 프레임 (뒤의 기울어진 보라 판은 없앰 — 영상 확인에 방해) */
+.frame-wrap { position: relative; }
+.frame { z-index: 1; border-radius: 10px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 30px 80px -30px rgba(0, 0, 0, 0.9); }
+.frame-label { position: relative; z-index: 1; }
+.frame-label b { color: var(--tx-1); font-weight: 750; }
+.ctools, .czoom { border-radius: 12px; background: var(--bg-1); border-color: var(--line-1); box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.7); }
+
+/* 타임라인: 장면 클립은 카드, 고른 클립은 보라 카드, 재생선은 크림 + 마스코트 머리 */
+.tl { background: var(--bg-1); }
+.play-btn { width: 36px; height: 36px; border-radius: 11px; background: var(--primary); color: #fff; transition: background var(--t-fast); }
+.play-btn:hover { background: var(--primary-hover); }
+.clip { border-radius: 9px; border: 0; background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-2); transition: background var(--t-fast), transform var(--t-fast); }
+.clip:hover { background: var(--bg-4); transform: translateY(-1px); }
+.clip.on { background: linear-gradient(160deg, #6a5cff, #4a40d8); color: #fff; box-shadow: 0 6px 16px -8px rgba(88, 80, 248, 0.8); }
+.clip.on .clip-n { color: rgba(255, 255, 255, 0.75); }
+.clip-n { font-weight: 750; }
+.words button.on { background: var(--select-soft); color: var(--sel-tx); }
+.playhead::after { width: 2px; left: -1px; background: var(--playhead); box-shadow: 0 0 8px rgba(248, 240, 232, 0.35); }
+.playhead .playhead-head { position: absolute; top: -8px; left: -10px; width: 20px; height: 20px; background: none; clip-path: none; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55)); }
+.playhead .playhead-head svg { display: block; transform: rotate(-8deg); }
+
+/* 오른쪽 · 왼쪽 패널 */
+.insp, .left { background: var(--bg-1); }
+.sect-h { min-height: 42px; }
+.issue { border-radius: 10px; }
+.render-chip { border-radius: 12px; }
+
+/* 거르기 칩 · 아이디어 칩: 알약 대신 카드 모서리 */
+.fchip { border-radius: 10px; }
+
+/* 설정 메뉴: 제목만 한 줄 */
+.set-item { align-items: center; padding: 8px 10px; }
+.set-item .ic { margin-top: 0; }
+
+/* 타임라인 눈금: 글자는 한 줄로, 오른쪽 끝 눈금은 왼쪽으로 붙여 잘리지 않게 */
+.ruler span { white-space: nowrap; }
+.ruler span.end { transform: translateX(-100%); }
+
+/* 좁은 창에서 에이전트 서랍이 떠도 아래 플레이어 · 타임라인은 가리지 않는다 */
+.studio { --tl-h: clamp(168px, 24vh, 232px); }
+.tl { height: var(--tl-h); }
+@media (max-width: 1365px) {
+  .studio:not(.no-sb) .studio-body > .dock:not(.dock-edge) { bottom: var(--tl-h); border-bottom: 1px solid var(--line-1); border-bottom-left-radius: 14px; }
+}
+
+/* ---------- 선택은 기울이지 않는다(2026-11-02 사용자) · 호버하면 뒤에 은은한 빛 ---------- */
+.btn, .fchip, .gk-chip, .seg button, .choice, .set-item, .ecard, .clip, .lint-r, .rail-b, .ibtn, .mode, .pcard-hit, .scene-row, .gate-chip, .yt-title, .chip {
+  transition: box-shadow var(--t-mid, .2s) var(--ease, ease), background var(--t-fast, .12s), border-color var(--t-fast, .12s), color var(--t-fast, .12s);
+}
+.btn:hover:not(:disabled), .fchip:hover, .gk-chip:hover, .seg button:hover:not(.on), .choice:hover:not(:disabled), .set-item:hover,
+.ecard:hover, .clip:hover, .lint-r:hover:not(:disabled), .rail-b:hover, .ibtn:hover:not(:disabled), .mode:hover, .gate-chip:hover, .yt-title:hover:not(:disabled), .chip:hover {
+  box-shadow: 0 0 0 1px rgba(138, 180, 255, 0.28), 0 0 22px -6px rgba(138, 180, 255, 0.55);
+}
+.btn-primary:hover:not(:disabled) { box-shadow: 0 0 0 1px rgba(160, 150, 255, 0.5), 0 0 26px -4px rgba(120, 110, 255, 0.75); }

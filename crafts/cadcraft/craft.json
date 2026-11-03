@@ -1,0 +1,19 @@
+{
+ "name": "cadcraft",
+ "title": "CADCraft",
+ "repo": "storytold/cadcraft",
+ "kind": "CAD 제도 (AutoCAD 류)",
+ "use": "도면 · 설계 화면 재료",
+ "order": 13,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "cadcraft",
+ "cli": "cadcraft-cli",
+ "mcp": [
+  "mcp"
+ ],
+ "web": true,
+ "kind_en": "CAD drafting (AutoCAD-style)",
+ "use_en": "Drawings and plans as screen material",
+ "sandbox": false
+}

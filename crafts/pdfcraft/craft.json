@@ -1,0 +1,29 @@
+{
+ "name": "pdfcraft",
+ "title": "PdfCraft",
+ "repo": "storytold/pdfcraft",
+ "kind": "PDF 읽기 · 정리",
+ "use": "논문 · 보고서 근거 화면, 출처 정리",
+ "order": 11,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "pdfcraft",
+ "cli": "pdfcraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "Reading & organizing PDFs",
+ "use_en": "Papers and reports as on-screen sources",
+ "provides": [
+  {
+   "material": "doc_quote",
+   "in": "pdf · 찾을 문장",
+   "out": "page png + 문장 위치(형광펜 · 확대용)"
+  }
+ ]
+}

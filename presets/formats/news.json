@@ -1,0 +1,92 @@
+{
+ "name": "news",
+ "title": "뉴스 · 시사 — 헤드라인 띠, 사실 위주",
+ "keywords": [
+  "뉴스",
+  "정치",
+  "경제",
+  "사건",
+  "정부",
+  "대통령",
+  "국회",
+  "발표",
+  "속보",
+  "금리",
+  "주가",
+  "환율",
+  "사고"
+ ],
+ "layout": {
+  "captions": {
+   "share": 0.01,
+   "y": null,
+   "height": null,
+   "width": null,
+   "chars": null,
+   "lines": null,
+   "box": null,
+   "fg_light": null
+  },
+  "title": {
+   "share": 1.0,
+   "y": 0.16,
+   "height": 0.053
+  },
+  "fill": {
+   "letterbox": 1.0,
+   "band_top": 0.096,
+   "band_bottom": 0.848
+  }
+ },
+ "rhythm": {
+  "shot_sec": 46.71,
+  "bpm": 136.0,
+  "cut_on_beat": 0.0,
+  "sentence_sec": 5.7,
+  "cuts_per_sentence": 0.04
+ },
+ "lead": "말",
+ "speech_ratio": 0.9,
+ "screens": {
+  "기사": 0.42,
+  "사람": 0.32,
+  "실제 화면": 0.27
+ },
+ "voice": {
+  "cps": 6.76,
+  "continuous": false,
+  "prosody": {
+   "f0_median": 242.4,
+   "range_st": 10.88,
+   "end_drop_st": -3.83,
+   "energy_sd_db": 5.82
+  }
+ },
+ "tone": {
+  "endings": {
+   "습니다": 0.46,
+   "는데요": 0.19,
+   "다": 0.12,
+   "입니다": 0.08,
+   "죠": 0.04,
+   "요": 0.04,
+   "합니다": 0.04,
+   "고요": 0.04
+  }
+ },
+ "roles": {
+  "설명 · 사실": 0.73,
+  "소식 · 훅": 0.12,
+  "맺음": 0.12,
+  "농담 후보": 0.04
+ },
+ "joke_rate_per_10s": 0.06,
+ "source": {
+  "channels": [
+   "MBCNEWS"
+  ],
+  "videos": 3,
+  "measured": "2026-11-02",
+  "note": "숫자만 — 원본 영상 · 대사 · 그림은 저장하지 않음"
+ }
+}

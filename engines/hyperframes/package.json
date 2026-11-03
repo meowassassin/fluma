@@ -1,0 +1,9 @@
+{
+  "name": "shortsforge-engine-hyperframes",
+  "private": true,
+  "description": "HyperFrames(Apache-2.0) 렌더 엔진. 버전 고정 — 같은 콘티는 같은 영상으로 렌더된다",
+  "dependencies": {
+    "gsap": "3.14.2",
+    "hyperframes": "0.8.209"
+  }
+}

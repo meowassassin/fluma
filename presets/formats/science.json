@@ -1,0 +1,95 @@
+{
+ "name": "science",
+ "title": "과학 · 상식 — 이유를 풀어 주는 말 주도",
+ "keywords": [
+  "과학",
+  "상식",
+  "이유",
+  "왜",
+  "우주",
+  "지구",
+  "역사",
+  "동물",
+  "몸",
+  "원리",
+  "물리",
+  "화학",
+  "바다"
+ ],
+ "layout": {
+  "captions": {
+   "share": 0.62,
+   "y": 0.664,
+   "height": 0.068,
+   "width": 0.577,
+   "chars": 7.0,
+   "lines": 1.0,
+   "box": 0.33,
+   "fg_light": 0.33
+  },
+  "title": {
+   "share": 0.67,
+   "y": 0.135,
+   "height": 0.052
+  },
+  "fill": {
+   "letterbox": 0.65,
+   "band_top": 0.132,
+   "band_bottom": 0.962
+  }
+ },
+ "rhythm": {
+  "shot_sec": 4.12,
+  "bpm": null,
+  "cut_on_beat": null,
+  "sentence_sec": 3.9,
+  "cuts_per_sentence": 0.35
+ },
+ "lead": "말",
+ "speech_ratio": 0.84,
+ "screens": {
+  "사람": 0.26,
+  "실제 화면": 0.26,
+  "카드(글자)": 0.21,
+  "짤": 0.13,
+  "도표": 0.1,
+  "제품": 0.05
+ },
+ "voice": {
+  "cps": 5.09,
+  "continuous": true,
+  "prosody": {
+   "f0_median": 179.8,
+   "range_st": 13.83,
+   "end_drop_st": 0.2,
+   "energy_sd_db": 4.66
+  }
+ },
+ "tone": {
+  "endings": {
+   "죠": 0.24,
+   "습니다": 0.18,
+   "어요": 0.18,
+   "다": 0.06,
+   "까요": 0.06,
+   "에요": 0.06,
+   "입니다": 0.06,
+   "아요": 0.06
+  }
+ },
+ "roles": {
+  "설명 · 사실": 0.71,
+  "소식 · 훅": 0.18,
+  "반전 · 한계": 0.06,
+  "맺음": 0.06
+ },
+ "joke_rate_per_10s": 0.0,
+ "source": {
+  "channels": [
+   "Why Is That?"
+  ],
+  "videos": 3,
+  "measured": "2026-11-02",
+  "note": "숫자만 — 원본 영상 · 대사 · 그림은 저장하지 않음"
+ }
+}

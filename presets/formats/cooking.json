@@ -1,0 +1,96 @@
+{
+ "name": "cooking",
+ "title": "요리 · 레시피 — 과정 화면, 음악 · 말 섞임",
+ "keywords": [
+  "요리",
+  "레시피",
+  "음식",
+  "자취",
+  "라면",
+  "밥",
+  "반찬",
+  "굽",
+  "볶",
+  "끓",
+  "맛",
+  "디저트",
+  "베이킹"
+ ],
+ "layout": {
+  "captions": {
+   "share": 0.74,
+   "y": 0.515,
+   "height": 0.056,
+   "width": 0.633,
+   "chars": 10.0,
+   "lines": 1.0,
+   "box": 1.0,
+   "fg_light": 0.98
+  },
+  "title": {
+   "share": 0.33,
+   "y": 0.08,
+   "height": 0.051
+  },
+  "fill": {
+   "letterbox": 0.25,
+   "band_top": 0.103,
+   "band_bottom": 0.768
+  }
+ },
+ "rhythm": {
+  "shot_sec": 1.395,
+  "bpm": 82.45,
+  "cut_on_beat": 0.315,
+  "sentence_sec": 3.6,
+  "cuts_per_sentence": 1.86
+ },
+ "lead": "말",
+ "speech_ratio": 0.46,
+ "screens": {
+  "음식": 0.81,
+  "제품": 0.08,
+  "사람": 0.04,
+  "카드(글자)": 0.04,
+  "짤": 0.02,
+  "실제 화면": 0.02
+ },
+ "voice": {
+  "cps": 4.635,
+  "continuous": true,
+  "prosody": {
+   "f0_median": 171.1,
+   "range_st": 14.19,
+   "end_drop_st": 0.43,
+   "energy_sd_db": 5.8
+  }
+ },
+ "tone": {
+  "endings": {
+   "다": 0.17,
+   "됩니다": 0.12,
+   "입니다": 0.05,
+   "합니다": 0.05,
+   "습니다": 0.05,
+   "이소": 0.03,
+   "죠": 0.03,
+   "여서": 0.03
+  }
+ },
+ "roles": {
+  "설명 · 사실": 0.62,
+  "소식 · 훅": 0.14,
+  "맺음": 0.14,
+  "농담 후보": 0.1
+ },
+ "joke_rate_per_10s": 0.085,
+ "source": {
+  "channels": [
+   "Cook Loop",
+   "Making simple Korean food"
+  ],
+  "videos": 6,
+  "measured": "2026-11-02",
+  "note": "숫자만 — 원본 영상 · 대사 · 그림은 저장하지 않음"
+ }
+}

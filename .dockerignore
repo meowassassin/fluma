@@ -1,0 +1,27 @@
+# 이미지에는 코드와 가벼운 시작(lite)만 — 무거운 것은 컨테이너 안에서 설정 화면 '설치'로 필요할 때만
+.git
+.venv
+**/.venv
+**/node_modules
+**/__pycache__
+web/dist
+engines/blender/dist
+engines/*/cache
+tools/vision
+library3d
+workspace
+out
+audio
+public/trends
+public/memes
+public/elements
+public/uploads
+public/audio
+public/captures
+research
+storyboards/*.json
+compositions/2*
+scenes
+docs/demo
+.env
+.env.*

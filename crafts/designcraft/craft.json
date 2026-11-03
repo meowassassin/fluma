@@ -1,0 +1,29 @@
+{
+ "name": "designcraft",
+ "title": "DesignCraft",
+ "repo": "storytold/designcraft",
+ "kind": "지면 레이아웃 · 출판 (InDesign 류)",
+ "use": "카드뉴스 · 썸네일 지면 구성",
+ "order": 8,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "designcraft",
+ "cli": "designcraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "Page layout & publishing (InDesign-style)",
+ "use_en": "Card-news and thumbnail layouts",
+ "provides": [
+  {
+   "material": "thumbnail",
+   "in": "제목 · 대표 그림",
+   "out": "png"
+  }
+ ]
+}

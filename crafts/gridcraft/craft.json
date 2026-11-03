@@ -1,0 +1,26 @@
+{
+ "name": "gridcraft",
+ "title": "GridCraft",
+ "repo": "storytold/gridcraft",
+ "kind": "스프레드시트 (Excel 류)",
+ "use": "숫자 · 표 · 차트 근거 정리",
+ "order": 10,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "gridcraft",
+ "cli": "gridcraft-cli",
+ "mcp": [
+  "mcp"
+ ],
+ "web": true,
+ "kind_en": "Spreadsheets (Excel-style)",
+ "use_en": "Organize numbers, tables and charts behind the facts",
+ "sandbox": false,
+ "provides": [
+  {
+   "material": "chart",
+   "in": "표 데이터(labels · values) · 차트 종류",
+   "out": "pdf → (VectorCraft) png"
+  }
+ ]
+}

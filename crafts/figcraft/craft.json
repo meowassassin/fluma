@@ -1,0 +1,29 @@
+{
+ "name": "figcraft",
+ "title": "FigCraft",
+ "repo": "storytold/figcraft",
+ "kind": "인터페이스 디자인 · 프로토타입 (Figma 류)",
+ "use": "앱 · 웹 화면 목업을 화면 재료로",
+ "order": 7,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "figcraft",
+ "cli": "figcraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "Interface design & prototyping (Figma-style)",
+ "use_en": "App and web mockups as screen material",
+ "provides": [
+  {
+   "material": "ui_mock",
+   "in": "화면 설명",
+   "out": "png"
+  }
+ ]
+}

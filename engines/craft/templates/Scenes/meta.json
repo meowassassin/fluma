@@ -1,0 +1,7 @@
+{
+ "name": "Scenes",
+ "primary": true,
+ "captions": "self",
+ "summary": "장면마다 컴포지션 하나 — 바탕 · 카메라 · 그림 층(craft/art) · 훅 제목 · 숫자 알약 · 단어 자막",
+ "formats": []
+}

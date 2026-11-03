@@ -1,0 +1,22 @@
+{
+ "name": "silent",
+ "title": "무음 (시험용)",
+ "vendor": "Fluma",
+ "kind": "local",
+ "runtime": "내장",
+ "status": "builtin",
+ "license": {
+  "code": "-",
+  "model": "-",
+  "commercial": "가능",
+  "note": "소리 없이 길이만 — 파이프라인 시험용",
+  "url": ""
+ },
+ "korean": true,
+ "words": false,
+ "speed": "즉시",
+ "quality": "소리 없음",
+ "size": "없음",
+ "voices": [],
+ "summary": "네트워크 없이 장면 길이만 맞춰 보는 시험용."
+}

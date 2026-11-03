@@ -1,0 +1,33 @@
+Fluma
+Copyright 2026 Fluma contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It uses or downloads the following third-party components at install or run time.
+They are NOT relicensed by Fluma; each keeps its own license. Verify upstream terms
+before commercial use.
+
+Bundled in this repository
+- Pretendard font (public/fonts/*.woff2) — SIL Open Font License 1.1 — https://github.com/orioncactus/pretendard
+- Provider / engine icons (web/public/engine-icons/*) — trademarks of their respective
+  owners, shown only to identify the service.
+
+Installed by npm / pip (not bundled)
+- HyperFrames (render engine) — Apache-2.0 — https://github.com/heygen-com/hyperframes
+- GSAP — GreenSock Standard License — https://gsap.com/standard-license
+- RapidOCR + PaddleOCR PP-OCR models — Apache-2.0
+- faster-whisper — MIT; OpenAI Whisper model weights — MIT
+- CLIP ViT-B/32 (OpenAI, MIT) via Xenova ONNX export — downloaded on first use
+- MobileSAM — Apache-2.0 — downloaded on first use
+- ONNX Runtime — MIT
+- Playwright / Chromium — Apache-2.0 / BSD-style
+- edge-tts — see https://github.com/rany2/edge-tts (output audio is produced by a
+  Microsoft online service whose commercial terms are not stated)
+
+Optional engines (installed from Settings → Media)
+- Manim (MIT), Blender (GPL — run as a separate program), voice engines and generation
+  models listed under voices/*/voice.json and genmodels/*/model.json, each with its
+  own license and commercial-use note shown in the app.
+
+Paid APIs (Typecast, ElevenLabs, Google Gemini, Higgsfield, BytePlus, Alibaba Model
+Studio) are used only with keys the user supplies, under each provider's terms.

@@ -1,0 +1,29 @@
+{
+ "name": "vectorcraft",
+ "title": "VectorCraft",
+ "repo": "storytold/vectorcraft",
+ "kind": "벡터 일러스트 (Illustrator 류)",
+ "use": "캐릭터 · 배경 · 아이콘을 실제 벡터 도구(펜 · 그라데이션 · 효과)로 그리고 SVG/PNG 로 내보냄 → K.image · 캐릭터 부품",
+ "order": 1,
+ "license": "MIT OR Apache-2.0",
+ "agent": true,
+ "bin": "vectorcraft",
+ "cli": "vectorcraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "Vector illustration (Illustrator-style)",
+ "use_en": "Draw characters, backgrounds and icons with real vector tools (pen, gradients, effects) and export SVG/PNG for scenes and character parts",
+ "provides": [
+  {
+   "material": "illustration",
+   "in": "svg · pdf · ai (에이전트가 illustrate 스킬로 그린 것 또는 사용자 파일)",
+   "out": "png · svg · .vectorcraft"
+  }
+ ]
+}

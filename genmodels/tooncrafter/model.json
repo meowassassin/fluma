@@ -1,0 +1,34 @@
+{
+ "name": "tooncrafter",
+ "title": "ToonCrafter (만화 사이 그림)",
+ "vendor": "CUHK · Tencent AI Lab (연구)",
+ "task": "interp",
+ "order": 4,
+ "license": {
+  "model": "Apache-2.0 (코드) · 연구 공개",
+  "commercial": "불명확 — 저자가 '연구용 탐구'라고 표기. 시제품 · 개인용 권장",
+  "url": "https://github.com/Doubiiu/ToonCrafter"
+ },
+ "quality": "2D 만화 전용: 키 그림 두 장 사이의 동작을 그려 넣음(선 · 채색 유지). 출력 512×320 가로 · 약 2초 — 캐릭터 동작 요소용",
+ "out": {
+  "fps": 8,
+  "max_sec": 2,
+  "size": "512×320"
+ },
+ "gpu_sec": 60,
+ "runner": {
+  "type": "hf-space",
+  "space": "Doubiiu/tooncrafter",
+  "api": "/get_image",
+  "args": {
+   "image": "$image",
+   "prompt": "$prompt",
+   "steps": 50,
+   "cfg_scale": 7.5,
+   "eta": 1.0,
+   "fs": 10,
+   "seed": "$seed",
+   "image2": "$image2"
+  }
+ }
+}

@@ -1,0 +1,19 @@
+# Fluma 컨테이너. 작업물(workspace · 콘티 · 렌더)은 볼륨에, 키는 ~/.shortsforge 볼륨에(에이전트는 읽지 못함).
+services:
+  fluma:
+    build:
+      context: .
+      args:
+        PROFILE: ${PROFILE:-lite}
+    ports:
+      - "127.0.0.1:4311:4311"     # 웹(이 컴퓨터에서만)
+    volumes:
+      - fluma_workspace:/app/workspace
+      - fluma_out:/app/out
+      - fluma_keys:/root/.shortsforge
+    environment:
+      FLUMA_HOST: 0.0.0.0           # 컨테이너 안에서만 열림 — 바깥은 위 ports 의 127.0.0.1
+volumes:
+  fluma_workspace:
+  fluma_out:
+  fluma_keys:

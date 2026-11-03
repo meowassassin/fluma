@@ -1,0 +1,58 @@
+{
+  "$comment": "기본 디자인 토큰. 트렌드 층은 이 파일을 수정하지 않고 tokens/trend_overrides.json 로 범위 내 조정만 한다.",
+  "version": 1,
+  "color": {
+    "accent": "#3B82F6",
+    "bg": "#0B0F19",
+    "surface": "#111827",
+    "text": "#FFFFFF",
+    "muted": "#9CA3AF",
+    "good": "#22C55E",
+    "bad": "#EF4444"
+  },
+  "font": {
+    "family": "Pretendard",
+    "caption_px": 64,
+    "caption_weight": 700,
+    "number_px": 160,
+    "number_weight": 800,
+    "line_height": 1.25
+  },
+  "layout": {
+    "width": 1080,
+    "height": 1920,
+    "safe_top": 220,
+    "safe_bottom": 380,
+    "caption_y": 1320,
+    "padding": 72
+  },
+  "motion": {
+    "fps": 30,
+    "reveal_ms": 250,
+    "scene_gap_ms": 120,
+    "stamp_ms": 180,
+    "easing": "spring"
+  },
+  "signature": {
+    "number_stamp": true,
+    "cursor": true,
+    "time_bar": true,
+    "loop_end": true
+  },
+  "audio": {
+    "tts": "typecast",
+    "voice_id": "",
+    "speed": 1.05,
+    "sfx_volume": 0.5
+  },
+  "limits": {
+    "$comment": "검사층이 읽는 하드 리밋. 트렌드가 바꿀 수 없음.",
+    "caption_max_chars": 28,
+    "caption_max_lines": 2,
+    "narration_chars_per_sec": [4.0, 7.0],
+    "$narration_note": "공백·문장부호 제외 글자 수 기준. 자연스러운 한국어 나레이션 5~6자/초, 쇼츠는 조금 빠르게",
+    "scene_sec": [2, 12],
+    "hook_sec_max": 3,
+    "numbers_per_video_max": 4
+  }
+}

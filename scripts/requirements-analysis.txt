@@ -1,0 +1,8 @@
+# 레퍼런스 쇼츠 · 채널 분석(ref_style.py · ref_channel.py · voice_profile.py) — 모두 CPU, torch 없음
+-r requirements.txt
+faster-whisper>=1.1             # 받아쓰기(CTranslate2)
+rapidocr>=3.0                   # 다국어 OCR(PP-OCRv5 ONNX)
+onnxruntime>=1.18               # OCR · CLIP 화면 분류 · 음원 분리 · MobileSAM
+huggingface-hub>=0.24           # CLIP ONNX · whisper 모델 받기
+tokenizers>=0.19                # CLIP 글 토큰
+opencv-python-headless>=4.9,<5  # 컷 · 광류 · 추적

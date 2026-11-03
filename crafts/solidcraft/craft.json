@@ -1,0 +1,22 @@
+{
+ "name": "solidcraft",
+ "title": "SolidCraft",
+ "repo": "tangency-labs/solidcraft",
+ "kind": "파라메트릭 3D CAD (커뮤니티 앱)",
+ "use": "3D 부품 · 제품 모형",
+ "order": 16,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "solidcraft",
+ "cli": "solidcraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "Parametric 3D CAD (community app)",
+ "use_en": "3D parts and product models"
+}

@@ -1,0 +1,90 @@
+/* Fluma 디자인 토큰 — 색은 '역할'로만 쓴다(한 색에 여러 뜻을 싣지 않는다).
+   대비: 본문 글자 ≥ 4.5:1 (text-3 이 최소). 브랜드 보라(로고 색)는 주 행동 · 브랜드 순간에만. */
+
+@font-face { font-family: "Pretendard"; font-weight: 400; font-display: swap; src: url("../assets/fonts/Pretendard-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Pretendard"; font-weight: 500; font-display: swap; src: url("../assets/fonts/Pretendard-Medium.woff2") format("woff2"); }
+@font-face { font-family: "Pretendard"; font-weight: 600; font-display: swap; src: url("../assets/fonts/Pretendard-SemiBold.woff2") format("woff2"); }
+@font-face { font-family: "Pretendard"; font-weight: 700; font-display: swap; src: url("../assets/fonts/Pretendard-Bold.woff2") format("woff2"); }
+@font-face { font-family: "Pretendard"; font-weight: 800; font-display: swap; src: url("../assets/fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
+@font-face { font-family: "Wanted Sans"; font-weight: 400 900; font-display: swap; src: url("../assets/fonts/WantedSansVariable.woff2") format("woff2-variations"), url("../assets/fonts/WantedSansVariable.woff2") format("woff2"); }
+@font-face { font-family: "Geist Mono"; font-weight: 400 600; font-display: swap; src: url("../assets/fonts/GeistMono.ttf") format("truetype"); }
+
+:root {
+  color-scheme: dark;
+
+  /* 면 — VS Code 다크(Dark+)처럼 색이 섞이지 않은 회색. 편집 영역이 가장 어둡고 패널이 한 단계 밝다 */
+  --bg-0: #1e1e1e;      /* 앱 바탕 · 캔버스 주변 (VS Code 편집기) */
+  --bg-1: #252526;      /* 패널 · 레일 (VS Code 사이드바) */
+  --bg-2: #2d2d2d;      /* 올라온 면 · 입력 */
+  --bg-3: #333337;      /* 떠 있는 면 · 메뉴 · 호버 */
+  --bg-4: #3c3c42;      /* 눌림 · 선택 행 */
+
+  /* 선 */
+  --line-1: #2b2b2b;
+  --line-2: #3c3c3c;
+  --line-3: #555555;
+
+  /* 글자 (bg-1 기준 대비) */
+  --tx-1: #e2e2e2;      /* 11.8:1 */
+  --tx-2: #cccccc;      /* 9.5:1 — VS Code 기본 글자색 */
+  --tx-3: #a6a6a6;      /* 6.3:1 — 글자 최소 (bg-4 위에서도 4.5:1) */
+  --tx-4: #6e6e6e;      /* 장식 전용(글자 금지) */
+
+  /* 역할 색 — 브랜드는 로고 보라. 보라와 헷갈리지 않게 선택은 하늘색, 에이전트는 청록 */
+  --brand: #8b80ff;               /* 로고 · 브랜드 순간 · 탭 표시 (글자로 써도 5.3:1) */
+  --primary: #5850f8;             /* 주 행동 버튼 = 로고 보라 (흰 글자 5.4:1) */
+  --primary-hover: #655cff;
+  --primary-soft: rgba(104, 92, 255, 0.16);
+  --select: #8b80ff;              /* 선택한 행 · 옵션 (로고 보라 계열 — brand.css '접힌 카드' 표식) */
+  --select-soft: rgba(104, 92, 255, 0.16);
+  --sel-line: rgba(139, 128, 255, 0.42);
+  --sel-tx: #d6d1ff;
+  --canvas-sel: #38bdf8;          /* 캔버스 안 요소 선택 — 영상 위에서 잘 보이도록 하늘색 */
+  --focus: #a99bff;               /* 키보드 초점 고리 — 절대 끄지 않음 */
+  --playhead: #f8f0e8;            /* 재생 위치 = 로고 크림 (머리는 마스코트) */
+  --comment: #f5a524;             /* 코멘트 핀 */
+  --ok: #3ccb7f;
+  --ok-soft: rgba(60, 203, 127, 0.13);
+  --warn: #f5a524;
+  --warn-soft: rgba(245, 165, 36, 0.13);
+  --danger: #f2555a;
+  --danger-soft: rgba(242, 85, 90, 0.13);
+  --agent: #2dd4bf;               /* 에이전트가 일하는 중 */
+  --agent-soft: rgba(45, 212, 191, 0.13);
+
+  /* 글자 */
+  --display: "Wanted Sans", "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;   /* 제목 · 숫자 · 버튼 · 브랜드 */
+  --font: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --fs-xs: 12.5px; --lh-xs: 17px;    /* 보조 · 메타 (이보다 작게 쓰지 않음) */
+  --fs-sm: 14px;   --lh-sm: 21px;    /* 패널 · 속성 */
+  --fs-md: 15px;   --lh-md: 23px;    /* 본문 */
+  --fs-lg: 16.5px; --lh-lg: 24px;    /* 패널 제목 */
+  --fs-xl: 20px;   --lh-xl: 28px;    /* 화면 제목 */
+  --fs-2xl: 24px;  --lh-2xl: 32px;
+  --fs-3xl: 28px;  --lh-3xl: 36px;   /* 홈 머리말 */
+
+  /* 간격 (4px 단위) */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px; --s14: 56px;
+
+  /* 모서리 · 그림자 */
+  --r1: 4px; --r2: 6px; --r3: 8px; --r4: 12px; --r5: 16px;
+  --shadow-pop: 0 10px 30px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line-2);
+  --shadow-modal: 0 30px 80px -20px rgba(0, 0, 0, 0.75), 0 0 0 1px var(--line-2);
+
+  /* 움직임 */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: 120ms;
+  --t-mid: 200ms;
+
+  /* 크기 */
+  --rail-w: 56px;
+  --topbar-h: 48px;
+  --row-h: 32px;
+  --ctl-h: 34px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-fast: 0ms; --t-mid: 0ms; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

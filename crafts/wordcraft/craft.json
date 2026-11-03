@@ -1,0 +1,22 @@
+{
+ "name": "wordcraft",
+ "title": "WordCraft",
+ "repo": "storytold/wordcraft",
+ "kind": "문서 (Word 류)",
+ "use": "대본 · 기획서 문서",
+ "order": 12,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "wordcraft",
+ "cli": "wordcraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "Documents (Word-style)",
+ "use_en": "Scripts and planning documents"
+}

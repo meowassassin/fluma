@@ -1,0 +1,22 @@
+{
+ "name": "texturecraft",
+ "title": "TextureCraft",
+ "repo": "storytold/texturecraft",
+ "kind": "3D 텍스처 페인팅",
+ "use": "3D 개체 질감",
+ "order": 14,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "texturecraft",
+ "cli": "texturecraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "3D texture painting",
+ "use_en": "Surfaces for 3D objects"
+}

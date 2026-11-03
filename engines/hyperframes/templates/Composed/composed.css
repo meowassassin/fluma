@@ -1,0 +1,8 @@
+@font-face { font-family: "Pretendard"; font-weight: 400; src: url("fonts/Pretendard-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Pretendard"; font-weight: 700; src: url("fonts/Pretendard-Bold.woff2") format("woff2"); }
+@font-face { font-family: "Pretendard"; font-weight: 800; src: url("fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
+@font-face { font-family: "Pretendard"; font-weight: 900; src: url("fonts/Pretendard-Black.woff2") format("woff2"); }
+@font-face { font-family: "JetBrains Mono"; font-weight: 400 900; src: url("fonts/JetBrainsMono-ExtraBold.otf") format("opentype"); }
+@font-face { font-family: "Geist"; font-weight: 100 900; src: url("fonts/Geist.ttf") format("truetype"); }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--bg); font-family: Pretendard, sans-serif; }

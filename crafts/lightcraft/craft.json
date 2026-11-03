@@ -1,0 +1,26 @@
+{
+ "name": "lightcraft",
+ "title": "LightCraft",
+ "repo": "storytold/lightcraft",
+ "kind": "사진 보정 · RAW (Lightroom 류)",
+ "use": "직접 찍은 사진 재료 보정",
+ "order": 6,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "lightcraft",
+ "cli": "lightcraft-cli",
+ "mcp": [
+  "mcp"
+ ],
+ "web": true,
+ "kind_en": "Photo development & RAW (Lightroom-style)",
+ "use_en": "Grade photos you shot as material",
+ "sandbox": false,
+ "provides": [
+  {
+   "material": "photo_grade",
+   "in": "사진",
+   "out": "보정한 png"
+  }
+ ]
+}

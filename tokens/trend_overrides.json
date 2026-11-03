@@ -1,0 +1,29 @@
+{
+  "$comment": "트렌드 층이 쓰는 파일. 아래 range 안에서만 값이 바뀐다. 사람이 승인한 것만 approved=true.",
+  "version": 1,
+  "updated": null,
+  "source_week": null,
+  "approved": false,
+  "overrides": {
+    "font.caption_px": { "value": 64, "range": [56, 76] },
+    "motion.reveal_ms": { "value": 250, "range": [180, 320] },
+    "motion.scene_gap_ms": { "value": 120, "range": [80, 200] },
+    "audio.speed": { "value": 1.05, "range": [0.95, 1.2] }
+  },
+  "format_weights": {
+    "$comment": "결정층이 애매할 때 쓰는 형식 선택 비중. 합계 1.0",
+    "concept": 0.15,
+    "mythbust": 0.2,
+    "compare": 0.2,
+    "countdown": 0.15,
+    "fix": 0.2,
+    "series": 0.1
+  },
+  "hook_style_weights": {
+    "$comment": "훅 문장 유형 비중. 트렌드 분석이 갱신",
+    "question": 0.35,
+    "number": 0.3,
+    "contrarian": 0.2,
+    "pain": 0.15
+  }
+}

@@ -1,0 +1,38 @@
+{
+ "name": "chatterbox",
+ "title": "Chatterbox Multilingual",
+ "vendor": "Resemble AI",
+ "kind": "local",
+ "runtime": "PyTorch · GPU 권장",
+ "status": "adapter",
+ "license": {
+  "code": "MIT",
+  "model": "MIT",
+  "commercial": "가능",
+  "note": "코드 · 모델 MIT. 출력에 Perth 워터마크(들리지 않음)가 들어간다",
+  "url": "https://github.com/resemble-ai/chatterbox"
+ },
+ "korean": true,
+ "words": false,
+ "speed": "느림 (CPU)",
+ "quality": "매우 자연스러움 · 감정 조절",
+ "size": "약 3GB",
+ "voices": [
+  {
+   "id": "default",
+   "title": "기본",
+   "gender": "F"
+  }
+ ],
+ "install": "uv venv voices/chatterbox/.venv --python 3.11 && uv pip install --python voices/chatterbox/.venv/bin/python chatterbox-tts",
+ "summary": "23개 언어 · 한국어. 감정 세기(exaggeration) 조절, 짧은 녹음으로 목소리 복제.",
+ "setup": {
+  "type": "venv",
+  "python": "3.11",
+  "packages": [
+   "chatterbox-tts"
+  ],
+  "torch": "cpu",
+  "check": "from chatterbox.mtl_tts import ChatterboxMultilingualTTS"
+ }
+}

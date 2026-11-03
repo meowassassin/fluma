@@ -1,0 +1,29 @@
+{
+ "name": "soundcraft",
+ "title": "SoundCraft",
+ "repo": "storytold/soundcraft",
+ "kind": "오디오 녹음 · 믹스 (Pro Tools 류)",
+ "use": "나레이션 · 배경음악 · 효과음 믹스, 직접 녹음",
+ "order": 5,
+ "license": "MIT OR Apache-2.0",
+ "agent": true,
+ "bin": "soundcraft",
+ "cli": "soundcraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "Audio recording & mixing (Pro Tools-style)",
+ "use_en": "Mix narration, music and sound effects; record your own",
+ "provides": [
+  {
+   "material": "audio",
+   "in": "나레이션 · 음악",
+   "out": ".scraft · 믹스 wav"
+  }
+ ]
+}

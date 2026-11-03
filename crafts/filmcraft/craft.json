@@ -1,0 +1,26 @@
+{
+ "name": "filmcraft",
+ "title": "FilmCraft",
+ "repo": "storytold/filmcraft",
+ "kind": "영상 편집 · 색 · 소리 (Premiere 류)",
+ "use": "완성본을 사람이 직접 컷 · 색 · 자막(SRT) 손보기",
+ "order": 4,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "filmcraft",
+ "cli": "filmcraft-cli",
+ "mcp": [
+  "mcp"
+ ],
+ "web": true,
+ "kind_en": "Video editing, color & sound (Premiere-style)",
+ "use_en": "Hand-finish the final cut: trims, color, captions (SRT)",
+ "sandbox": false,
+ "provides": [
+  {
+   "material": "edit",
+   "in": "장면 렌더 · 믹스 · 자막",
+   "out": ".fcproj · 최종 mp4"
+  }
+ ]
+}

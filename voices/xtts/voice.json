@@ -1,0 +1,54 @@
+{
+ "name": "xtts",
+ "title": "XTTS-v2",
+ "vendor": "Coqui",
+ "kind": "local",
+ "runtime": "PyTorch · GPU 권장",
+ "status": "adapter",
+ "license": {
+  "code": "MPL-2.0",
+  "model": "Coqui Public Model License",
+  "commercial": "불가",
+  "note": "모델은 비상업 전용 — 유튜브 수익 영상에는 쓰지 않는다",
+  "url": "https://coqui.ai/cpml"
+ },
+ "korean": true,
+ "words": false,
+ "speed": "보통 (GPU)",
+ "quality": "자연스러움 · 음성 복제",
+ "size": "약 2GB",
+ "voices": [
+  {
+   "id": "Ana Florence",
+   "title": "Ana (여)",
+   "gender": "F"
+  },
+  {
+   "id": "Claribel Dervla",
+   "title": "Claribel (여)",
+   "gender": "F"
+  },
+  {
+   "id": "Damien Black",
+   "title": "Damien (남)",
+   "gender": "M"
+  },
+  {
+   "id": "Viktor Menelaos",
+   "title": "Viktor (남)",
+   "gender": "M"
+  }
+ ],
+ "install": "uv pip install coqui-tts",
+ "summary": "17개 언어 · 한국어 음성 복제. 비상업 라이선스라 비교 · 개인용.",
+ "setup": {
+  "type": "venv",
+  "python": "3.11",
+  "packages": [
+   "coqui-tts"
+  ],
+  "torch": "cpu",
+  "check": "from TTS.api import TTS",
+  "license_ack": "Coqui Public Model License — 비상업 전용"
+ }
+}

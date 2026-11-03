@@ -1,0 +1,104 @@
+{
+ "name": "it-explainer",
+ "title": "IT · 개발 설명 — 말 주도, 실제 화면",
+ "keywords": [
+  "개발",
+  "코딩",
+  "프로그램",
+  "앱",
+  "웹",
+  "크롬",
+  "깃허브",
+  "github",
+  "ai",
+  "인공지능",
+  "서버",
+  "해킹",
+  "보안",
+  "유튜브",
+  "컴퓨터",
+  "단축키",
+  "설정",
+  "기능",
+  "it"
+ ],
+ "layout": {
+  "captions": {
+   "share": 0.74,
+   "y": 0.793,
+   "height": 0.075,
+   "width": 0.86,
+   "chars": 9.0,
+   "lines": 2.0,
+   "box": 0.98,
+   "fg_light": 0.43
+  },
+  "title": {
+   "share": 0.67,
+   "y": 0.45,
+   "height": 0.026
+  },
+  "fill": {
+   "letterbox": 0.51,
+   "band_top": 0.065,
+   "band_bottom": 0.956
+  }
+ },
+ "rhythm": {
+  "shot_sec": 6.96,
+  "bpm": 99.4,
+  "cut_on_beat": 0.0,
+  "sentence_sec": 5.5,
+  "cuts_per_sentence": 0.38
+ },
+ "lead": "말",
+ "speech_ratio": 0.87,
+ "screens": {
+  "실제 화면": 0.8,
+  "기사": 0.06,
+  "카드(글자)": 0.04,
+  "도표": 0.04,
+  "게임 화면": 0.03,
+  "짤": 0.02
+ },
+ "voice": {
+  "cps": 7.7,
+  "continuous": true,
+  "prosody": {
+   "f0_median": 203.125,
+   "range_st": 9.42,
+   "end_drop_st": -3.4,
+   "energy_sd_db": 6.19
+  }
+ },
+ "tone": {
+  "endings": {
+   "습니다": 0.2,
+   "고요": 0.19,
+   "요": 0.15,
+   "예요": 0.12,
+   "어요": 0.12,
+   "세요": 0.07,
+   "다": 0.05,
+   "됩니다": 0.03
+  }
+ },
+ "roles": {
+  "설명 · 사실": 0.64,
+  "소식 · 훅": 0.1,
+  "맺음": 0.1,
+  "농담 후보": 0.08,
+  "방법 안내(시청자에게)": 0.05,
+  "반전 · 한계": 0.03
+ },
+ "joke_rate_per_10s": 0.135,
+ "source": {
+  "channels": [
+   "코딩애플",
+   "A spoonful of knowledge that brightens life"
+  ],
+  "videos": 9,
+  "measured": "2026-11-02",
+  "note": "숫자만 — 원본 영상 · 대사 · 그림은 저장하지 않음"
+ }
+}

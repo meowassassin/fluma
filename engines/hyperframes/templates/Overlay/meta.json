@@ -1,0 +1,8 @@
+{
+  "name": "Overlay",
+  "mood": "실제 장면 위 자막 한 줄 + 숫자 하나. 사진이 없으면 생성 배경 + 키네틱 타이포",
+  "supports": ["still", "footage", "screenshot", "price_tag", "number", "text", "list", "compare", "audio_demo"],
+  "formats": ["ad", "emotional", "daily", "compare", "fix", "concept", "mythbust", "countdown", "series"],
+  "captions": "self",
+  "primary": true
+}

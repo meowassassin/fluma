@@ -1,0 +1,34 @@
+{
+ "name": "ltx23",
+ "title": "LTX-2.3 (이미지 → 영상)",
+ "vendor": "Lightricks",
+ "task": "i2v",
+ "order": 2,
+ "license": {
+  "model": "LTX-2 Community License",
+  "commercial": "연 매출 1천만 달러 미만이면 무료",
+  "url": "https://github.com/Lightricks/LTX-2/blob/main/LICENSE-2"
+ },
+ "quality": "움직임이 크고 빠름, 길이 최대 10초 안팎. 소리도 만들지만 Fluma 는 버린다",
+ "out": {
+  "fps": 24,
+  "max_sec": 8,
+  "size": "가변"
+ },
+ "gpu_sec": 150,
+ "runner": {
+  "type": "hf-space",
+  "space": "Lightricks/LTX-2-3",
+  "api": "/generate_video",
+  "args": {
+   "input_image": "$image",
+   "prompt": "$prompt",
+   "duration": "$sec",
+   "enhance_prompt": false,
+   "seed": "$seed",
+   "randomize_seed": false,
+   "height": "$h",
+   "width": "$w"
+  }
+ }
+}
