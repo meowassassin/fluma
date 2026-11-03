@@ -20,6 +20,13 @@ import sys
 import venv
 from pathlib import Path
 
+# Windows 콘솔 · 파이프의 기본 인코딩(cp1252 등)에서 한글 출력이 깨지지 않게
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):
+        pass
+
 ROOT = Path(__file__).resolve().parents[1]
 VENV = ROOT / ".venv"
 REQ = {"lite": "requirements.txt", "analysis": "requirements-analysis.txt", "full": "requirements-full.txt"}

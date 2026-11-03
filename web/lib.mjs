@@ -70,7 +70,7 @@ export function run(cmd, args, { cwd, env, onLine, timeout = 0, signal, onSpawn,
   return new Promise((resolve) => {
     let child;
     try {
-      child = spawn(cmd, args, { cwd, env: { PYTHONUNBUFFERED: "1", ...(env || process.env) }, shell: false, detached: process.platform !== "win32" });
+      child = spawn(cmd, args, { cwd, env: { PYTHONUNBUFFERED: "1", PYTHONUTF8: "1", PYTHONIOENCODING: "utf-8", ...(env || process.env) }, shell: false, detached: process.platform !== "win32" });
     } catch (e) { resolve({ code: -1, out: "", err: String(e), timedOut: false, canceled: false }); return; }
     onSpawn?.(child);
     let out = "", err = "", timedOut = false, canceled = false, done = false;

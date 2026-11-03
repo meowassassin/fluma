@@ -27,9 +27,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: FedericoCarboni/setup-ffmpeg@v3
+      - name: ffmpeg
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then brew install ffmpeg; elif [ "$RUNNER_OS" = "Windows" ]; then choco install ffmpeg -y --no-progress; else sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; fi
       - name: Install (doctor --fix)
         run: python scripts/doctor.py --fix
+      - name: Windows UTF-8 mode for direct script runs (as QUICKSTART says)
+        if: runner.os == 'Windows'
+        run: echo "PYTHONUTF8=1" >> $GITHUB_ENV
       - name: Python path
         run: |
           if [ "$RUNNER_OS" = "Windows" ]; then echo "PY=$PWD/.venv/Scripts/python.exe" >> $GITHUB_ENV; else echo "PY=$PWD/.venv/bin/python" >> $GITHUB_ENV; fi

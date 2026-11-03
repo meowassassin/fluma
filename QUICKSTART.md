@@ -93,4 +93,5 @@ python -m pytest tests              # core tests
 
 - **No sound in renders** — the default voice may be *Silent (for testing)*; pick a voice in Settings → Media → Voice.
 - **Free 2D models hit a quota** — add a free Hugging Face token in Settings → Media → 2D generation.
-- **Tested only on Linux** — on macOS / Windows please open an issue with the `doctor.py` output.
+- **Windows: Korean text errors when running scripts yourself** — turn on Python UTF-8 mode once: `setx PYTHONUTF8 1` (new terminal after). The Studio already runs scripts that way.
+- **Tested by CI on Linux, macOS and Windows** (install, tests, web build, server, a Craft app) — real use is mostly on Linux so far; please open an issue with the `doctor.py` output if something breaks.
