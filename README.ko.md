@@ -13,7 +13,7 @@
 
 [빠른 시작](QUICKSTART.md) · [작동 방식](#작동-방식) · [기여하기](CONTRIBUTING.md)
 
-[English](README.md) · **한국어**
+[English](README.md) · **한국어** (영어 README 에서도 펼쳐 볼 수 있어요)
 
 </div>
 
