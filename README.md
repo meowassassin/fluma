@@ -4,16 +4,16 @@
 
 # Fluma
 
-**Paste a reference Short. Fluma measures its editing grammar and remakes your topic in it — from real material, previewed before you build, checked against human-edited Shorts.**
+**An agent that makes YouTube Shorts the way an editor would — studying real Shorts first, then building every scene in real creative tools, and learning from how the video actually performed.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-5b5bd6)](LICENSE)
 [![Quick start](https://img.shields.io/badge/quick%20start-10%20min-2fb67c)](QUICKSTART.md)
 ![Tested on](https://img.shields.io/badge/tested-Linux-555)
 ![UI](https://img.shields.io/badge/UI-English%20%C2%B7%20%ED%95%9C%EA%B5%AD%EC%96%B4%20%C2%B7%20%E4%B8%AD%E6%96%87-555)
-![Render](https://img.shields.io/badge/render-HyperFrames-555)
+![Pipeline](https://img.shields.io/badge/pipeline-Craft%20apps-555)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff69b4)](CONTRIBUTING.md)
 
-[Quick start](QUICKSTART.md) · [Contributing — all welcome](CONTRIBUTING.md) · [How it works](#how-it-works)
+[Quick start](QUICKSTART.md) · [How it works](#how-it-works) · [Contributing — all welcome](CONTRIBUTING.md)
 
 **English** · [한국어](README.ko.md)
 
@@ -23,144 +23,146 @@
 
 ## What is Fluma
 
-Fluma is a local-first agent workspace for short-form video (YouTube Shorts · Reels · TikTok).
-You chat with an agent (your own Claude Code / Codex CLI, or any API key). It analyzes a reference Short or channel,
-writes a storyboard for *your* topic, shows a rough **preview** before anything expensive happens, composes every scene
-as code (HyperFrames), narrates it, mixes music, checks the result against numbers measured from human-edited Shorts,
-and renders a 1080×1920 MP4.
+Fluma is a local-first agent workspace for vertical short-form video (YouTube Shorts · Reels · TikTok).
+You chat with an agent (your own Claude Code / Codex CLI, or an API key). It:
 
-Fluma does **not** generate live-action video. It builds Shorts from 2D graphics and reused material:
-real website screen recordings, memes, characters, library elements and your own uploads — so on-screen facts, UI and
-numbers are real, not hallucinated.
+1. **studies real Shorts first** — finds Shorts on the same topic, breaks them down (cuts, speech, sentence endings, on-screen text, screen types) and takes their rhythm and tone, never their content;
+2. **writes a storyboard** with sourced facts, in that channel's spoken style;
+3. **builds every scene in real creative tools** — the open-source [Craft apps](#the-craft-apps): spreadsheet data → charts, PDF quotes → highlighted zoom, vector illustrations drawn by the agent → animated layers, then motion graphics, an audio mix and a cut edit, each as an editable project file;
+4. **checks the render** like a reviewer — the first second, freezes, gaps in speech, cut density;
+5. **publishes and learns** — uploads to your channel and maps the retention curve back onto the storyboard's scenes, so the next video avoids the scene where people swiped away.
+
+Fluma does **not** generate live-action video. Facts need a source URL or they are dropped.
 
 ## Why Fluma
 
-- 🎯 **Reference grammar, measured** — caption bands (fixed title, punchline box, bracket labels, reaction subtitles),
-  their position / size / color, cut rhythm, music BPM and sentence endings are extracted as numbers from a reference
-  Short or a whole channel, then reused. No hand-tuned "template look".
-- 🧾 **Real material, not generated guesses** — `webrec` drives a real browser and records the screen; zoom follows the
-  words being spoken and targets on-screen text, not hand-picked coordinates. Facts need a source URL or they're dropped.
-- 🎬 **Preview before you build** — `previz` renders the storyboard alone: missing material shows as a labeled
-  placeholder, captions / timing / voice are already final. Fix the structure before recording anything.
-- 📏 **Checked against human-edited Shorts** — "slide-like" output (tiny text, one material type, nothing changing)
-  and "AI look" (tilts, glows, blur-ins, gradients) are measured on the rendered frames and block the final render.
-- 💬 **Edit by talking** — point at the preview and say what to change; one scene or one word is re-done, not the video.
-  Every human action is logged, so "how much hand-work did this take" is a number.
-- 🎵 **Voice and music** — free Edge TTS or Typecast / ElevenLabs / Gemini TTS, voice matched to the reference speaker
-  (pitch, intonation, endings — no cloning); background music mixed under narration with ducking and fades.
+- 🔎 **Reference first, enforced** — a storyboard fails the check (`L30`) until real reference Shorts have been analyzed and linked; narration that ends on a bare noun or mixes polite and casual speech fails too (`L31`).
+- 🧰 **Real tools instead of a template engine** — every stage is a project file in a Craft app (`.ecproj` motion, `.scraft` audio, `.fcproj` cut, `.vectorcraft` art). You can open any of them and keep editing; Fluma notices hand edits by hash and never overwrites them.
+- 🎨 **The agent draws like a designer** — the `illustrate` skill: study the reference's drawing grammar → silhouette thumbnails → draw in VectorCraft → render, look, fix → named parts. Characters can walk, wave or bounce from those parts.
+- ⏱️ **Built for the Shorts feed** — YouTube's core signal is whether people stay instead of swiping away. Every render is measured for an empty first frame, no change in the first second, long freezes and pauses (`L32`, `T32–T34`).
+- 📈 **Closes the loop with real numbers** — connect your channel (official OAuth), upload, and see views, engaged views, *stayed-to-watch* (engaged ÷ views), average % viewed, traffic sources, audience and the retention curve **per storyboard scene**.
 - 🌐 **Korean-first, multilingual** — Korean tone analysis and caption grammar; UI in English, 한국어 and 中文.
-- 💸 **Free path, local-first** — Edge voice + local render + free 2D models; keys stay in `~/.shortsforge/` (0600),
-  the agent cannot read them.
+- 🔐 **Local-first** — keys and YouTube tokens live in `~/.shortsforge/` (0600); the agent cannot read them.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-  A[Reference Short<br/>or just a topic] --> B[shorts_xray · ref_style<br/>grammar · rhythm · voice]
-  B --> C[Intent card<br/>you confirm]
-  C --> D[Storyboard<br/>scenes · beats · grammar]
-  D --> E[previz<br/>rough preview]
-  E --> F[Material<br/>webrec · memes · characters · uploads]
-  F --> G[scene.js<br/>HyperFrames]
-  D --> H[voice_match → TTS<br/>+ music]
-  G & H --> I[Draft scenes 1–3<br/>you approve]
-  I --> J[Render 1080×1920]
-  D -. lint .-> D
-  J -. edit density · AI-look checks .-> G
+  A[Topic] --> R[Reference Shorts<br/>trends · shorts_xray · ref_channel]
+  R --> S[Storyboard<br/>sourced facts · channel tone · lint]
+  S --> V[Voice<br/>TTS · word timings]
+  S --> M[Scene materials]
+  M --> G[GridCraft<br/>data → chart]
+  M --> P[PdfCraft<br/>quote → zoom]
+  M --> VC[VectorCraft<br/>agent-drawn art]
+  M --> PH[PhotoCraft<br/>photos · cutouts]
+  G & P & VC & PH --> E[EffectCraft<br/>motion · captions]
+  V --> SC[SoundCraft<br/>voice · music · ducking]
+  E & SC --> F[FilmCraft<br/>cut edit → MP4]
+  F --> T[Tempo check]
+  F --> Y[YouTube upload]
+  Y --> A2[Analytics<br/>retention → scenes]
+  A2 -. next video .-> S
 ```
 
-| Stage | Tool | What it measures or makes |
+| Stage | Where | What it does |
 |---|---|---|
-| Analyze | `scripts/shorts_xray.py`, `ref_style.py`, `ref_channel.py` | cuts, speech, music BPM, caption bands, screen kinds (CLIP), channel card over several videos |
-| Plan | `scripts/format_presets.py`, `lint.py` | layout numbers per format (IT explainer, cooking, news, science), structural lint |
-| Preview | `scripts/previz.py` | storyboard-only preview with placeholders, using the reference's caption grammar |
-| Material | `scripts/webrec.py`, `meme.py`, `.claude/skills/character` | real browser recordings with text positions, memes with source credits, SVG characters with lip-sync |
-| Voice & music | `scripts/voice_match.py`, `assemble_audio.py`, `finish.py` | voice matched to the reference speaker, word timings, music with ducking |
-| Check | `scripts/edit_density.py`, `look_check.py`, `gate.py`, `effort.py` | text size / material variety vs. human Shorts, AI-look tells, intent & draft gates, human-action log |
+| References | `scripts/trends.py`, `shorts_xray.py`, `ref_channel.py` | find Shorts by topic, cuts · speech · music BPM · caption bands · screen kinds, channel tone card |
+| Storyboard | `.claude/skills/plan`, `storyboard`, `scripts/lint.py` | scenes with `materials` (chart · doc_quote · illustration · photo · screen), structural lint |
+| Materials | `scripts/craft/materials.py` | picks the Craft app from each app's `provides` list and makes the material |
+| Motion · audio · edit | `scripts/craft/motion.py`, `audio.py`, `edit.py`, `engines/craft/` | EffectCraft comps per scene, SoundCraft mix, FilmCraft assembly |
+| Checks | `scripts/tempo_check.py`, `edit_density.py`, `gate.py` | first second · freezes · pauses · cut density; intent & draft gates before the final render |
+| Publish & learn | `web/youtube.mjs` | OAuth, resumable upload, Analytics API reports mapped to scenes |
 
-## Product tour
+## The editor
+
+An IDE-style workspace: an **Explorer** tree of what the video is made of — *Edit · Preview*, *Sound* (narration · music), *Graphics*, *Illustrations*, *Photos*, *Data*, *Publish · Results* — and an editor area that shows the **result** of the selected item (the cut, the mix, the scene graphics, the drawing, the table, the stats). Changes go through the agent panel on the right; the selected item is passed to the agent as context. Editor tabs, breadcrumbs, a status bar and a resizable explorer (`Ctrl+B`).
 
 <table>
 <tr>
-<td width="50%"><img src="assets/screens/settings-agent.webp" alt="Models and providers" /><br/><sub><b>Models · Providers</b> — run on your local Claude Code / Codex CLI, or any API key.</sub></td>
-<td width="50%"><img src="assets/screens/settings-voice.webp" alt="Media: voice, 2D generation, render engines" /><br/><sub><b>Media</b> — voice engines (free and paid), free 2D models, render engines.</sub></td>
+<td width="50%"><img src="assets/screens/settings-agent.webp" alt="Models and providers" /><br/><sub><b>Models · Providers</b> — your local Claude Code / Codex CLI, or any API key.</sub></td>
+<td width="50%"><img src="assets/screens/settings-voice.webp" alt="Media settings" /><br/><sub><b>Media</b> — free and paid voice engines, render engines.</sub></td>
 </tr>
 </table>
 
-> A full demo Short (reference → preview → final, with its numbers) is in progress. We'd rather show one honest result
-> with its hand-work count than a gallery of cherry-picked clips.
+## The Craft apps
+
+Fluma drives the open-source **Craft** desktop/web apps (by [storytold](https://github.com/storytold), MIT / Apache-2.0) through their CLIs and MCP servers. They are **not bundled** — install the ones you want (about 1.7 GB download for all 16):
+
+```bash
+python3 scripts/crafts.py plan all        # what would be downloaded, no download
+python3 scripts/crafts.py install all     # or: install effectcraft soundcraft filmcraft vectorcraft gridcraft pdfcraft photocraft
+```
+
+Releases are verified against their SHA256SUMS and unpacked into `tools/crafts/` (git-ignored). Used in the pipeline: EffectCraft, SoundCraft, FilmCraft, VectorCraft, GridCraft, PdfCraft, PhotoCraft. The others (LightCraft, FigCraft, DeckCraft, DesignCraft, WordCraft, CADCraft, SolidCraft, TextureCraft, Craft Anything) are available to the agent over MCP. Without Craft apps Fluma falls back to its HyperFrames engine.
+
+## YouTube
+
+Settings → **YouTube**: create an OAuth client in Google Cloud (enable *YouTube Data API v3* and *YouTube Analytics API*, Web application, redirect URI `http://127.0.0.1:4310/api/youtube/callback`), paste the client ID and secret, press **Connect**. Then:
+
+- **Publish · Results** in the editor uploads the latest render (private by default) or links a video you already uploaded;
+- **My channel videos** shows stats for any video on the channel.
+
+Analytics fill in 1–2 days after publishing; *viewed vs. swiped away* itself is only in YouTube Studio, so Fluma shows *stayed-to-watch* = engaged views ÷ views as the closest API value.
 
 ## Quick start
 
 Requirements: Python 3.10+, Node.js 20+, ffmpeg. Details and troubleshooting: [QUICKSTART.md](QUICKSTART.md).
 
 ```bash
-git clone <this repo> fluma && cd fluma
-python3 scripts/doctor.py --fix              # lite: storyboard · free Edge voice · HyperFrames · render · checks
+git clone https://github.com/meowassassin/fluma && cd fluma
+python3 scripts/doctor.py --fix              # lite: storyboard · free voice · render · checks
+python3 scripts/crafts.py install all        # the Craft apps (see above)
 npm --prefix web run dev                     # → http://localhost:4311
 ```
 
-- Reference analysis (transcription, OCR, CLIP shot tags): `python3 scripts/doctor.py --fix --profile analysis`
-- Docker: `docker compose up --build` — see [`docker-compose.yml`](docker-compose.yml)
-- What takes disk space and what is safe to remove: `python3 scripts/doctor.py --sizes`
-
-## Use Fluma from your coding agent
-
-| Way | How |
-|---|---|
-| Agent skill | [`skills/reference-to-shorts/`](skills/reference-to-shorts/SKILL.md) — the reference / channel analysis on its own, next to HyperFrames or Remotion skills |
-| MCP server (stdio) | `python3 scripts/mcp_server.py` — tools `analyze_reference`, `channel_card`, `style_card`, `voice_profile` |
-| Inside the app | Settings → Models · Providers: Claude Code, Codex CLI, or an API key (Anthropic, OpenAI, OpenRouter, Gemini, local Ollama …) |
+- Reference analysis (transcription, OCR, shot tags): `python3 scripts/doctor.py --fix --profile analysis`
+- Docker: `docker compose up --build`
 
 ## Skills
 
 | Skill | What it does |
 |---|---|
-| `plan` | plans a video in chat: one question at a time, hook drafts scored, storyboard draft |
-| `storyboard` | writes / rewrites the storyboard JSON: format, research check, scenes, lint loop |
-| `compose` | composes each scene as code with the Fluma Kit and checks it on still frames |
-| `voice` | narration voice, fitted to scene lengths |
-| `scene-edit` | changes one scene only, keeping the rest and the total length |
-| `character` | draws a mascot / host as SVG parts that lip-sync to the narration |
+| `plan` | plans a video in chat; studies reference Shorts before writing |
+| `storyboard` | writes the storyboard JSON: format, research, scenes, materials, lint loop |
+| `produce` | Craft pipeline: voice → scene materials → lint → draft render → still-frame check |
+| `illustrate` | draws characters / props as a designer in VectorCraft, render-and-fix loop |
 | `research` | collects facts with source URLs; fewer than five sources → the topic is dropped |
-| `trends` | finds trending Shorts and shows them in the Trends screen |
+| `trends` | finds Shorts by topic or hashtag for the Trends screen |
+| `voice` · `scene-edit` · `character` | narration fitting, one-scene edits, lip-synced mascot |
 | `format-*` | ready formats: compare, daily price, ad, emotional |
+| `compose` | HyperFrames-only scene composition (fallback engine) |
 
 ## Architecture
 
 | Layer | Stack |
 |---|---|
 | Studio UI | React + Vite (`web/src`), i18n en / ko / zh |
-| API & agent runtime | Node / Express (`web/server.mjs`, `web/agent.mjs`) — local CLIs or API providers |
-| Pipeline | Python scripts (`scripts/`) — analysis, lint, voice, previz, render, checks |
-| Render | HyperFrames (HTML → video) with the Fluma Kit (`engines/hyperframes/lib/kit.js`); Manim as a layer element |
-| Plug-ins | one folder each: `voices/<name>/`, `genmodels/<name>/` (free 2D models), `engines/<name>/` |
-| Schemas | `schema/storyboard.schema.json`, `schema/scene.schema.json` |
+| API & agent runtime | Node / Express (`web/server.mjs`, `web/agent.mjs`) — local CLIs or API providers, Craft apps as MCP servers |
+| Pipeline | Python (`scripts/`) — analysis, lint, voice, materials, render, checks |
+| Engines | `engines/craft` (default), `engines/hyperframes` (fallback), Manim / Blender as layer elements |
+| Plug-ins | one folder each: `crafts/<app>/craft.json`, `voices/<name>/`, `genmodels/<name>/`, `engines/<name>/` |
 
 ## Roadmap
 
-- [x] Reference / channel analysis → measured caption grammar and rhythm
-- [x] Real-screen recording with word-timed zoom on on-screen text
-- [x] Storyboard-only preview (previz)
-- [x] Edit-density and AI-look checks against human-edited Shorts
-- [x] Background music with ducking · UI in English / 한국어 / 中文
-- [ ] One complete public demo with its hand-work, time and quality numbers
-- [ ] One-command Docker run verified on a clean machine
-- [ ] macOS / Windows CI (install check, tests, a short render)
-- [ ] One-line installer
+- [x] Reference-first storyboard with enforced checks (L30 · L31)
+- [x] Craft app pipeline with editable project files and hand-edit protection
+- [x] IDE-style editor with per-item results
+- [x] YouTube connect · upload · analytics mapped to scenes
+- [x] Render-time tempo checks for the Shorts feed
+- [ ] Use past videos' per-scene drop-off automatically when planning hooks
+- [ ] Layout polish: pinned topic title, circle highlight on photos, keyword-colored captions
+- [ ] One complete public demo with its hand-work and performance numbers
+- [ ] macOS / Windows CI
 
 ## Contributing
 
-**Everyone's welcome — no permission needed.** Fork it, modify it freely, and send PRs, new features, improvements,
-experiments, fixes, translations or just ideas. Draft PRs and rough first attempts are more than fine.
-See [CONTRIBUTING.md](CONTRIBUTING.md) for easy entry points.
+**Everyone's welcome — no permission needed.** Fork it, change it freely, send PRs, experiments, fixes, translations or ideas. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Status
 
-Early and opinionated. Tested on Linux only (the code handles macOS / Windows paths, but nobody has run it there yet).
-Reference videos are analyzed for *structure*; their footage, voices and scripts are never copied into your video —
-rights to memes, music, logos or footage you add yourself are your responsibility.
+Early and opinionated. Tested on Linux only. Reference videos are analyzed for *structure*; their footage, voices, drawings and scripts are never copied — rights to memes, music, logos or footage you add yourself are your responsibility.
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE) for third-party components.
+Apache-2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE). The Craft apps are separate projects under their own licenses.
