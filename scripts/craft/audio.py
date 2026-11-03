@@ -43,9 +43,16 @@ def speech_spans(words: list[dict], gap: float = 0.35) -> list[tuple[float, floa
 
 
 def commands(sb: dict, voice: Path, words: list[dict], dur: float) -> list[str]:
-    """SoundCraft run 에 넘길 --cmd 목록"""
+    """SoundCraft run 에 넘길 --cmd 목록 — 트랙: Voice(나레이션) · SFX(효과음, 있으면) · Music(있으면) · Master"""
+    sid = sb["id"]
+    v_only, fx = PUBLIC / "audio" / f"{sid}.voice.wav", PUBLIC / "audio" / f"{sid}.sfx.wav"
+    split = v_only.exists() and fx.exists()               # 음성 단계가 나레이션 · 효과음을 따로 남겼으면 트랙도 따로
     c = [f"track.new={json.dumps({'kind': 'audio', 'format': 'stereo', 'name': 'Voice'})}",
-         f"file.import_audio={json.dumps({'path': str(voice), 'track': 'Voice', 'at': 0, 'new_tracks': False})}"]
+         f"file.import_audio={json.dumps({'path': str(v_only if split else voice), 'track': 'Voice', 'at': 0, 'new_tracks': False})}"]
+    marks = PUBLIC / "audio" / f"{sid}.sfx.json"
+    if split and marks.exists() and json.loads(marks.read_text("utf-8")):
+        c += [f"track.new={json.dumps({'kind': 'audio', 'format': 'stereo', 'name': 'SFX'})}",
+              f"file.import_audio={json.dumps({'path': str(fx), 'track': 'SFX', 'at': 0, 'new_tracks': False})}"]
     m = sb.get("music") or {}
     src = m.get("src")
     music = (ROOT / src) if src and not Path(src).is_absolute() else (Path(src) if src else None)

@@ -318,12 +318,17 @@ def _settings() -> dict:
 
 
 def resolve(sb: dict | None = None) -> tuple[str, str | None]:
-    """(엔진, 목소리). 우선순위: 콘티 voice{engine,id} > 설정(workspace/settings.json voice_engine · voice_id) > TTS_PROVIDER > edge.
+    """(엔진, 목소리). 우선순위: 사용자가 콘티에 직접 정한 목소리(voice.source == "user") > 설정(설정 → 미디어 → 음성:
+    workspace/settings.json voice_engine · voice_id) > 도구가 자동으로 적은 콘티 목소리(direct.py · voice_match.py) > TTS_PROVIDER > edge.
+    (예전엔 콘티 목소리가 늘 이겨서, 레퍼런스 카드가 적은 Edge 가 설정의 Typecast 를 덮었다.) 말 속도 · 감정 같은 다른 voice 값은 그대로 쓴다.
     쓸 수 없는 엔진이면(미설치 · 키 없음) edge 로 바꾸고 알린다."""
     v = (sb or {}).get("voice") or {}
     st = _settings()
-    eng = (v.get("engine") or st.get("voice_engine") or os.environ.get("TTS_PROVIDER") or "edge").lower()
-    vid = v.get("id") if v.get("engine") else (st.get("voice_id") if st.get("voice_engine") == eng else None)
+    if st.get("voice_engine") and v.get("source") != "user":
+        eng, vid = str(st["voice_engine"]).lower(), st.get("voice_id")
+    else:
+        eng = (v.get("engine") or st.get("voice_engine") or os.environ.get("TTS_PROVIDER") or "edge").lower()
+        vid = v.get("id") if v.get("engine") else (st.get("voice_id") if st.get("voice_engine") == eng else None)
     if not engine_available(eng):
         print(f"[tts] 음성 엔진 {eng} 을(를) 쓸 수 없음(미설치 · 키 없음) → edge 로 대체", file=sys.stderr)
         eng, vid = "edge", None

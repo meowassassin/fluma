@@ -21,6 +21,7 @@ type Group = { key: string; label: string; glyph: GlyphKind; app: string; nodes:
 
 const APP: Record<string, string> = { filmcraft: "FilmCraft", effectcraft: "EffectCraft", soundcraft: "SoundCraft", vectorcraft: "VectorCraft", gridcraft: "GridCraft", pdfcraft: "PdfCraft", photocraft: "PhotoCraft" };
 const base = (f: string) => f.split("/").pop() ?? f;
+const SFX_KO: Record<string, string> = { stamp: "쿵(도장)", pop: "톡", tick: "딸깍", swoosh: "휙" };
 
 export const useProjectFiles = (projectId: string) => useQuery<Files>({ queryKey: ["craft-files", projectId], staleTime: 10_000,
   // FilmCraft 편집 프로젝트가 생기기 전(콘티 · 음성 · 렌더 중)에는 자주 다시 읽어 생기는 즉시 연다
@@ -43,7 +44,8 @@ export const useTree = (projectId: string, sb: Storyboard | null) => {
       const tracks = au.tracks?.length ? au.tracks : ["Voice"];
       groups.push({ key: "g-sound", label: t("소리"), glyph: "sound", app: "soundcraft", nodes: tracks.map((tr) => {
         const m = TR[tr] ?? { label: tr, glyph: "sound" as GlyphKind };
-        return { key: `audio#${tr}`, label: t(m.label), glyph: m.glyph, app: "soundcraft", stage: "audio", kind: "craft" as const, path: [title, t("소리"), t(m.label)],
+        const st2 = tr === "Voice" ? "audio.voice" : tr === "SFX" ? "audio.sfx" : "audio";
+        return { key: `audio#${tr}`, label: t(m.label), glyph: m.glyph, app: "soundcraft", stage: st2, kind: "craft" as const, path: [title, t("소리"), t(m.label)],
           meta: tr === "Voice" ? `${sb?.scenes.length ?? 0} ${t("문장")}` : undefined };
       }) });
     }
@@ -166,7 +168,7 @@ export const EditorArea: React.FC<{ projectId: string; sb: Storyboard; tabs: Nod
 );
 
 /** 결과물 보기 — 편집 툴 화면 대신 그 항목이 만든 결과(영상 · 음원 · 그림 · 표 · 문서). 다시 렌더되면 자동으로 새로 읽는다 */
-type Result = { kind: "video" | "audio" | "image" | "table" | "pdf" | "none"; url?: string; rows?: string[][]; name?: string; note?: string; updated?: number };
+type Result = { kind: "video" | "audio" | "image" | "table" | "pdf" | "none"; url?: string; rows?: string[][]; name?: string; note?: string; updated?: number; marks?: { scene: number; name: string; at: number }[] };
 const ResultView: React.FC<{ projectId: string; node: Node; sb: Storyboard }> = ({ projectId, node, sb }) => {
   const { data: r } = useQuery<Result>({ queryKey: ["result", projectId, node.stage], refetchInterval: 5_000,
     queryFn: async ({ signal }) => { const x = await fetch(`/api/projects/${projectId}/result/${encodeURIComponent(node.stage!)}`, { signal }); return x.ok ? x.json() : { kind: "none", note: t("결과를 읽지 못했어요") }; } });
@@ -182,6 +184,9 @@ const ResultView: React.FC<{ projectId: string; node: Node; sb: Storyboard }> = 
           : r.kind === "table" ? <table className="rs-table"><tbody>{(r.rows ?? []).map((row, i) => <tr key={i}>{row.map((c, j) => i ? <td key={j}>{c}</td> : <th key={j}>{c}</th>)}</tr>)}</tbody></table>
           : <span className="faint">{t(r.note ?? "아직 결과가 없어요")}</span>}
       </div>
+      {!!r?.marks?.length && (
+        <ol className="rs-lines">{r.marks.map((m, i) => <li key={i}><b>{m.at.toFixed(1)}{t("초")}</b><span>{t(SFX_KO[m.name] ?? m.name)}</span><em>{t("장면 {n}", { n: m.scene + 1 })}</em></li>)}</ol>
+      )}
       {voice && (
         <ol className="rs-lines">{sb.scenes.map((sc, i) => <li key={i}><b>{t("장면 {n}", { n: i + 1 })}</b><span>{sc.narration}</span><em>{sc.caption.replace(/\n/g, " / ")}</em></li>)}</ol>
       )}

@@ -1,5 +1,10 @@
 /* 영상 화면(스튜디오) · 앱 틀(왼쪽 메뉴 · 명령 팔레트 · 단축키 · 오류 화면) · 공통 부품 번역 */
 export const en: Record<string, string> = {
+  "쿵(도장)": "Thump (stamp)",
+  "톡": "Pop",
+  "딸깍": "Tick",
+  "휙": "Swoosh",
+  "아직 따로 나뉜 소리 파일이 없어요 — 음성을 다시 만들면 생깁니다": "No separate track yet — regenerate the voice to create it",
   "불러오는 중…": "Loading…",
   "결과를 읽지 못했어요": "Couldn't load the result",
   "아직 결과가 없어요": "No result yet",
@@ -316,6 +321,11 @@ export const en: Record<string, string> = {
 };
 
 export const zh: Record<string, string> = {
+  "쿵(도장)": "咚（盖章）",
+  "톡": "啵",
+  "딸깍": "咔哒",
+  "휙": "嗖",
+  "아직 따로 나뉜 소리 파일이 없어요 — 음성을 다시 만들면 생깁니다": "还没有单独的音轨 — 重新生成语音后出现",
   "불러오는 중…": "加载中…",
   "결과를 읽지 못했어요": "无法读取结果",
   "아직 결과가 없어요": "还没有结果",

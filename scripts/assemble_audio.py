@@ -40,30 +40,71 @@ SEC_MIN, SEC_MAX = 2.0, 12.0
 DUR_MIN, DUR_MAX = 15, 60
 SFX_GAIN = float(TOKENS["audio"].get("sfx_volume", 0.5))
 
-# 효과음 설계: (주파수 목록, 길이 s, 감쇠)
-SFX_SPEC = {
-    "stamp": ([110, 220], 0.15, 18.0),
-    "pop":   ([880, 1320], 0.08, 30.0),
-    "tick":  ([2000], 0.04, 60.0),
-    "swoosh": ([300, 900], 0.15, 10.0),
-}
+# 효과음 — 사인파(삑 소리)가 아니라 노이즈 기반으로 실제 효과음처럼 합성한다(예전 사인파는 '기계음'으로 들렸다).
+# 모양을 바꾸면 SFX_VERSION 을 올린다 → 다음 실행 때 assets/sfx/*.wav 를 다시 만든다
+SFX_VERSION = "2"
+SFX_NAMES = ("stamp", "pop", "tick", "swoosh")
+
+
+def _onepole(x, a: float, high: bool = False):
+    """한 극 필터(저역 · 고역) — numpy 만으로"""
+    import numpy as np
+    y = np.empty_like(x)
+    acc = 0.0
+    for k, v in enumerate(x):
+        acc += a * (v - acc)
+        y[k] = acc
+    return x - y if high else y
+
+
+def _sfx(name: str):
+    import numpy as np
+    rng = np.random.default_rng({"stamp": 1, "pop": 2, "tick": 3, "swoosh": 4}[name])
+    if name == "swoosh":     # 휙: 대역이 아래에서 위로 쓸려 올라가는 바람 소리
+        n = int(SR * 0.38); t = np.arange(n) / SR
+        noise = rng.standard_normal(n)
+        cut = np.linspace(0.04, 0.45, n)                  # 저역 차단 주파수가 점점 올라감
+        y = np.empty(n); lo = 0.0
+        for k in range(n):
+            lo += cut[k] * (noise[k] - lo); y[k] = lo
+        y = _onepole(y, 0.02, high=True)
+        env = np.sin(np.pi * np.clip(t / t[-1], 0, 1)) ** 1.6
+        y *= env
+    elif name == "pop":      # 톡: 아주 짧은 터짐 + 아래로 떨어지는 짧은 음
+        n = int(SR * 0.09); t = np.arange(n) / SR
+        f = 520 * np.exp(-t * 28) + 140
+        tone = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 45)
+        burst = _onepole(rng.standard_normal(n), 0.35) * np.exp(-t * 160)
+        y = 0.7 * tone + 0.6 * burst
+    elif name == "tick":     # 딸깍: 3~5ms 클릭
+        n = int(SR * 0.03); t = np.arange(n) / SR
+        y = _onepole(rng.standard_normal(n), 0.5, high=True) * np.exp(-t * 900)
+        y += 0.3 * np.sin(2 * np.pi * 1600 * t) * np.exp(-t * 500)
+    else:                    # stamp 쿵: 낮게 떨어지는 쿵 + 짧은 타격 노이즈
+        n = int(SR * 0.28); t = np.arange(n) / SR
+        f = 95 * np.exp(-t * 9) + 45
+        thump = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t * 14)
+        hit = _onepole(rng.standard_normal(n), 0.15) * np.exp(-t * 70)
+        y = thump + 0.5 * hit
+    y = y / (np.abs(y).max() + 1e-9) * 0.85
+    fade = min(len(y), int(SR * 0.004))
+    y[-fade:] *= np.linspace(1, 0, fade)                  # 끝 클릭 방지
+    return (y * 32767).astype("<i2").tobytes()
 
 
 def ensure_sfx():
     SFX_DIR.mkdir(parents=True, exist_ok=True)
-    for name, (freqs, length, decay) in SFX_SPEC.items():
+    ver = SFX_DIR / ".version"
+    fresh = not ver.exists() or ver.read_text().strip() != SFX_VERSION
+    for name in SFX_NAMES:
         p = SFX_DIR / f"{name}.wav"
-        if p.exists():
+        if p.exists() and not fresh:
             continue
-        n = int(SR * length)
-        frames = bytearray()
-        for i in range(n):
-            t = i / SR
-            env = math.exp(-decay * t)
-            v = sum(math.sin(2 * math.pi * f * t) for f in freqs) / len(freqs)
-            frames += struct.pack("<h", int(max(-1, min(1, v * env)) * 32767 * 0.8))
-        with wave.open(str(p), "wb") as w:
-            w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes(bytes(frames))
+        tmp = p.with_suffix(".tmp.wav")
+        with wave.open(str(tmp), "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes(_sfx(name))
+        tmp.replace(p)
+    ver.write_text(SFX_VERSION)
 
 
 def read_pcm(path: Path) -> bytes:
@@ -296,6 +337,7 @@ def main():
     timing, captions = [], []
     t = 0.0
     print(f"제공자: {prov}  모드: {'keep-sec' if keep else 'fit (음성이 길이를 정함)'}")
+    voice_all, sfx_all, sfx_marks = bytearray(), bytearray(), []
     print(f"{'장면':>4} {'역할':<8} {'전':>5} {'후':>5} {'말소리':>6} {'배속':>5}  sfx")
     for i, (sc, p, sec) in enumerate(zip(scenes, parts, secs)):
         target = int(SR * sec)
@@ -308,11 +350,19 @@ def main():
             pcm = b"\x00\x00" * int(SR * lead) + p["clip"]
             pcm = pcm[: target * 2] + b"\x00\x00" * max(0, target - len(pcm) // 2)
             nar, sped, words = p["speech"], p["tempo"], p["words"]
+        # 효과음은 장면당 하나 · '딸깍(tick)'은 빼기 — 많으면 거슬린다(2026-11-03 사용자 평가). 콘티 direction.sfx_dense 면 그대로
         fx = sfx_list(sc.get("sfx"))
+        if not (sb.get("direction") or {}).get("sfx_dense"):
+            fx = [x for x in fx if x[0] != "tick"][:1]
+        voice_all += pcm                                   # 나레이션만(효과음 전) — SoundCraft Voice 트랙
+        fxpcm = b"\x00\x00" * (len(pcm) // 2)               # 효과음만 — SoundCraft SFX 트랙
         for name, at in fx:
             f = SFX_DIR / f"{name}.wav"
             if f.exists():
                 pcm = mix_in(pcm, read_pcm(f), SFX_GAIN, at)
+                fxpcm = mix_in(fxpcm, read_pcm(f), SFX_GAIN, at)
+                sfx_marks.append({"scene": i, "name": name, "at": round(t + at, 3)})
+        sfx_all += fxpcm
         sfx = ",".join(f"{n}@{a:g}" if a else n for n, a in fx) or "none"
         pcm_all += pcm
         for w in words:
@@ -339,13 +389,16 @@ def main():
             print(f"[콘티] 장면 길이를 실측 음성으로 갱신 → 합계 {new_dur}s ({sb_path})")
 
     out_wav = ROOT / "audio" / f"{sid}.wav"
-    write_pcm(out_wav, bytes(pcm_all))
+    write_pcm(out_wav, bytes(pcm_all))                     # 나레이션 + 효과음(예전처럼 — HyperFrames 마무리용)
+    write_pcm(ROOT / "audio" / f"{sid}.voice.wav", bytes(voice_all))
+    write_pcm(ROOT / "audio" / f"{sid}.sfx.wav", bytes(sfx_all))
+    (ROOT / "audio" / f"{sid}.sfx.json").write_text(json.dumps(sfx_marks, ensure_ascii=False, indent=1), encoding="utf-8")
     a = ROOT / "audio"
     (a / f"{sid}.timing.json").write_text(json.dumps(timing, ensure_ascii=False, indent=2), encoding="utf-8")
     (a / f"{sid}.captions.json").write_text(json.dumps(captions, ensure_ascii=False), encoding="utf-8")
     pub = ROOT / "public" / "audio"
     pub.mkdir(parents=True, exist_ok=True)
-    for ext in (".wav", ".timing.json", ".captions.json"):
+    for ext in (".wav", ".voice.wav", ".sfx.wav", ".sfx.json", ".timing.json", ".captions.json"):
         shutil.copy2(a / f"{sid}{ext}", pub / f"{sid}{ext}")
     print(f"\n→ {out_wav} ({duration(out_wav):.2f}s)  단어 {len(captions)}개  복사 → {pub}")
 

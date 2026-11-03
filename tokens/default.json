@@ -43,7 +43,7 @@
     "tts": "typecast",
     "voice_id": "",
     "speed": 1.05,
-    "sfx_volume": 0.5
+    "sfx_volume": 0.18
   },
   "limits": {
     "$comment": "검사층이 읽는 하드 리밋. 트렌드가 바꿀 수 없음.",

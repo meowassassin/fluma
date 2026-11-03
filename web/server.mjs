@@ -780,6 +780,12 @@ app.get("/api/projects/:id/result/:stage", ah(async (req, res) => {
     const f = newest(outs);
     return res.json(f ? { kind: "video", url: `/api/out/${encodeURIComponent(path.basename(f))}?v=${Math.round(statSync(f).mtimeMs)}`, name: path.basename(f), ...at(f) } : { kind: "none", note: "아직 렌더한 영상이 없어요 — 에이전트에게 '초안 만들어 줘'라고 하세요" });
   }
+  if (stage === "audio.voice" || stage === "audio.sfx") {   // 소리 › 나레이션 · 효과음: 따로 남긴 파일(음성 단계)
+    const f = path.join(ROOT, "public", "audio", `${id}.${stage.slice(6)}.wav`);
+    if (!existsSync(f)) return res.json({ kind: "none", note: "아직 따로 나뉜 소리 파일이 없어요 — 음성을 다시 만들면 생깁니다" });
+    const marks = stage === "audio.sfx" ? await readJson(path.join(ROOT, "public", "audio", `${id}.sfx.json`), []) : undefined;
+    return res.json({ kind: "audio", url: fileUrl(id, f), name: path.basename(f), marks, ...at(f) });
+  }
   if (stage === "audio") {
     const f = newest([path.join(ROOT, "compositions", id, "craft", "audio", `${id}.mix.wav`), path.join(ROOT, "audio", `${id}.wav`)]);
     return res.json(f ? { kind: "audio", url: fileUrl(id, f), name: path.basename(f), ...at(f) } : { kind: "none", note: "아직 나레이션이 없어요" });
