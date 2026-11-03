@@ -36,6 +36,16 @@ const TRACKED = [...WRITABLE.filter((p) => !p.startsWith("workspace/tmp")), "sce
 
 // Craft 앱이 설치되어 있으면 기본 엔진은 Craft(scripts/engines.py DEFAULT_ENGINE 과 같은 판단)
 const CRAFT = existsSync(new URL("../tools/crafts/effectcraft/installed.json", import.meta.url));
+const autoChain = new Map();   // 프로젝트 → 사용자 말 이후 자동 이어가기를 몇 번 연속으로 했나
+
+/** 에이전트가 사용자 답을 기다리며 턴을 끝냈나 — 선택지 블록이 있거나, 마지막 문장이 질문 */
+export function waitsForUser(text) {
+  const t = String(text || "").trim();
+  if (!t) return false;
+  if (/```choices/.test(t.slice(-1500))) return true;
+  const last = t.replace(/```[\s\S]*?```/g, "").trim().split("\n").map((l) => l.trim()).filter(Boolean).pop() || "";
+  return /[?？]\s*[)*_]*$/.test(last) || /(할까요|될까요|주실 수 있을까요|주시겠어요|어느 쪽으로 갈까요)[.!]?$/.test(last);
+}
 
 export function createAgent({ ROOT, env, onState = () => {} }) {
   const PY = pythonCmd(ROOT);
@@ -336,9 +346,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
   }
   async function startInner(project, { message, look, template, skill: skillIn, scene, model, context, auto }) {
     let skill = skillIn;
-    if (!auto) { clearTimeout(autoTimers.get(project)); autoTimers.delete(project); }   // 사용자가 직접 보내면 예약된 자동 이어가기는 취소
+    if (!auto) { clearTimeout(autoTimers.get(project)); autoTimers.delete(project); autoChain.set(project, 0); }   // 사용자가 직접 보내면 예약된 자동 이어가기는 취소 · 연속 횟수 0
     else if (!autoTimers.has(project)) { busy.delete(project); return { sessionId: null }; }   // 그사이 멈췄으면 자동 이어가기 안 함
-    else autoTimers.delete(project);
+    else { autoTimers.delete(project); autoChain.set(project, (autoChain.get(project) ?? 0) + 1); }
     // 장면 코멘트는 따로 고른 스킬이 없으면 scene-edit 를 쓴다
     if (scene != null && !skill && existsSync(path.join(ROOT, ".claude", "skills", "scene-edit", "SKILL.md"))) skill = "scene-edit";
     // Claude 세션을 실제로 연 적이 있어야 --resume (같은 대화를 Codex 로만 하다가 Claude 로 바꾸면 새 세션으로 시작)
@@ -456,9 +466,14 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       // 사용자가 멈춘 게 아닌데 중간에 끊기면(결과 없이 종료) 한 번 자동으로 이어간다 — 같은 세션이라 맥락 유지
       // 밖에서 끈 경우(서버 종료 · 다른 프로세스의 SIGTERM/SIGKILL → 종료 코드 143/137)는 '끊김'이 아니므로 다시 시작하지 않는다
       const killed = shuttingDown || !!signal || code === 143 || code === 137;
-      if (!ok && !userStopped && !killed && !run.result && !auto) {
+      // 에이전트가 질문 · 선택지로 턴을 끝냈으면 사용자 답을 기다린다 — 자동 이어가기가 끼어들어 답을 가로채지 않게
+      // (2026-11-03: '훅을 줄여도 될까요?' 직후 자동 이어가기가 와서 에이전트가 혼자 정했다)
+      const asked = waitsForUser(run.text);
+      // 끊김에 의한 자동 이어가기는 연속 2번까지(자동으로 이어 간 작업이 또 끊겨도 한 번 더) — 사용자가 말하면 다시 0
+      const chain = autoChain.get(project) ?? 0;
+      if (!ok && !userStopped && !killed && !run.result && !asked && chain < 2) {
         autoTimers.set(project, setTimeout(() => start(project, { message: "(자동 이어가기) 방금 작업이 중간에 끊겼어. 이미 한 일은 다시 하지 말고, 남은 단계부터 이어서 마무리해 줘.", look, template, skill, scene, model, context, auto: true }).catch(() => {}), 1500));
-      } else if (ok && !auto && !userStopped && skill !== "plan") {   // 기획 대화에서는 화면 구성으로 넘어가지 않는다
+      } else if (ok && !auto && !userStopped && !asked && skill !== "plan") {   // 기획 대화에서는 화면 구성으로 넘어가지 않는다
         // 콘티는 만들었는데 화면 구성(scene.js)이 없으면 한 번 이어서 짜게 한다 — "매번 같은 화면" 방지
         const missing = missingComposition(files);
         if (missing) autoTimers.set(project, setTimeout(() => start(project, missing.craft
