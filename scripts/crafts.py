@@ -31,6 +31,9 @@ ROOT = Path(__file__).resolve().parent.parent
 REG = ROOT / "crafts"
 DEST = ROOT / "tools" / "crafts"
 UA = {"User-Agent": "fluma-crafts", "Accept": "application/vnd.github+json"}
+# GitHub API 는 로그인 없이 시간당 60번 — 토큰이 있으면 쓴다(CI · 여러 앱을 한 번에 받을 때). 값은 출력하지 않는다
+if os.environ.get("GITHUB_TOKEN"):
+    UA["Authorization"] = f"Bearer {os.environ['GITHUB_TOKEN']}"
 
 
 def apps() -> list[dict]:

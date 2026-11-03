@@ -1,0 +1,79 @@
+# 여러 운영체제에서 실제 사용 순서대로 시험한다: 설치(doctor) → 시험 → 화면 빌드 → 서버 → Craft 앱 받기 · 실행.
+# 한글 출력이 파이프에서 깨지지 않는지도 본다(서버는 파이썬을 파이프로 부른다) — 그래서 PYTHONUTF8 같은 우회 설정을 일부러 켜지 않는다.
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: FedericoCarboni/setup-ffmpeg@v3
+      - name: Install (doctor --fix)
+        run: python scripts/doctor.py --fix
+      - name: Python path
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then echo "PY=$PWD/.venv/Scripts/python.exe" >> $GITHUB_ENV; else echo "PY=$PWD/.venv/bin/python" >> $GITHUB_ENV; fi
+      - name: Doctor report
+        run: $PY scripts/doctor.py
+      - name: Tests
+        run: |
+          $PY -m pip install -q "pytest>=8"
+          $PY -m pytest -q tests
+      - name: Korean output through a pipe
+        run: $PY scripts/crafts.py list | cat
+      - name: Web typecheck · build
+        run: |
+          npm --prefix web run typecheck
+          npm --prefix web run build
+      - name: Server starts and answers
+        run: |
+          (cd web && node server.mjs > ../server.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4310/api/engines > /dev/null && break; sleep 1; done
+          curl -sf http://127.0.0.1:4310/api/engines | head -c 300; echo
+          curl -sf http://127.0.0.1:4310/api/crafts | head -c 200; echo
+          curl -sf http://127.0.0.1:4310/api/storyboards; echo
+          curl -sf http://127.0.0.1:4310/api/youtube; echo
+      - name: Craft apps for this OS (plan)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: $PY scripts/crafts.py plan all
+      - name: Craft app install · run (VectorCraft)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $PY scripts/crafts.py install vectorcraft --no-web
+          CLI=$($PY -c "import json;print(json.load(open('tools/crafts/vectorcraft/installed.json'))['cli'])")
+          printf '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="#6e5cff"/></svg>' > t.svg
+          "$CLI" convert t.svg t.png --scale 1
+          $PY -c "from PIL import Image; im=Image.open('t.png'); print('png', im.size); assert im.size[0] > 0"
+      - name: Server log
+        if: always()
+        run: cat server.log || true
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t fluma:ci .
