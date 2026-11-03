@@ -1,6 +1,8 @@
 # Quick start
 
-Fluma runs locally: a web Studio (Node) plus a Python pipeline. About 10 minutes on a fresh Linux machine.
+**English** · [한국어](QUICKSTART.ko.md)
+
+Fluma runs locally: a web Studio (Node) plus a Python pipeline, driving the open-source Craft apps. About 10 minutes on a fresh Linux machine (plus the Craft app download).
 
 ## 1. Requirements
 
@@ -16,29 +18,61 @@ Gemini, or a local Ollama) entered later in **Settings → Models · Providers**
 ## 2. Install
 
 ```bash
-git clone <this repo> fluma && cd fluma
+git clone https://github.com/meowassassin/fluma && cd fluma
 python3 scripts/doctor.py --fix
 ```
 
-`doctor.py` creates `.venv`, installs the Python packages (`scripts/requirements.txt`), downloads Chromium for
-rendering, and runs `npm install` for the web app and the HyperFrames engine. It only *tells* you how to install
-Node / ffmpeg — it does not need admin rights.
-
-Profiles:
+`doctor.py` creates `.venv`, installs the Python packages (`scripts/requirements.txt`), downloads Chromium, and runs
+`npm install` for the web app and the HyperFrames fallback engine. It only *tells* you how to install Node / ffmpeg —
+it does not need admin rights.
 
 | Profile | Adds | Command |
 |---|---|---|
-| `lite` (default) | storyboard · free Edge voice · HyperFrames · render · checks | `python3 scripts/doctor.py --fix` |
-| `analysis` | reference analysis: transcription, OCR, CLIP shot tags | `--profile analysis` |
-| `full` | background removal, YouTube upload | `--profile full` |
+| `lite` (default) | storyboard · free voice · render · checks | `python3 scripts/doctor.py --fix` |
+| `analysis` | reference analysis: transcription, OCR, shot tags | `--profile analysis` |
+| `full` | background removal, generation APIs | `--profile full` |
 
-## 3. Run
+## 3. Install the Craft apps
+
+The pipeline builds every scene in the open-source [Craft apps](https://github.com/storytold) (MIT / Apache-2.0).
+They are not bundled — download the ones you use:
+
+```bash
+python3 scripts/crafts.py plan all       # what would be downloaded and how big (no download)
+python3 scripts/crafts.py install effectcraft soundcraft filmcraft vectorcraft gridcraft pdfcraft photocraft
+# or everything (16 apps, about 1.7 GB):  python3 scripts/crafts.py install all
+```
+
+Releases are checked against their SHA256SUMS and unpacked into `tools/crafts/` (git-ignored). You can also install
+them from the Studio (⌘K → *Craft apps*). Without them Fluma renders with HyperFrames instead.
+
+## 4. Run
 
 ```bash
 npm --prefix web run dev     # API on 127.0.0.1:4310, Studio on http://localhost:4311
 ```
 
-Open the Studio, type a topic (or paste a reference Short URL) on Home, and plan the video in chat.
+Open the Studio, type a topic on Home and plan the video in chat. Press **Start production** when the storyboard
+looks right — the agent studies reference Shorts, builds the scenes and renders a draft. The editor's Explorer shows
+what the video is made of; ask the agent on the right to change anything.
+
+## 5. Connect YouTube (optional)
+
+Upload and per-scene analytics need your own Google OAuth client — about 10 minutes, once:
+
+1. [Google Cloud Console](https://console.cloud.google.com): create a project, enable **YouTube Data API v3** and **YouTube Analytics API**.
+2. **Google Auth Platform** (OAuth consent screen): External, Testing; add your Google account under **Test users** (type it in lowercase).
+3. **Clients → Create client → Web application**, authorized redirect URI `http://127.0.0.1:4310/api/youtube/callback` (exactly).
+4. Studio → **Settings → YouTube**: paste the client ID and secret → **Save** → **Connect YouTube**, allow all three permissions.
+
+Notes: in Testing mode Google may expire the login after 7 days — press Connect again. Videos uploaded through an
+unverified app can be locked to Private; change it in YouTube Studio. Analytics fill in 1–2 days after publishing.
+
+| Problem | Fix |
+|---|---|
+| `redirect_uri_mismatch` | the redirect URI must be exactly `http://127.0.0.1:4310/api/youtube/callback` |
+| "Access blocked: app is in testing" | the account is not a test user of *this* project (the number at the start of the client ID is the project number) |
+| "Ineligible account" when adding a test user | type the address in lowercase |
 
 ## Docker
 
@@ -53,6 +87,7 @@ Then open http://localhost:4311. Your agent CLI login is not inside the containe
 ```bash
 python3 scripts/doctor.py           # what is installed and what is missing
 python3 scripts/doctor.py --sizes   # what takes disk space and what is safe to delete
+python3 scripts/crafts.py list      # which Craft apps are installed
 python -m pytest tests              # core tests
 ```
 

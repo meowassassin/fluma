@@ -11,7 +11,7 @@
 ![Tested on](https://img.shields.io/badge/tested-Linux-555)
 ![Pipeline](https://img.shields.io/badge/pipeline-Craft%20apps-555)
 
-[빠른 시작](QUICKSTART.md) · [작동 방식](#작동-방식) · [기여하기](CONTRIBUTING.md)
+[빠른 시작](QUICKSTART.ko.md) · [작동 방식](#작동-방식) · [기여하기](CONTRIBUTING.ko.md)
 
 [English](README.md) · **한국어**
 
@@ -104,7 +104,7 @@ SHA256SUMS 로 검증해 `tools/crafts/`(git 제외)에 풉니다. 파이프라�
 
 ## 빠른 시작
 
-필요: Python 3.10+, Node.js 20+, ffmpeg. 자세한 내용과 문제 해결: [QUICKSTART.md](QUICKSTART.md)
+필요: Python 3.10+, Node.js 20+, ffmpeg. 자세한 내용과 문제 해결: [빠른 시작](QUICKSTART.ko.md)
 
 ```bash
 git clone https://github.com/meowassassin/fluma && cd fluma
@@ -154,7 +154,7 @@ npm --prefix web run dev                     # → http://localhost:4311
 
 ## 기여하기
 
-**누구나 환영합니다 — 허락은 필요 없어요.** 포크해서 마음껏 고치고 PR · 실험 · 수정 · 번역 · 아이디어를 보내 주세요. [CONTRIBUTING.md](CONTRIBUTING.md)
+**누구나 환영합니다 — 허락은 필요 없어요.** 포크해서 마음껏 고치고 PR · 실험 · 수정 · 번역 · 아이디어를 보내 주세요. [기여하기](CONTRIBUTING.ko.md)
 
 ## 상태
 
