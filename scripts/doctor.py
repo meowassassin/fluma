@@ -68,6 +68,20 @@ def checks() -> list[tuple[str, bool, str]]:
     return out
 
 
+def install_hook() -> bool:
+    """선택 패키지 자동 설치(scripts/autodeps.py)를 가상환경에 켠다 — 스크립트가 없는 패키지를 import 하면 그 자리에서 설치"""
+    if not vpy().exists():
+        return False
+    r = subprocess.run([str(vpy()), "-c", "import sysconfig; print(sysconfig.get_paths()['purelib'])"], capture_output=True, text=True)
+    if r.returncode != 0:
+        return False
+    site = Path(r.stdout.strip())
+    shutil.copyfile(ROOT / "scripts" / "autodeps.py", site / "fluma_autodeps.py")
+    (site / "fluma_autodeps.pth").write_text("import fluma_autodeps\n", "utf-8")
+    print("· 선택 패키지 자동 설치 켜짐(필요할 때 그 자리에서 설치)")
+    return True
+
+
 def fix(profile: str) -> bool:
     ok = True
     if not vpy().exists():
@@ -77,6 +91,7 @@ def fix(profile: str) -> bool:
     req = str(ROOT / "scripts" / REQ[profile])
     print(f"· 파이썬 패키지 ({profile})")
     ok &= run([uv, "pip", "install", "--python", str(vpy()), "-r", req] if uv else [str(vpy()), "-m", "pip", "install", "-r", req])
+    install_hook()
     print("· Chromium")
     ok &= run([str(vpy()), "-m", "playwright", "install", "chromium"])
     npm = shutil.which("npm")
@@ -143,7 +158,10 @@ def main():
     ap.add_argument("--sizes", action="store_true", help="무엇이 용량을 차지하는지 · 지워도 되는지")
     ap.add_argument("--fix", action="store_true")
     ap.add_argument("--profile", choices=list(REQ), default="lite")
+    ap.add_argument("--hook", action="store_true", help="선택 패키지 자동 설치만 켜기")
     a = ap.parse_args()
+    if a.hook:
+        return 0 if install_hook() else 1
     if a.sizes:
         sizes(); return 0
     if a.fix and not fix(a.profile):

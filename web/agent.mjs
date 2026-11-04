@@ -47,6 +47,17 @@ export function waitsForUser(text) {
   return /[?？]\s*[)*_]*$/.test(last) || /(할까요|될까요|주실 수 있을까요|주시겠어요|어느 쪽으로 갈까요)[.!]?$/.test(last);
 }
 
+// 설치 규칙: 빠진 도구 때문에 사용자에게 "설치해 주세요" 를 부탁하지 않는다(2026-11-04: OpenCV 가 없어 설치를 세 번 부탁하고 멈춤)
+const IN_DOCKER = process.env.FLUMA_IN_DOCKER === "1" || existsSync("/.dockerenv");
+const SETUP_RULES = `## 설치는 스스로
+빠진 패키지 · 앱 때문에 사용자에게 설치를 부탁하지 않는다. 직접 설치하고 하던 일을 이어 간다:
+- 파이썬 패키지(OpenCV · Whisper · OCR · onnxruntime …): 스크립트가 import 할 때 자동 설치된다(scripts/autodeps.py). 그래도 없다고 나오면 \`python3 scripts/doctor.py --fix --profile analysis\` (누끼 · 유튜브는 full)
+- Craft 앱: \`python3 scripts/crafts.py install <앱>\` · Chromium: \`python3 scripts/doctor.py --fix\`
+- pip · npm · apt 를 직접 부르지 않는다(승인 창이 사용자에게 가지 않아 거부된다) — 위 스크립트를 쓴다
+- 위로도 안 되는 것(ffmpeg 같은 시스템 프로그램)만 사용자에게, 그 사람의 운영체제에 맞는 한 줄로` + (IN_DOCKER
+  ? "\n- 지금 Docker 컨테이너 안에서 돈다: 경로(/app …)는 사용자 컴퓨터에 없다. 사용자에게 명령을 안내해야 하면 docker-compose.yml 이 있는 폴더에서 `docker compose exec fluma …` 로"
+  : "");
+
 export function createAgent({ ROOT, env, onState = () => {} }) {
   const PY = pythonCmd(ROOT);
   const SESS = path.join(ROOT, "workspace", "sessions");
@@ -130,7 +141,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
   function systemPrompt({ project, look, template, skill, scene }) {
     const parts = [];
     parts.push(readIf(path.join(ROOT, "workspace", "system.md")) ?? "");
-    parts.push(STYLE_RULES, MEMORY_RULES);
+    parts.push(STYLE_RULES, MEMORY_RULES, SETUP_RULES);
     // 붙어 있는 Craft 앱(MCP) — 그림 · 움직임을 SVG 코드로 직접 짜기 전에 진짜 제작 도구를 먼저 쓴다
     const cr = createCrafts(ROOT).list().filter((c) => c.agentOn && c.installed?.cli);
     if (cr.length) parts.push(`## 제작 도구 (Craft 앱, MCP: ${cr.map((c) => `mcp__${c.name}`).join(" · ")})\n` +
