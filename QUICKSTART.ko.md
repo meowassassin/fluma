@@ -75,10 +75,19 @@ npm --prefix web run dev     # API 127.0.0.1:4310, 스튜디오 http://localhost
 ## Docker
 
 ```bash
-docker compose up --build
+docker compose build
+docker compose up -d            # → http://localhost:4311   (멈추기: docker compose down)
 ```
 
-그다음 http://localhost:4311 을 엽니다. 에이전트 CLI 로그인은 컨테이너 안에 없으니 설정에서 API 키를 쓰세요.
+끝입니다. 에이전트는 내 컴퓨터의 Claude Code · Codex 로그인(`~/.claude` · `~/.codex`)을 그대로 쓰고, 작업물은 Docker 볼륨에 남습니다.
+필요한 패키지는 에이전트가 쓰는 순간 스스로 설치합니다.
+
+<details><summary>문제 해결</summary>
+
+- 에이전트가 로그인되지 않았다고 하면(예: Mac 의 Claude Code 는 로그인을 키체인에 둠): `docker compose exec -it fluma claude` → `/login` 한 번
+- Linux 에서 내 사용자 번호(`id -u`)가 1000 이 아니면 `.env` 에 `FLUMA_UID=…` · `FLUMA_GID=…`
+
+</details>
 
 ## 확인 · 문제 해결
 

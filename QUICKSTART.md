@@ -77,10 +77,19 @@ unverified app can be locked to Private; change it in YouTube Studio. Analytics 
 ## Docker
 
 ```bash
-docker compose up --build
+docker compose build
+docker compose up -d            # → http://localhost:4311   (stop: docker compose down)
 ```
 
-Then open http://localhost:4311. Your agent CLI login is not inside the container — use an API key in Settings.
+That's it. The agent uses your own Claude Code and Codex logins (`~/.claude`, `~/.codex`), work persists in Docker
+volumes, and missing packages are installed by the agent the moment it needs them.
+
+<details><summary>Troubleshooting</summary>
+
+- Agent says it is not logged in (e.g. Claude Code on macOS keeps its login in the Keychain): `docker compose exec -it fluma claude` → `/login` once
+- On Linux, if your user id (`id -u`) is not 1000, set `FLUMA_UID=…` and `FLUMA_GID=…` in `.env`
+
+</details>
 
 ## Check · troubleshoot
 

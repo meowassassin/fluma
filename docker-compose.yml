@@ -1,19 +1,46 @@
-# Fluma 컨테이너. 작업물(workspace · 콘티 · 렌더)은 볼륨에, 키는 ~/.shortsforge 볼륨에(에이전트는 읽지 못함).
+# Fluma 컨테이너:  docker compose build && docker compose up -d   → http://localhost:4311
+# 작업물(콘티 · 제작 파일 · 음성 · 렌더)은 볼륨에. 에이전트는 내 컴퓨터의 Claude Code · Codex 로그인을 그대로 쓴다(아래 연결).
 services:
   fluma:
     build:
       context: .
       args:
-        PROFILE: ${PROFILE:-lite}
+        PROFILE: ${PROFILE:-analysis}
+    # 내 사용자 번호(Linux 에서 1000 이 아니면 .env 에 FLUMA_UID · FLUMA_GID) — 로그인 파일 소유자가 바뀌지 않게
+    user: "${FLUMA_UID:-1000}:${FLUMA_GID:-1000}"
     ports:
       - "127.0.0.1:4311:4311"     # 웹(이 컴퓨터에서만)
     volumes:
       - fluma_workspace:/app/workspace
       - fluma_out:/app/out
-      - fluma_keys:/root/.shortsforge
+      - fluma_storyboards:/app/storyboards
+      - fluma_compositions:/app/compositions
+      - fluma_audio:/app/audio
+      - fluma_public_audio:/app/public/audio
+      - fluma_uploads:/app/public/uploads
+      - fluma_elements:/app/public/elements
+      - fluma_keys:/home/node/.shortsforge       # Fluma 설정의 API 키(에이전트는 읽지 못함)
+      # 내 컴퓨터의 에이전트 로그인 — 따로 로그인하지 않는다. 없으면 빈 폴더가 생기고, 그때는 컨테이너 안에서 한 번 로그인
+      # (Mac 의 Claude Code 는 로그인을 키체인에 두어 여기로 오지 않는다 → docker compose exec -it fluma claude 에서 /login 한 번)
+      - type: bind
+        source: ${HOME:-${USERPROFILE}}/.claude
+        target: /home/node/.claude
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ${HOME:-${USERPROFILE}}/.codex
+        target: /home/node/.codex
+        bind:
+          create_host_path: true
     environment:
       FLUMA_HOST: 0.0.0.0           # 컨테이너 안에서만 열림 — 바깥은 위 ports 의 127.0.0.1
 volumes:
   fluma_workspace:
   fluma_out:
+  fluma_storyboards:
+  fluma_compositions:
+  fluma_audio:
+  fluma_public_audio:
+  fluma_uploads:
+  fluma_elements:
   fluma_keys:

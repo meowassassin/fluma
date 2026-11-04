@@ -139,7 +139,10 @@ export function codexArgs({ cwd, threadId, model, effort, codexConfig = [], prom
   if (threadId) args.push("resume");
   args.push("--json", "--skip-git-repo-check");
   // resume 는 --sandbox 를 받지 않으므로 설정 키로 준다 (작업 폴더만 쓰기, 네트워크 허용: 조사 · yt-dlp)
-  args.push("-c", `sandbox_mode="workspace-write"`, "-c", "sandbox_workspace_write.network_access=true");
+  // Docker 안에서는 bubblewrap 이 namespace 를 못 만든다 → 컨테이너가 샌드박스(이미지가 FLUMA_CODEX_SANDBOX=danger-full-access 를 준다)
+  const mode = process.env.FLUMA_CODEX_SANDBOX || "workspace-write";
+  args.push("-c", `sandbox_mode="${mode}"`);
+  if (mode === "workspace-write") args.push("-c", "sandbox_workspace_write.network_access=true");
   if (!threadId) args.push("-C", cwd);
   for (const c of codexConfig) args.push("-c", c);
   if (model) args.push("--model", model);

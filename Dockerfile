@@ -1,21 +1,36 @@
-# Fluma — 컨테이너로 돌리기(Linux · macOS · Windows 공통). 기본은 가벼운 시작(lite).
-#   docker compose up --build            → http://localhost:4311
-#   PROFILE=analysis docker compose build   레퍼런스 분석(받아쓰기 · OCR · 화면 분류)까지
+# Fluma — 컨테이너로 돌리기(Linux · macOS · Windows 공통). 기본은 레퍼런스 분석까지(analysis — 제작 흐름의 첫 단계라서).
+#   docker compose build && docker compose up -d     → http://localhost:4311
+#   PROFILE=lite docker compose build                 가볍게(분석 패키지는 처음 쓸 때 자동 설치)
+# 에이전트: 이미지에 든 Claude Code · Codex(Linux 판)가 내 컴퓨터의 로그인(~/.claude · ~/.codex, compose 가 연결)을 쓴다
 FROM node:22-bookworm
 
-ARG PROFILE=lite
-ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 FLUMA_HOST=0.0.0.0
+ARG PROFILE=analysis
+# 에이전트 CLI — 컨테이너는 Linux 라 내 컴퓨터(Mac · Windows)의 실행 파일은 못 돌린다. 로그인 정보는 버전과 상관없이 쓸 수 있다.
+# 버전을 고정하려면 --build-arg AGENT_CLIS="@anthropic-ai/claude-code@x.y.z @openai/codex@x.y.z", 빼려면 ""
+ARG AGENT_CLIS="@anthropic-ai/claude-code @openai/codex"
+# Codex 샌드박스(bubblewrap)는 컨테이너 안에서 namespace 를 못 만든다 → 컨테이너 자체가 샌드박스(호스트 파일은 안 보임)
+# Chromium 은 /ms-playwright 에(node 사용자도 쓰게) · CLI 자동 업데이트는 끈다(이미지를 다시 빌드하면 최신)
+ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 FLUMA_HOST=0.0.0.0 FLUMA_CODEX_SANDBOX=danger-full-access \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright DISABLE_AUTOUPDATER=1 FLUMA_IN_DOCKER=1
 RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv python3-pip ffmpeg fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
+RUN if [ -n "$AGENT_CLIS" ]; then npm install -g --no-audit --no-fund $AGENT_CLIS; fi
 
 WORKDIR /app
 COPY . .
 # .venv · Chromium(+ 시스템 의존성) · npm 패키지
 RUN python3 -m venv .venv \
     && .venv/bin/pip install --no-cache-dir -r scripts/$( [ "$PROFILE" = lite ] && echo requirements.txt || echo requirements-$PROFILE.txt ) \
+    && .venv/bin/python scripts/doctor.py --hook \
     && .venv/bin/python -m playwright install --with-deps chromium \
     && npm --prefix web ci --no-audit --no-fund \
-    && npm --prefix engines/hyperframes install --no-audit --no-fund
+    && npm --prefix engines/hyperframes install --no-audit --no-fund \
+    && mkdir -p storyboards compositions audio public/audio public/uploads public/elements out workspace \
+    && mkdir -p /home/node/.shortsforge /home/node/.claude /home/node/.codex \
+    && chown -R node:node /app /ms-playwright /home/node   # node = uid 1000(볼륨도 처음 만들 때 이 소유자를 따른다)
+
+# 내 사용자(uid 1000)로 — root 로 돌면 연결한 ~/.claude 의 로그인 파일이 root 소유가 되어 내 컴퓨터의 CLI 가 깨진다
+USER node
 
 EXPOSE 4310 4311
 WORKDIR /app/web
