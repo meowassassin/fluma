@@ -514,6 +514,15 @@ def cmd_credits(a):
             lines += [u for u in m.get("sources", [])]
         elif m.get("license") and "CC-BY" in str(m.get("license")):
             lines.append(str(m["license"]))
+    # 스톡 영상(Pexels · Pixabay) — 재료 기록의 credit
+    mats = ROOT / "compositions" / a.id / "craft" / "materials"
+    for mp in sorted(mats.glob("s*/*.json")) if mats.exists() else []:
+        try:
+            c = json.loads(mp.read_text(encoding="utf-8")).get("credit")
+        except (OSError, ValueError, AttributeError):
+            c = None
+        if isinstance(c, dict) and c.get("page"):
+            lines.append(f"{c.get('provider', '').capitalize()} · {c.get('author') or '작성자 미상'} — {c['page']}")
     seen = []
     for ln in lines:
         if ln not in seen:

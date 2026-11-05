@@ -97,6 +97,26 @@ def look_tokens(sb: dict | str | None = None) -> dict:
     return tokens
 
 
+# ---------- 화면 비율 ----------
+ASPECTS = {"9:16": (1080, 1920), "16:9": (1920, 1080), "1:1": (1080, 1080)}
+
+
+def aspect_of(sb: dict | None = None) -> str:
+    """출력 비율: 렌더 옵션(FLUMA_ASPECT) > 콘티 aspect > 9:16"""
+    a = os.environ.get("FLUMA_ASPECT") or (sb or {}).get("aspect") or "9:16"
+    return a if a in ASPECTS else "9:16"
+
+
+def aspect_size(sb: dict | None = None) -> tuple[int, int]:
+    return ASPECTS[aspect_of(sb)]
+
+
+def aspect_tag(sb: dict | None = None) -> str:
+    """파일 이름 꼬리표: 9:16 은 없음(예전 이름 그대로) · 16:9 → '-16x9' · 1:1 → '-1x1'"""
+    a = aspect_of(sb)
+    return "" if a == "9:16" else "-" + a.replace(":", "x")
+
+
 # ---------- 작업 ----------
 @dataclass
 class Job:
@@ -114,11 +134,13 @@ class Job:
 
     @property
     def width(self) -> int:
-        return 540 if self.draft else int(self.tokens["layout"]["width"])
+        w = aspect_size(self.sb)[0] if aspect_of(self.sb) != "9:16" else int(self.tokens["layout"]["width"])
+        return w // 2 if self.draft else w
 
     @property
     def height(self) -> int:
-        return 960 if self.draft else int(self.tokens["layout"]["height"])
+        h = aspect_size(self.sb)[1] if aspect_of(self.sb) != "9:16" else int(self.tokens["layout"]["height"])
+        return h // 2 if self.draft else h
 
     @property
     def duration(self) -> float:

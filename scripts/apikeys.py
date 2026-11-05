@@ -3,7 +3,7 @@
 
 찾는 순서: 환경 변수 → ~/.shortsforge/api-keys.json(설정 화면이 0600 으로 저장, 에이전트는 못 읽음) → 저장소 루트 .env.local
 값은 출력 · 기록하지 않는다. 키 이름: HF_KEY(Higgsfield) · ARK_API_KEY(BytePlus) · DASHSCOPE_API_KEY(Model Studio) ·
-TYPECAST_API_KEY · GEMINI_API_KEY · ELEVENLABS_API_KEY
+TYPECAST_API_KEY · GEMINI_API_KEY · ELEVENLABS_API_KEY · PEXELS_API_KEY · PIXABAY_API_KEY(무료 스톡 영상)
 """
 from __future__ import annotations
 

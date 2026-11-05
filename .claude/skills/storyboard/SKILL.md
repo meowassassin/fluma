@@ -34,8 +34,8 @@ order: 1
 4. `direct.py --write` 는 프리셋에서 배치 · 바탕 · 자막 · 움직임을 정한다(무작위 아님). 검사 T27 = 프리셋 없음.
 
 ## 레퍼런스(참고 쇼츠 링크)가 있으면 — 구성 · 박자 · 말투는 레퍼런스 '채널', 내용은 사용자의 주제 (어떤 형식이든)
-1. `python3 scripts/shorts_xray.py <id>` → `python3 scripts/ref_style.py <id>` → `python3 scripts/ref_channel.py <id> --n 5`
-   (화면에서 분해하면 셋이 자동으로 이어 돈다. 채널 카드는 같은 채널 쇼츠 여러 편 — 한 편 통계보다 이쪽이 기준)
+1. `python3 scripts/analyze_ref.py <id> --n 5` — 분해 → 스타일 → 채널을 서버 작업으로 이어 돌린다(턴이 끝나도 계속 · 끝난 단계는 건너뜀).
+   (채널 카드는 같은 채널 쇼츠 여러 편 — 한 편 통계보다 이쪽이 기준. 스크립트를 직접 백그라운드로 돌리지 않는다)
 2. **채널 카드** `public/trends/channels/<채널>/channel.md` 를 끝까지 읽는다. 형식을 가정하지 않는다 — 카드 맨 위 **형식** 줄(말 주도 / 음악 · 화면 주도, 주된 화면 종류, 컷 길이, 음악 박자)이 기준이다: 구성 · 구조(문장마다 역할[화면] 뼈대, 화면 종류 비율, 문장당 컷) ·
    문장 끝 비율 · 이음말 · 첫 · 끝 문장 · 영상별 대사. 대사 시트(`lines-<영상>.jpg`, #번호 = 대사 번호)를 **직접 보고**
    화면을 말로 비트는 농담 줄을 골라 `python3 scripts/ref_channel.py note <채널> --jokes <json>` 으로 카드에 확정한다
@@ -54,6 +54,13 @@ order: 1
 7. **시안 먼저(관문)**: 장면 1~3 만 짜서 `python3 scripts/render.py storyboards/<id>.json --draft --scenes 1-3` → 보여 주고
    '좋다'를 받으면 `python3 scripts/gate.py draft <id>`. 의도 · 시안 확인 없이는 최종 렌더 · 유료 생성이 막힌다(gate.py check).
    사용자가 확인하지 않았는데 gate.py intent · draft 를 스스로 부르지 않는다.
+
+## 화면 글(고정 제목 · 자막 · 말풍선 · 카드 글) — 사람이 실제로 쓰는 말로
+2026-11-04: "내 API가 느린 이유, 반복문 안에 있다" · "해결은 셋" · "주문 1번 + 회원 100번 = 쿼리 101번" 이 어색하다는 지적.
+- 번역투 · 신문 제목투를 쓰지 않는다: "~하는 이유, ~에 있다" · "~의 정체" 대신 시청자가 검색 · 공감할 말(예: "JPA N+1, 쿼리가 101번 나간 이유")
+- 말풍선은 그 사람이 메신저에 실제로 칠 문장으로: 명사로 끊지 않고("해결은 셋" ✗ → "고치는 방법은 세 가지야"), 수식 기호(= · + · →)를 문장 대신 쓰지 않는다
+- 기술 낱말은 실무자가 부르는 이름 그대로(member · getMember() · fetch join), 풀이는 괄호로 한 번만
+- 다 쓰면 화면 글만 모아 소리 내 읽어 본다 — 한 줄이라도 사람이 안 할 말이면 고친다. 고정 제목은 24자 이내
 
 ## 말투만 고쳐 달라고 하면 — 내용은 잠근다
 "말투만 · 어미만 · 톤만" 요청은 문장을 새로 쓰지 않는다. 바꿀 글을 json(`{"4": "…"}`)으로 써서
@@ -91,5 +98,9 @@ order: 1
 | illustration | src(.svg — illustrate 스킬로 그린 것) · place | VectorCraft |
 | photo | src · cutout | PhotoCraft(누끼) |
 | screen · video · image | src | 그대로 |
+| web | src(public/elements/<id>/<이름> — webrec.py · termrec.py 녹화) · holds(상태별 초) · start(나레이션 없을 때 시작 초) | 그대로(실제 화면) |
+| stock | query(영어 검색어) · min_sec · pick · trim | Pexels → Pixabay 무료 스톡 영상(실제 촬영) — 일상 · 감성 · 광고의 바탕. 키는 설정 → API 키. 기술 설명에는 쓰지 않는다(실제 화면 우선) |
 공통: `id`, `cue`(등장할 낱말), `place`(full · center · left · right · top · bottom). 재료는 제목 아래 · 자막 위 구간에 놓인다.
 숫자는 손으로 계산하지 말고 csv + percent 로 GridCraft 가 계산하게 한다.
+**화면 비율**: 콘티 `aspect`(9:16 기본 · 16:9 · 1:1) 또는 `render.py --aspect`. 세로 녹화(대화창 · 폰 화면)는 가로 화면에서 가운데에 작게 놓이니, 가로 영상이면 녹화도 가로(viewport)로 한다.
+**여러 버전 비교**: 훅 · 첫 장면 · 제목이 정해지지 않으면 콘티 `variants` 에 바꿀 칸만 적은 2~3개를 넣고 `python3 scripts/variants.py render storyboards/<id>.json` → 나란히 비교 영상을 media 블록으로 보여 주고 고르게 한다(고른 것을 원본에 옮기는 건 확인받고)

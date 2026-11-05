@@ -16,6 +16,7 @@
     "viewport": [1280, 800], "scale": 2,
     "profile": null,                         # 로그인 프로필 이름 (webrec.py login 으로 사람이 만든 것)
     "mask": ["css 선택자"], "mask_text": ["정규식"],   # 추가로 가릴 것 (이메일 · AWS 계정 번호 · ARN · 액세스 키는 늘 가림)
+    "hide": ["#onetrust-banner-sdk"],          # 화면에서만 숨길 것(쿠키 · 광고 띠) — 동의 버튼은 누르지 않는다. 흔한 쿠키 창은 늘 숨김
     "steps": [
       {"do": "scroll", "target": "#readme"},                 # 또는 {"do": "scroll", "by": 600}
       {"do": "click", "target": "role=button[name=\"Code\"]", "label": "1. Code 버튼"},
@@ -48,6 +49,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
+# 흔한 쿠키 · 동의 창(OneTrust · Cookiebot · TrustArc · Didomi …) — 화면에서만 숨김
+HIDE = ["#onetrust-consent-sdk", "#onetrust-banner-sdk", "#CybotCookiebotDialog", "#truste-consent-track", "#didomi-host", ".cc-window", "#cookie-banner", "[aria-label*='cookie' i][role='dialog']"]
 PUBLIC = ROOT / "public"
 PROFILES = Path.home() / ".shortsforge" / "browser"
 ID_RE = re.compile(r"^[A-Za-z0-9가-힣_-]{1,80}$")
@@ -137,6 +140,7 @@ class Recorder:
         self.states, self.actions, self.masked, self.sources = [], [], 0, []
         self.pats = MASK_TEXT + list(spec.get("mask_text", []))
         self.sels = list(spec.get("mask", []))
+        self.hide = HIDE + list(spec.get("hide", []))
         self.rec = None          # 실제 녹화 중이면 {"t0": 시각, "events": []}
 
     # ---- 상태 · 가리기 ----
@@ -159,7 +163,15 @@ class Recorder:
         except Exception:
             return 0.0
 
+    def hide_css(self) -> None:
+        """쿠키 · 동의 창을 화면에서만 숨긴다(누르지 않으니 동의한 것이 아니다)"""
+        try:
+            self.page.evaluate("(sels) => { let st = document.getElementById('__fluma_hide'); if (!st) { st = document.createElement('style'); st.id = '__fluma_hide'; document.documentElement.appendChild(st); } st.textContent = sels.join(',') + '{display:none !important}'; }", self.hide)
+        except Exception:
+            pass
+
     def shot(self) -> int:
+        self.hide_css()
         self.masked += self.mask()
         self.page.wait_for_timeout(60)
         k = len(self.states)
@@ -290,6 +302,7 @@ class Recorder:
         """이 구간은 실제로 녹화한다: CDP screencast 프레임을 시각 그대로 받아 30fps 로 고르게 다시 깐다."""
         if self.rec is not None:
             raise SystemExit("[webrec] record 안에 record 는 넣을 수 없습니다.")
+        self.hide_css()
         k = sum(1 for a in self.actions if a["do"] == "record") + 1
         rdir = self.out / f"r{k:02d}"
         rdir.mkdir(parents=True, exist_ok=True)
@@ -320,6 +333,12 @@ class Recorder:
             if remain > 0:
                 self.page.wait_for_timeout(int(remain * 1000))
         finally:
+            # 화면 변화가 늦게 오면 마지막 상태(예: 터미널 마지막 줄)가 프레임으로 안 들어온다 → 끝 화면을 한 장 직접 찍어 붙인다
+            try:
+                last = self.page.screenshot(type="jpeg", quality=92, animations="disabled", caret="hide")
+                frames.append((time.time() - 0.05, last))
+            except Exception:
+                pass
             dur = time.time() - t0
             try:
                 cdp.send("Page.stopScreencast")

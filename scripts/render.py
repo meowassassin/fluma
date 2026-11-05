@@ -170,12 +170,17 @@ def main():
     ap.add_argument("--build", action="store_true", help="렌더하지 않고 엔진 프로젝트만 만든다")
     ap.add_argument("--out", help="출력 경로")
     ap.add_argument("--size", choices=["720", "1080", "1440", "2160"], default="1080", help="출력 세로 해상도(9:16). 1440 · 2160 은 화면을 그만큼 크게 그려서(글자 · 도형이 실제로 선명) 뽑는다")
+    ap.add_argument("--aspect", choices=["9:16", "16:9", "1:1"], help="출력 비율(기본: 콘티 aspect, 없으면 9:16). --size 는 짧은 변 기준")
     ap.add_argument("--quality", choices=["standard", "high", "max"], default="high", help="화질(용량): standard CRF 21 · high 18 · max 15")
     ap.add_argument("--fps", type=int, choices=[30, 60], help="초당 프레임(기본: 디자인 토큰, 보통 30)")
     a = ap.parse_args()
     # 엔진 어댑터(화면 배율) · 마무리 인코딩(출력 크기 · CRF)이 읽는다
     os.environ["FLUMA_RENDER_SCALE"] = {"1440": "1.3333333", "2160": "2"}.get(a.size, "1")
-    os.environ["FLUMA_OUT_H"] = str({"720": 1280, "1080": 1920, "1440": 2560, "2160": 3840}[a.size])
+    if a.aspect:
+        os.environ["FLUMA_ASPECT"] = a.aspect
+    _asp = a.aspect or json.loads(Path(a.storyboard).read_text(encoding="utf-8")).get("aspect") or "9:16"
+    # 출력 세로 크기: --size 는 짧은 변 — 9:16 이면 세로가 16/9 배, 16:9 · 1:1 이면 세로 = 짧은 변
+    os.environ["FLUMA_OUT_H"] = str({"720": 1280, "1080": 1920, "1440": 2560, "2160": 3840}[a.size] if _asp == "9:16" else int(a.size))
     os.environ["FLUMA_CRF"] = {"standard": "21", "high": "18", "max": "15"}[a.quality]
     sb_path = Path(a.storyboard)
 
@@ -188,7 +193,8 @@ def main():
     job = make_job(sb_path, a.engine, a.template, a.draft)
     if a.fps:
         job.fps = a.fps
-    tag = "" if a.size == "1080" else f"-{a.size}p"
+    from engines import aspect_tag
+    tag = ("" if a.size == "1080" else f"-{a.size}p") + aspect_tag(job.sb)
     if a.scenes:
         ix = parse_scenes(a.scenes, len(job.sb["scenes"]))
         offset, job = job.scenes[ix[0]]["start"], sub_job(job, ix)

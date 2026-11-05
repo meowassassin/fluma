@@ -27,21 +27,30 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 # ---------------------------------------------------------------- 능력 목록
+def _crafts():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("fluma_crafts", ROOT / "scripts" / "crafts.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def registry() -> dict[str, str]:
-    """재료 종류 → 앱 이름 (설치되어 있고 CLI 가 있는 것만)"""
+    """재료 종류 → 앱 이름 (설치된 앱 먼저, 없으면 설치할 수 있는 앱 — cli() 가 필요할 때 설치한다)"""
     out = {}
-    for f in sorted((ROOT / "crafts").glob("*/craft.json")):
-        c = json.loads(f.read_text("utf-8"))
-        inst = ROOT / "tools" / "crafts" / c["name"] / "installed.json"
-        if not inst.exists():
-            continue
+    cs = [json.loads(f.read_text("utf-8")) for f in sorted((ROOT / "crafts").glob("*/craft.json"))]
+    cs.sort(key=lambda c: not (ROOT / "tools" / "crafts" / c["name"] / "installed.json").exists())
+    for c in cs:
         for p in c.get("provides") or []:
             out.setdefault(p["material"], c["name"])
     return out
 
 
 def cli(app: str) -> str:
-    rel = json.loads((ROOT / "tools" / "crafts" / app / "installed.json").read_text("utf-8"))["cli"]
+    f = ROOT / "tools" / "crafts" / app / "installed.json"
+    if not f.exists() and not _crafts().ensure(app):          # 없으면 그 자리에서 설치
+        raise RuntimeError(f"Craft 앱 {app} 을 설치하지 못했습니다(이 컴퓨터용 릴리스 · 네트워크 확인: python3 scripts/crafts.py install {app})")
+    rel = json.loads(f.read_text("utf-8"))["cli"]
     return str(ROOT / rel)
 
 
@@ -89,6 +98,25 @@ def chart(m: dict, out: Path, work: Path) -> dict:
         n = len(values)
         values = [round(float(_run([cli("gridcraft"), "eval", f"=A{k + 2}/SUM(A2:A{n + 1})*100", "--in", tmp], work).strip()), 1) for k in range(n)]
     data = {"labels": labels, "values": values, "kind": m.get("kind", "bar"), "unit": m.get("unit", "%" if m.get("percent") else ""), "title": m.get("title", "")}
+    # 항목 아이콘(Lucide, ISC): 콘티 icons(이름 · false) > 항목 이름에 맞는 일반 아이콘 — 막대만 있으면 밋밋하다(2026-11-04)
+    if m.get("icons") is not False:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("fluma_icons", ROOT / "scripts" / "icons.py")
+        ic = importlib.util.module_from_spec(spec); spec.loader.exec_module(ic)
+        given = list(m.get("icons") or [])
+        files = []
+        for k, lab in enumerate(labels):
+            name = given[k] if k < len(given) and given[k] else ic.concept(str(lab))
+            svg = ic.lucide(name) if name else None
+            png = out.parent / f"{m['id']}.icon{k}.png"
+            if svg:
+                try:
+                    _run([cli("vectorcraft"), "convert", svg, png, "--scale", "8"], work)
+                except Exception:  # noqa: BLE001  아이콘이 없어도 차트는 그린다
+                    svg = None
+            files.append(str(png.relative_to(ROOT)) if svg and png.exists() else None)
+        if any(files):
+            data["icons"] = files
     out.with_suffix(".data.json").write_text(json.dumps(data, ensure_ascii=False), "utf-8")
     return {"app": "gridcraft", "data": data}
 
@@ -201,7 +229,7 @@ def find_upload(sid: str, m: dict) -> Path | None:
     return max(hits, key=lambda f: f.stat().st_mtime) if hits else None
 
 
-def element_video(el: Path, dst: Path, hold: float = 1.2, crop: list | None = None) -> bool:
+def element_video(el: Path, dst: Path, hold: float | list = 1.2, crop: list | None = None) -> bool:
     """도구가 만든 요소 폴더(public/elements/<id>/<이름>/) → 영상 하나.
     짤(meme.py): f0001.png … (meta.fps) · 웹 녹화(webrec.py): 상태 화면 s000.png … 을 hold 초씩 + 실제 녹화 구간 r01/f*.jpg"""
     meta = _load(el / "meta.json")
@@ -216,8 +244,21 @@ def element_video(el: Path, dst: Path, hold: float = 1.2, crop: list | None = No
         # 정지 화면 목록 → hold 초씩 이어 붙이기(실제 녹화 구간이 있으면 그 상태 다음에)
         lst = work_list = el / ".concat.txt"
         rows = []
-        for i, s in enumerate(states or frames):
-            rows += [f"file '{s.as_posix()}'", f"duration {hold}"]
+        seq = states or frames
+        if any(el.glob("r[0-9][0-9]")):
+            # 실제 녹화 구간(JPG)과 상태 화면(PNG)을 한 줄로 이으면 ffmpeg concat 이 형식이 달라 실패한다 → 상태 화면도 JPG 로
+            from PIL import Image
+            jd = el / ".jpg"; jd.mkdir(exist_ok=True)
+            conv = []
+            for s0 in seq:
+                j = jd / (s0.stem + ".jpg")
+                if not j.exists() or j.stat().st_mtime < s0.stat().st_mtime:
+                    Image.open(s0).convert("RGB").save(j, quality=95)
+                conv.append(j)
+            seq = conv
+        for i, s in enumerate(seq):
+            h = (hold[i] if i < len(hold) else hold[-1]) if isinstance(hold, list) else hold    # holds: 상태마다 머무는 초(말풍선마다 다르게)
+            rows += [f"file '{s.as_posix()}'", f"duration {h}"]
             rec = el / f"r{i + 1:02d}"
             for f in sorted(rec.glob("f*.jpg"))[::1] if rec.exists() else []:
                 rows += [f"file '{f.as_posix()}'", "duration 0.0333"]
@@ -238,10 +279,12 @@ def passthrough(m: dict, out: Path, work: Path) -> dict:
     src = _abs(m["src"])
     if src.is_dir():                       # 짤 · 웹 녹화 요소 폴더
         hold = float(m.get("hold", 1.2))
-        if element_video(src, out.with_suffix(".mp4"), hold, m.get("crop")):   # crop: [x, y, w, h] 0~1 (쿠키 안내 · 빈 곳 잘라내기)
+        holds = [float(x) for x in m["holds"]] if m.get("holds") else None
+        if element_video(src, out.with_suffix(".mp4"), holds or hold, m.get("crop")):   # crop: [x, y, w, h] 0~1 (쿠키 안내 · 빈 곳 잘라내기)
             meta = _load(src / "meta.json")
+            at = lambda k: sum((holds[i] if i < len(holds) else holds[-1]) for i in range(k)) if holds else hold * k   # k 번째 상태가 보이기 시작하는 초
             # 웹 녹화 단계(동작 → 그 결과 상태가 보이는 시각): 움직임 단계가 '1. 주소 입력' 꼬리표를 띄운다
-            steps = [{"t": round(hold * int(a.get("to", 0)) - 0.15, 2), "t_end": round(hold * (int(a.get("to", 0)) + 1), 2), "label": a.get("label")}
+            steps = [{"t": round(at(int(a.get("to", 0))) - 0.15, 2), "t_end": round(at(int(a.get("to", 0)) + 1), 2), "label": a.get("label")}
                      for a in meta.get("actions") or [] if a.get("label")]
             return {"app": None, "file_suffix": ".mp4", "source": meta.get("source") or meta.get("sources"), "steps": steps, "mobile": bool(meta.get("mobile"))}
         raise RuntimeError(f"요소 폴더에 프레임이 없습니다: {m['src']}")
@@ -256,7 +299,28 @@ def passthrough(m: dict, out: Path, work: Path) -> dict:
     return {"app": None, "file_suffix": src.suffix}
 
 
-MAT_VERSION = "2"     # 재료를 만드는 방식이 바뀌면 올린다(열쇠에 들어가 예전 결과를 다시 만든다) — 2: 아이콘 고해상도 · 영상 마지막 프레임 유지 · 요소 폴더
+def stock(m: dict, out: Path, work: Path, sid: str) -> dict:
+    """무료 스톡 영상(Pexels · Pixabay, scripts/stock.py) → 세로 화면 가득(1080×1920 로 가운데 잘라 맞춤) · 소리 없음 · 끝 프레임 유지.
+    출처(credit)는 재료 기록에 남겨 설명란 '사용한 자료' 에 쓴다"""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("fluma_stock", ROOT / "scripts" / "stock.py")
+    st = importlib.util.module_from_spec(spec); spec.loader.exec_module(st)
+    r = st.fetch(sid, m["id"], str(m.get("query") or m.get("what") or ""), int(m.get("pick", 0)), float(m.get("min_sec", 3)), m.get("provider"))
+    dst = out.with_suffix(".mp4")
+    import sys as _s
+    _s.path.insert(0, str(ROOT / "scripts"))
+    from engines import aspect_size
+    W, H = aspect_size(_load(ROOT / "storyboards" / f"{sid}.json") or None)
+    vf = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps=30,tpad=stop_mode=clone:stop_duration=20,format=yuv420p"
+    ss = ["-ss", str(float(m["trim"]))] if m.get("trim") else []
+    q = subprocess.run(["ffmpeg", "-v", "error", "-y", *ss, "-i", r["raw"], "-vf", vf, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "19", str(dst)], capture_output=True, text=True)
+    if q.returncode != 0:
+        raise RuntimeError(f"스톡 영상 변환 실패: {q.stderr[-200:]}")
+    c = r["credit"]
+    return {"app": None, "mobile": True, "credit": c, "source": [c["page"]]}
+
+
+MAT_VERSION = "3"     # 재료를 만드는 방식이 바뀌면 올린다(열쇠에 들어가 예전 결과를 다시 만든다) — 2: 아이콘 고해상도 · 영상 마지막 프레임 유지 · 요소 폴더 · 3: 차트 항목 아이콘
 ADAPTERS = {"chart": chart, "doc_quote": doc_quote, "illustration": illustration, "photo": photo, "icon": illustration}   # icon: icons.py 로 받은 SVG
 PASSTHROUGH = {"screen", "video", "image", "meme", "web"}    # meme: meme.py fetch 폴더 · web: webrec.py 폴더
 
@@ -303,6 +367,9 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             if m.get("ask"):                   # 사용자가 올린 파일(이름으로 찾은 것)도 열쇠에 — 새로 올리면 다시 만든다
                 up_f = find_upload(sid, m)
                 srcs.append(f"{up_f.name}:{_hash(up_f)}" if up_f else "missing")
+            if t == "stock":                   # 스톡 영상은 화면 비율대로 잘라 만든다 → 비율이 바뀌면 다시
+                from engines import aspect_of
+                srcs.append(aspect_of(sb))
             old = _load(meta_p)
             if t == "illustration" and old.get("editable_hash") == srcs[-1]:
                 srcs[-1] = ""                  # 우리가 만든 그대로면 열쇠에 넣지 않는다
@@ -328,6 +395,9 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
                     m = {**m, "src": str(find_upload(sid, m).relative_to(ROOT))}
                 info = passthrough(m, out, d)
                 file = out.with_suffix(info.pop("file_suffix"))
+            elif t == "stock":                     # 무료 스톡 영상(실제 촬영) — 키는 설정 화면
+                info = stock(m, out, d, sid)
+                file = out.with_suffix(".mp4")
             elif t in ADAPTERS:
                 if (t if t != "icon" else "illustration") not in reg:
                     raise RuntimeError(f"'{t}' 재료를 만들 Craft 앱이 설치되지 않았습니다(Craft 앱 화면에서 설치)")
@@ -336,7 +406,7 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             elif t in ("text", "stat"):            # 글자 · 수치 카드는 움직임 단계가 바로 그린다(앱 없음)
                 info, file = {"app": None}, None
             else:
-                raise RuntimeError(f"모르는 재료 종류: {t} (chart · stat · doc_quote · illustration · icon · photo · screen · web · video · meme · image · text)")
+                raise RuntimeError(f"모르는 재료 종류: {t} (chart · stat · doc_quote · illustration · icon · photo · screen · web · video · stock · meme · image · text)")
             rec = {"scene": n, "id": m["id"], "type": t, "key": key, "spec": m, "file": str(file.relative_to(ROOT)) if file else None, **info}
             # 캡처 · 사진 속 글자 위치(글자 인식) — 움직임 단계가 '말하는 낱말을 화면에서 짚기(확대 · 동그라미)'에 쓴다
             if file and t in ("image", "photo", "screen") and file.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):

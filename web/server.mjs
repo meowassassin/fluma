@@ -263,8 +263,12 @@ app.put("/api/genmodels/token", ah(async (req, res) => {
 // ---------- 생성 · 음성 API 키 (에이전트의 OpenRouter 처럼 키만 넣으면 그 공급자의 모델 · 목소리를 쓴다) ----------
 // 저장: ~/.shortsforge/api-keys.json (0600, 에이전트는 못 읽음). 스크립트는 scripts/apikeys.py 로 환경 변수 → 이 파일 → .env.local 순서로 읽는다
 const API_KEY_FILE = path.join(os.homedir(), ".shortsforge", "api-keys.json");
-// 실사 · 이미지 생성 공급자(Higgsfield · BytePlus · Kling · Runway …)는 2026-11-03 제품 방향에서 뺐다 — 음성 공급자만(archive/live-action/README.md)
+// 실사 · 이미지 생성 공급자(Higgsfield · BytePlus · Kling · Runway …)는 2026-11-03 제품 방향에서 뺐다 — 음성 공급자 + 무료 스톡 영상(실제 촬영 영상, 생성 아님)
 const GEN_KEYS = [
+  { id: "pexels", ready: true, env: "PEXELS_API_KEY", title: "Pexels", what: "무료 스톡 영상 · 사진 — 일상 · 감성 · 광고 장면의 바탕(B-roll). 출처 표기 권장", caps: ["스톡 영상"], keyHint: "Pexels API 키", console: "https://www.pexels.com/api/new/", docs: "https://www.pexels.com/api/documentation/",
+    test: { url: "https://api.pexels.com/videos/search?query=city&per_page=1", auth: "Authorization" } },
+  { id: "pixabay", ready: true, env: "PIXABAY_API_KEY", title: "Pixabay", what: "무료 스톡 영상 — Pexels 에 없을 때 두 번째로 찾는 곳", caps: ["스톡 영상"], keyHint: "Pixabay API 키", console: "https://pixabay.com/accounts/register/", docs: "https://pixabay.com/api/docs/",
+    test: { url: "https://pixabay.com/api/videos/?q=city&per_page=3", auth: "query:key" } },
   { id: "typecast", ready: true, env: "TYPECAST_API_KEY", title: "Typecast", what: "한국어 성우 음성 — 감정 · 단어 시각", caps: ["음성"], keyHint: "Typecast API 키", console: "https://typecast.ai/developers/api", docs: "https://typecast.ai/docs", paid: true,
     test: { url: "https://api.typecast.ai/v3/voices?model=ssfm-v31", auth: "x-api-key" } },
   { id: "gemini", ready: true, env: "GEMINI_API_KEY", title: "Google Gemini", what: "Gemini TTS — 말투를 글로 지시하는 음성, 무료 등급 있음", caps: ["음성"], keyHint: "AIza…", console: "https://aistudio.google.com/apikey", docs: "https://ai.google.dev/gemini-api/docs/speech-generation",
@@ -285,15 +289,17 @@ app.post("/api/gen-keys/:id/test", ah(async (req, res) => {
   const key = genKeyValue(k);
   if (!key) return res.json({ ok: false, msg: "키가 없습니다" });
   if (!k.test) return res.json({ ok: null, msg: "이 공급자는 연결 시험을 지원하지 않아요 — 실제 생성 때 확인됩니다" });
-  const h = k.test.auth === "bearer" ? { Authorization: `Bearer ${key}` } : { [k.test.auth]: key };
+  const q = k.test.auth.startsWith("query:") ? k.test.auth.slice(6) : null;      // 키를 주소에 넣는 공급자(Pixabay)
+  const h = q ? {} : k.test.auth === "bearer" ? { Authorization: `Bearer ${key}` } : { [k.test.auth]: key };
+  const url = q ? `${k.test.url}${k.test.url.includes("?") ? "&" : "?"}${q}=${encodeURIComponent(key)}` : k.test.url;
   try {
-    const r = await fetch(k.test.url, { headers: h, signal: AbortSignal.timeout(15000) });
+    const r = await fetch(url, { headers: h, signal: AbortSignal.timeout(15000) });
     res.json({ ok: r.ok, status: r.status, msg: r.ok ? "연결됨" : r.status === 401 || r.status === 403 ? "키가 맞지 않아요" : `실패 ${r.status}` });
   } catch (e) { res.json({ ok: false, msg: `연결 실패: ${String(e.message || e).slice(0, 80)}` }); }
 }));
 app.get("/api/gen-keys", ah(async (_req, res) => {
   const saved = readApiKeys(), local = envLocalKeys();
-  const ICON = { higgsfield: "prov-higgsfield", byteplus: "prov-bytedance", modelstudio: "prov-alibaba", typecast: "typecast", gemini: "prov-google-gemini", elevenlabs: "elevenlabs",
+  const ICON = { pexels: "pexels", pixabay: "pixabay", higgsfield: "prov-higgsfield", byteplus: "prov-bytedance", modelstudio: "prov-alibaba", typecast: "typecast", gemini: "prov-google-gemini", elevenlabs: "elevenlabs",
     kling: "prov-kling", runway: "prov-runway", luma: "prov-luma", openai: "prov-openai", minimax: "prov-minimax", fal: "prov-fal", replicate: "prov-replicate" };
   res.json(GEN_KEYS.map(({ test, ...k }) => { const v = process.env[k.env] || saved[k.env] || local[k.env] || "";
     return { ...k, icon: iconUrl(ICON[k.id] || k.id), testable: !!test, hasKey: !!v, keyMasked: mask(v), source: process.env[k.env] ? "env" : saved[k.env] ? "saved" : local[k.env] ? "env.local" : null }; }));
@@ -359,13 +365,17 @@ app.post("/api/trends/xray/:vid", ah(async (req, res) => {
   const vid = req.params.vid; if (!isVid(vid)) throw bad("쇼츠 id 가 올바르지 않습니다");
   // 작업의 project 칸은 "trend:<id>" — 영상 편집 작업과 섞이지 않게
   const j = jobs.create({ type: "xray", project: `trend:${vid}`, key: `xray:${vid}`, label: "쇼츠 분해 분석", work: async (h) => {
-    const r = await h.run(PY, ["scripts/shorts_xray.py", vid], { cwd: ROOT, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(Number(m[1]) * 0.7, m[2]); } });
-    if (r.timedOut || r.canceled) return r;
-    if (r.code !== 0) return { error: "분해 분석에 실패했습니다", detail: tail(r.err || r.out) };
+    // 이미 끝난 단계는 건너뛴다(force 면 다시) — 에이전트 · 사용자가 같은 영상을 다시 불러도 몇 초 안에 끝나게
+    const force = !!req.body?.force, dir = path.join(XRAY, vid);
+    if (force || !existsSync(path.join(dir, "xray.json")) || !existsSync(path.join(dir, "src.mp4"))) {
+      const r = await h.run(PY, ["scripts/shorts_xray.py", vid], { cwd: ROOT, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(Number(m[1]) * 0.7, m[2]); } });
+      if (r.timedOut || r.canceled) return r;
+      if (r.code !== 0) return { error: "분해 분석에 실패했습니다", detail: tail(r.err || r.out) };
+    }
     // 이어서 스타일 카드(형식 · 박자 · 말투 — 내 주제로 옮길 때 콘티 · 화면 · 음성이 따른다). 실패해도 분해 결과는 남긴다
-    const s = await h.run(PY, ["scripts/ref_style.py", vid], { cwd: ROOT, timeout: 20 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.7 + Number(m[1]) * 0.1, `스타일 카드 · ${m[2]}`); } });
+    const s = !force && existsSync(path.join(dir, "style", "style.json")) ? { code: 0 } : await h.run(PY, ["scripts/ref_style.py", vid], { cwd: ROOT, timeout: 20 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.7 + Number(m[1]) * 0.1, `스타일 카드 · ${m[2]}`); } });
     // 이어서 채널 말투 카드(같은 채널 쇼츠 여러 편 — 말투 · 구성 · 농담 · 목소리). 실패해도 스타일 카드는 남는다
-    const c = req.body?.channel === false ? null : await h.run(PY, ["scripts/ref_channel.py", vid, "--n", String(Math.max(2, Math.min(10, Number(req.body?.n) || 5)))], { cwd: ROOT, timeout: 40 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.8 + Number(m[1]) * 0.2, `채널 말투 · ${m[2]}`); } });
+    const c = req.body?.channel === false ? null : await h.run(PY, ["scripts/ref_channel.py", vid, "--n", String(Math.max(2, Math.min(10, Number(req.body?.n) || 5))), ...(force ? ["--fresh"] : [])], { cwd: ROOT, timeout: 40 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.8 + Number(m[1]) * 0.2, `채널 말투 · ${m[2]}`); } });
     const ch = c && c.code === 0 ? lastJson(c) : null;
     return { result: { url: `/api/public/trends/xray/${vid}/xray.json`, style: s.code === 0 ? `/api/public/trends/xray/${vid}/style/style.json` : null,
       channel: ch?.channel ? `/api/public/trends/channels/${ch.channel}/channel.json` : null } };
@@ -710,11 +720,12 @@ app.get("/api/projects/:id/studio/:stage/project", ah(async (req, res) => {
   res.type("application/json").send(swapRefs(text, pairs));
 }));
 app.get("/api/projects/:id/studio-file", ah(async (req, res) => {
-  const id = checkId(req.params.id);
+  const id = checkId(req.params.id, { allowSystem: true });
   const abs = within(ROOT, String(req.query.p ?? ""));
   const rel = path.relative(ROOT, abs).split(path.sep);
-  // 이 영상의 파일만(제작 파일 · 렌더 작업 폴더 · 공개 재료)
-  const ok = (rel[0] === "compositions" && rel[1] === id) || (rel[0] === "workspace" && rel[2] === id) || rel[0] === "public";
+  // 이 영상의 파일만(제작 파일 · 렌더 작업 폴더 · 공개 재료 · 렌더 결과 · 음성) — 채팅 안 결과 보기도 이것을 쓴다
+  const ok = (rel[0] === "compositions" && rel[1] === id) || (rel[0] === "workspace" && rel[2] === id) || rel[0] === "public"
+    || ((rel[0] === "out" || rel[0] === "audio") && rel.length === 2 && rel[1].startsWith(id));
   if (!ok || !existsSync(abs)) throw notFound("파일이 없습니다");
   res.sendFile(abs);
 }));

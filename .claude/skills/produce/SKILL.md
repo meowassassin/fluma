@@ -10,10 +10,16 @@ order: 2
 **색 · 배치는 레퍼런스에서**: 레퍼런스를 `ref_style.py` 로 분석했으면 `python3 scripts/direct.py storyboards/<id>.json --write` 로 콘티 `direction`(배경색 · 자막 위치 등)을 적는다. 안 했으면 엔진이 레퍼런스 장면 프레임에서 배경 톤을 잰다 — 어느 쪽이든 파란 기본색으로 두지 않는다.
 화면은 '템플릿에 칸 채우기'가 아니라 **장면마다 무엇이 보여야 하는지(재료)** 를 정하는 것이다. 좌표 · 툴 이름은 쓰지 않는다.
 
+**개발 · 기술 주제는 실제 화면으로**(2026-11-04 사용자: "이상한 효과보다 실제 화면 위주로 자세하게"): 꾸민 로그 · 도표 · 큰 숫자 대신
+- 작은 예제 프로젝트를 `compositions/<id>/demo/` 에 만들어 **실제로 실행**하고, 그 출력을 `python3 scripts/termrec.py capture <id> <이름> --cwd <폴더> --prompt "$ …" -- <명령>` 으로 저장 → `termrec.py render <id> <이름> --mark <강조 줄>` 로 터미널 화면 요소를 만든다(재료 `{"type": "web", "src": "public/elements/<id>/<이름>"}`)
+- 화면에 보이는 코드는 그 예제의 실제 파일 그대로, 공식 문서는 `webrec.py` 로 해당 절을 녹화(쿠키 창은 누르지 않고 숨겨진다)
+- 말로 한 주장("EAGER 로 바꿔도 똑같다" 등)은 실제로 돌려 본 출력으로 보여 준다. 돌려 보니 다르면 대사를 고친다
+- 나레이션이 없으면 재료 전환 시각을 materials `start`(초) · `holds`(상태별 초)로 정한다
+
 ## 순서
 0. **레퍼런스 먼저(건너뛰지 않는다 — 검사 L30)**: 콘티에 `reference` 가 없으면 만들기 전에
    - trends 스킬로 같은 주제 · 형식의 실제 쇼츠를 찾는다: `python3 scripts/trends.py search --queries "<주제 검색어 2~3개>" --label "<주제>" --limit 8`
-   - 조회수 높은 2~3편을 분해: `python3 scripts/shorts_xray.py <영상 id>` → `python3 scripts/ref_channel.py <영상 id> --n 4` → `public/trends/channels/<채널>/channel.md` 를 끝까지 읽는다
+   - 조회수 높은 2~3편을 분해: `python3 scripts/analyze_ref.py <영상 id> --n 4`(서버 작업 · 끝난 단계는 건너뜀) → `public/trends/channels/<채널>/channel.md` 를 끝까지 읽는다
    - 거기서 가져온다: **문장 끝 비율 · 이음말 · 첫 문장 방식**(대사), **컷 길이 · 문장당 화면 수**(리듬), **화면 종류 비율 · 배경 · 자막 위치**(화면). 내용 · 대사 · 그림은 베끼지 않는다
    - 콘티 `reference: ["<id>", …]` 에 걸고, 대사를 그 채널 말투로 다시 쓴다(storyboard 스킬 '레퍼런스가 있으면' 절). 사용자가 레퍼런스 없이 하라고 했을 때만 `reference_skip: "<사용자 말>"`
    - 대사는 소리 내어 읽듯: 명사로 끊지 않고(…쓴 말. ✗ → …썼대요 ✓), 존댓말 · 반말을 섞지 않는다(검사 L31)

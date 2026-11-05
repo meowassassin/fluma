@@ -23,6 +23,12 @@ HERE = Path(__file__).resolve().parent
 
 def _cli() -> Path:
     f = ROOT / "tools" / "crafts" / "effectcraft" / "installed.json"
+    if not f.exists():                                          # 없으면 그 자리에서 설치
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("fluma_crafts", ROOT / "scripts" / "crafts.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.ensure("effectcraft")
     try:
         rel = json.loads(f.read_text("utf-8"))["cli"]
     except (OSError, KeyError, json.JSONDecodeError):
@@ -47,8 +53,10 @@ def _sha(p: Path) -> str:
 
 
 def paths(job):
+    """비율마다 프로젝트를 따로(9:16 을 사람이 고쳐도 16:9 렌더가 덮어쓰지 않게)"""
+    from engines import aspect_tag
     d = ROOT / "compositions" / job.sb["id"] / "craft"
-    return d, d / "motion" / f"{job.sb['id']}.ecproj", d / "craft.json"
+    return d, d / "motion" / f"{job.sb['id']}{aspect_tag(job.sb)}.ecproj", d / "craft.json"
 
 
 def build(job) -> Path:
@@ -56,17 +64,20 @@ def build(job) -> Path:
     d, proj, man_p = paths(job)
     proj.parent.mkdir(parents=True, exist_ok=True)
     man = json.loads(man_p.read_text("utf-8")) if man_p.exists() else {}
-    mo = man.get("motion") or {}
+    from engines import aspect_size, aspect_tag
+    mkey = "motion" + aspect_tag(job.sb)
+    mo = man.get(mkey) or {}
     build_materials(job.sb, [int(t.get("index", i)) for i, t in enumerate(job.scenes)])        # 장면 재료(차트 · 문서 인용 · 일러스트 · 사진 · 화면) → 능력 목록대로 Craft 앱이 만든다
     build_art(job.sb["id"])        # 형태(forms/*.form.json) → 부품 레이어 SVG + 뼈대(그림이 바뀌면 JSX 도 바뀌어 다시 만든다)
-    jsx = build_jsx(job.sb, job.captions, job.scenes, proj, fps=job.fps)
+    W, H = aspect_size(job.sb)
+    jsx = build_jsx(job.sb, job.captions, job.scenes, proj, fps=job.fps, width=W, height=H)
     # 열쇠 = 스크립트 + 불러오는 파일의 내용 — 같은 경로의 재료가 바뀌어도(새로 올린 녹화 · 다시 그린 그림) 다시 만든다
     refs = sorted(set(re.findall(r'new File\("((?:[^"\\]|\\.)*)"\)', jsx)))
     src_key = hashlib.sha1((jsx + "".join(_sha(Path(json.loads(f'"{r}"'))) for r in refs)).encode()).hexdigest()
     if proj.exists() and mo.get("hash") and _sha(proj) != mo["hash"]:
         print(f"[craft] {proj.relative_to(ROOT)} 은 사람이 고쳤습니다 — 다시 만들지 않고 그대로 렌더합니다", file=sys.stderr)
         mo["edited"] = True
-        man["motion"] = mo
+        man[mkey] = mo
         man_p.write_text(json.dumps(man, ensure_ascii=False, indent=1), "utf-8")
         return proj
     if proj.exists() and mo.get("source") == src_key:
@@ -76,7 +87,7 @@ def build(job) -> Path:
     run([_cli(), "script", script], cwd=job.work, env=_env(), label="effectcraft script", timeout=300)
     if not proj.exists():
         raise SystemExit("EffectCraft 가 프로젝트를 저장하지 않았습니다")
-    man["motion"] = {"file": str(proj.relative_to(ROOT)), "hash": _sha(proj), "source": src_key, "app": "effectcraft"}
+    man[mkey] = {"file": str(proj.relative_to(ROOT)), "hash": _sha(proj), "source": src_key, "app": "effectcraft"}
     man_p.write_text(json.dumps(man, ensure_ascii=False, indent=1), "utf-8")
     return proj
 

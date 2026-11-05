@@ -69,6 +69,19 @@ def cue_time(cue: str | None, words: list[dict], start: float, end: float) -> fl
     return None
 
 
+def beat_at(sc: dict, sec: float, *needles: str) -> float | None:
+    """나레이션이 없는 장면: beats 의 hold(초)를 차례로 더해 각 박자의 시작 시각을 잡고, needles 가 든 박자의 시각을 돌려준다"""
+    beats = [b for b in (sc.get("beats") or []) if isinstance(b, dict)]
+    holds = [float(b.get("hold") or 1.0) for b in beats]
+    tot = sum(holds) or 1.0
+    k = sec / tot if tot > sec else 1.0
+    starts = [sum(holds[:i]) * k for i in range(len(beats))]
+    hits = [(b, t) for b, t in zip(beats, starts) if any(nd and str(nd) in f"{b.get('at', '')} {b.get('what', '')}" for nd in needles)]
+    # 글자 · 표시 박자(숫자를 보여 주는 박자)를 먼저 — '1' 같은 짧은 숫자는 말풍선 박자에도 들어 있다
+    pref = [t for b, t in hits if b.get("do") in ("글자", "표시")]
+    return round(pref[0], 3) if pref else (round(hits[0][1], 3) if hits else None)
+
+
 def art_files(sid: str, n: int) -> list[Path]:
     d = ROOT / "compositions" / sid / "craft" / "art"
     if not d.exists():
@@ -209,30 +222,66 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
     mid = rec["id"]
     typ = rec["type"]
     if typ == "chart":
+        # 막대 차트: 깨끗한 바탕(장면 배경 톤이 비치지 않게) · 옅은 눈금 · 기준선 · 항목 아이콘(Lucide) · 값 세기 · 배수 배지
+        # 2026-11-04: 흐린 갈색 배경 위 막대만 있어 밋밋하다는 지적
         data = rec.get("data") or {}
         vals, labs, unit = data.get("values") or [], data.get("labels") or [], data.get("unit", "")
+        icons = data.get("icons") or []
         n = max(1, len(vals))
         vmax = max(vals) if vals else 1
         title_h = 0.05 if data.get("title") else 0.0
-        x0, x1, base = 0.16 * W, 0.84 * W, bottom * H - 140           # 아래: 항목 이름 자리(자막과 떨어지게 — 예전엔 자막에 닿았다)
-        hmax = max(0.10 * H, base - (top + title_h) * H - 110)        # 위: 제목 + 값 글자 자리
-        bw = (x1 - x0) / n * 0.62
+        has_icon = any(icons)
+        x0, x1 = 0.14 * W, 0.86 * W
+        base = bottom * H - (250 if has_icon else 140)              # 아래: 아이콘 + 항목 이름 자리
+        hmax = max(0.10 * H, base - (top + title_h) * H - 130)       # 위: 제목 + 값 글자 자리
+        bw = min(260.0, (x1 - x0) / n * 0.58)
         best = vals.index(max(vals)) if vals else -1
+        t_end = t_out if t_out is not None else sec
+        tag = f" {mid}"
+        J(f"var cpn = c.layers.addSolid([0.055, 0.063, 0.086], {js('Panel' + tag)}, {W}, {H}, 1); var cpo = cpn.property('Transform').property('Opacity'); cpo.setValueAtTime({max(0.0, t0 - 0.12):.2f}, 0); cpo.setValueAtTime({t0 + 0.12:.2f}, 94);")
+        for gi in range(1, 5):                                       # 옅은 눈금
+            gy = base - hmax * gi / 4
+            J(f"var gl = card(c, {js(f'Grid{tag} {gi}')}, {x1 - x0 + 60:.0f}, 2, [1, 1, 1], 0); gl.property('Transform').property('Position').setValue([{W / 2}, {gy:.0f}]); gl.property('Transform').property('Opacity').setValueAtTime({t0:.2f}, 0); gl.property('Transform').property('Opacity').setValueAtTime({t0 + 0.3:.2f}, 7);")
+        J(f"var bl = card(c, {js('Baseline' + tag)}, {x1 - x0 + 60:.0f}, 5, [1, 1, 1], 2); bl.property('Transform').property('Position').setValue([{W / 2}, {base + 2:.0f}]); var blo = bl.property('Transform').property('Opacity'); blo.setValueAtTime({t0:.2f}, 0); blo.setValueAtTime({t0 + 0.2:.2f}, 40);")
         if data.get("title"):
-            J(f"var ct = txt(c, {js('Chart title ' + mid)}, {js(data['title'])}, {js(font)}, 60, [1, 1, 1], null, 0, [{W / 2}, {(top + 0.03) * H:.0f}]); popIn(ct, {max(0.0, t0 - 0.1):.2f}, 0.18);")
+            J(f"var ct = txt(c, {js('Chart title' + tag)}, {js(data['title'])}, {js(font)}, 64, [1, 1, 1], null, 0, [{W / 2}, {(top + 0.035) * H:.0f}]); popIn(ct, {max(0.0, t0 - 0.05):.2f}, 0.18);")
         for i, (v, lab) in enumerate(zip(vals, labs)):
             cx = x0 + (x1 - x0) * (i + 0.5) / n
-            hh = max(8.0, hmax * v / vmax)
-            col = colors[i % len(colors)]
-            ti = t0 + i * 0.15
-            J(f"var b = card(c, {js(f'Bar {mid} {i}')}, {bw:.0f}, {hh:.0f}, {js(col)}, 12); b.property('Transform').property('Anchor Point').setValue([0, {hh / 2:.0f}]); b.property('Transform').property('Position').setValue([{cx:.0f}, {base:.0f}]);")
-            J(f"var bs = b.property('Transform').property('Scale'); bs.setValueAtTime({ti:.2f}, [100, 0]); bs.setValueAtTime({ti + 0.55:.2f}, [100, 100]); ease(bs, 80);")
-            J(f"var vt = txt(c, {js(f'Value {mid} {i}')}, '0', {js(font)}, {84 if i == best else 64}, {js([1, 0.84, 0.04] if i == best else [1, 1, 1])}, null, 0, [{cx:.0f}, {base - hh - 28:.0f}]);")
-            J(f"vt.property('Source Text').expression = 'var v = linear(time, {ti:.2f}, {ti + 0.55:.2f}, 0, {v}); (Math.round(v * 10) / 10) + {js(unit)}';")
+            hh = max(14.0, hmax * v / vmax)
+            col = colors[i % len(colors)] if i == best else [0.42, 0.46, 0.56]      # 가장 큰 값만 강조색, 나머지는 차분하게
+            ti = t0 + 0.15 + i * 0.35
+            J(f"var b = card(c, {js(f'Bar{tag} {i}')}, {bw:.0f}, {hh:.0f}, {js(col)}, 14); b.property('Transform').property('Anchor Point').setValue([0, {hh / 2:.0f}]); b.property('Transform').property('Position').setValue([{cx:.0f}, {base:.0f}]);")
+            J(f"var bs = b.property('Transform').property('Scale'); bs.setValueAtTime({ti:.2f}, [100, 0]); bs.setValueAtTime({ti + 0.6:.2f}, [100, 100]); ease(bs, 85);")
+            J(f"var vt = txt(c, {js(f'Value{tag} {i}')}, '0', {js(font)}, {96 if i == best else 70}, {js([1, 0.84, 0.04] if i == best else [0.92, 0.93, 0.96])}, null, 0, [{cx:.0f}, {base - hh - 34:.0f}]);")
+            J(f"vt.property('Source Text').expression = 'var v = linear(time, {ti:.2f}, {ti + 0.6:.2f}, 0, {v}); (Math.round(v * 10) / 10) + {js(unit)}';")
             J(f"vt.property('Transform').property('Opacity').setValueAtTime({max(0.0, ti - 0.01):.2f}, 0); vt.property('Transform').property('Opacity').setValueAtTime({ti + 0.1:.2f}, 100);")
-            J(f"var lb = txt(c, {js(f'Label {mid} {i}')}, {js(str(lab))}, {js(font)}, 46, [0.92, 0.92, 0.95], null, 0, [{cx:.0f}, {base + 62:.0f}]); var lbo = lb.property('Transform').property('Opacity'); lbo.setValueAtTime({max(0.0, ti - 0.01):.2f}, 0); lbo.setValueAtTime({ti + 0.2:.2f}, 100);")
-        if t_out is not None and t_out < sec - 0.05:   # 다음 재료가 나오면 차트 전체(막대 · 숫자 · 이름 · 제목)가 비킨다
-            J(f"for (var li = 1; li <= c.numLayers; li++) {{ var Lc = c.layer(li); if (/ {mid}( |$)/.test(Lc.name)) {{ var oc = Lc.property('Transform').property('Opacity'); oc.setValueAtTime({max(t0 + 0.2, t_out - 0.18):.2f}, 100); oc.setValueAtTime({t_out:.2f}, 0); }} }}")
+            ly = base + 62
+            if i < len(icons) and icons[i]:
+                iy = base + 92
+                J(f"var itl = c.layers.addShape(); itl.name = {js(f'IconTile{tag} {i}')}; var itg = itl.property('Contents').addProperty('ADBE Vector Group'); itg.property('Contents').addProperty('ADBE Vector Shape - Ellipse').property('Size').setValue([132, 132]); itg.property('Contents').addProperty('ADBE Vector Graphic - Fill').property('Color').setValue({js(col)}); itl.property('Transform').property('Position').setValue([{cx:.0f}, {iy:.0f}]); itl.property('Transform').property('Opacity').setValue(30);")
+                J(f"var icf = app.project.importFile(new ImportOptions(new File({js(str(ROOT / icons[i]))}))); var icl = c.layers.add(icf); icl.name = {js(f'Icon{tag} {i}')}; var ick = 72 / icl.source.width * 100; icl.property('Transform').property('Scale').setValue([ick, ick]); icl.property('Transform').property('Position').setValue([{cx:.0f}, {iy:.0f}]);")
+                for L in ("itl", "icl"):
+                    J(f"var io_ = {L}.property('Transform').property('Opacity'); var iv_ = io_.value; io_.setValueAtTime({max(0.0, ti - 0.12):.2f}, 0); io_.setValueAtTime({ti + 0.08:.2f}, iv_);")
+                J(f"var ics = icl.property('Transform').property('Scale'); ics.setValueAtTime({max(0.0, ti - 0.12):.2f}, [ick * 0.6, ick * 0.6]); ics.setValueAtTime({ti + 0.1:.2f}, [ick * 1.1, ick * 1.1]); ics.setValueAtTime({ti + 0.2:.2f}, [ick, ick]);")
+                ly = base + 200
+            J(f"var lb = txt(c, {js(f'Label{tag} {i}')}, {js(str(lab))}, {js(font)}, 48, [0.92, 0.92, 0.95], null, 0, [{cx:.0f}, {ly:.0f}]); var lbo = lb.property('Transform').property('Opacity'); lbo.setValueAtTime({max(0.0, ti - 0.01):.2f}, 0); lbo.setValueAtTime({ti + 0.2:.2f}, 100);")
+        # 배수 배지: 둘 이상 차이가 크면(5배 이상) 가장 큰 막대 옆에 '×100' — 숫자 차이를 한눈에
+        pos = [v for v in vals if v > 0]
+        if len(pos) >= 2 and vmax / min(pos) >= 5 and best >= 0:
+            ratio = vmax / min(pos)
+            rt = f"×{ratio:.0f}" if ratio >= 10 else f"×{ratio:.1f}".replace(".0", "")
+            cxb = x0 + (x1 - x0) * (best + 0.5) / n
+            hb_ = max(14.0, hmax)
+            tb = t0 + 0.15 + best * 0.35 + 0.75
+            side = -1 if best == n - 1 and n > 1 else 1
+            bx_ = cxb + side * (bw / 2 + 20) - (0 if side > 0 else 0)
+            J(f"var rb = txt(c, {js('Ratio' + tag)}, {js(rt)}, {js(font)}, 64, [0.07, 0.07, 0.09], null, 0, [{cxb - side * 0:.0f}, {base - hb_ * 0.5:.0f}]);")
+            J(f"var rbb = fitBox(c, {js('RatioBox' + tag)}, {js('Ratio' + tag)}, [1, 0.84, 0.04], 40, 22, 40);")
+            J(f"rb.property('Transform').property('Position').setValue([{cxb:.0f}, {base - hb_ * 0.5:.0f}]); var rbs = rb.property('Transform').property('Scale'); rbs.setValueAtTime({tb:.2f}, [0, 0]); rbs.setValueAtTime({tb + 0.14:.2f}, [118, 118]); rbs.setValueAtTime({tb + 0.24:.2f}, [100, 100]);")
+            J(f"var rbo = rb.property('Transform').property('Opacity'); rbo.setValueAtTime({max(0.0, tb - 0.01):.2f}, 0); rbo.setValueAtTime({tb + 0.02:.2f}, 100);")
+            J(f"var rbr = rb.property('Transform').property('Rotation'); rbr.setValue(-6);")
+        if t_out is not None and t_out < sec - 0.05:   # 다음 재료가 나오면 차트 전체(바탕 · 막대 · 숫자 · 이름 · 제목 · 아이콘)가 비킨다
+            J(f"for (var li = 1; li <= c.numLayers; li++) {{ var Lc = c.layer(li); if (/ {mid}( |$)/.test(Lc.name)) {{ var oc = Lc.property('Transform').property('Opacity'); var ov = oc.valueAtTime({max(t0 + 0.2, t_out - 0.18):.2f}, false); oc.setValueAtTime({max(t0 + 0.2, t_out - 0.18):.2f}, ov); oc.setValueAtTime({t_out:.2f}, 0); }} }}")
         return
     if typ == "stat":
         # 숫자 덧씌우기(레퍼런스 문법): 카드 · 패널 없이 아래 재료 위에 바로 — 화면을 살짝 어둡게 하고 테두리 굵은 큰 숫자,
@@ -259,7 +308,10 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
             dec = len(digits.split(".")[1]) if "." in digits else 0
             try:
                 target = float(digits)
-                J(f"sv0.property('Source Text').expression = 'var v = linear(time, {t0:.2f}, {t0 + 0.5:.2f}, 0, {target}); {js(sign)} + v.toFixed({dec}) + {js(rest)}';")
+                # 시작 값: 콘티 from(예: 101 → 1 로 떨어지는 숫자) — 없으면 0 에서 센다
+                fm = re.match(r"\s*[+\-]?([\d.,]+)", str(sp.get("from") or ""))
+                origin = float(fm.group(1).replace(",", "")) if fm else 0.0
+                J(f"sv0.property('Source Text').expression = 'var v = linear(time, {t0:.2f}, {t0 + 0.5:.2f}, {origin}, {target}); {js(sign)} + v.toFixed({dec}) + {js(rest)}';")
             except ValueError:
                 pass
         return
@@ -303,13 +355,13 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
     # 배치: 콘티가 정하지 않으면 레퍼런스 화면 문법(layout)을 따른다 — 화면 가득(full) 이면 사진 · 캡처 · 영상도 화면 가득
     # 'center' 는 사실상 기본값이라 레퍼런스가 화면 가득이면 화면 가득으로 본다. left · right · top · bottom · card 처럼 뜻이 있는 배치만 지킨다
     place = sp.get("place") or "center"
-    if typ in ("screen", "video", "web") and place == "center":
+    if typ in ("screen", "video", "web", "stock") and place == "center":
         place = "full"
     if layout == "full" and typ in ("image", "photo") and place == "center":
         place = "full"
     if place == "card":
         place = "center"
-    if place == "full" and typ in ("image", "photo", "illustration", "web", "screen", "video"):
+    if place == "full" and typ in ("image", "photo", "illustration", "web", "screen", "video", "stock"):
         full_still(J, rec, words, start, end, sec, W, H, t0, t_out, bottom, font)
         return
     px, py, pw, ph = PLACE.get(place, PLACE["center"])
@@ -386,10 +438,16 @@ def full_still(J, rec: dict, words: list[dict], start: float, end: float, sec: f
     J("var r1 = { width: ml.source.width, height: ml.source.height }; ml.property('Transform').property('Anchor Point').setValue([r1.width / 2, r1.height / 2]);")
     # 폭에 꽉(조금 여백) — 세로로 너무 길면 화면 높이의 82% 까지만 보이고 나머지는 훑는다
     J(f"var k1 = {W * 0.96} / r1.width * 100; var hh = r1.height * k1 / 100; var cy = {H * 0.45:.0f};")
-    phone = rec.get("type") in ("web", "screen", "video") and (rec.get("mobile") or (rec.get("spec") or {}).get("mobile"))
+    phone = rec.get("type") in ("web", "screen", "video", "stock") and (rec.get("mobile") or (rec.get("spec") or {}).get("mobile"))
     if phone:
         # 폰 화면 녹화: 세로 화면을 가득(레퍼런스처럼 액자 없이) — 자막 · 단계 꼬리표가 그 위에
-        J(f"k1 = Math.max({W} / r1.width, {H} / r1.height) * 100; hh = r1.height * k1 / 100; cy = {H / 2};")
+        pb = float(rec.get("_pin_bottom") or 0.0)
+        if W > H * 0.75:   # 가로 · 정사각 화면: 세로 녹화(대화창 · 터미널 · 폰 화면)는 높이에 맞춰 가운데에 — 옆은 바탕색
+            J(f"k1 = Math.min({W * 0.92:.0f} / r1.width, {H * (0.97 - pb):.0f} / r1.height) * 100; hh = r1.height * k1 / 100; cy = {H * pb:.0f} + ({H * (1 - pb):.0f}) / 2;")
+        elif pb:   # 위쪽 고정 제목이 있으면 녹화는 그 띠 아래에서 시작(제목이 말풍선 · 글자를 가리지 않게) — 아래는 넘치면 잘림
+            J(f"k1 = Math.max({W} / r1.width, {H * (1 - pb):.0f} / r1.height) * 100; hh = r1.height * k1 / 100; cy = {H * pb:.0f} + hh / 2;")
+        else:
+            J(f"k1 = Math.max({W} / r1.width, {H} / r1.height) * 100; hh = r1.height * k1 / 100; cy = {H / 2};")
     J("ml.property('Transform').property('Scale').setValue([k1, k1]); ml.property('Transform').property('Position').setValue([" + f"{W / 2}" + ", cy]);")
     if not phone:
         J("try { var dsh = ml.property('Effects').addProperty('ADBE Drop Shadow'); dsh.property('Opacity').setValue(70); dsh.property('Distance').setValue(18); dsh.property('Softness').setValue(60); dsh.property('Direction').setValue(180); } catch (e) {}")
@@ -409,6 +467,8 @@ def full_still(J, rec: dict, words: list[dict], start: float, end: float, sec: f
     if t_out is not None and t_out < sec - 0.05:
         for L in ("ml",):
             J(f"var oo_ = {L}.property('Transform').property('Opacity'); oo_.setValueAtTime({max(t0 + 0.25, t_out - 0.2):.2f}, 100); oo_.setValueAtTime({t_out:.2f}, 0);")
+    if phone and not rec.get("_subs", True):
+        return            # 자막 · 단계 꼬리표가 없으면 그림자도 없다(2026-11-04: 나레이션 없는 영상 아래 1/3 이 빈 어두운 띠)
     if phone:
         # 자막 그림자: 밝은 화면 위 자막이 읽히게 아래쪽을 부드럽게 어둡게(가장자리는 흐림으로 풀어서)
         J(f"var shd = card(c, {js('Shade ' + mid)}, {W * 1.4:.0f}, {H * 0.36:.0f}, [0, 0, 0], 0); shd.property('Transform').property('Position').setValue([{W / 2}, {H * 0.9:.0f}]);")
@@ -518,11 +578,11 @@ function glow(c, name, color, size, opa, x, y, sx, sy, sp, ph, off) {
 }
 // 배경 움직임(엔진 기능): 바탕 그라데이션 + 천천히 떠다니는 빛 두 개 + 아주 옅은 질감. off = 장면 시작 시각(장면이 바뀌어도 빛이 이어 움직임)
 function dressBg(c, bg, off, top, bottom, ga, gb) {
-  try { var r = bg.property("Effects").addProperty("ADBE Ramp"); r.property(1).setValue([540, 0]); r.property(2).setValue(top); r.property(3).setValue([540, 1920]); r.property(4).setValue(bottom); } catch (e) {}
+  try { var r = bg.property("Effects").addProperty("ADBE Ramp"); r.property(1).setValue([c.width / 2, 0]); r.property(2).setValue(top); r.property(3).setValue([c.width / 2, c.height]); r.property(4).setValue(bottom); } catch (e) {}
   var g1 = glow(c, "Glow A", ga, 900, 11, 180, 380, 90, 70, 0.18, 0.0, off);
   var g2 = glow(c, "Glow B", gb, 820, 8, 920, 1500, 80, 90, 0.15, 2.1, off);
   g1.moveBefore(bg); g2.moveBefore(bg);
-  try { var t = c.layers.addSolid([0.5, 0.5, 0.5], "Texture noise", 1080, 1920, 1); var fn = t.property("Effects").addProperty("ADBE Fractal Noise");
+  try { var t = c.layers.addSolid([0.5, 0.5, 0.5], "Texture noise", c.width, c.height, 1); var fn = t.property("Effects").addProperty("ADBE Fractal Noise");
         try { fn.property("Evolution").expression = "(time + " + off + ") * 60"; } catch (e) {}
         t.property("Transform").property("Opacity").setValue(3); t.moveBefore(bg); } catch (e) {}
 }
@@ -616,6 +676,9 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
     J(PRELUDE)
     J(f"var main = app.project.items.addComp('Main', {W}, {H}, 1, {total}, {fps});")
     pills: list[dict] = []
+    pin = d.get("pin_title") or sb.get("pin_title") or (sb.get("title") if len(sb.get("title") or "") <= 24 else None)
+    pin = pin if pin and d.get("pin", True) else None
+    pin_bottom = 0.105 if pin else 0.0        # 위쪽 고정 제목 띠의 아래 끝(화면 비율) — 화면 가득 녹화는 이 아래에서 시작
     for k, (sc, tm) in enumerate(zip(sb["scenes"], scenes)):
         oi = int(tm.get("index", k))          # 원래 장면 번호(장면 일부만 렌더해도 재료 · 자막이 맞게)
         n = oi + 1
@@ -656,13 +719,24 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             cues_all = sorted(t for t in (cue_time((r.get("spec") or {}).get("cue"), words, start, end) for r in mats) if t is not None)
             for r in mats:
                 if r.get("type") == "stat":     # 덧씌우기: 그 낱말부터 다음 재료가 나올 때까지(최대 2.4초)
-                    ti = cue_time((r.get("spec") or {}).get("cue"), words, start, end) or 0.0
+                    ti = cue_time((r.get("spec") or {}).get("cue"), words, start, end)
+                    if ti is None and not (sc.get("narration") or "").strip():
+                        # 나레이션이 없으면 낱말을 기다릴 수 없다 → 그 숫자를 말하는 박자에, 없으면 장면 끝 1.4초만(장면 내내 덮지 않게)
+                        # 2026-11-04: 메신저 영상에서 큰 '101' 이 장면 내내 대화창을 가렸다
+                        spv = r.get("spec") or {}
+                        ti = beat_at(sc, sec, str(spv.get("value") or "") or None, spv.get("cue"))
+                        ti = max(0.0, sec - 1.4) if ti is None else ti
+                        slots[r["id"]] = (ti, min(sec, ti + 1.4))
+                        continue
+                    ti = ti or 0.0
                     nx = [t for t in cues_all if t > ti + 0.3]
                     slots[r["id"]] = (ti, min(ti + 2.4, nx[0]) if nx else sec)   # 마지막 덧씌우기는 장면 끝까지
             if len(seqs) == 1:   # 하나뿐이면 장면 처음부터 — 낱말을 기다리는 동안 화면이 비면 넘겨진다
                 slots[seqs[0]["id"]] = (0.0, None)
             if len(seqs) > 1:
+                # 시작 초: 나레이션 낱말(cue) > 콘티의 재료 start(나레이션 없는 영상에서 재료를 정확한 초에 바꿀 때) > 장면을 똑같이 나눠
                 ts = [cue_time((r.get("spec") or {}).get("cue"), words, start, end) for r in seqs]
+                ts = [t if t is not None or (r.get("spec") or {}).get("start") is None else float(r["spec"]["start"]) for t, r in zip(ts, seqs)]
                 for k3, tt in enumerate(ts):
                     if tt is None:
                         ts[k3] = sec * k3 / len(seqs)
@@ -676,6 +750,8 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                     r["_under_overlay"] = True      # 숫자를 덧씌우는 장면의 바탕 재료는 줄 따라 확대하지 않는다(어지러움)
             for rec in sorted(mats, key=lambda r: r.get("type") == "stat"):   # 숫자 덧씌우기는 맨 나중(위)에
                 t_in, t_out = slots.get(rec["id"], (None, None))
+                rec["_subs"] = bool(words) or bool(rec.get("steps"))     # 자막이 없으면 자막 그림자도 없다
+                rec["_pin_bottom"] = pin_bottom
                 material_jsx(J, rec, words, start, end, sec, W, H, font, colors, top=top, bottom=g["subs"]["y"] - 0.03, t_in=t_in, t_out=t_out, layout=layout)
         elif any(drew):
             pass
@@ -767,8 +843,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             J(f"s.inPoint = {a_:.3f}; s.outPoint = {b_:.3f}; var sS = s.property('Transform').property('Scale'); sS.setValueAtTime({a_:.3f}, [88, 88]); sS.setValueAtTime({a_ + 0.09:.3f}, [100, 100]);")
         J(f"var sl = main.layers.add(c); sl.startTime = {start:.3f};")
     # 위쪽 고정 주제 제목(레퍼런스: '컴퓨터 버그의 유래'처럼 영상 내내 위에 떠 있음) — 콘티 direction.pin_title > pin_title > 짧은 제목
-    pin = d.get("pin_title") or sb.get("pin_title") or (sb.get("title") if len(sb.get("title") or "") <= 24 else None)
-    if pin and d.get("pin", True):
+    if pin:
         J("\n// ---------- 위쪽 고정 주제 제목(영상 전체)")
         psz = max(36, min(52, int(W * 0.84 / max(1, len(pin)))))   # 한 줄에 들어가게
         J(f"var pt = txt(main, 'PinTitle', {js(pin)}, {js(font)}, {psz}, [1, 1, 1], null, 0, [{W / 2}, {H * 0.062:.0f}]);")

@@ -199,13 +199,47 @@
       },
       "description": "참고한 트렌드 쇼츠 id (public/trends/analysis/<id>.json) — 편집기에 참고 리듬으로 표시"
     },
+    "aspect": {
+      "enum": [
+        "9:16",
+        "16:9",
+        "1:1"
+      ],
+      "description": "출력 화면 비율(기본 9:16 쇼츠). 렌더 옵션 --aspect 가 우선. 같은 콘티로 여러 비율을 뽑을 수 있다"
+    },
+    "variants": {
+      "type": "array",
+      "maxItems": 4,
+      "description": "비교용 버전(scripts/variants.py): 훅 · 첫 장면 · 제목만 바꾼 2~4개를 초안으로 뽑아 나란히 본다. scenes 는 장면 번호(1부터) → 바꿀 칸만",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "scenes": {
+            "type": "object"
+          }
+        }
+      }
+    },
     "direction": {
       "type": "object",
-      "description": "디자인 방향(scripts/direct.py): 바탕 · 색 · 글자 · 배치 · 움직임 · 전환 · 자막 · 주인공 장치. 영상마다 다르게, 컴포지션은 이것을 따른다",
+      "description": "디자인 방향(scripts/direct.py): 바탕 · 색 · 글자 · 배치 · 움직임 · 전환 · 자막 · 주인공 장치. 영상마다 다르게, 컴포지션은 이것을 따른다 · 켜고 끄는 값(bg_motion · pin · number_punch)은 true/false",
       "additionalProperties": {
         "type": [
           "string",
-          "null"
+          "null",
+          "boolean"
         ]
       }
     },
@@ -755,6 +789,7 @@
                   "screen",
                   "web",
                   "video",
+                  "stock",
                   "meme",
                   "image",
                   "text"

@@ -276,6 +276,18 @@ def lint(sb: dict, recent_titles=None) -> list:
     # L33 ~ L35 · T35 재료(시청자 기준): 재료 단계가 남긴 기록(compositions/<id>/craft/materials/sNN/*.json, 글자 인식 포함)으로 본다.
     #     재료를 만들기 전이면 건너뛴다. (2026-11-03: 영어 문서 캡처 9장 · 같은 그래프 3번 → '슬라이드 넘기기' 같은 영상)
     fails += material_checks(sb)
+    # L38 스톡 영상 재료: 검색어(영어가 잘 찾힘)가 있어야 받는다 · 키가 없으면 미리 알린다(렌더 중에 멈추지 않게)
+    stocks = [(i, m) for i, sc in enumerate(sb.get("scenes") or []) for m in (sc.get("materials") or []) if isinstance(m, dict) and m.get("type") == "stock"]
+    for i, m in stocks:
+        if not str(m.get("query") or "").strip():
+            fails.append(("L38", i, f"스톡 영상 재료 {m.get('id')}: query(영어 검색어)가 없음 — 예: \"subway commute morning\""))
+    if stocks:
+        try:
+            import apikeys
+            if not (apikeys.get("PEXELS_API_KEY") or apikeys.get("PIXABAY_API_KEY")):
+                fails.append(("L38", None, "스톡 영상 키가 없음 — 사용자에게 설정 → API 키에서 Pexels 또는 Pixabay 키(무료)를 넣어 달라고 부탁(채팅에 키를 붙이지 말라고)"))
+        except ImportError:
+            pass
 
     # L30 레퍼런스: 같은 주제 · 형식의 실제 쇼츠를 분석(scripts/shorts_xray.py → public/trends/xray/<id>/xray.json)하고 콘티 reference 에 건다.
     #     조사 없이 '그냥 만들면' 대사 · 리듬 · 화면이 어색하다(2026-11-03 사용자 평가). 사용자가 레퍼런스 없이 만들라고 했을 때만 reference_skip 에 그 말을 적는다

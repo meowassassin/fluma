@@ -104,7 +104,11 @@ def ensure(sid: str) -> Path | None:
     ed_dir.mkdir(parents=True, exist_ok=True)
     proj = ed_dir / f"{sid}.fcproj"
     proj.unlink(missing_ok=True)
-    _fc(fc, "--save-as", str(proj), "exec", "file.newSequence", json.dumps({"name": sb.get("title") or sid, "width": 1080, "height": 1920, "fps": 30}), cwd=ed_dir)
+    import sys as _s
+    _s.path.insert(0, str(ROOT / "scripts"))
+    from engines import aspect_size
+    sw, sh = aspect_size(sb)
+    _fc(fc, "--save-as", str(proj), "exec", "file.newSequence", json.dumps({"name": sb.get("title") or sid, "width": sw, "height": sh, "fps": 30}), cwd=ed_dir)
     vpath = apath = None
     if src and src.suffix == ".mp4":
         # 영상 · 소리를 나눠 넣는다 — FilmCraft 웹 빌드는 mp4 안의 AAC 를 못 읽어 영상 전체를 '지원 안 함'으로 본다
