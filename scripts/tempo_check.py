@@ -62,8 +62,8 @@ def check(f: Path) -> dict:
     }
 
 
-def problems(t: dict) -> list[tuple[str, str]]:
-    """(규칙, 메시지) — lint 와 렌더 끝 요약이 같은 기준을 쓴다"""
+def problems(t: dict, narrated: bool = True) -> list[tuple[str, str]]:
+    """(규칙, 메시지) — lint 와 렌더 끝 요약이 같은 기준을 쓴다. narrated=False(나레이션 없는 영상)면 말 끊김(T33)은 보지 않는다"""
     out = []
     if t["first_frame_empty"]:
         out.append(("L32", "첫 프레임이 빈 화면 — 피드에서 바로 넘겨진다. 첫 장면 재료 · 제목이 0초부터 보여야 함"))
@@ -72,7 +72,7 @@ def problems(t: dict) -> list[tuple[str, str]]:
     if t["longest_freeze"] >= 2.5:
         a, b = max(t["freezes"], key=lambda x: x[1] - x[0])
         out.append(("T32", f"화면이 {t['longest_freeze']}초 멈춤({a}~{b}초) — 그 구간에 컷 · 확대 · 강조를 넣기"))
-    for a, b in t["silences"]:
+    for a, b in (t["silences"] if narrated else []):
         if b - a >= 1.0:
             out.append(("T33", f"말이 {round(b - a, 1)}초 끊김({a}~{b}초) — 장면 사이 숨이 길다"))
     if t["cuts_per_10s"] < 3:

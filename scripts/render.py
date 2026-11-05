@@ -235,7 +235,8 @@ def main():
             t["id"] = job.sb["id"]
             tempo_check.save(job.sb["id"], t)
             print(f"[템포] 첫 컷 {t['first_cut']}초 · 컷 {t['cuts_per_10s']}/10초 · 최장 멈춤 {t['longest_freeze']}초 · 첫 1초 변화 {t['first_second_change']}")
-            for code, msg in tempo_check.problems(t):
+            narrated = any(str(s.get("narration") or "").strip() for s in job.sb.get("scenes") or [])
+            for code, msg in tempo_check.problems(t, narrated):
                 print(f"   {'✗' if code.startswith('L') else '△'} {code} {msg}")
         except Exception as e:   # 검사 실패가 렌더를 막지 않게
             print(f"[템포] 검사하지 못함: {e}")

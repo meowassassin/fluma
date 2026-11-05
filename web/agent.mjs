@@ -512,7 +512,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         // 콘티는 만들었는데 화면 구성(scene.js)이 없으면 한 번 이어서 짜게 한다 — "매번 같은 화면" 방지
         const missing = missingComposition(files);
         if (missing) autoTimers.set(project, setTimeout(() => start(project, missing.craft
-          ? { message: `(자동 이어가기) 콘티 ${missing.id}.json 은 있는데 아직 영상(초안)이 없어. produce 스킬 순서대로 음성 → 장면 재료 → 검사 → 초안 렌더(render.py --draft) → 정지 화면 확인까지 마무리해 줘.`, look, template, skill: "produce", scene: null, model, context, auto: true }
+          ? { message: `(자동 이어가기) 콘티 ${missing.id}.json 은 있는데 아직 영상(초안)이 없어. 재료 칸을 채운 뒤 python3 scripts/produce.py storyboards/${missing.id}.json 한 줄로 음성 → 검사 → 초안 → 장면별 정지 화면까지 돌리고, 정지 화면을 직접 보고 고칠 곳만 고쳐 줘(produce 스킬).`, look, template, skill: "produce", scene: null, model, context, auto: true }
           : { message: `(자동 이어가기) 콘티 ${missing.id}.json 은 있는데 화면 구성 compositions/${missing.id}/scene.js 가 없어. compose 스킬 순서대로 디자인 방향(direct.py --write) → scene.js → 정지 화면 확인 → lint(L15 없음)까지 마무리해 줘.`, look, template, skill: "compose", scene: null, model, context, auto: true }).catch(() => {}), 1500));
       }
     });

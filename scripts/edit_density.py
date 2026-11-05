@@ -75,7 +75,7 @@ def semantic(path: str) -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     import vision_tags
     from rapidocr import RapidOCR
-    ocr = RapidOCR()
+    ocr = RapidOCR(params={"Det.limit_type": "max", "Det.limit_side_len": 960})   # 작은 초안을 키워 읽지 않는다(글자 높이는 화면 비율로 잰다)
     cap = cv2.VideoCapture(path)
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
     dur = (cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0) / fps
@@ -83,9 +83,16 @@ def semantic(path: str) -> dict:
     # 0.5초마다 — 1초 간격이면 1.5초 남짓 나오는 짤을 건너뛰었다(2026-11-02 영어판에서 확인).
     # 재료 분류는 내용이 있는 곳만 잘라서: 검은 바탕 가운데 작은 판(짤 · 화면)을 프레임 통째로 보면 늘 '실제 화면'으로 나왔다
     step = 0.5
-    for k in range(int(dur / step)):
-        cap.set(cv2.CAP_PROP_POS_FRAMES, int((k * step + step / 2) * fps))
+    # 처음부터 차례로 읽으며 필요한 프레임만 쓴다 — 프레임마다 위치를 옮기면(seek) 매번 앞 키프레임부터 다시 풀어 수십 초가 걸렸다(2026-11-05)
+    want = [int((k * step + step / 2) * fps) for k in range(int(dur / step))]
+    frames_at, idx = {}, 0
+    for k, target in enumerate(want):
+        while idx < target:
+            if not cap.grab():
+                break
+            idx += 1
         ok, f = cap.read()
+        idx += 1
         if not ok:
             break
         g = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
@@ -93,10 +100,10 @@ def semantic(path: str) -> dict:
         crop = f[rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1] if len(rows) > 20 and len(cols) > 20 else f
         fp = os.path.join(d, f"{k}.jpg"); cv2.imwrite(fp, crop)
         kinds.append(vision_tags.classify(fp)["kind"]); os.remove(fp)
-        if k % 2 == 0:   # 글자 크기는 1초마다(OCR 이 무겁다)
+        if k % 4 == 0:   # 글자 크기는 2초마다(OCR 이 무겁다 — 중앙값이라 2초면 충분)
             # 초마다 그 화면의 글자 크기(중앙값) 하나 — 글자 덩어리를 통째로 세면 작은 글자가 수백 개인 논문 한 화면이
             # 영상 전체 값을 끌어내렸다(2026-11-02). 시간으로 재야 '보는 사람이 읽는 크기'다
-            r = ocr(f)
+            r = ocr(f, use_cls=False, use_rec=False)   # 글자 높이만 필요 — 글자 읽기(인식)를 건너뛰면 7배 빠르다(1.9 → 0.27초/장, 2026-11-05)
             if r and r.boxes is not None and len(r.boxes):
                 hs.append(float(np.median([(np.linalg.norm(b[3] - b[0]) + np.linalg.norm(b[2] - b[1])) / 2 / f.shape[0] * 1920 for b in r.boxes])))
     # 한 번 스친(0.5초) 분류는 잡음 — 이웃과 다르고 앞뒤가 같으면 앞뒤를 따른다
@@ -150,6 +157,16 @@ def check(m: dict, sb: dict) -> list[str]:
     if m.get("text_px") is not None and m["text_px"] < need_px:
         probs.append(f"화면 속 글자가 작음 {int(m['text_px'])}px — 최소 {int(need_px)}px(사람 편집 중앙값 {int(b['text_px'])}px)(페이지 전체를 축소하지 말고 말하는 부분을 잘라 크게: K.web read)")
     short = m["sec"] < 15
+    # 실제 화면 위주 영상(재료 70% 이상이 웹 녹화 · 화면 · 영상 · 스톡): 터미널 · 대화창 · 문서가 CLIP 으로는 모두 '실제 화면' 한 종류라
+    # 종류 수 · 종류 전환으로 재면 늘 모자라게 나온다 → 화면 내용이 바뀐 횟수(beats)로 본다. 종류 구분은 lint L35 가 재료 기록으로 본다(2026-11-05)
+    mats = [m_ for sc in sb.get("scenes") or [] for m_ in sc.get("materials") or [] if isinstance(m_, dict)]
+    real = bool(mats) and sum(1 for m_ in mats if m_.get("type") in ("web", "screen", "video", "stock")) >= 0.7 * len(mats)
+    if real:
+        if m.get("beats_per_10s") is not None and m["beats_per_10s"] < b["kind_switch"] * 0.5:
+            probs.append(f"화면이 10초에 {m['beats_per_10s']}번 바뀜 — 사람 편집 {b['kind_switch']}번(녹화 안에서 줄 · 말풍선 · 스크롤이 이어지게, 또는 녹화를 짧게 나눠)")
+        if m["longest_still"] > 6:
+            probs.append(f"{m['longest_still']}초 동안 화면이 그대로")
+        return probs
     need_k = max(1, min(round(b["kinds"]), round(b["kinds"] * (0.4 if short else 0.6)) or 1))
     if m.get("kinds") is not None and m["kinds"] < need_k:
         probs.append(f"재료 종류 {m['kinds']}가지({', '.join(m.get('kind_list') or [])}) — 사람 편집 {b['kinds']}가지(실제 화면 사이에 짤 · 사람 · 기사 · 사진을 단어에 맞춰)")

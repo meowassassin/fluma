@@ -46,6 +46,27 @@ def _keywords(text: str):
     return {t for t in re.findall(r"[가-힣A-Za-z0-9]{2,}", text)}
 
 
+def _element_meta(rec: dict) -> dict:
+    src = (rec.get("spec") or {}).get("src")
+    if not src:
+        return {}
+    try:
+        return json.loads((ROOT / src / "meta.json").read_text("utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def screen_changes(rec: dict) -> int:
+    """이 재료 안에서 화면이 바뀌는 횟수 — 웹 녹화는 상태 화면 수 + 실제 녹화 구간 3초마다 한 번(줄이 쏟아지는 터미널 · 말풍선이 올라오는 대화창)"""
+    if rec.get("type") != "web":
+        return 1
+    meta = _element_meta(rec)
+    n = len(meta.get("states") or []) or 1
+    import math
+    n += sum(math.ceil(float(a.get("sec") or 0) / 3) for a in meta.get("actions") or [] if a.get("do") == "record")
+    return max(1, n - 1)          # 첫 상태는 등장 자체
+
+
 def material_kind(rec: dict) -> str:
     """재료 종류(시청자가 보는 화면의 종류): 문서 캡처 · 그래픽 · 그림/사진 · 화면/영상"""
     t = rec.get("type")
@@ -53,7 +74,17 @@ def material_kind(rec: dict) -> str:
         return "그래픽"
     if t == "meme":
         return "짤 · 반응"
-    if t in ("screen", "video", "web"):
+    if t == "web":
+        # 웹 녹화 요소(webrec · termrec)는 무엇을 찍었는지로 나눈다 — 실제 실행 화면 · 실제 사이트 · 직접 만든 화면은 시청자에게 다른 화면이다
+        meta = _element_meta(rec)
+        if meta.get("terminal"):
+            return "실행 화면(터미널)"
+        if any(str(u).startswith("http") for u in meta.get("sources") or []):
+            return "웹 화면"
+        return "앱 화면"
+    if t == "stock":
+        return "실사 영상(스톡)"
+    if t in ("screen", "video"):
         return "화면 · 영상"
     if t == "doc_quote":
         return "문서 캡처"
@@ -90,7 +121,10 @@ def material_checks(sb: dict) -> list:
         if r.get("missing"):
             out.append(("L36", r.get("scene"), f"사용자 녹화가 필요: {r.get('ask')} → 편집기에 파일을 올려 달라고 부탁(이름에 '{r.get('id')}' 포함). 받기 전 초안은 이 재료 없이 렌더됨"))
     recs = [r for r in recs if not r.get("missing")]
-    if len(recs) < 2:
+    # 일부 장면만 렌더한 기록으로 영상 전체를 판단하지 않는다(재료는 렌더가 만든다 — 전체 기록이 모자라면 다음 전체 렌더 뒤에 본다)
+    planned = sum(1 for sc in sb.get("scenes") or [] for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("type") not in ("text", "stat"))
+    built = sum(1 for r in recs if r.get("type") not in ("text", "stat"))
+    if len(recs) < 2 or (planned and built < planned * 0.8):
         return out
     by_src: dict[str, set] = {}
     for r in recs:
@@ -109,10 +143,14 @@ def material_checks(sb: dict) -> list:
     if dur >= 20 and len(set(kinds)) < 3:
         out.append(("L35", None, f"재료 종류가 {len(set(kinds))}가지({', '.join(sorted(set(kinds)))}) — 레퍼런스 쇼츠는 화면 종류를 섞는다. 문서 캡처 · 그래픽(stat · chart · icon) · 그림/사진 · 화면/영상(web · screen) · 짤(meme) 중 3가지 이상"))
     # L37 재료 개수: 레퍼런스 설명 쇼츠는 10초에 4번 남짓 화면이 바뀐다 → 3초에 하나 이상(같은 파일은 한 번만 셈)
-    uniq = len({(r.get("spec") or {}).get("src") or (r.get("spec") or {}).get("csv") or f"{r.get('scene')}/{r.get('id')}" for r in recs})
+    seen_src: dict[str, int] = {}
+    for r in recs:
+        key = (r.get("spec") or {}).get("src") or (r.get("spec") or {}).get("csv") or f"{r.get('scene')}/{r.get('id')}"
+        seen_src[key] = max(seen_src.get(key, 0), screen_changes(r))
+    uniq = sum(seen_src.values())          # 같은 파일은 한 번 · 녹화 재료는 그 안의 화면 전환 수만큼
     need = int(dur // 3)
     if dur >= 15 and uniq < need:
-        out.append(("L37", None, f"서로 다른 재료 {uniq}개 / {dur:.0f}초 — {need}개 이상 필요(문장마다 하나: 짤 · 웹 녹화 · 아이콘 · 수치 카드 · 그림을 섞어서, cue 로 그 낱말에 등장)"))
+        out.append(("L37", None, f"화면 전환 {uniq}번(서로 다른 재료 · 녹화 안의 전환 포함) / {dur:.0f}초 — {need}개 이상 필요(문장마다 하나: 짤 · 웹 녹화 · 아이콘 · 수치 카드 · 그림을 섞어서, cue 로 그 낱말에 등장)"))
     # T37 같은 종류가 네 번 연속
     run_k, run_n = None, 0
     for k in kinds:
@@ -268,7 +306,7 @@ def lint(sb: dict, recent_titles=None) -> list:
         try:
             sys.path.insert(0, str(ROOT / "scripts"))
             import tempo_check
-            for code, msg in tempo_check.problems(json.loads(tp.read_text("utf-8"))):
+            for code, msg in tempo_check.problems(json.loads(tp.read_text("utf-8")), any(str(x.get("narration") or "").strip() for x in sb.get("scenes") or [])):
                 fails.append((code, None, f"[마지막 렌더] {msg}"))
         except (ValueError, OSError, ImportError):
             pass

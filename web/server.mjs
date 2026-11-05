@@ -385,15 +385,16 @@ app.post("/api/trends/xray/:vid", ah(async (req, res) => {
   const j = jobs.create({ type: "xray", project: `trend:${vid}`, key: `xray:${vid}`, label: "쇼츠 분해 분석", work: async (h) => {
     // 이미 끝난 단계는 건너뛴다(force 면 다시) — 에이전트 · 사용자가 같은 영상을 다시 불러도 몇 초 안에 끝나게
     const force = !!req.body?.force, dir = path.join(XRAY, vid);
+    const fast = !!req.body?.fast;     // 빠른 분석: 같은 채널은 2편만 · 가벼운 받아쓰기(base) — 원클릭 도구와 견줄 속도가 필요할 때
     if (force || !existsSync(path.join(dir, "xray.json")) || !existsSync(path.join(dir, "src.mp4"))) {
-      const r = await h.run(PY, ["scripts/shorts_xray.py", vid], { cwd: ROOT, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(Number(m[1]) * 0.7, m[2]); } });
+      const r = await h.run(PY, ["scripts/shorts_xray.py", vid, ...(fast ? ["--whisper", "base"] : [])], { cwd: ROOT, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(Number(m[1]) * 0.7, m[2]); } });
       if (r.timedOut || r.canceled) return r;
       if (r.code !== 0) return { error: "분해 분석에 실패했습니다", detail: tail(r.err || r.out) };
     }
     // 이어서 스타일 카드(형식 · 박자 · 말투 — 내 주제로 옮길 때 콘티 · 화면 · 음성이 따른다). 실패해도 분해 결과는 남긴다
     const s = !force && existsSync(path.join(dir, "style", "style.json")) ? { code: 0 } : await h.run(PY, ["scripts/ref_style.py", vid], { cwd: ROOT, timeout: 20 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.7 + Number(m[1]) * 0.1, `스타일 카드 · ${m[2]}`); } });
     // 이어서 채널 말투 카드(같은 채널 쇼츠 여러 편 — 말투 · 구성 · 농담 · 목소리). 실패해도 스타일 카드는 남는다
-    const c = req.body?.channel === false ? null : await h.run(PY, ["scripts/ref_channel.py", vid, "--n", String(Math.max(2, Math.min(10, Number(req.body?.n) || 5))), ...(force ? ["--fresh"] : [])], { cwd: ROOT, timeout: 40 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.8 + Number(m[1]) * 0.2, `채널 말투 · ${m[2]}`); } });
+    const c = req.body?.channel === false ? null : await h.run(PY, ["scripts/ref_channel.py", vid, "--n", String(fast ? 2 : Math.max(2, Math.min(10, Number(req.body?.n) || 5))), ...(fast ? ["--whisper", "base"] : []), ...(force ? ["--fresh"] : [])], { cwd: ROOT, timeout: 40 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.8 + Number(m[1]) * 0.2, `채널 말투 · ${m[2]}`); } });
     const ch = c && c.code === 0 ? lastJson(c) : null;
     return { result: { url: `/api/public/trends/xray/${vid}/xray.json`, style: s.code === 0 ? `/api/public/trends/xray/${vid}/style/style.json` : null,
       channel: ch?.channel ? `/api/public/trends/channels/${ch.channel}/channel.json` : null } };

@@ -42,11 +42,12 @@ def main() -> int:
     ap.add_argument("--n", type=int, default=5, help="같은 채널에서 더 볼 쇼츠 수")
     ap.add_argument("--no-channel", action="store_true")
     ap.add_argument("--force", action="store_true", help="이미 끝난 단계도 다시")
+    ap.add_argument("--fast", action="store_true", help="빠르게: 같은 채널 2편 · 가벼운 받아쓰기(base). 분석 정확도는 조금 낮다")
     ap.add_argument("--wait", type=float, default=540, help="기다릴 최대 초(명령 한 번의 시간 제한 안쪽)")
     a = ap.parse_args()
     vid = vid_of(a.video)
     try:
-        jid = call("POST", f"/api/trends/xray/{vid}", {"n": a.n, "channel": not a.no_channel, "force": a.force})["jobId"]
+        jid = call("POST", f"/api/trends/xray/{vid}", {"n": a.n, "channel": not a.no_channel, "force": a.force, "fast": a.fast})["jobId"]
     except urllib.error.URLError as e:
         fail("analyze_ref", stage="server", error=f"Fluma 서버({API})에 닿지 못했습니다: {e}")
     print(f"[분석] 서버 작업 {jid[:8]} — 턴이 끝나도 계속 돈다", flush=True)
