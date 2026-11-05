@@ -114,7 +114,8 @@ npm --prefix web run dev                     # → http://localhost:4311
 
 - 어떤 방법으로 설치할지(Docker · 바로 설치 · 개발) · 컴퓨터 사양 · 영상이 어디 저장되는지: [빠른 시작](QUICKSTART.ko.md#나에게-맞는-방법-고르기)
 - 최소 설치: `python3 scripts/doctor.py --fix --profile lite --core`(나머지는 처음 쓸 때 스스로 설치)
-- Docker(전부 포함): `docker compose build && docker compose up -d`
+- Docker(전부 포함): `docker compose pull && docker compose up -d`
+- 내 에이전트에게 맡기기: Claude Code · Codex 에게 이 스킬 주소 — https://raw.githubusercontent.com/meowassassin/fluma/main/docs/skill/SKILL.md
 
 ## 스킬
 

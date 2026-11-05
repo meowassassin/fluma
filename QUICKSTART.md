@@ -8,7 +8,8 @@ Fluma runs locally: a web Studio (Node) plus a Python pipeline, driving the open
 
 | You want | Use | Time |
 |---|---|---|
-| The easiest start, any OS (Linux · macOS · Windows) | [Docker](#docker) — two commands, everything included | build ~15 min, once |
+| Let your own agent do it | Give Claude Code or Codex: *Use this skill: https://raw.githubusercontent.com/meowassassin/fluma/main/docs/skill/SKILL.md — make a Short about "…"* | hands-off |
+| The easiest start, any OS (Linux · macOS · Windows) | [Docker](#docker) — two commands, everything included | download ~15 GB, once |
 | To run it directly on your machine | [Install](#2-install) — `doctor.py --fix` | ~10 min + downloads |
 | To change Fluma itself | Install, then `npm --prefix web run dev` and the [tests](#check--troubleshoot) | — |
 
@@ -81,7 +82,7 @@ The agent shows images, stills and videos right in the chat — you should not h
 ```bash
 git pull
 python3 scripts/doctor.py --fix                   # direct install: new packages · Craft app versions
-docker compose build && docker compose up -d      # Docker: your work stays in the volumes
+docker compose pull && docker compose up -d       # Docker: your work stays in the volumes
 ```
 
 ## 4. Connect YouTube (optional)
@@ -105,7 +106,7 @@ unverified app can be locked to Private; change it in YouTube Studio. Analytics 
 ## Docker
 
 ```bash
-docker compose build
+docker compose pull             # prebuilt image (~15 GB, once) — or `docker compose build` to build it yourself (~15 min)
 docker compose up -d            # → http://localhost:4311   (stop: docker compose down)
 ```
 

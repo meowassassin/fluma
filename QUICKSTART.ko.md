@@ -8,7 +8,8 @@ Fluma 는 로컬에서 돕니다: 웹 스튜디오(Node) + 파이썬 파이프�
 
 | 원하는 것 | 방법 | 시간 |
 |---|---|---|
-| 가장 쉽게, 어느 운영체제든(Linux · macOS · Windows) | [Docker](#docker) — 명령 두 줄, 전부 들어 있음 | 처음 빌드 약 15분 |
+| 내 에이전트에게 맡기기 | Claude Code · Codex 에게: *이 스킬을 써 줘: https://raw.githubusercontent.com/meowassassin/fluma/main/docs/skill/SKILL.md — "…" 쇼츠를 만들어 줘* | 손 안 댐 |
+| 가장 쉽게, 어느 운영체제든(Linux · macOS · Windows) | [Docker](#docker) — 명령 두 줄, 전부 들어 있음 | 처음 약 15GB 받기 |
 | 내 컴퓨터에 바로 설치 | [설치](#2-설치) — `doctor.py --fix` | 약 10분 + 내려받기 |
 | Fluma 자체를 고치기 | 설치 후 `npm --prefix web run dev` 와 [시험](#확인--문제-해결) | — |
 
@@ -79,7 +80,7 @@ npm --prefix web run dev     # API 127.0.0.1:4310, 스튜디오 http://localhost
 ```bash
 git pull
 python3 scripts/doctor.py --fix                   # 바로 설치: 새 패키지 · Craft 앱 버전
-docker compose build && docker compose up -d      # Docker: 작업물은 볼륨에 그대로
+docker compose pull && docker compose up -d       # Docker: 작업물은 볼륨에 그대로
 ```
 
 ## 4. YouTube 연결(선택)
@@ -103,7 +104,7 @@ docker compose build && docker compose up -d      # Docker: 작업물은 볼륨�
 ## Docker
 
 ```bash
-docker compose build
+docker compose pull             # 미리 빌드한 이미지(약 15GB, 처음 한 번) — 직접 빌드하려면 docker compose build(약 15분)
 docker compose up -d            # → http://localhost:4311   (멈추기: docker compose down)
 ```
 

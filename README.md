@@ -117,7 +117,8 @@ npm --prefix web run dev                     # → http://localhost:4311
 
 - Which way to install (Docker · direct · development), what your computer needs, where your videos are: [QUICKSTART.md](QUICKSTART.md#pick-a-path)
 - Minimal install: `python3 scripts/doctor.py --fix --profile lite --core` (the rest installs itself on first use)
-- Docker (everything included): `docker compose build && docker compose up -d`
+- Docker (everything included): `docker compose pull && docker compose up -d`
+- Or let your own agent install it: give Claude Code / Codex this skill — https://raw.githubusercontent.com/meowassassin/fluma/main/docs/skill/SKILL.md
 
 ## Skills
 
