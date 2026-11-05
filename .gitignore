@@ -32,6 +32,7 @@ workspace/trend-picks.json
 
 # Craft 앱 설치본 (scripts/crafts.py)
 tools/crafts/
+tools/toolchains/
 
 # ---- 사용 데이터: 영상 · 조사 · 업로드 · 기록은 저장소에 올리지 않는다(사람마다 다름 · 개인 정보) ----
 storyboards/*

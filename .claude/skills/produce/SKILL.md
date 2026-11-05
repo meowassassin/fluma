@@ -11,10 +11,19 @@ order: 2
 화면은 '템플릿에 칸 채우기'가 아니라 **장면마다 무엇이 보여야 하는지(재료)** 를 정하는 것이다. 좌표 · 툴 이름은 쓰지 않는다.
 
 **개발 · 기술 주제는 실제 화면으로**(2026-11-04 사용자: "이상한 효과보다 실제 화면 위주로 자세하게"): 꾸민 로그 · 도표 · 큰 숫자 대신
-- 작은 예제 프로젝트를 `compositions/<id>/demo/` 에 만들어 **실제로 실행**하고, 그 출력을 `python3 scripts/termrec.py capture <id> <이름> --cwd <폴더> --prompt "$ …" -- <명령>` 으로 저장 → `termrec.py render <id> <이름> --mark <강조 줄>` 로 터미널 화면 요소를 만든다(재료 `{"type": "web", "src": "public/elements/<id>/<이름>"}`)
+- 작은 예제 프로젝트를 `compositions/<id>/demo/<프로젝트>/` 에 쓰고, 실행 계획 `compositions/<id>/demo/demo.json`(실행 · 바꾼 버전 · 코드 발췌 · 공식 문서)을 적은 뒤
+  **`python3 scripts/demo.py run <id>`** 한 줄 — 빌드(Java · Maven 은 공식 배포판을 스스로 받음) → 실행 → 터미널 녹화 · 코드 화면 · 문서 녹화 → 콘티에 붙일 `material=` 줄(형식은 scripts/demo.py 맨 위)
 - 화면에 보이는 코드는 그 예제의 실제 파일 그대로, 공식 문서는 `webrec.py` 로 해당 절을 녹화(쿠키 창은 누르지 않고 숨겨진다)
 - 말로 한 주장("EAGER 로 바꿔도 똑같다" 등)은 실제로 돌려 본 출력으로 보여 준다. 돌려 보니 다르면 대사를 고친다
 - 나레이션이 없으면 재료 전환 시각을 materials `start`(초) · `holds`(상태별 초)로 정한다
+
+## 한 줄로 돌리기(기본)
+재료 칸(materials)까지 콘티에 적었으면 나머지는 **`python3 scripts/produce.py storyboards/<id>.json`** 한 줄 — 음성 → 검사 → 재료 · 초안 렌더 → 장면별 정지 화면 → 편집 밀도 · 템포를 정해진 순서로 돌린다(앞에서 한 번, timeout 10분).
+- 종료 0 → media 줄(초안 + 장면별 정지 화면)을 채팅에 띄우고, 정지 화면을 Read 로 직접 보고 고칠 곳만 고쳐 다시 produce
+- 종료 1 stage=lint → 걸린 규칙만 고쳐 다시 · stage=render → error 짧은 이유로 고쳐 다시
+- 종료 10 → 사용자 녹화(L36) · 스톡 키(L38) 같은 것을 한 번에 부탁
+- 장면 몇 개만 볼 때 `--scenes 1-3`, 대사를 안 바꿨으면 `--no-audio`
+아래 단계는 produce.py 가 하는 일의 설명이자, 막혔을 때 한 단계씩 볼 때 쓴다.
 
 ## 순서
 0. **레퍼런스 먼저(건너뛰지 않는다 — 검사 L30)**: 콘티에 `reference` 가 없으면 만들기 전에
