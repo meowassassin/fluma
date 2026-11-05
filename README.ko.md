@@ -112,6 +112,7 @@ python3 scripts/doctor.py --fix              # 전부: 파이썬 패키지 · Cr
 npm --prefix web run dev                     # → http://localhost:4311
 ```
 
+- 어떤 방법으로 설치할지(Docker · 바로 설치 · 개발) · 컴퓨터 사양 · 영상이 어디 저장되는지: [빠른 시작](QUICKSTART.ko.md#나에게-맞는-방법-고르기)
 - 최소 설치: `python3 scripts/doctor.py --fix --profile lite --core`(나머지는 처음 쓸 때 스스로 설치)
 - Docker(전부 포함): `docker compose build && docker compose up -d`
 

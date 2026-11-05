@@ -2,7 +2,29 @@
 
 **English** · [한국어](QUICKSTART.ko.md)
 
-Fluma runs locally: a web Studio (Node) plus a Python pipeline, driving the open-source Craft apps. About 10 minutes on a fresh Linux machine (plus the Craft app download).
+Fluma runs locally: a web Studio (Node) plus a Python pipeline, driving the open-source Craft apps.
+
+## Pick a path
+
+| You want | Use | Time |
+|---|---|---|
+| The easiest start, any OS (Linux · macOS · Windows) | [Docker](#docker) — two commands, everything included | build ~15 min, once |
+| To run it directly on your machine | [Install](#2-install) — `doctor.py --fix` | ~10 min + downloads |
+| To change Fluma itself | Install, then `npm --prefix web run dev` and the [tests](#check--troubleshoot) | — |
+
+Either way you need an agent: a logged-in **Claude Code** or **Codex** CLI on your computer (Docker reuses that login),
+or an API key (Anthropic, OpenAI, OpenRouter, Gemini, or a local Ollama) entered in **Settings → Models · Providers**.
+
+### What your computer needs
+
+| | Docker | Direct install |
+|---|---|---|
+| Disk | about 15 GB (image) + your videos | about 6 GB (.venv 1.3 · Craft apps 3.6 · models ~1 · Chromium 0.7) |
+| Memory | 8 GB or more (tested on 16 GB) | same |
+| CPU | any 64-bit; analysis and rendering use every core (tested on 8 cores) | same |
+| GPU | not needed | not needed |
+
+Smaller: `PROFILE=lite CRAFTS=core MODELS=0 docker compose build`, or `doctor.py --fix --profile lite --core` — missing pieces install themselves on first use.
 
 ## 1. Requirements
 
@@ -40,6 +62,28 @@ Open the Studio, type a topic on Home and plan the video in chat. Press **Start 
 looks right — the agent studies reference Shorts, builds the scenes and renders a draft. The editor's Explorer shows
 what the video is made of; ask the agent on the right to change anything.
 
+### Where your files are
+
+| What | Where (direct install) | Docker |
+|---|---|---|
+| Finished videos | `out/<id>-….mp4` | volume `fluma_out` |
+| Storyboards | `storyboards/<id>.json` | volume `fluma_storyboards` |
+| Editable projects (EffectCraft · SoundCraft · FilmCraft) | `compositions/<id>/craft/` | volume `fluma_compositions` |
+| Reference analysis | `public/trends/` | volume `fluma_trends` |
+| API keys · YouTube login | `~/.shortsforge/` (0600, never in the repo, the agent cannot read it) | volume `fluma_keys` |
+
+Easiest on any setup: **Download** next to **Render** in the editor saves any render to your computer, named after the video title. From the terminal (Docker): `docker compose cp fluma:/app/out ./videos`.
+
+The agent shows images, stills and videos right in the chat — you should not have to look for files.
+
+### Update
+
+```bash
+git pull
+python3 scripts/doctor.py --fix                   # direct install: new packages · Craft app versions
+docker compose build && docker compose up -d      # Docker: your work stays in the volumes
+```
+
 ## 4. Connect YouTube (optional)
 
 Upload and per-scene analytics need your own Google OAuth client — about 10 minutes, once:
@@ -69,10 +113,15 @@ That's it. The agent uses your own Claude Code and Codex logins (`~/.claude`, `~
 volumes, and the image already contains everything (all Python packages, all 16 Craft apps, the analysis models).
 For a smaller image: `PROFILE=lite CRAFTS=core MODELS=0 docker compose build`.
 
+If Docker is not installed: [Docker Desktop](https://www.docker.com/products/docker-desktop/) (macOS · Windows), or Docker Engine on Linux.
+On Windows, Docker Desktop uses WSL 2 — [install WSL](https://learn.microsoft.com/windows/wsl/install) first if it asks.
+
 <details><summary>Troubleshooting</summary>
 
-- Agent says it is not logged in (e.g. Claude Code on macOS keeps its login in the Keychain): `docker compose exec -it fluma claude` → `/login` once
-- On Linux, if your user id (`id -u`) is not 1000, set `FLUMA_UID=…` and `FLUMA_GID=…` in `.env`
+- **`Bind for 127.0.0.1:4311 failed: port is already allocated`** — another Fluma (or dev server) is running. `docker ps` shows which; stop it with `docker compose down` in *its* folder, or stop the dev server.
+- **`service "fluma" is not running`** — you ran the command in a different folder from the one you started Fluma in (compose names projects by folder). Run it where `docker-compose.yml` is, or use `docker ps` to find the container name.
+- **Agent says it is not logged in** (e.g. Claude Code on macOS keeps its login in the Keychain): `docker compose exec -it fluma claude` → `/login` once.
+- **Files created by the container belong to another user (Linux)** — if `id -u` is not 1000, set `FLUMA_UID=…` and `FLUMA_GID=…` in `.env` and rebuild.
 
 </details>
 
@@ -85,6 +134,8 @@ python3 scripts/crafts.py list      # which Craft apps are installed
 python -m pytest tests              # core tests
 ```
 
+- **`ffmpeg: command not found`** — install it with your OS package manager (table above); `doctor.py` prints the exact command.
+- **Model download fails (Hugging Face)** — check the network and run `python3 scripts/prefetch_models.py` again; it retries only what is missing.
 - **No sound in renders** — the default voice may be *Silent (for testing)*; pick a voice in Settings → Media → Voice.
 - **Free 2D models hit a quota** — add a free Hugging Face token in Settings → Media → 2D generation.
 - **Windows: Korean text errors when running scripts yourself** — turn on Python UTF-8 mode once: `setx PYTHONUTF8 1` (new terminal after). The Studio already runs scripts that way.

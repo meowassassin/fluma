@@ -2,7 +2,29 @@
 
 [English](QUICKSTART.md) · **한국어**
 
-Fluma 는 로컬에서 돕니다: 웹 스튜디오(Node) + 파이썬 파이프라인이 오픈소스 Craft 앱을 부립니다. 새 Linux 컴퓨터 기준 약 10분(Craft 앱 내려받기 시간 별도).
+Fluma 는 로컬에서 돕니다: 웹 스튜디오(Node) + 파이썬 파이프라인이 오픈소스 Craft 앱을 부립니다.
+
+## 나에게 맞는 방법 고르기
+
+| 원하는 것 | 방법 | 시간 |
+|---|---|---|
+| 가장 쉽게, 어느 운영체제든(Linux · macOS · Windows) | [Docker](#docker) — 명령 두 줄, 전부 들어 있음 | 처음 빌드 약 15분 |
+| 내 컴퓨터에 바로 설치 | [설치](#2-설치) — `doctor.py --fix` | 약 10분 + 내려받기 |
+| Fluma 자체를 고치기 | 설치 후 `npm --prefix web run dev` 와 [시험](#확인--문제-해결) | — |
+
+어느 쪽이든 에이전트가 필요합니다: 내 컴퓨터에 로그인된 **Claude Code** 나 **Codex**(Docker 도 그 로그인을 그대로 씀),
+또는 API 키(Anthropic · OpenAI · OpenRouter · Gemini · 로컬 Ollama)를 **설정 → 모델 · 공급자**에 넣습니다.
+
+### 컴퓨터 사양
+
+| | Docker | 바로 설치 |
+|---|---|---|
+| 디스크 | 약 15GB(이미지) + 만든 영상 | 약 6GB(.venv 1.3 · Craft 앱 3.6 · 모델 약 1 · Chromium 0.7) |
+| 메모리 | 8GB 이상(16GB 에서 시험) | 같음 |
+| CPU | 64비트면 됨. 분석 · 렌더는 코어를 모두 씀(8코어에서 시험) | 같음 |
+| GPU | 필요 없음 | 필요 없음 |
+
+작게: `PROFILE=lite CRAFTS=core MODELS=0 docker compose build` 또는 `doctor.py --fix --profile lite --core` — 빠진 것은 처음 쓸 때 스스로 설치됩니다.
 
 ## 1. 준비물
 
@@ -38,6 +60,28 @@ npm --prefix web run dev     # API 127.0.0.1:4310, 스튜디오 http://localhost
 스튜디오의 홈에서 주제를 적고 대화로 기획합니다. 콘티가 괜찮으면 **제작 시작** — 에이전트가 레퍼런스 쇼츠를 분석하고
 장면을 만들어 초안을 렌더합니다. 편집기 왼쪽 탐색기에 영상이 무엇으로 이루어졌는지 나오고, 고칠 것은 오른쪽 에이전트에게 말합니다.
 
+### 파일은 어디에
+
+| 무엇 | 바로 설치 | Docker |
+|---|---|---|
+| 완성 영상 | `out/<id>-….mp4` | 볼륨 `fluma_out` |
+| 콘티 | `storyboards/<id>.json` | 볼륨 `fluma_storyboards` |
+| 고칠 수 있는 프로젝트(EffectCraft · SoundCraft · FilmCraft) | `compositions/<id>/craft/` | 볼륨 `fluma_compositions` |
+| 레퍼런스 분석 | `public/trends/` | 볼륨 `fluma_trends` |
+| API 키 · YouTube 로그인 | `~/.shortsforge/`(0600, 저장소에 안 들어감, 에이전트는 못 읽음) | 볼륨 `fluma_keys` |
+
+가장 쉬운 방법(어떤 설치든): 편집기 **렌더** 옆 **내려받기** 를 누르면 영상 제목 이름으로 내 컴퓨터에 저장됩니다. 터미널에서(Docker): `docker compose cp fluma:/app/out ./videos`
+
+그림 · 정지 화면 · 영상은 에이전트가 채팅에 바로 띄웁니다 — 파일을 찾으러 다닐 필요가 없어야 합니다.
+
+### 업데이트
+
+```bash
+git pull
+python3 scripts/doctor.py --fix                   # 바로 설치: 새 패키지 · Craft 앱 버전
+docker compose build && docker compose up -d      # Docker: 작업물은 볼륨에 그대로
+```
+
 ## 4. YouTube 연결(선택)
 
 업로드와 장면별 통계에는 내 Google OAuth 클라이언트가 필요합니다 — 처음 한 번, 약 10분:
@@ -67,10 +111,15 @@ docker compose up -d            # → http://localhost:4311   (멈추기: docker
 이미지에 전부(파이썬 패키지 전체 · Craft 앱 16개 · 분석 모델) 들어 있습니다.
 작게 빌드하려면: `PROFILE=lite CRAFTS=core MODELS=0 docker compose build`.
 
+Docker 가 없으면: [Docker Desktop](https://www.docker.com/products/docker-desktop/)(macOS · Windows), Linux 는 Docker Engine.
+Windows 의 Docker Desktop 은 WSL 2 를 씁니다 — 물어보면 [WSL 설치](https://learn.microsoft.com/ko-kr/windows/wsl/install)부터.
+
 <details><summary>문제 해결</summary>
 
-- 에이전트가 로그인되지 않았다고 하면(예: Mac 의 Claude Code 는 로그인을 키체인에 둠): `docker compose exec -it fluma claude` → `/login` 한 번
-- Linux 에서 내 사용자 번호(`id -u`)가 1000 이 아니면 `.env` 에 `FLUMA_UID=…` · `FLUMA_GID=…`
+- **`Bind for 127.0.0.1:4311 failed: port is already allocated`** — 다른 Fluma(또는 개발 서버)가 돌고 있습니다. `docker ps` 로 어느 것인지 보고, *그것을 띄운 폴더*에서 `docker compose down` 하거나 개발 서버를 끄세요.
+- **`service "fluma" is not running`** — Fluma 를 띄운 폴더와 다른 폴더에서 명령을 실행했습니다(compose 는 폴더 이름으로 프로젝트를 나눔). `docker-compose.yml` 이 있는 폴더에서 실행하거나 `docker ps` 로 컨테이너 이름을 찾으세요.
+- **에이전트가 로그인되지 않았다고 함**(예: Mac 의 Claude Code 는 로그인을 키체인에 둠): `docker compose exec -it fluma claude` → `/login` 한 번
+- **컨테이너가 만든 파일의 주인이 다름(Linux)** — `id -u` 가 1000 이 아니면 `.env` 에 `FLUMA_UID=…` · `FLUMA_GID=…` 를 넣고 다시 빌드
 
 </details>
 
@@ -83,6 +132,8 @@ python3 scripts/crafts.py list      # 설치된 Craft 앱
 python -m pytest tests              # 핵심 시험
 ```
 
+- **`ffmpeg: command not found`** — 운영체제 패키지 관리자로 설치하세요(위 표). `doctor.py` 가 정확한 명령을 알려 줍니다.
+- **모델 내려받기 실패(Hugging Face)** — 네트워크를 확인하고 `python3 scripts/prefetch_models.py` 를 다시 실행하세요. 빠진 것만 다시 받습니다.
 - **렌더에 소리가 없음** — 기본 음성이 *무음(시험용)*일 수 있어요. 설정 → 미디어 → 음성에서 목소리를 고르세요.
 - **무료 2D 모델 할당량 초과** — 설정 → 미디어 → 2D 생성에 무료 Hugging Face 토큰을 넣으세요.
 - **Windows 에서 스크립트를 직접 돌릴 때 한글 오류** — 파이썬 UTF-8 모드를 한 번 켜세요: `setx PYTHONUTF8 1`(새 터미널부터 적용). 스튜디오는 이미 그렇게 실행합니다.

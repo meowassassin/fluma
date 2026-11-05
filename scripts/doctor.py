@@ -131,6 +131,7 @@ def du(p: Path) -> int:
 # 용량 큰 것: (경로, 무엇, 지워도 되나 · 다시 얻는 법)
 HEAVY = [
     (".venv", "파이썬 패키지(필수)", "지우면 doctor.py --fix 로 다시"),
+    ("tools/crafts", "Craft 앱(렌더 엔진, 필수)", "지우면 doctor.py --fix 로 다시 · 안 쓰는 앱만: crafts.py remove <앱>"),
     ("voices/melotts/.venv", "MeloTTS 음성 엔진(선택)", "안 쓰면 지워도 됨 — 설정 → 미디어 → 음성에서 다시 설치"),
     ("voices/chatterbox/.venv", "Chatterbox 음성 엔진(선택)", "안 쓰면 지워도 됨 — 다시 설치 가능"),
     ("voices/cosyvoice/.venv", "CosyVoice 음성 엔진(선택)", "안 쓰면 지워도 됨"),
