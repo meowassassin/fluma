@@ -118,6 +118,24 @@ async function cachedValue(key, loader, { wait = 0, ttl, onFresh } = {}) {
   return c.value;
 }
 const lastJson = (r) => { try { return JSON.parse(r.out.trim().split("\n").pop()); } catch { return null; } };
+/** 스크립트 결과 규약(scripts/result.py): 출력 끝의 FLUMA_RESULT · FLUMA_NEEDS_INPUT · FLUMA_ERROR 블록 → { head, status, 키: 값 | [값…] } */
+const resultBlock = (out) => {
+  const lines = String(out || "").trim().split("\n");
+  const at = Math.max(lines.lastIndexOf("FLUMA_RESULT"), lines.lastIndexOf("FLUMA_NEEDS_INPUT"), lines.lastIndexOf("FLUMA_ERROR"));
+  if (at < 0) return null;
+  const b = { head: lines[at] };
+  for (const ln of lines.slice(at + 1)) {
+    const m = /^([a-z_]+)=(.*)$/.exec(ln); if (!m) continue;
+    b[m[1]] = b[m[1]] === undefined ? m[2] : [].concat(b[m[1]], m[2]);
+  }
+  return b;
+};
+/** 렌더 결과 영상(절대 경로) — 결과 블록의 file, 없으면(예전 스크립트) 마지막 줄 */
+const renderedFile = (r) => {
+  const b = resultBlock(r.out);
+  const f = b?.head === "FLUMA_RESULT" && typeof b.file === "string" ? (path.isAbsolute(b.file) ? b.file : path.join(ROOT, b.file)) : (r.out.trim().split("\n").pop() || "");
+  return f.endsWith(".mp4") && existsSync(f) ? f : null;
+};
 
 // ---------- 콘티 ----------
 app.get("/api/storyboards", ah(async (_req, res) => {
@@ -1050,8 +1068,8 @@ app.post("/api/projects/:id/draft", ah(async (req, res) => {
   const j = jobs.create({ type: "draft", project: id, key: `draft:${id}:${a.join(",")}`, label: "초안 렌더", work: async (h) => {
     const r = await h.run(PY, ["scripts/render.py", `storyboards/${id}.json`, "--draft", ...a], { cwd: ROOT });
     if (r.timedOut || r.canceled) return r;
-    const last = r.out.trim().split("\n").pop() || "";
-    if (r.code !== 0 || !last.endsWith(".mp4")) return { error: "초안을 렌더하지 못했습니다", detail: tail(r.err || r.out) };
+    const last = renderedFile(r);
+    if (r.code !== 0 || !last) return { error: "초안을 렌더하지 못했습니다", detail: resultBlock(r.out)?.error || tail(r.err || r.out) };
     return { result: { url: `/api/out/${path.basename(last)}?v=${Date.now()}` } };
   } });
   const r = await waitOrThrow(j, req, res, "draft_failed", "초안을 렌더하지 못했습니다"); if (!r) return;
@@ -1130,8 +1148,8 @@ function renderJob(id, body = {}) {
     const r = await h.run(PY, ["scripts/render.py", `storyboards/${id}.json`, ...a], { cwd: ROOT, env: { ...process.env, FLUMA_WORK_ROOT: workRoot }, onLine: renderProgress(h) });
     await fs.rm(workRoot, { recursive: true, force: true }).catch(() => {});
     if (r.timedOut || r.canceled) return r;
-    const last = r.out.trim().split("\n").pop() || "";
-    if (r.code !== 0 || !last.endsWith(".mp4") || !existsSync(last)) return { error: "렌더에 실패했습니다", detail: tail(r.err || r.out) };
+    const last = renderedFile(r);
+    if (r.code !== 0 || !last) return { error: "렌더에 실패했습니다", detail: resultBlock(r.out)?.error || tail(r.err || r.out) };
     return { result: { url: `/api/out/${path.basename(last)}`, file: path.basename(last) } };
   } });
 }

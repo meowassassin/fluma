@@ -18,6 +18,9 @@ import time
 import urllib.error
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from result import fail, ok, running  # noqa: E402  결과 규약(scripts/result.py)
+
 API = os.environ.get("FLUMA_API", f"http://127.0.0.1:{os.environ.get('PORT', '4310')}")
 
 
@@ -45,8 +48,7 @@ def main() -> int:
     try:
         jid = call("POST", f"/api/trends/xray/{vid}", {"n": a.n, "channel": not a.no_channel, "force": a.force})["jobId"]
     except urllib.error.URLError as e:
-        print(f"✗ Fluma 서버({API})에 닿지 못했습니다: {e}", file=sys.stderr)
-        return 2
+        fail("analyze_ref", stage="server", error=f"Fluma 서버({API})에 닿지 못했습니다: {e}")
     print(f"[분석] 서버 작업 {jid[:8]} — 턴이 끝나도 계속 돈다", flush=True)
     t0, last = time.time(), None
     while True:
@@ -56,14 +58,13 @@ def main() -> int:
         if line != last:
             print(f"  {int(time.time() - t0):>4}s  {line}", flush=True); last = line
         if st in ("done", "succeeded", "ok", "completed"):
-            print(json.dumps({"ok": True, "video": vid, **(j.get("result") or {})}, ensure_ascii=False))
-            return 0
+            r = j.get("result") or {}
+            ok("analyze_ref", video=vid, xray=r.get("url"), style=r.get("style"), channel=r.get("channel"),
+               card=(f"public/trends/channels/{r['channel'].split('/channels/')[1].split('/')[0]}/channel.md" if r.get("channel") else None))
         if st in ("error", "failed", "canceled", "cancelled", "timeout"):
-            print(f"✗ 분석 실패({st}): {j.get('error') or ''} {j.get('detail') or ''}".strip(), file=sys.stderr)
-            return 1
+            fail("analyze_ref", stage=j.get("stage") or st, error=f"{j.get('error') or st} {j.get('detail') or ''}".strip())
         if time.time() - t0 > a.wait:
-            print(f"… 아직 도는 중({line}). 서버에서 계속 돈다 — 같은 명령을 다시 부르면 이어서 기다린다", flush=True)
-            return 3
+            running("analyze_ref", video=vid, job=jid, progress=line, next="같은 명령을 다시 부르면 이 작업에 붙어 이어서 기다린다")
         time.sleep(4)
 
 

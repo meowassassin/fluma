@@ -96,14 +96,12 @@ def main() -> int:
     q = subprocess.run(["ffmpeg", "-v", "error", "-y", *ins, "-filter_complex", ";".join(fl), "-map", "[out]", "-map", "0:a?", "-c:v", "libx264", "-crf", "20", "-c:a", "aac", "-shortest", str(cmp_)], capture_output=True, text=True)
     if q.returncode != 0:
         print(f"✗ 나란히 영상 실패: {q.stderr[-300:]}", file=sys.stderr)
-    print("\n채팅에 그대로 붙이기:\n```media")
-    if cmp_.exists():
-        print(f"{cmp_.relative_to(ROOT)} | 나란히 비교")
-    for i, (name, p) in enumerate(outs):
-        print(f"{p.relative_to(ROOT)} | {i}. {name}")
-    print("```")
-    return 0
+    media = ([f"{cmp_.relative_to(ROOT)} | 나란히 비교"] if cmp_.exists() else []) + [f"{p.relative_to(ROOT)} | {i}. {name}" for i, (name, p) in enumerate(outs)]
+    from result import ok
+    ok("variants", file=str(cmp_.relative_to(ROOT)) if cmp_.exists() else None, media=media)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from result import run_main
+    run_main("variants", main)

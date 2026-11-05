@@ -90,12 +90,15 @@ def main() -> int:
             show.append((rel(p), p.stem))
         else:
             show.append((rel(p), p.name))
-    if show:
-        print("\n채팅에 그대로 붙이기:\n```media")
-        for s, c in show:
-            print(f"{s} | {c}")
-        print("```")
-    return 0 if show else 1
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from result import fail, ok
+    if not show:
+        fail("preview", stage="files", error="보여 줄 파일이 없습니다(경로 확인)")
+    print("\n채팅에 그대로 붙이기:\n```media")
+    for s, c in show:
+        print(f"{s} | {c}")
+    print("```")
+    ok("preview", media=[f"{s} | {c}" for s, c in show])
 
 
 if __name__ == "__main__":

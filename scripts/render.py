@@ -141,7 +141,7 @@ def render_mix(a, sb_path: Path):
     finish(silent, base.sb, out, burn_captions=bool(ranges), tokens=base.tokens, burn_ranges=ranges, **kw)
     out.with_suffix(".mix.json").write_text(json.dumps({"storyboard": str(sb_path), "draft": a.draft, "segments": manifest}, ensure_ascii=False, indent=1), encoding="utf-8")
     print(f"[완료] {out}")
-    print(out)
+    done(out, a)
 
 
 def craft_finish(job, silent: Path, out: Path) -> bool:
@@ -239,8 +239,21 @@ def main():
                 print(f"   {'✗' if code.startswith('L') else '△'} {code} {msg}")
         except Exception as e:   # 검사 실패가 렌더를 막지 않게
             print(f"[템포] 검사하지 못함: {e}")
-    print(out)
+    done(out, a)
+
+
+def done(out, a) -> None:
+    """결과 규약(scripts/result.py): FLUMA_RESULT 블록 — 서버 · 에이전트가 이 블록의 file 을 읽는다"""
+    from result import ok
+    p = Path(out).resolve()
+    try:
+        rel = str(p.relative_to(Path(__file__).resolve().parents[1]))
+    except ValueError:
+        rel = str(p)
+    kind = "초안" if a.draft else "최종"
+    ok("render", file=rel, media=[f"{rel} | {kind} 렌더"], draft=str(bool(a.draft)).lower())
 
 
 if __name__ == "__main__":
-    main()
+    from result import run_main
+    run_main("render", main)

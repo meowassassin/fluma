@@ -157,7 +157,8 @@ def cmd_render(a) -> int:
                          "drop_rules": rec.get("drop_rules"), "line_ms": a.line_ms, "note": "실제 실행 출력 — 글자는 그대로, 줄 사이 간격만 늘림"}}
     (dst / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), "utf-8")
     print(f"[termrec] {a.name}: {len(lines)}줄 · 영상 {dur}초 → public/elements/{a.id}/{a.name}/ (재료: {{\"type\": \"web\", \"src\": \"public/elements/{a.id}/{a.name}\", \"mobile\": true}})")
-    return 0
+    from result import ok
+    ok("termrec", element=str(dst.relative_to(ROOT)), sec=dur, lines=len(lines), material=json.dumps({"type": "web", "src": str(dst.relative_to(ROOT))}, ensure_ascii=False))
 
 
 def main() -> int:
@@ -177,4 +178,6 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from result import run_main
+    run_main("termrec", main)

@@ -144,10 +144,14 @@ def main() -> int:
         for i, c in enumerate(rows[: a.n]):
             print(f"{i}. {c['provider']} {c['id']}  {c['duration']:.0f}초  {c['width']}×{c['height']}  {c['author']}  {c['page']}")
         return 0
+    from result import needs_input, ok
+    if not (_key("PEXELS_API_KEY") or _key("PIXABAY_API_KEY")):
+        needs_input("stock", needs=["PEXELS_API_KEY 또는 PIXABAY_API_KEY(무료)"], how="설정 → API 키 — 채팅에 키를 붙이지 말고 설정 화면에")
     r = fetch(a.id, a.mid, a.query, a.pick, a.min_sec, a.provider)
-    print(json.dumps(r["credit"], ensure_ascii=False))
-    return 0
+    c = r["credit"]
+    ok("stock", file=r["raw"], credit=f"{c['provider']} · {c.get('author')} — {c['page']}", license=c["license"])
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    from result import run_main
+    run_main("stock", main)
