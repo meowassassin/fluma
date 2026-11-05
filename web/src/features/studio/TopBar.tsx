@@ -6,7 +6,7 @@ import { Icon } from "../../ui/Icon";
 import { FlumaBounce, FlumaStrain } from "../../ui/BrandIcons";
 import { Button, Dot, IconButton, Menu, Popover, Progress, Segmented, Tip, composing, confirmDialog, cx } from "../../ui/kit";
 import { useQuery } from "@tanstack/react-query";
-import { api, errMsg } from "../../lib/api";
+import { api, errMsg, type RenderFile } from "../../lib/api";
 import { clock } from "../../lib/clock";
 import { qc, qk, useHasAudio, useLint, useProjects } from "../../lib/queries";
 import { cancelJob, startRender, useProjectJob } from "../../lib/jobs";
@@ -199,11 +199,46 @@ const RenderButton: React.FC<{ sb: Storyboard | null; projectId: string }> = ({ 
   return (
     <div className="row tight">
       {job?.status === "done" && job.url && <Button size="md" variant="ghost" icon="external" onClick={() => window.open(job.url, "_blank")}>{t("결과 보기")}</Button>}
+      <DownloadButton projectId={projectId} doneAt={job?.status === "done" ? job.id : null} />
       <Tip label={t("영상을 MP4 로 만듭니다 (보통 30초~2분)")} kbd="R">
         <Button variant="primary" icon="export" disabled={!sb} onClick={() => sb && renderWithGate(projectId, sb)}>{t("렌더")}</Button>
       </Tip>
       <RenderOptions />
     </div>
+  );
+};
+
+/* 내려받기 — 이 영상의 렌더 결과를 내 컴퓨터에 저장(Docker 여도 명령 없이). 최신순, 최종 · 초안 · 비율 · 해상도 표시 */
+const mb = (b: number) => (b >= 1e9 ? `${(b / 1e9).toFixed(1)}GB` : `${Math.max(0.1, b / 1e6).toFixed(1)}MB`);
+const when = (ms: number) => new Date(ms).toLocaleString(undefined, { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+const DownloadButton: React.FC<{ projectId: string; doneAt: string | null }> = ({ projectId, doneAt }) => {
+  const [open, setOpen] = useState(false);
+  const { data, isLoading, error } = useQuery({ queryKey: ["renders", projectId, doneAt], queryFn: ({ signal }) => api.renders(projectId, signal), enabled: open, staleTime: 5_000 });
+  const rows: RenderFile[] = data ?? [];
+  const finals = rows.filter((r) => !r.draft && !r.variant);
+  const label = (r: RenderFile) => [r.variant ? t("버전 비교") : r.draft ? t("초안") : t("최종"), r.aspect !== "9:16" ? r.aspect : null, r.size ? `${r.size}p` : null, r.scenes ? t("장면 {n}", { n: r.scenes }) : null].filter(Boolean).join(" · ");
+  return (
+    <Popover open={open} onOpenChange={setOpen} width={380} trigger={
+      <button className="render-opt dl-trigger" title={t("렌더한 영상을 내 컴퓨터에 저장")}><Icon n="download" s={15} />{t("내려받기")}</button>}>
+      <div className="dl-pop">
+        <div className="ropt-t">{t("렌더한 영상")} <span className="faint">{finals.length ? t("최종 {n}개", { n: finals.length }) : t("최종 렌더 전")}</span></div>
+        {isLoading && <p className="faint">{t("불러오는 중…")}</p>}
+        {error && <p className="faint">{errMsg(error)}</p>}
+        {!isLoading && !rows.length && <p className="faint">{t("아직 렌더한 영상이 없어요. 오른쪽 ‘렌더’ 를 누르면 여기에 생깁니다.")}</p>}
+        <div className="dl-list">
+          {rows.map((r) => (
+            <div key={r.name} className={cx("dl-r", !r.draft && !r.variant && "final")}>
+              <div className="grow">
+                <b>{label(r)}</b>
+                <span className="faint small">{when(r.mtime)} · {mb(r.bytes)}</span>
+              </div>
+              <IconButton icon="play" label={t("보기")} size="sm" onClick={() => window.open(r.url, "_blank")} />
+              <a className="dl-a" href={r.download} download aria-label={t("{n} 내려받기", { n: label(r) })}><Icon n="download" s={15} />{t("저장")}</a>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Popover>
   );
 };
 

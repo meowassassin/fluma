@@ -1156,6 +1156,35 @@ app.get("/api/jobs/:id/events", jobStream);
 app.get("/api/render/:jobId/events", jobStream);   // 예전 주소
 app.use("/api/out", express.static(OUT));
 
+// ---------- 렌더 영상 내려받기 — 편집기 '내려받기' 버튼. Docker 에서도 명령 없이 영상을 내 컴퓨터로(2026-11-05) ----------
+// 이 영상의 out/<id>…mp4 만(다른 영상 · 다른 폴더 파일은 이름으로 막는다). 파일 이름은 영상 제목으로 저장되게
+const rendersOf = async (id) => {
+  if (!existsSync(OUT)) return [];
+  const names = (await fs.readdir(OUT)).filter((n) => (n.startsWith(`${id}-`) || n === `${id}.mp4`) && n.endsWith(".mp4"));
+  const rows = await Promise.all(names.map(async (n) => {
+    const st = await fs.stat(path.join(OUT, n));
+    const draft = n.includes("-draft"), variant = /-variants?(-\d+)?\.mp4$/.test(n);
+    const aspect = /-16x9/.test(n) ? "16:9" : /-1x1/.test(n) ? "1:1" : "9:16";
+    const size = (/-(720|1440|2160)p/.exec(n) || [])[1] || null;
+    const part = (/-s(\d+(?:-\d+)?)(?:-|\.)/.exec(n) || [])[1] || null;
+    return { name: n, bytes: st.size, mtime: st.mtimeMs, draft, variant, aspect, size, scenes: part, url: `/api/out/${encodeURIComponent(n)}`,
+      download: `/api/projects/${id}/renders/${encodeURIComponent(n)}/download` };
+  }));
+  return rows.sort((a, b) => b.mtime - a.mtime);
+};
+app.get("/api/projects/:id/renders", ah(async (req, res) => { res.json(await rendersOf(checkId(req.params.id))); }));
+app.get("/api/projects/:id/renders/:name/download", ah(async (req, res) => {
+  const id = checkId(req.params.id), name = String(req.params.name);
+  if (!(name.startsWith(`${id}-`) || name === `${id}.mp4`) || !name.endsWith(".mp4") || /[\\/]|\.\./.test(name)) throw notFound("영상이 없습니다");
+  const f = path.join(OUT, name);
+  if (!existsSync(f)) throw notFound("영상이 없습니다");
+  let title = id;
+  try { title = String(JSON.parse(await fs.readFile(sbPath(id), "utf8")).title || id); } catch { /* 콘티 없음 */ }
+  const tag = name.slice(id.length).replace(/\.mp4$/, "").replace(/-craft-Scenes/, "").replace(/^-/, "");
+  const nice = `${title}${tag ? ` (${tag})` : ""}.mp4`.replace(/[\\/:*?"<>|\n\r]+/g, " ").slice(0, 150);
+  res.download(f, nice);
+}));
+
 // ---------- 유튜브 업로드 ----------
 app.post("/api/upload", ah(async (req, res) => {
   const { id, mp4, privacy = "private", publishAt } = req.body || {};

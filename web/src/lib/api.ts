@@ -35,6 +35,9 @@ const get = <T,>(url: string, signal?: AbortSignal) => req<T>("GET", url, undefi
 
 /** 렌더 출력: 세로 해상도(9:16) · 화질 · 초당 프레임 */
 export interface RenderOpts { size?: "720" | "1080" | "1440" | "2160"; quality?: "standard" | "high" | "max"; fps?: 30 | 60; draft13?: boolean }
+/** 렌더 결과 파일 하나(out/<id>…mp4) */
+export interface RenderFile { name: string; bytes: number; mtime: number; draft: boolean; variant: boolean; aspect: "9:16" | "16:9" | "1:1"; size: string | null; scenes: string | null; url: string; download: string }
+
 /** 제작 관문(scripts/gate.py): 의도 카드 확인 · 시안(장면 1~3) 승인 */
 export interface GateStatus { intent: boolean; draft: boolean; why: string[] }
 
@@ -58,6 +61,8 @@ export const api = {
     req<{ stills: { seconds: number; url: string }[] }>("POST", `/api/projects/${id}/still`, { seconds, engine, template }, s),
   render: (id: string, opts: RenderOpts = {}) => req<{ jobId: string }>("POST", "/api/render", { id, ...opts }),
   gate: (id: string, s?: AbortSignal) => get<GateStatus>(`/api/projects/${id}/gate`, s),
+  /** 이 영상의 렌더 결과(최신순) — 편집기 '내려받기' */
+  renders: (id: string, s?: AbortSignal) => get<RenderFile[]>(`/api/projects/${id}/renders`, s),
   gateConfirm: (id: string, kind: "intent" | "draft") => req<{ ok: boolean }>("POST", `/api/projects/${id}/gate/${kind}`, {}),
   jobs: (project?: string) => get<Job[]>(`/api/jobs${project ? `?project=${encodeURIComponent(project)}` : ""}`),
   cancelJob: (jobId: string) => req<{ ok: boolean }>("DELETE", `/api/jobs/${jobId}`),
