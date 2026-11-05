@@ -31,7 +31,7 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = "macOS" ]; then brew install ffmpeg; elif [ "$RUNNER_OS" = "Windows" ]; then choco install ffmpeg -y --no-progress; else sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; fi
       - name: Install (doctor --fix)
-        run: python scripts/doctor.py --fix
+        run: python scripts/doctor.py --fix --profile lite --core --no-crafts   # 기본(전부: Craft 앱 16개 · 모델)은 OS 마다 2GB 넘게 받는다 — Craft 앱은 아래에서 하나만 시험
       - name: Windows UTF-8 mode for direct script runs (as QUICKSTART says)
         if: runner.os == 'Windows'
         run: echo "PYTHONUTF8=1" >> $GITHUB_ENV

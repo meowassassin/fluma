@@ -108,13 +108,12 @@ SHA256SUMS 로 검증해 `tools/crafts/`(git 제외)에 풉니다. 파이프라�
 
 ```bash
 git clone https://github.com/meowassassin/fluma && cd fluma
-python3 scripts/doctor.py --fix              # 기본: 콘티 · 무료 음성 · 렌더 · 검사
-python3 scripts/crafts.py install all        # Craft 앱(위 참고)
+python3 scripts/doctor.py --fix              # 전부: 파이썬 패키지 · Craft 앱 16개 · 모델 · npm
 npm --prefix web run dev                     # → http://localhost:4311
 ```
 
-- 레퍼런스 분석(받아쓰기 · OCR · 화면 분류): `python3 scripts/doctor.py --fix --profile analysis`
-- Docker: `docker compose up --build`
+- 최소 설치: `python3 scripts/doctor.py --fix --profile lite --core`(나머지는 처음 쓸 때 스스로 설치)
+- Docker(전부 포함): `docker compose build && docker compose up -d`
 
 ## 스킬
 

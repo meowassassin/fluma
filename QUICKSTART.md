@@ -22,31 +22,15 @@ git clone https://github.com/meowassassin/fluma && cd fluma
 python3 scripts/doctor.py --fix
 ```
 
-`doctor.py` creates `.venv`, installs the Python packages (`scripts/requirements.txt`), downloads Chromium, and runs
-`npm install` for the web app and the HyperFrames fallback engine. It only *tells* you how to install Node / ffmpeg —
-it does not need admin rights.
+That one command installs **everything**: `.venv` with all Python packages (`requirements-full.txt`), Chromium,
+all 16 open-source [Craft apps](https://github.com/storytold) (MIT / Apache-2.0, about 1.4 GB, checked against their
+SHA256SUMS into `tools/crafts/`), the analysis and background-removal models, and the npm packages. It only *tells*
+you how to install Node / ffmpeg — it does not need admin rights.
 
-| Profile | Adds | Command |
-|---|---|---|
-| `lite` (default) | storyboard · free voice · render · checks | `python3 scripts/doctor.py --fix` |
-| `analysis` | reference analysis: transcription, OCR, shot tags | `--profile analysis` |
-| `full` | background removal, generation APIs | `--profile full` |
+Short on disk? `python3 scripts/doctor.py --fix --profile lite --core` installs the minimum (7 core Craft apps, no
+models); anything missing is installed automatically the first time it is used.
 
-## 3. Install the Craft apps
-
-The pipeline builds every scene in the open-source [Craft apps](https://github.com/storytold) (MIT / Apache-2.0).
-They are not bundled — download the ones you use:
-
-```bash
-python3 scripts/crafts.py plan all       # what would be downloaded and how big (no download)
-python3 scripts/crafts.py install effectcraft soundcraft filmcraft vectorcraft gridcraft pdfcraft photocraft
-# or everything (16 apps, about 1.7 GB):  python3 scripts/crafts.py install all
-```
-
-Releases are checked against their SHA256SUMS and unpacked into `tools/crafts/` (git-ignored). You can also install
-them from the Studio (⌘K → *Craft apps*). Without them Fluma renders with HyperFrames instead.
-
-## 4. Run
+## 3. Run
 
 ```bash
 npm --prefix web run dev     # API on 127.0.0.1:4310, Studio on http://localhost:4311
@@ -56,7 +40,7 @@ Open the Studio, type a topic on Home and plan the video in chat. Press **Start 
 looks right — the agent studies reference Shorts, builds the scenes and renders a draft. The editor's Explorer shows
 what the video is made of; ask the agent on the right to change anything.
 
-## 5. Connect YouTube (optional)
+## 4. Connect YouTube (optional)
 
 Upload and per-scene analytics need your own Google OAuth client — about 10 minutes, once:
 
@@ -82,7 +66,8 @@ docker compose up -d            # → http://localhost:4311   (stop: docker comp
 ```
 
 That's it. The agent uses your own Claude Code and Codex logins (`~/.claude`, `~/.codex`), work persists in Docker
-volumes, and missing packages are installed by the agent the moment it needs them.
+volumes, and the image already contains everything (all Python packages, all 16 Craft apps, the analysis models).
+For a smaller image: `PROFILE=lite CRAFTS=core MODELS=0 docker compose build`.
 
 <details><summary>Troubleshooting</summary>
 

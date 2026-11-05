@@ -40,6 +40,8 @@ export interface AgentDockProps {
 const ChoiceCtx = createContext<((text: string) => void) | null>(null);
 /* 답 안의 제목 · 설명 후보를 콘티(storyboards/<id>.json 의 title · caption · hashtags)에 바로 적용 */
 const ApplyCtx = createContext<string | null>(null);
+/** 채팅 안 결과 보기(그림 · 영상 · 소리)가 파일을 받아 올 대화(프로젝트) id */
+const MediaCtx = createContext<string | null>(null);
 async function applyUpload(projectId: string, patch: { title?: string; caption?: string; hashtags?: string[] }) {
   try {
     const sb = await api.storyboard(projectId);
@@ -96,11 +98,13 @@ export const AgentDock: React.FC<AgentDockProps> = (p) => {
         <IconButton icon="sidebarR" label={t("에이전트 창 닫기 (왼쪽 레일 ‘에이전트’로 다시 열기)")} kbd="Mod+J" size="sm" onClick={() => setUi({ agentOpen: false })} />
       </header>}
       <Elsewhere sessionId={p.sessionId} />
+      <MediaCtx.Provider value={p.sessionId}>
       <ApplyCtx.Provider value={p.sessionId.startsWith("_") ? null : p.sessionId}>
       <ChoiceCtx.Provider value={s.live ? null : (text) => sendMessage(p.sessionId, text, { skill: p.defaultSkill ?? null, context: resolve(p.context) })}>
         <Log sessionId={p.sessionId} messages={s.messages} live={s.live} loaded={s.loaded} hints={p.hints} context={p.context} defaultSkill={p.defaultSkill} />
       </ChoiceCtx.Provider>
       </ApplyCtx.Provider>
+      </MediaCtx.Provider>
       {s.error && <div className="dock-err" role="alert"><Icon n="warn" s={14} />{s.error}</div>}
       <Composer {...p} live={!!s.live} sending={s.sending} stopping={s.stopping} />
     </aside>
@@ -377,9 +381,18 @@ export const Md = memo<{ text: string }>(({ text }) => {
       if (lang === "brief") { out.push(<Brief key={i} rows={parseBrief(buf.join("\n"))} />); continue; }
       if (lang === "titles") { out.push(<Titles key={i} items={buf.map((b) => b.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean)} />); continue; }
       if (lang === "desc") { out.push(<Desc key={i} text={buf.join("\n").trim()} />); continue; }
+      if (lang === "media") { out.push(<MediaRow key={i} items={buf.map(parseMedia).filter((x): x is MediaRef => !!x)} />); continue; }
       out.push(<pre key={i}><code>{buf.join("\n")}</code></pre>); continue;
     }
     if (!line.trim()) { out.push(<div key={i} className="md-gap" />); continue; }
+    // ![설명](경로) 만 있는 줄들 → 한 줄에 나란히
+    if (IMG_LINE.test(line)) {
+      const items: MediaRef[] = [];
+      while (i < lines.length && IMG_LINE.test(lines[i])) { const m = IMG_LINE.exec(lines[i])!; items.push({ path: m[2].trim(), caption: m[1].trim() }); i++; }
+      i--;
+      out.push(<MediaRow key={i} items={items} />);
+      continue;
+    }
     const h = /^#{1,4}\s+(.*)/.exec(line);
     if (h) { out.push(<div key={i} className="md-h">{inline(h[1])}</div>); continue; }
     const li = /^(\s*)[-*•]\s+(.*)/.exec(line);
@@ -391,6 +404,51 @@ export const Md = memo<{ text: string }>(({ text }) => {
   return <>{out}</>;
 });
 Md.displayName = "Md";
+
+/* ---------- 채팅 안 결과 보기: ```media 블록 · ![설명](경로) ---------- */
+// 에이전트는 결과를 '경로'로 주지 않고 여기에 띄운다(사용자가 파일을 찾아 열 필요가 없게). 경로는 저장소 기준(컨테이너의 /app/ · 절대 경로도 받음)
+type MediaRef = { path: string; caption: string };
+const IMG_LINE = /^\s*!\[([^\]]*)\]\(([^)]+)\)\s*$/;
+const parseMedia = (line: string): MediaRef | null => {
+  const s = line.replace(/^\s*[-*•]\s*/, "").trim();
+  if (!s) return null;
+  const m = IMG_LINE.exec(s);
+  if (m) return { path: m[2].trim(), caption: m[1].trim() };
+  const [p, ...c] = s.split(/\s+[|·—]\s+/);
+  return { path: p.replace(/^`|`$/g, "").trim(), caption: c.join(" · ").trim() };
+};
+const mediaKind = (p: string) => /\.(png|jpe?g|webp|gif|svg)$/i.test(p) ? "image" : /\.(mp4|webm|mov|m4v)$/i.test(p) ? "video" : /\.(wav|mp3|m4a|ogg|aac|flac)$/i.test(p) ? "audio" : "file";
+function mediaUrl(sid: string | null, p: string): string | null {
+  if (/^https?:\/\//.test(p)) return p;
+  let rel = p.replace(/\\/g, "/").replace(/^\.?\//, "").replace(/^app\//, "");
+  const k = rel.search(/(^|\/)(compositions|workspace|public|out|audio)\//);   // 절대 경로(/home/…/phantasos/out/…)도 저장소 기준으로
+  if (k > 0) rel = rel.slice(rel[k] === "/" ? k + 1 : k);
+  if (rel.startsWith("public/")) return `/api/public/${rel.slice(7).split("/").map(encodeURIComponent).join("/")}`;
+  if (!sid) return null;
+  return `/api/projects/${encodeURIComponent(sid)}/studio-file?p=${encodeURIComponent(rel)}`;
+}
+const MediaRow: React.FC<{ items: MediaRef[] }> = ({ items }) => {
+  const sid = useContext(MediaCtx);
+  if (!items.length) return null;
+  return (
+    <div className={cx("md-media", items.length > 1 && "multi")}>
+      {items.map((it, k) => {
+        const url = mediaUrl(sid, it.path), kind = mediaKind(it.path);
+        const name = it.caption || it.path.split("/").pop();
+        return (
+          <figure key={k}>
+            {!url ? <code>{it.path}</code>
+              : kind === "image" ? <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={name} loading="lazy" /></a>
+              : kind === "video" ? <video src={url} controls playsInline preload="metadata" />
+              : kind === "audio" ? <audio src={url} controls preload="metadata" />
+              : <a href={url} target="_blank" rel="noreferrer">{name}</a>}
+            {it.caption && <figcaption>{inline(it.caption)}</figcaption>}
+          </figure>
+        );
+      })}
+    </div>
+  );
+};
 
 /* ---------- 기획 대화 블록: 선택지 · 기획 카드 ---------- */
 /** 선택지 + 맨 아래 '직접 입력'(other) — 보기에 없는 요구는 그 자리에서 글로 써서 보낸다 */

@@ -22,6 +22,12 @@ RATE = 48000   # SoundCraft 새 세션의 샘플레이트
 
 def cli(app: str) -> Path | None:
     f = ROOT / "tools" / "crafts" / app / "installed.json"
+    if not f.exists():                                          # 없으면 그 자리에서 설치(못 하면 ffmpeg 로 대신)
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("fluma_crafts", ROOT / "scripts" / "crafts.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.ensure(app)
     try:
         rel = json.loads(f.read_text("utf-8")).get("cli")
     except (OSError, json.JSONDecodeError):

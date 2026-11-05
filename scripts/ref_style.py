@@ -109,10 +109,9 @@ def main():
     say(0.05, "밀착 시트")
     ts = [round(t * 0.5, 2) for t in range(int(dur * 2))]
     bands, thumbs = [], []
-    for t in ts:
-        f = frame_at(src, t + 0.01, tmp / f"s{int(t * 100):05d}.jpg")
-        im = Image.open(f).convert("RGB")
-        bands.append(band_of(np.array(im)))
+    for t, arr in ocr.frames(src, 0.01, 0.5, len(ts)):
+        im = Image.fromarray(arr)
+        bands.append(band_of(arr))
         th = im.copy(); th.thumbnail((180, 320))
         dr = ImageDraw.Draw(th); dr.rectangle([0, 0, 46, 16], fill=(0, 0, 0)); dr.text((3, 2), f"{t:.1f}s", fill=(255, 255, 0))
         thumbs.append(th)
@@ -133,7 +132,7 @@ def main():
 
     # 2) 샷마다 대표 프레임 OCR → 화면 종류
     say(0.25, "샷 글자 읽기")
-    langs = a.langs.split(",")
+    langs = ocr.order_langs(a.langs.split(","), " ".join(sg.get("text", "") for sg in x.get("speech", [])))
     shots = []
     for i, s in enumerate(x.get("shots", [])):
         mid = (s["start"] + s["end"]) / 2
@@ -150,11 +149,11 @@ def main():
     say(0.62, "자막 읽기")
     caps, open_ = [], {}
     n = int(dur)
-    for k in range(n + 1):
-        t = min(dur - 0.3, k + 0.5)
-        f = frame_at(src, t, tmp / f"cap{k:03d}.jpg")
+    caps_frames = ocr.frames(src, 0.5, 1.0, n + 1)
+    for k, (t, f) in enumerate(caps_frames):
+        t = min(dur - 0.3, t)
         seen = set()
-        for o in ocr.read(str(f), langs):
+        for o in ocr.read(f, langs):
             if not is_overlay(o):
                 continue
             key = re.sub(r"\s+", "", o["text"])[:24]
@@ -167,7 +166,7 @@ def main():
                 open_[key] = {"start": max(0, t - 0.5), "end": t + 0.5, "band": band, "y": round(by, 3), "h": round(bh, 3), "text_example": o["text"], "style": cap_style(o), "bg": o["bg"], "fg": o["fg"]}
         for key in [k_ for k_ in open_ if k_ not in seen]:
             caps.append(open_.pop(key))
-        say(0.62 + 0.2 * (k + 1) / (n + 1), f"자막 {k + 1}/{n + 1}초")
+        say(0.62 + 0.2 * (k + 1) / len(caps_frames), f"자막 {k + 1}/{len(caps_frames)}초")
     caps += list(open_.values())
     caps.sort(key=lambda c: c["start"])
     style_counts = {}

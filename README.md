@@ -111,13 +111,12 @@ Requirements: Python 3.10+, Node.js 20+, ffmpeg. Details and troubleshooting: [Q
 
 ```bash
 git clone https://github.com/meowassassin/fluma && cd fluma
-python3 scripts/doctor.py --fix              # lite: storyboard · free voice · render · checks
-python3 scripts/crafts.py install all        # the Craft apps (see above)
+python3 scripts/doctor.py --fix              # everything: Python packages · all 16 Craft apps · models · npm
 npm --prefix web run dev                     # → http://localhost:4311
 ```
 
-- Reference analysis (transcription, OCR, shot tags): `python3 scripts/doctor.py --fix --profile analysis`
-- Docker: `docker compose up --build`
+- Minimal install: `python3 scripts/doctor.py --fix --profile lite --core` (the rest installs itself on first use)
+- Docker (everything included): `docker compose build && docker compose up -d`
 
 ## Skills
 

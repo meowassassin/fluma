@@ -3,11 +3,10 @@
 
   python3 scripts/doctor.py              # 무엇이 있고 없는지만
   python3 scripts/doctor.py --sizes      # 무엇이 용량을 차지하는지 · 지워도 되는지
-  python3 scripts/doctor.py --fix        # 가벼운 시작(lite)에 필요한 것 설치: .venv · 파이썬 패키지 · Chromium · npm 패키지
-  python3 scripts/doctor.py --fix --profile analysis   # + 레퍼런스 분석(받아쓰기 · OCR · 화면 분류)
-  python3 scripts/doctor.py --fix --profile full       # + 누끼 · 생성 API · 유튜브 업로드
+  python3 scripts/doctor.py --fix        # 전부 설치: .venv · 파이썬 패키지(full) · Chromium · Craft 앱 16개 · 분석 · 누끼 모델 · npm 패키지
+  python3 scripts/doctor.py --fix --profile lite --core   # 가볍게(빠진 것은 처음 쓸 때 자동 설치)
 
-lite = 콘티 · Edge 음성(무료) · HyperFrames 화면 · 렌더 · 검사. 무거운 모델(Blender · SAM · 생성 모델)은 설정 화면에서 필요할 때 설치.
+full(기본) = 전부. lite = 콘티 · Edge 음성(무료) · HyperFrames 화면 · 렌더 · 검사. 무거운 모델(Blender · SAM · 생성 모델)은 설정 화면에서 필요할 때 설치.
 시스템 프로그램(Node 20+ · ffmpeg)은 설치하지 않고 명령만 알려 준다(관리자 권한이 필요할 수 있어서).
 """
 from __future__ import annotations
@@ -68,6 +67,9 @@ def checks() -> list[tuple[str, bool, str]]:
     return out
 
 
+CORE_CRAFTS = ["effectcraft", "soundcraft", "filmcraft", "vectorcraft", "gridcraft", "pdfcraft", "photocraft"]
+
+
 def install_hook() -> bool:
     """선택 패키지 자동 설치(scripts/autodeps.py)를 가상환경에 켠다 — 스크립트가 없는 패키지를 import 하면 그 자리에서 설치"""
     if not vpy().exists():
@@ -82,7 +84,7 @@ def install_hook() -> bool:
     return True
 
 
-def fix(profile: str) -> bool:
+def fix(profile: str, core: bool = False, crafts: bool = True) -> bool:
     ok = True
     if not vpy().exists():
         print("· 가상환경 만들기 (.venv)")
@@ -94,6 +96,14 @@ def fix(profile: str) -> bool:
     install_hook()
     print("· Chromium")
     ok &= run([str(vpy()), "-m", "playwright", "install", "chromium"])
+    # Craft 앱(렌더 엔진) — 기본은 전부. --core 면 핵심 7개(나머지는 쓰는 순간 엔진이 설치 — crafts.ensure)
+    names = CORE_CRAFTS if core else ["all"]
+    if crafts:
+        print(f"· Craft 앱 ({' · '.join(names)})")
+        ok &= run([str(vpy()), str(ROOT / "scripts" / "crafts.py"), "install", *names, "--no-web"])
+    if profile != "lite" and not core:
+        print("· 분석 · 누끼 모델 미리 받기")
+        run([str(vpy()), str(ROOT / "scripts" / "prefetch_models.py")])     # 실패해도 처음 쓸 때 받는다
     npm = shutil.which("npm")
     if not npm:
         print("  ✗ npm 이 없습니다 — Node.js 20+ 를 먼저 설치하세요"); return False
@@ -157,14 +167,16 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sizes", action="store_true", help="무엇이 용량을 차지하는지 · 지워도 되는지")
     ap.add_argument("--fix", action="store_true")
-    ap.add_argument("--profile", choices=list(REQ), default="lite")
+    ap.add_argument("--profile", choices=list(REQ), default="full")
+    ap.add_argument("--core", action="store_true", help="Craft 앱은 핵심 7개만 · 모델은 처음 쓸 때")
+    ap.add_argument("--no-crafts", action="store_true", help="Craft 앱은 설치하지 않는다(CI · 나중에 crafts.py install)")
     ap.add_argument("--hook", action="store_true", help="선택 패키지 자동 설치만 켜기")
     a = ap.parse_args()
     if a.hook:
         return 0 if install_hook() else 1
     if a.sizes:
         sizes(); return 0
-    if a.fix and not fix(a.profile):
+    if a.fix and not fix(a.profile, a.core, not a.no_crafts):
         print("\n일부 설치가 실패했습니다 — 위 출력을 확인하세요")
     print("\nFluma 준비 상태")
     rows = checks()

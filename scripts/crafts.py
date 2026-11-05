@@ -21,6 +21,7 @@ import json
 import os
 import platform
 import shutil
+import subprocess
 import sys
 import tarfile
 import urllib.request
@@ -197,6 +198,24 @@ def install(app: dict, web: bool, desk: bool) -> bool:
     return True
 
 
+def ensure(name: str) -> dict | None:
+    """필요한 순간 설치(앱 실행 파일만 · 확인값 검사 그대로) — 엔진이 부른다. 사용자에게 '설치해 주세요' 를 부탁하지 않기 위해.
+    이미 있으면 그대로, 이 운영체제용 릴리스가 없거나 받지 못하면 None"""
+    have = installed(name)
+    if have and have.get("cli"):
+        return have
+    app = next((x for x in apps() if x["name"] == name), None)
+    if not app:
+        return None
+    print(f"[{name}] 없어서 설치합니다(한 번만)", file=sys.stderr, flush=True)
+    try:
+        ok = install(app, web=False, desk=True)
+    except Exception as e:          # 네트워크 · 압축 오류 — 호출한 쪽이 대체 경로로
+        print(f"[{name}] 설치 실패: {e}", file=sys.stderr, flush=True)
+        return None
+    return installed(name) if ok else None
+
+
 def rows() -> list[dict]:
     out = []
     for a in apps():
@@ -210,9 +229,18 @@ def main() -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("list"); s.add_argument("--json", action="store_true")
     s = sub.add_parser("plan"); s.add_argument("name", nargs="?", default="all"); s.add_argument("--no-web", action="store_true"); s.add_argument("--no-app", action="store_true")
-    s = sub.add_parser("install"); s.add_argument("name"); s.add_argument("--no-web", action="store_true"); s.add_argument("--no-app", action="store_true")
+    s = sub.add_parser("install"); s.add_argument("name", nargs="+"); s.add_argument("--no-web", action="store_true"); s.add_argument("--no-app", action="store_true")
     s = sub.add_parser("remove"); s.add_argument("name")
+    # 에이전트는 python3 scripts/* 만 돌릴 수 있다 — Craft 앱 CLI(vectorcraft-cli convert … 등)는 이걸로(없으면 설치부터)
+    s = sub.add_parser("run", help="설치된 앱의 CLI 실행: crafts.py run vectorcraft convert a.svg b.png"); s.add_argument("name"); s.add_argument("args", nargs=argparse.REMAINDER)
     a = ap.parse_args()
+
+    if a.cmd == "run":
+        rec = ensure(a.name)
+        if not rec or not rec.get("cli"):
+            sys.exit(f"{a.name}: CLI 를 찾지 못했습니다")
+        exe = ROOT / rec["cli"] if not Path(rec["cli"]).is_absolute() else Path(rec["cli"])
+        sys.exit(subprocess.run([str(exe), *a.args]).returncode)
 
     if a.cmd == "list":
         r = rows()
@@ -223,10 +251,11 @@ def main() -> None:
             print(f"{x['name']:15} {'설치됨 ' + str(i.get('version')) if i else '-':18} {'에이전트' if x.get('agent') else '':6} {x['kind']}")
         return
 
-    pick_apps = lambda n: apps() if n == "all" else [x for x in apps() if x["name"] == n]
-    chosen = pick_apps(a.name)
-    if not chosen:
-        raise SystemExit(f"없는 앱입니다: {a.name} (crafts/ 아래 이름)")
+    names = a.name if isinstance(a.name, list) else [a.name]
+    chosen = apps() if "all" in names else [x for x in apps() if x["name"] in names]
+    unknown = [n for n in names if n != "all" and n not in {x["name"] for x in apps()}]
+    if unknown or not chosen:
+        raise SystemExit(f"없는 앱입니다: {', '.join(unknown or names)} (crafts/ 아래 이름)")
 
     if a.cmd == "plan":
         total = 0

@@ -94,22 +94,19 @@ def screen_scan(src: Path, dur: float, langs, step: float = 1.0) -> tuple[list[s
     from ref_style import band_of
     cnt: dict[str, int] = {}
     kinds, frames = [], []
+    from PIL import Image as _I
     with tempfile.TemporaryDirectory() as tmp:
-        t = 0.5
-        while t < dur:
-            f = Path(tmp) / f"c{int(t * 10):04d}.jpg"
-            run(["ffmpeg", "-v", "error", "-y", "-ss", f"{t:.2f}", "-i", str(src), "-frames:v", "1", "-q:v", "3", str(f)])
-            if f.exists():
-                lines = ocr.read(str(f), langs, min_score=0.8)
-                kinds.append((t, screen_kind(f, lines)))
-                from PIL import Image as _I
-                top, bot, bgc = band_of(np.array(_I.open(f).convert("RGB")))
-                frames.append({"t": t, "lines": [{k: o[k] for k in ("text", "box", "bg", "fg")} for o in lines], "band": [top, bot, bgc]})
-                for o in lines:
-                    for tok in o["text"].split():
-                        if 2 <= len(norm(tok)) <= 20 and not re.match(r"^[@#\d]|\d+(분|초|시간)전", tok):
-                            cnt[tok] = cnt.get(tok, 0) + 1
-            t += step
+        for k, (t, arr) in enumerate(ocr.frames(src, 0.5, step, int((dur - 0.5) / step) + 1)):
+            f = Path(tmp) / f"c{k:04d}.jpg"
+            _I.fromarray(arr).save(f, quality=90)          # CLIP 분류는 파일을 받는다
+            lines = ocr.read(arr, langs, min_score=0.8)
+            kinds.append((t, screen_kind(f, lines)))
+            top, bot, bgc = band_of(arr)
+            frames.append({"t": t, "lines": [{k_: o[k_] for k_ in ("text", "box", "bg", "fg")} for o in lines], "band": [top, bot, bgc]})
+            for o in lines:
+                for tok in o["text"].split():
+                    if 2 <= len(norm(tok)) <= 20 and not re.match(r"^[@#\d]|\d+(분|초|시간)전", tok):
+                        cnt[tok] = cnt.get(tok, 0) + 1
     return [w for w, _ in sorted(cnt.items(), key=lambda x: -x[1])], kinds, frames
 
 
@@ -234,7 +231,7 @@ def line_sheet(src: Path, sents: list[dict], dst: Path, offset: int):
     sh.save(dst, quality=85)
 
 
-def analyze_video(vid: str, title: str, d: Path, whisper: str, langs) -> dict | None:
+def analyze_video(vid: str, title: str, d: Path, whisper: str, langs, step: float = 1.0) -> dict | None:
     import separate
     import shorts_xray as sx
     import voice_profile as vp
@@ -251,7 +248,8 @@ def analyze_video(vid: str, title: str, d: Path, whisper: str, langs) -> dict | 
             except Exception as e:  # noqa: BLE001
                 print(f"[음원 분리] {vid} 건너뜀: {e}", file=sys.stderr); vocals = src
     dur = float(sx.probe(src)["duration"])
-    words, kinds, frames = screen_scan(src, dur, langs)
+    import ocr
+    words, kinds, frames = screen_scan(src, dur, ocr.order_langs(langs, title), step)
     cuts = sx.detect_cuts(src, dur)
     segs = sx.speech(vocals, whisper, lang_from=src, prompt=hint_prompt(title, words)) if whisper != "none" else []
     for sg in segs:
@@ -434,6 +432,7 @@ def main():
     ap.add_argument("--n", type=int, default=6, help="레퍼런스 말고 더 볼 쇼츠 수")
     ap.add_argument("--whisper", default="small")
     ap.add_argument("--langs", default="korean,en")
+    ap.add_argument("--fresh", action="store_true", help="이미 받아 적은 영상도 다시")
     ap.add_argument("--keep-video", action="store_true", help="받은 영상을 지우지 않는다(기본: 대사 시트를 만든 뒤 지움)")
     a = ap.parse_args()
     ref = vid_of(a.video)
@@ -449,8 +448,16 @@ def main():
     vids, line_no = [], 1
     for k, e in enumerate(todo):
         say(0.05 + 0.9 * k / len(todo), f"쇼츠 {k + 1}/{len(todo)} 받아 적는 중")
+        done = out / "v" / f"{e['id']}.json"          # 끊겨도 다시 부르면 끝난 영상은 건너뛴다
+        if done.exists() and not a.fresh:
+            v = json.loads(done.read_text(encoding="utf-8"))
+            for s_ in v["sentences"]:
+                s_["n"] = line_no; line_no += 1
+            vids.append(v)
+            continue
         try:
-            v = analyze_video(e["id"], e["title"], out / "v" / e["id"], a.whisper, langs)
+            # 레퍼런스는 1초마다, 같은 채널의 다른 쇼츠는 2초마다 화면을 읽는다(화면 종류 · 배치 · 받아쓰기 힌트에는 충분)
+            v = analyze_video(e["id"], e["title"], out / "v" / e["id"], a.whisper, langs, 1.0 if k == 0 else 2.0)
         except SystemExit as ex:
             print(f"[건너뜀] {e['id']}: {ex}", file=sys.stderr); continue
         except Exception as ex:  # noqa: BLE001
@@ -464,6 +471,7 @@ def main():
         line_sheet(v.pop("src"), marks, sheet, v["sentences"][0]["n"] if v["sentences"] else 1)
         v["sheet"] = str(sheet.relative_to(ROOT)) if sheet.exists() else None
         vids.append(v)
+        done.write_text(json.dumps(v, ensure_ascii=False), encoding="utf-8")
         if not a.keep_video:
             shutil.rmtree(out / "v" / e["id"], ignore_errors=True)
     if not vids:

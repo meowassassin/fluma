@@ -48,6 +48,6 @@ python3 scripts/trends.py search --queries "<검색어들>" [--tags "<태그들>
 ## 실제로 보고 분석 (패턴 분석 · "이 쇼츠처럼")
 
 - 제목 · 썸네일로 짐작하지 말고 `python3 scripts/trend_analyze.py <영상 id …>` 로 **영상을 직접 본다**(받아서 재고 바로 지움 — 패턴만 남김).
-- 편집 요소까지 나눠 봐야 하면(샷 · 누끼 · 배경판 · 화면 글자 · 대사 · 박자 · 효과음) `python3 scripts/shorts_xray.py <영상 id>` — 결과 public/trends/xray/<id>/xray.json 의 `recipe` 를 읽고, 사용자에게는 트렌드 화면의 '분해도'(/trends/x/<id>)를 열어 보라고 한다. 누끼 · 배경판은 참고용이라 영상에 쓰지 않는다.
+- 편집 요소까지 나눠 봐야 하면(샷 · 누끼 · 배경판 · 화면 글자 · 대사 · 박자 · 효과음) `python3 scripts/analyze_ref.py <영상 id> --no-channel` — 결과 public/trends/xray/<id>/xray.json 의 `recipe` 를 읽고, 사용자에게는 트렌드 화면의 '분해도'(/trends/x/<id>)를 열어 보라고 한다. 누끼 · 배경판은 참고용이라 영상에 쓰지 않는다.
 - 출력의 컷 수 · 평균 샷 길이 · 첫 컷 · 글자 자리 · 움직임 · 색을 쓰고, **밀착 시트 `public/trends/analysis/<id>.jpg` 를 Read 로 열어** 화면 구성(무엇이 크게, 어디에, 어떤 순서로)을 직접 확인한다.
 - 분석 결과는 트렌드 카드에 표시된다. 새 영상으로 이어갈 때는 compose 스킬에서 이 리듬 · 글자 자리 · 색 관계를 옮긴다(내용 · 인물 · 로고는 베끼지 않음).

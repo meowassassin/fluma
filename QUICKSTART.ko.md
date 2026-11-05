@@ -22,30 +22,14 @@ git clone https://github.com/meowassassin/fluma && cd fluma
 python3 scripts/doctor.py --fix
 ```
 
-`doctor.py` 는 `.venv` 를 만들고 파이썬 패키지(`scripts/requirements.txt`)를 설치하고, Chromium 을 받고, 웹 앱과
-HyperFrames 대체 엔진의 `npm install` 을 돌립니다. Node · ffmpeg 는 설치 방법만 *알려 주며* 관리자 권한이 필요 없습니다.
+이 명령 하나로 **전부** 설치합니다: `.venv` 와 파이썬 패키지 전체(`requirements-full.txt`), Chromium, 오픈소스
+[Craft 앱](https://github.com/storytold)(MIT / Apache-2.0) 16개 전부(약 1.4GB, SHA256SUMS 로 검증해 `tools/crafts/` 에),
+분석 · 누끼 모델, npm 패키지. Node · ffmpeg 는 설치 방법만 *알려 주며* 관리자 권한이 필요 없습니다.
 
-| 프로필 | 더하는 것 | 명령 |
-|---|---|---|
-| `lite`(기본) | 콘티 · 무료 음성 · 렌더 · 검사 | `python3 scripts/doctor.py --fix` |
-| `analysis` | 레퍼런스 분석: 받아쓰기 · OCR · 화면 분류 | `--profile analysis` |
-| `full` | 누끼 · 생성 API | `--profile full` |
+용량이 부족하면 `python3 scripts/doctor.py --fix --profile lite --core` 로 최소만(핵심 Craft 앱 7개, 모델 없음) 설치합니다.
+빠진 것은 처음 쓰는 순간 자동으로 설치됩니다.
 
-## 3. Craft 앱 설치
-
-파이프라인은 모든 장면을 오픈소스 [Craft 앱](https://github.com/storytold)(MIT / Apache-2.0)으로 만듭니다.
-저장소에 들어 있지 않으니 쓸 앱을 받습니다:
-
-```bash
-python3 scripts/crafts.py plan all       # 받을 파일 · 크기만 보기(받지 않음)
-python3 scripts/crafts.py install effectcraft soundcraft filmcraft vectorcraft gridcraft pdfcraft photocraft
-# 전부(16개, 약 1.7GB):  python3 scripts/crafts.py install all
-```
-
-릴리스를 SHA256SUMS 로 검증해 `tools/crafts/`(git 제외)에 풉니다. 스튜디오에서도 설치할 수 있습니다(⌘K → *Craft 앱*).
-Craft 앱이 없으면 HyperFrames 로 대신 렌더합니다.
-
-## 4. 실행
+## 3. 실행
 
 ```bash
 npm --prefix web run dev     # API 127.0.0.1:4310, 스튜디오 http://localhost:4311
@@ -54,7 +38,7 @@ npm --prefix web run dev     # API 127.0.0.1:4310, 스튜디오 http://localhost
 스튜디오의 홈에서 주제를 적고 대화로 기획합니다. 콘티가 괜찮으면 **제작 시작** — 에이전트가 레퍼런스 쇼츠를 분석하고
 장면을 만들어 초안을 렌더합니다. 편집기 왼쪽 탐색기에 영상이 무엇으로 이루어졌는지 나오고, 고칠 것은 오른쪽 에이전트에게 말합니다.
 
-## 5. YouTube 연결(선택)
+## 4. YouTube 연결(선택)
 
 업로드와 장면별 통계에는 내 Google OAuth 클라이언트가 필요합니다 — 처음 한 번, 약 10분:
 
@@ -80,7 +64,8 @@ docker compose up -d            # → http://localhost:4311   (멈추기: docker
 ```
 
 끝입니다. 에이전트는 내 컴퓨터의 Claude Code · Codex 로그인(`~/.claude` · `~/.codex`)을 그대로 쓰고, 작업물은 Docker 볼륨에 남습니다.
-필요한 패키지는 에이전트가 쓰는 순간 스스로 설치합니다.
+이미지에 전부(파이썬 패키지 전체 · Craft 앱 16개 · 분석 모델) 들어 있습니다.
+작게 빌드하려면: `PROFILE=lite CRAFTS=core MODELS=0 docker compose build`.
 
 <details><summary>문제 해결</summary>
 
