@@ -9,7 +9,7 @@ import { spawn, execFile } from "node:child_process";
 import { randomUUID, createHash } from "node:crypto";
 import { promises as fs, existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { resolveRuntime, codexArgs, codexPrompt, makeCodexParser } from "./runtimes.mjs";
+import { resolveRuntime, codexArgs, codexPrompt, makeCodexParser, agentEnv } from "./runtimes.mjs";
 import { pythonCmd, spawnTarget } from "./platform.mjs";
 import { atomicWrite, killTree, HttpError } from "./lib.mjs";
 import { runConfig as mcpRunConfig } from "./mcp.mjs";
@@ -67,6 +67,18 @@ const SHOW_RULES = `## 결과는 채팅에 바로 보여 준다
 - 경로만 적고 '열어 보세요 · 복사해서 보세요 · 렌더해 주세요' 라고 하지 않는다. docker cp · 파일 탐색기를 안내하지 않는다
 - 내가 먼저 본다: \`python3 scripts/preview.py <파일들> [--at 초,…]\` — SVG 는 PNG 로, 영상은 정지 화면으로 만들어 주고(Read 로 보기) 붙일 media 블록을 출력한다. ImageMagick(convert) 같은 다른 렌더 명령은 쓰지 않는다
 - 시안을 비교하게 할 때는 고를 것들을 media 블록에 나란히 두고, 그 아래 선택지(\`\`\`choices)를 둔다`;
+
+// 명령 실행 규칙: 오래 걸리는 스크립트는 앞에서 한 번 기다리고, 결과는 정해진 블록만 읽는다(scripts/result.py).
+// 2026-11-04: 백그라운드로 돌린 분석이 턴과 함께 죽고, 출력을 짐작하며 경로 · 로그를 되읽느라 턴을 썼다(MoneyPrinterTurbo 스킬 규약 참고)
+const RUN_RULES = `## 명령 실행 · 결과 읽기
+- 오래 걸리는 명령(렌더 · 레퍼런스 분석 · 녹화 · 버전 비교 · 재료 만들기)은 **앞에서 한 번** 실행하고 Bash 의 timeout 을 600000(10분)으로. 백그라운드로 돌려 두고 턴을 끝내지 않는다
+- 기다리는 동안 sleep · ls · tail · ps 로 되묻지(폴링) 않는다
+- 끝나면 출력 맨 끝 블록만 읽는다:
+  - 종료 0 \`FLUMA_RESULT\` — file · media 등. media= 줄은 그대로 \`\`\`media 블록에 붙여 보여 준다. 성공한 뒤 로그 전체를 다시 읽지 않는다
+  - 종료 10 \`FLUMA_NEEDS_INPUT\` — needs 를 한 번에 묶어 사용자에게 **한 번만** 묻는다(how 대로 안내, 키는 채팅에 붙이지 말고 설정 화면에)
+  - 종료 11 \`FLUMA_RUNNING\` — 서버에서 아직 도는 중. 같은 명령을 다시 불러 이어서 기다린다
+  - 종료 1 \`FLUMA_ERROR\` — stage · error(짧은 이유)만 보고 고쳐서 한 번 다시. 또 실패하면 어느 단계 · 무슨 이유인지 짧게 알린다
+- 출력이 잘렸으면 블록의 result_file(workspace/results/<스크립트>-latest.json)을 한 번 읽는다`;
 
 export function createAgent({ ROOT, env, onState = () => {} }) {
   const PY = pythonCmd(ROOT);
@@ -151,7 +163,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
   function systemPrompt({ project, look, template, skill, scene }) {
     const parts = [];
     parts.push(readIf(path.join(ROOT, "workspace", "system.md")) ?? "");
-    parts.push(STYLE_RULES, MEMORY_RULES, SETUP_RULES, SHOW_RULES);
+    parts.push(STYLE_RULES, MEMORY_RULES, SETUP_RULES, SHOW_RULES, RUN_RULES);
     // 붙어 있는 Craft 앱(MCP) — 그림 · 움직임을 SVG 코드로 직접 짜기 전에 진짜 제작 도구를 먼저 쓴다
     const cr = createCrafts(ROOT).list().filter((c) => c.agentOn && c.installed?.cli);
     if (cr.length) parts.push(`## 제작 도구 (Craft 앱, MCP: ${cr.map((c) => `mcp__${c.name}`).join(" · ")})\n` +
@@ -424,7 +436,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const before = await snapshot();
     // Claude Code 자체 자동 기억은 끈다 — 기억은 Fluma 공유 기억(workspace/memory) 하나로 (개발자 기억 폴더 오염 방지)
     const st = spawnTarget(bin);   // Windows 의 npm 설치본(codex.cmd 등)은 셸로 실행
-    const child = spawn(st.cmd, args, { cwd: ROOT, env: { ...env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1", ...rt.env }, stdio, shell: st.shell, detached: process.platform !== "win32" });
+    const safe = agentEnv(env, rt);   // 로그인 모드: 구독 대신 API 과금으로 바뀌게 하는 환경 변수는 지운다(runtimes.mjs)
+    if (safe.dropped.length) console.warn(`[agent] 로그인 모드라 결제 경로를 바꾸는 환경 변수를 넘기지 않음: ${safe.dropped.join(", ")}`);
+    const child = spawn(st.cmd, args, { cwd: ROOT, env: { ...safe.env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1", ...rt.env }, stdio, shell: st.shell, detached: process.platform !== "win32" });
     const run = { project, live: true, child, events: [], clients: clientsOf(project), stdinOpen: rt.runtime !== "codex", text: "", tools: [], todos: null, startedAt: Date.now(), runtime: rt.label, skill: skill || null };
     runs.set(project, run);
     broadcast(run, { type: "start", user: message, skill: skill || null, scene: scene ?? null, memories: ctx.memories, at: run.startedAt });

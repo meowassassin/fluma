@@ -179,3 +179,26 @@ export function makeCodexParser(emit, { onThread, rel }) {
 export function codexPrompt(systemPrompt, message) {
   return `<FLUMA_SYSTEM>\n${systemPrompt}\n\n## 접근 제한 (반드시 지킴)\n- .env · .env.* · ~/.shortsforge/** · ~/.claude/** 는 읽지도 쓰지도 않는다.\n- 쓰기는 storyboards/ compositions/ research/ captures/ public/ audio/ characters/ workspace/tmp/ 안에서만.\n</FLUMA_SYSTEM>\n\n${message}`;
 }
+
+// 과금 안전: '로그인으로 쓰기'(Claude Code · Codex 계정 로그인) 모드에서는 결제 경로를 바꾸는 환경 변수를 지운다.
+// 서버를 띄운 셸 · systemd · Docker 에 ANTHROPIC_API_KEY 같은 값이 있으면 CLI 가 구독 대신 API 키 · 다른 공급자(Bedrock · Vertex · 게이트웨이)로
+// 조용히 바뀌어 따로 청구된다. 로그인 위치를 가리키는 값(CLAUDE_CONFIG_DIR · CLAUDE_CODE_OAUTH_TOKEN …)은 남긴다 — 지우면 로그인이 풀린다.
+// API 키 모드(rt.provider)는 사용자가 고른 공급자를 쓰는 것이라 건드리지 않는다.
+const CLAUDE_DROP_PREFIX = ["ANTHROPIC_", "CLAUDE_CODE_USE_"];
+const CLAUDE_DROP = ["AWS_BEARER_TOKEN_BEDROCK", "CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR"];
+const CLAUDE_KEEP = ["CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR", "ANTHROPIC_CONFIG_DIR"];
+const CODEX_DROP = ["OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_ORG_ID", "OPENAI_PROJECT_ID"];
+
+/** 에이전트 프로세스에 넘길 환경 → { env, dropped: [지운 이름] } (값은 다루지 않는다) */
+export function agentEnv(base, rt) {
+  const env = { ...base };
+  const dropped = [];
+  if (rt?.provider) return { env, dropped };          // API 키 모드
+  for (const k of Object.keys(env)) {
+    const drop = rt?.runtime === "codex"
+      ? CODEX_DROP.includes(k)
+      : !CLAUDE_KEEP.includes(k) && (CLAUDE_DROP.includes(k) || CLAUDE_DROP_PREFIX.some((p) => k.startsWith(p)) || /^CLAUDE_CODE_SKIP_.*_AUTH$/.test(k));
+    if (drop) { delete env[k]; dropped.push(k); }
+  }
+  return { env, dropped: dropped.sort() };
+}
