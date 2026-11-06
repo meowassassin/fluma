@@ -22,8 +22,8 @@
  "provides": [
   {
    "material": "diagram",
-   "in": "단계 · 비교 항목",
-   "out": "pdf → png"
+   "in": "단계 · 비교 · 순환 · 조직도 항목",
+   "out": "9:16 SmartArt png + 항목별 레이어"
   }
  ]
 }

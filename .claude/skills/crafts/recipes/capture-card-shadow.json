@@ -1,0 +1,108 @@
+{
+ "name": "capture-card-shadow",
+ "app": "photocraft",
+ "desc": "그라데이션 바탕 + 그림자 캡처 + 제목 + 노란 강조 박스",
+ "purpose": [
+  "screen",
+  "highlight",
+  "card"
+ ],
+ "look": [
+  "clean",
+  "editorial"
+ ],
+ "features": [
+  "layer.newFillLayer.gradient",
+  "file.placeEmbedded",
+  "layer.layerStyle.dropShadow",
+  "type.create",
+  "shape.create"
+ ],
+ "slots": [
+  {
+   "at": "/steps/1/params/path",
+   "kind": "file",
+   "example": "compositions/2026-11-03-s0g011z-01/web/psi.png"
+  },
+  {
+   "at": "/steps/3/params/text",
+   "kind": "text",
+   "example": "이 점수 하나로\n속도를 본다"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "photocraft",
+  "new": {
+   "background": "#111418"
+  },
+  "steps": [
+   {
+    "id": "layer.newFillLayer.gradient",
+    "params": {
+     "from": "#1b2a4a",
+     "to": "#0b0d12",
+     "angle": 90,
+     "style": "linear"
+    }
+   },
+   {
+    "id": "file.placeEmbedded",
+    "params": {
+     "path": "compositions/2026-11-03-s0g011z-01/web/psi.png",
+     "scale": 90,
+     "center": [
+      540,
+      1080
+     ]
+    }
+   },
+   {
+    "id": "layer.layerStyle.dropShadow",
+    "params": {
+     "color": "#000000",
+     "opacity": 70,
+     "distance": 18,
+     "size": 40,
+     "angle": 90
+    }
+   },
+   {
+    "id": "type.create",
+    "params": {
+     "x": 540,
+     "y": 360,
+     "text": "이 점수 하나로\n속도를 본다",
+     "align": "center",
+     "font": "Noto Sans CJK KR",
+     "weight": 900,
+     "size": 96,
+     "color": "#ffffff",
+     "name": "Title"
+    }
+   },
+   {
+    "id": "shape.create",
+    "params": {
+     "kind": "roundedRect",
+     "rect": [
+      40,
+      560,
+      1000,
+      140
+     ],
+     "radii": 24,
+     "fill": null,
+     "stroke": {
+      "width": 10,
+      "color": "#ffd60a",
+      "align": "center"
+     },
+     "name": "Highlight"
+    }
+   }
+  ]
+ },
+ "preview": "capture-card-shadow.jpg"
+}

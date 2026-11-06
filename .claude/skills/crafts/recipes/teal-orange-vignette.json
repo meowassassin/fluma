@@ -1,0 +1,53 @@
+{
+ "name": "teal-orange-vignette",
+ "app": "lightcraft",
+ "desc": "틸 · 오렌지 톤 + 비네팅(사진 톤)",
+ "purpose": [
+  "photo",
+  "emotional",
+  "ad"
+ ],
+ "look": [
+  "cinematic",
+  "warm"
+ ],
+ "features": [
+  "preset.apply",
+  "develop.set"
+ ],
+ "slots": [
+  {
+   "at": "/open",
+   "kind": "file",
+   "example": "assets/social-preview.png"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "lightcraft",
+  "open": "assets/social-preview.png",
+  "steps": [
+   {
+    "id": "preset.apply",
+    "params": {
+     "id": "lc.teal-orange"
+    }
+   },
+   {
+    "id": "develop.set",
+    "params": {
+     "control": "vignette.amount",
+     "value": -40
+    }
+   }
+  ],
+  "export": {
+   "size": [
+    1080,
+    608
+   ]
+  }
+ },
+ "preview": "teal-orange-vignette.jpg"
+}

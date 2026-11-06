@@ -22,8 +22,8 @@
  "provides": [
   {
    "material": "doc_quote",
-   "in": "pdf · 찾을 문장",
-   "out": "page png + 문장 위치(형광펜 · 확대용)"
+   "in": "pdf · 찾을 문장(줄바꿈 무관) · 선택: mark(highlight|underline|box|both) · redact(정규식 · email · phone)",
+   "out": "진짜 형광펜 · 빨간 상자가 그려진, 문장 주변만 잘라 낸 폭 1080px PNG + 줄 사각형(highlight · focus) · 주석 PDF(editable)"
   }
  ]
 }

@@ -1,0 +1,97 @@
+{
+ "name": "product-shell",
+ "app": "solidcraft",
+ "desc": "3D 그릇(파라메트릭 형태 · 재질) 스냅샷",
+ "purpose": [
+  "product",
+  "3d"
+ ],
+ "look": [
+  "render",
+  "clean"
+ ],
+ "features": [
+  "parameters.add",
+  "sketch.create",
+  "sketch.rectangle.rounded",
+  "solid.extrude",
+  "solid.shell",
+  "appearance.assign"
+ ],
+ "slots": [],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "solidcraft",
+  "steps": [
+   {
+    "id": "parameters.add",
+    "params": {
+     "name": "W",
+     "value": "80 mm"
+    }
+   },
+   {
+    "id": "sketch.create",
+    "params": {
+     "plane": "XY"
+    }
+   },
+   {
+    "id": "sketch.rectangle.rounded",
+    "params": {
+     "p0": [
+      0,
+      0
+     ],
+     "p1": [
+      "W",
+      50
+     ],
+     "radius": 8
+    }
+   },
+   {
+    "id": "solid.extrude",
+    "params": {
+     "distance": 30
+    }
+   },
+   {
+    "id": "solid.shell",
+    "params": {
+     "faces": [
+      [
+       40,
+       25,
+       30
+      ]
+     ],
+     "thickness": 2
+    }
+   },
+   {
+    "id": "appearance.assign",
+    "params": {
+     "bodies": [
+      "Body1"
+     ],
+     "color": "#3b82f6"
+    }
+   }
+  ],
+  "export": {
+   "camera": {
+    "target": [
+     40,
+     25,
+     15
+    ],
+    "yaw": 0.8,
+    "pitch": 0.5,
+    "distance": 320
+   }
+  }
+ },
+ "preview": "product-shell.jpg"
+}

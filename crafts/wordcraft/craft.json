@@ -18,5 +18,12 @@
  ],
  "web": true,
  "kind_en": "Documents (Word-style)",
- "use_en": "Scripts and planning documents"
+ "use_en": "Scripts and planning documents",
+ "provides": [
+  {
+   "material": "document",
+   "in": "docx · md · 글 + 형광펜 · 변경 추적 · 메모",
+   "out": "9:16 문서 화면 png"
+  }
+ ]
 }

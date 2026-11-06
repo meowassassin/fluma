@@ -1,0 +1,128 @@
+{
+ "name": "blueprint-capture-bounce",
+ "app": "effectcraft",
+ "desc": "격자 배경 위 캡처 + 단어 튀어나오는 제목(움직임)",
+ "purpose": [
+  "tech",
+  "screen",
+  "title"
+ ],
+ "look": [
+  "blueprint",
+  "motion"
+ ],
+ "features": [
+  "layer.newSolid",
+  "anim.applyBuiltinPreset",
+  "file.import",
+  "layer.addItem",
+  "layer.style.add",
+  "layer.newText",
+  "layer.applyTextPreset"
+ ],
+ "slots": [
+  {
+   "at": "/steps/2/params/paths/0",
+   "kind": "file",
+   "example": "compositions/2026-11-03-s0g011z-01/web/psi.png"
+  },
+  {
+   "at": "/steps/3/params/item",
+   "kind": "file",
+   "example": "psi.png"
+  },
+  {
+   "at": "/steps/4/params/layers/0",
+   "kind": "file",
+   "example": "psi.png"
+  },
+  {
+   "at": "/steps/5/params/text",
+   "kind": "text",
+   "example": "점수부터 보세요"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "effectcraft",
+  "new": {
+   "duration": 2
+  },
+  "steps": [
+   {
+    "id": "layer.newSolid",
+    "params": {
+     "name": "BG",
+     "color": "#101018"
+    }
+   },
+   {
+    "id": "anim.applyBuiltinPreset",
+    "params": {
+     "preset": "blueprintGrid",
+     "layers": [
+      "BG"
+     ]
+    }
+   },
+   {
+    "id": "file.import",
+    "params": {
+     "paths": [
+      "compositions/2026-11-03-s0g011z-01/web/psi.png"
+     ]
+    }
+   },
+   {
+    "id": "layer.addItem",
+    "params": {
+     "item": "psi.png",
+     "position": [
+      540,
+      1100
+     ]
+    }
+   },
+   {
+    "id": "layer.style.add",
+    "params": {
+     "style": "dropShadow",
+     "layers": [
+      "psi.png"
+     ]
+    }
+   },
+   {
+    "id": "layer.newText",
+    "params": {
+     "name": "Title",
+     "text": "점수부터 보세요",
+     "position": [
+      540,
+      420
+     ],
+     "font": "Pretendard",
+     "style": "Black",
+     "size": 110,
+     "fill": "#ffffff",
+     "justify": "center"
+    }
+   },
+   {
+    "id": "layer.applyTextPreset",
+    "params": {
+     "layer": "Title",
+     "preset": "bounceInWords"
+    }
+   }
+  ],
+  "export": {
+   "format": "mp4",
+   "start": 0,
+   "end": 2,
+   "time": 1.5
+  }
+ },
+ "preview": "blueprint-capture-bounce.jpg"
+}

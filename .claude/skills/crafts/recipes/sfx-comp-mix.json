@@ -1,0 +1,79 @@
+{
+ "name": "sfx-comp-mix",
+ "app": "soundcraft",
+ "desc": "효과음 두 개 + 컴프레서 믹스(소리)",
+ "purpose": [
+  "sound",
+  "sfx"
+ ],
+ "look": [
+  "audio"
+ ],
+ "features": [
+  "track.new",
+  "file.import_audio",
+  "file.import_audio",
+  "mix.insert"
+ ],
+ "slots": [
+  {
+   "at": "/steps/1/params/path",
+   "kind": "file",
+   "example": "assets/sfx/pop.wav"
+  },
+  {
+   "at": "/steps/2/params/path",
+   "kind": "file",
+   "example": "assets/sfx/swoosh.wav"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "soundcraft",
+  "steps": [
+   {
+    "id": "track.new",
+    "params": {
+     "kind": "audio",
+     "format": "stereo",
+     "name": "SFX"
+    }
+   },
+   {
+    "id": "file.import_audio",
+    "params": {
+     "path": "assets/sfx/pop.wav",
+     "track": "SFX",
+     "at": 0,
+     "new_tracks": false
+    }
+   },
+   {
+    "id": "file.import_audio",
+    "params": {
+     "path": "assets/sfx/swoosh.wav",
+     "track": "SFX",
+     "at": {
+      "seconds": 0.6
+     },
+     "new_tracks": false
+    }
+   },
+   {
+    "id": "mix.insert",
+    "params": {
+     "track": "SFX",
+     "plugin": "compressor",
+     "params": {
+      "threshold": -22,
+      "ratio": 3
+     }
+    }
+   }
+  ],
+  "export": {
+   "end": 2
+  }
+ }
+}

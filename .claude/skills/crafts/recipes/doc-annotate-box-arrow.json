@@ -1,0 +1,95 @@
+{
+ "name": "doc-annotate-box-arrow",
+ "app": "pdfcraft",
+ "desc": "문서 위 진짜 PDF 주석: 빨간 박스 · 화살표 · 글상자",
+ "purpose": [
+  "doc",
+  "evidence",
+  "highlight"
+ ],
+ "look": [
+  "annotated",
+  "document"
+ ],
+ "features": [
+  "comment_add",
+  "comment_add",
+  "comment_add"
+ ],
+ "slots": [
+  {
+   "at": "/new/paths/0",
+   "kind": "file",
+   "example": "compositions/2026-11-03-s0g011z-01/web/psi.png"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "pdfcraft",
+  "new": {
+   "from": "images",
+   "paths": [
+    "compositions/2026-11-03-s0g011z-01/web/psi.png"
+   ],
+   "dpi": 72
+  },
+  "steps": [
+   {
+    "id": "comment_add",
+    "params": {
+     "doc": 1,
+     "page": 1,
+     "type": "rectangle",
+     "rect": [
+      25,
+      120,
+      880,
+      240
+     ],
+     "color": "red",
+     "width": 5
+    }
+   },
+   {
+    "id": "comment_add",
+    "params": {
+     "doc": 1,
+     "page": 1,
+     "type": "arrow",
+     "from": [
+      700,
+      520
+     ],
+     "to": [
+      500,
+      250
+     ],
+     "color": "red",
+     "width": 6
+    }
+   },
+   {
+    "id": "comment_add",
+    "params": {
+     "doc": 1,
+     "page": 1,
+     "type": "textbox",
+     "rect": [
+      560,
+      520,
+      1060,
+      600
+     ],
+     "contents": "Type the URL here",
+     "color": "red"
+    }
+   }
+  ],
+  "export": {
+   "page": 1,
+   "dpi": 72
+  }
+ },
+ "preview": "doc-annotate-box-arrow.jpg"
+}

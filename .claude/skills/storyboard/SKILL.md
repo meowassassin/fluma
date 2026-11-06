@@ -100,7 +100,64 @@ order: 1
 | screen · video · image | src | 그대로 |
 | web | src(public/elements/<id>/<이름> — webrec.py · termrec.py 녹화) · holds(상태별 초) · start(나레이션 없을 때 시작 초) | 그대로(실제 화면) |
 | stock | query(영어 검색어) · min_sec · pick · trim | Pexels → Pixabay 무료 스톡 영상(실제 촬영) — 일상 · 감성 · 광고의 바탕. 키는 설정 → API 키. 기술 설명에는 쓰지 않는다(실제 화면 우선) |
+| overlay | target(같은 장면의 **앞선** 그림 · 화면 재료 id) · marks[{kind: box·arrow·label, box:[x,y,w,h] 0~1(대상 기준), from/to(화살표), text, cue}] · style(clean·hand) · color | VectorCraft(투명 주석 층) → 대상 위 제자리에 cue 마다 하나씩 |
+| ui_mock | src(실제 캡처) · device(phone·browser, 생략하면 모양으로) · url. 캡처가 없을 때만 screen{…} + **mock: true** | FigCraft(폰 · 브라우저 틀 + 그림자) |
+| diagram | kind(steps·compare·cycle·hierarchy·pyramid·timeline·list) · items(탭=하위) · title · cues(항목별 낱말) | DeckCraft(SmartArt, 항목 층이 차례로 등장) |
+| document | src(.docx·.md·.txt …) 또는 title + text · highlight[문장] · track{from,to}(바뀐 부분) · comments[{at,text}] | WordCraft(9:16 문서 화면 · 진짜 형광펜 · 변경 추적) |
+| photo_grade | src · look(warm·film·clean·mono) · crop(9:16) · focus[x,y] · credit | LightCraft(현상 · 톤 통일 · 세로 자르기) |
+| info_card | kicker · title · body · points[] · source (또는 rows[] · csv + row) · frame(card·full) · theme | DesignCraft(정보 카드, 여러 장 병합) |
+| template_card | template(.vectorcraft, 없으면 기본 틀) · csv 또는 values{머리글: 값} · row | VectorCraft(변수 + CSV 일괄 — 매일 같은 틀) |
+| thumbnail | (비우면 콘티 title · badge · hook_number) · title · hook · emphasis · src(false 면 글자만) | DesignCraft(세로 1080×1920 + 가로 1280×720). **영상 화면이 아니라 표지용** — 마지막 장면에 두고 화면에는 거의 안 보이게 |
+| model3d | shape(case·phone·bottle·tumbler·puck) + size(mm) 또는 commands 또는 src(.step·.stl·.obj …) · material(metal·plastic·wood·#색·{부품:재질}) · color · logo · turntable 또는 exploded · sec | SolidCraft(형태 · 분해도) + TextureCraft(재질 · 로고 · 렌더) — 9:16 화면 전체(배경 포함) |
+| drawing | src(.dxf·.dwg) 또는 cmd[…] 또는 model(앞선 model3d id 또는 형태 칸) · views · title · paper(dark·white) · mark[[x0,y0,x1,y1]](빨간 구름) | CADCraft(투영도 · 치수 · 평면도) — 9:16 화면 전체 |
+
+**언제 무엇을** (실제 화면 > 효과 — 꾸민 그래픽보다 진짜 화면 · 진짜 문서가 먼저):
+- **기술 설명**: 실제 화면(web · screen) + 짚을 곳은 `overlay`(박스 · 화살표 · 한 줄 설명). 근거 문장은 `doc_quote`(진짜 형광펜 · 개인정보 가림), 약관 · 공지 · 바뀐 문구는 `document`. 캡처를 기기에 넣어 보여 줄 때 `ui_mock`(실제 캡처로 — 가상 화면은 mock: true 를 적고 설명용으로만). 순서 · 구조는 `diagram`(한 장면에 하나, 꾸밈 대신 단계 수만큼).
+- **제품**: 실물 사진이 없으면 `model3d`(정지 컷 · 짧은 turntable · 분해도), 치수 · 구조는 `drawing`. 실제 제품이면 STEP 원본(src)이 내장 형태보다 낫다.
+- **감성 · 광고**: 사용자 사진을 `photo_grade` 로 같은 톤에, 기사 · 캡처 한 장을 화면 카드로 세울 때 `photo` + `frame: "card"`(제목 · 강조 상자 · 로고 지우기 clean).
+- **반복 형식(daily · series)**: 같은 틀에 값만 바꿀 때 `template_card`(가격 · 수치 한 줄), 요점 정리는 `info_card`.
+- **썸네일**: `thumbnail` 하나 — 조립 단계도 훅 장면 프레임을 `edit/<id>.thumb.png` 로 따로 뽑는다.
+- 화면 녹화 다듬기(screen · video · web 공통 칸): `zoom[{t, box, dur}]`(펀치인) · `blur[[x,y,w,h]]`(개인정보) · `speed[{from, to, x}]`(빨리 감기) — FilmCraft. 시각은 녹화 시각, 줌은 빨리 감기 구간 밖에.
+- 움직임 칸(모든 재료): `enter`(등장 프리셋 id · false) · `exit` · `shadow` · `push`. 콘티 `direction.bg_preset` · `title_preset` · `sub_preset` · `enter`(기본은 형식별, false 면 끔).
+- 소리: 콘티 `music{src, gain_db, duck_db, fade_in, fade_out}` — 사용자가 준 파일만. -14 LUFS 는 SoundCraft 가 맞춘다.
+
+예시(그대로 고쳐 쓴다):
+```json
+{"id": "m1", "type": "web", "src": "public/elements/<id>/run-n1", "holds": [0.5, 3]},
+{"id": "m2", "type": "overlay", "target": "m1", "marks": [{"kind": "box", "box": [0.04, 0.42, 0.92, 0.08], "text": "쿼리 101번", "cue": "101번"}]},
+{"id": "m3", "type": "doc_quote", "pdf": "research/report.pdf", "find": "이용자의 43.7%는 AI가 제시한 정보를", "mark": "highlight", "redact": ["email", "phone"]},
+{"id": "m4", "type": "diagram", "kind": "steps", "title": "fetch join 으로 고치기", "items": ["연관 엔티티 확인", "JOIN FETCH 추가", "쿼리 1번 확인"], "cues": ["확인", "추가", "한 번"]},
+{"id": "m5", "type": "ui_mock", "src": "compositions/<id>/craft/src/settings.png", "device": "phone"},
+{"id": "m6", "type": "document", "title": "이용약관 제7조", "text": "① 구독 시작 후 7일 이내에 …", "highlight": ["프로모션 요금제는 환불되지 않습니다"], "track": {"from": "7일 이내", "to": "14일 이내"}},
+{"id": "m7", "type": "photo_grade", "src": "public/uploads/<id>/shop.jpg", "look": "warm", "credit": "사진: 직접 촬영"},
+{"id": "m8", "type": "photo", "src": "public/uploads/<id>/news.jpg", "frame": "card", "title": "교장이 5400만원을\n사비로 메웠다?", "highlight": [0, 0.535, 1, 0.09], "clean": [[0.02, 0.02, 0.15, 0.08]]},
+{"id": "m9", "type": "info_card", "kicker": "알아두기", "title": "N+1 은 지연 로딩의 기본 동작", "points": ["목록 1번 + 항목마다 1번", "fetch join · batch size 로 묶기"], "source": "Hibernate 문서"},
+{"id": "m10", "type": "template_card", "values": {"품목": "배추 1포기", "가격": "4,980원", "반응": "평소 가격"}},
+{"id": "m11", "type": "model3d", "shape": "tumbler", "material": "stainless", "logo": "FLUMA", "turntable": true, "sec": 3},
+{"id": "m12", "type": "drawing", "model": "m11", "views": ["front", "top"], "title": "텀블러 외형도 (mm)", "paper": "white"},
+{"id": "m13", "type": "thumbnail", "emphasis": "101번"}
+```
+검사 L39 가 칸을 본다: 필수 칸 · overlay 대상이 같은 장면 앞에 있는지 · drawing 의 model id · 가상 ui_mock 의 mock · id 에 '.' 금지. 앱 쪽 주의는 crafts 스킬.
 공통: `id`, `cue`(등장할 낱말), `place`(full · center · left · right · top · bottom). 재료는 제목 아래 · 자막 위 구간에 놓인다.
 숫자는 손으로 계산하지 말고 csv + percent 로 GridCraft 가 계산하게 한다.
 **화면 비율**: 콘티 `aspect`(9:16 기본 · 16:9 · 1:1) 또는 `render.py --aspect`. 세로 녹화(대화창 · 폰 화면)는 가로 화면에서 가운데에 작게 놓이니, 가로 영상이면 녹화도 가로(viewport)로 한다.
 **여러 버전 비교**: 훅 · 첫 장면 · 제목이 정해지지 않으면 콘티 `variants` 에 바꿀 칸만 적은 2~3개를 넣고 `python3 scripts/variants.py render storyboards/<id>.json` → 나란히 비교 영상을 media 블록으로 보여 주고 고르게 한다(고른 것을 원본에 옮기는 건 확인받고)
+
+### 다양한 화면 — 레시피 · craft 재료 (편향 금지)
+- 장면마다 `python3 scripts/craft_variety.py suggest "<장면 용도>"` 로 고른다(★ = 최근 영상에 안 쓴 것 먼저). 자세한 규칙: crafts 스킬 0절.
+- 고정 종류로 안 되면 `{"type":"craft","app":…,"steps":[…]}` — 명령은 `python3 scripts/craft_catalog.py search "<하고 싶은 일>"`.
+- 레시피: `{"id":"m1","recipe":"vertical-process","fill":{…}}`. 다 쓰면 `craft_variety.py check storyboards/<id>.json` 로 반복을 본다.
+
+### 생성 영상 클립(Dreamina 등) — 실사 배우 · 장면이 필요할 때
+Fluma 는 실사 영상을 직접 만들지 않는다. 사용자가 생성 서비스에서 만들어 올린 클립을 쓴다.
+- 재료: `{"id":"walk","type":"video","gen":"dreamina","prompt":"영어 프롬프트","cast":["mina"],"camera":"handheld follow","in":0.4,"out":4.6,"dialogue":true}`
+  - `dialogue: true` + 나레이션 없는 장면 → 클립 속 대사가 목소리 · 받아쓰기가 자막 · 클립 길이가 장면 길이. 장면 `dialogue` 칸에 입 모양 맞출 대사.
+  - 같은 인물: 콘티 최상위 `cast: [{name, look(영어 외모 · 옷), ref(기준 이미지)}]` — 모든 클립 프롬프트에 같은 설명이 붙는다.
+  - 색: `direction.grade`(FilmCraft Lumetri 프리셋: Teal Shadows, Warm Skin · Golden Dusk · Faded Print …)로 클립들을 한 톤으로.
+- 콘티를 쓰면 `python3 scripts/genclip.py prompts storyboards/<id>.json [--model seedance|kling|veo|omni|hailuo|runway|wan]` → compositions/<id>/gen/prompts.md 를 사용자에게 보여 주고 만들어 올려 달라고 한다(파일 이름에 재료 id).
+  - 범용 LLM 프롬프트와 다른 점: 모델 문법(genmodels/cards/<모델>.json 의 compile — 대사 표기 · 시간 구간 · 한 샷 고정 · 부정 지시 방식 · 길이 선택지), 레퍼런스 X-ray 에서 잰 카메라 · 구도 · 색 · 빛(콘티 reference 필수), 편집 여유 0.5초 · 자막 자리 비우기 · 화면 글자 금지, 앞 클립 마지막 프레임으로 이어 시작, 샷마다 3안.
+  - 모델 고르기: 대사 립싱크 · 한국어 → kling · seedance(2.5) · hailuo / 영어 대사 · 정밀 카메라 → veo · omni / 소리 필요 없음 → runway / 오픈 · 무료 → wan(2.2). Sora 는 종료.
+  - 샷 설계만 보기: `python3 scripts/shotplan.py look|spec storyboards/<id>.json`. 재료 칸 people · speaker · tone · continue · framing · lens · lighting · setting · beats 로 덮어쓴다.
+- 클립이 올라오면 `python3 scripts/shotplan.py frames …`(이어 붙일 마지막 프레임) · `python3 scripts/shotplan.py check …` — 길이 · 세로 · 카메라 · 화면 글자 · 인원 · 대사가 설계와 다르면 고칠 영어 문구를 준다 → 그 문구로 다시 만들어 달라고 한다. `genclip.py status` 로 올라온 것 확인.
+- 워터마크를 지우지 않는다(유료 내보내기 안내). 생성 클립이 있으면 업로드 때 AI 합성 표시가 자동으로 켜진다.
+- 다른 브랜드 광고 · 영상의 장면 · 문구를 그대로 따라 쓰지 않는다 — 구성 · 리듬만 빌린다.

@@ -24,6 +24,16 @@
    "material": "illustration",
    "in": "svg · pdf · ai (에이전트가 illustrate 스킬로 그린 것 또는 사용자 파일)",
    "out": "png · svg · .vectorcraft"
+  },
+  {
+   "material": "overlay",
+   "in": "같은 장면 재료(target: 캡처 · 사진 · 영상) + marks(box 점선 박스 · arrow 곡선 화살표 · label 설명 글자, style hand 손그림)",
+   "out": "마크별 투명 png(layers · box 0~1) · .vectorcraft"
+  },
+  {
+   "material": "template_card",
+   "in": ".vectorcraft 틀(이름 붙은 텍스트 변수, 없으면 기본 카드 틀) + csv 또는 values · row",
+   "out": "png · .vectorcraft(틀) · 행마다 카드 png"
   }
  ]
 }

@@ -22,8 +22,8 @@
  "provides": [
   {
    "material": "photo",
-   "in": "사진 · 캡처",
-   "out": "누끼(투명 png) 또는 정리한 png"
+   "in": "사진 · 캡처 (src)",
+   "out": "정리한 png · 누끼(cutout) · 글자만 투명 png(alpha_text) · 로고 지우기(clean) · 화면 비율 장면 카드 png + PSD(frame: card, title · highlight · spotlight)"
   }
  ]
 }

@@ -19,8 +19,8 @@
  "provides": [
   {
    "material": "photo_grade",
-   "in": "사진",
-   "out": "보정한 png"
+   "in": "사진 + 룩(warm · film · clean · mono)",
+   "out": "보정 · 9:16 자른 png"
   }
  ]
 }

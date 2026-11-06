@@ -54,9 +54,10 @@ def cli(app: str) -> str:
     return str(ROOT / rel)
 
 
-def _run(args: list, cwd: Path, timeout: int = 300) -> str:
+def _run(args: list, cwd: Path, timeout: int = 300, env: dict | None = None) -> str:
+    """앱 CLI 한 번. env: 더 넘길 환경 변수(예: WORDCRAFT_REGION)"""
     r = subprocess.run([str(a) for a in args], cwd=str(cwd), text=True, capture_output=True, timeout=timeout,
-                       env={**os.environ, "DO_NOT_TRACK": "1", "SOUNDCRAFT_NO_PREFS": "1"})
+                       env={**os.environ, "DO_NOT_TRACK": "1", "SOUNDCRAFT_NO_PREFS": "1", **(env or {})})
     if r.returncode != 0:
         raise RuntimeError(f"{Path(str(args[0])).name} 실패: {(r.stderr or r.stdout)[-500:]}")
     return r.stdout
@@ -193,10 +194,11 @@ def illustration(m: dict, out: Path, work: Path) -> dict:
 
 
 def photo(m: dict, out: Path, work: Path) -> dict:
-    """PhotoCraft: 사진 정리 · 누끼(피사체 선택 → 마스크)"""
+    """PhotoCraft: 사진 정리 · 누끼(피사체 선택 → 마스크). 보통은 adapters/photocraft.py 가 덮어쓴다(장면 카드 · 로고 지우기 …) —
+    이것은 그 모듈을 못 불러올 때의 최소 길. PhotoCraft run 은 입력을 위치 인자로 받는다(--in 은 없음)"""
     src = _abs(m["src"])
-    cmds = ["select.subject", "layer.layerMask.revealSelection"] if m.get("cutout") else []
-    args = [cli("photocraft"), "run", "--in", src]
+    cmds = ["select.subject", "layer.layerMask.revealSelection", "select.deselect"] if m.get("cutout") else []
+    args = [cli("photocraft"), "run", src]
     for c in cmds:
         args += ["--cmd", c]
     args += ["--out", out]
@@ -288,6 +290,8 @@ def passthrough(m: dict, out: Path, work: Path) -> dict:
                      for a in meta.get("actions") or [] if a.get("label")]
             return {"app": None, "file_suffix": ".mp4", "source": meta.get("source") or meta.get("sources"), "steps": steps, "mobile": bool(meta.get("mobile"))}
         raise RuntimeError(f"요소 폴더에 프레임이 없습니다: {m['src']}")
+    if src.suffix.lower() in (".mp4", ".mov", ".webm", ".mkv", ".m4v") and m.get("_clip"):
+        return gen_clip(m, src, out)
     if src.suffix.lower() in (".mp4", ".mov", ".webm", ".mkv", ".m4v"):
         # 영상: 마지막 프레임을 20초 늘린다(장면보다 짧은 녹화가 끝나면 화면이 비지 않게) · 소리는 뺀다(나레이션과 겹침)
         dst = out.with_suffix(".mp4")
@@ -297,6 +301,45 @@ def passthrough(m: dict, out: Path, work: Path) -> dict:
             return {"app": None, "file_suffix": ".mp4"}
     out.with_suffix(src.suffix).write_bytes(src.read_bytes())
     return {"app": None, "file_suffix": src.suffix}
+
+
+def gen_clip(m: dict, src: Path, out: Path) -> dict:
+    """생성 클립(Dreamina 등) · 구간을 정한 영상: 쓸 구간(in · out) → 화면 비율로 채우기(fit cover) → 장면보다 짧으면
+    end: slow(1.25배까지 늦춤 · 기본) | loop | freeze. 끝에는 늘 마지막 프레임 여유(움직임 단계가 장면 끝까지 읽음). 소리는 뺀다(대사는 음성 단계가 넣음)"""
+    import sys as _s
+    _s.path.insert(0, str(ROOT / "scripts"))
+    import genclip
+    dur = genclip.probe(src)["dur"]
+    a, b = genclip.span(m, dur)
+    length, sec = b - a, float(m.get("_sec") or 0)
+    W, H = int(m["_W"]), int(m["_H"])
+    fit = m.get("fit") or ("cover" if m.get("gen") else "contain")
+    end = m.get("end") or "slow"
+    vf = [f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}" if fit == "cover" else f"scale='min({W},iw)':-2"]
+    pre, k = [], 1.0
+    if sec > length + 0.05 and end == "slow":
+        k = min(1.25, sec / length)
+        vf.append(f"setpts={k:.4f}*PTS")
+    elif sec > length + 0.05 and end == "loop":
+        pre = ["-stream_loop", "-1"]
+    # 끝 여유: 장면을 채우는 만큼 + 1초(예전 20초는 FilmCraft 색 · 줌 단계가 클립마다 20초를 더 처리해 렌더가 6배 느려졌다)
+    hold = (max(0.0, sec - length * k) + 1.0) if sec else 20.0
+    vf.append(f"tpad=stop_mode=clone:stop_duration={hold:.2f},format=yuv420p")
+    dst = out.with_suffix(".mp4")
+    args = ["ffmpeg", "-v", "error", "-y", *pre, "-ss", f"{a:.3f}"] + (["-t", f"{max(sec, length):.3f}"] if pre else ["-to", f"{b:.3f}"]) + \
+           ["-i", str(src), "-vf", ",".join(vf), "-an", "-r", "30", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", str(dst)]
+    if pre:   # 반복: -to 는 입력 기준이라 구간을 먼저 잘라 둔 뒤 반복
+        cut = out.with_suffix(".cut.mp4")
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{a:.3f}", "-to", f"{b:.3f}", "-i", str(src), "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", str(cut)], check=True)
+        args = ["ffmpeg", "-v", "error", "-y", "-stream_loop", "-1", "-i", str(cut), "-t", f"{sec:.3f}", "-vf", ",".join(vf), "-an", "-r", "30",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", str(dst)]
+    r = subprocess.run(args, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(f"생성 클립 {m.get('id')} 처리 실패: {r.stderr[-300:]}")
+    info = {"app": None, "file_suffix": ".mp4", "clip": {"in": a, "out": b, "fit": fit, "end": end}}
+    if m.get("gen"):
+        info["generated"] = m["gen"]
+    return info
 
 
 def stock(m: dict, out: Path, work: Path, sid: str) -> dict:
@@ -320,9 +363,107 @@ def stock(m: dict, out: Path, work: Path, sid: str) -> dict:
     return {"app": None, "mobile": True, "credit": c, "source": [c["page"]]}
 
 
-MAT_VERSION = "3"     # 재료를 만드는 방식이 바뀌면 올린다(열쇠에 들어가 예전 결과를 다시 만든다) — 2: 아이콘 고해상도 · 영상 마지막 프레임 유지 · 요소 폴더 · 3: 차트 항목 아이콘
+MAT_VERSION = "6"     # 재료를 만드는 방식이 바뀌면 올린다(열쇠에 들어가 예전 결과를 다시 만든다) — 2: 아이콘 고해상도 · 영상 마지막 프레임 유지 · 요소 폴더 · 3: 차트 항목 아이콘 · 4: 앱별 어댑터 · 5: craft 재료 · 레시피 · 6: 생성 클립
+#                       4: 앱별 어댑터(PhotoCraft 카드 · PdfCraft 진짜 형광펜 · FilmCraft 다듬기 · 새 재료 종류) · 사람이 고친 편집 파일 열쇠 일반화
 ADAPTERS = {"chart": chart, "doc_quote": doc_quote, "illustration": illustration, "photo": photo, "icon": illustration}   # icon: icons.py 로 받은 SVG
 PASSTHROUGH = {"screen", "video", "image", "meme", "web"}    # meme: meme.py fetch 폴더 · web: webrec.py 폴더
+
+
+def _editable(old: dict, d: Path) -> Path | None:
+    """예전 기록의 편집 파일(.psd · .fcproj · .sc · .dxf · .vectorcraft …) — 저장소 기준 상대 경로, 아니면 재료 폴더 기준"""
+    e = old.get("editable")
+    if not isinstance(e, str) or not e:
+        return None
+    q = Path(e)
+    if q.is_absolute():
+        return q
+    return ROOT / q if (ROOT / q).exists() or not (d / q).exists() else d / q
+
+
+def _depends(t: str, m: dict) -> str | None:
+    """같은 장면의 다른 재료를 읽어 만드는 재료 → 그 재료 id (overlay 의 target · drawing 의 model id)"""
+    if t == "overlay" and m.get("target"):
+        return str(m["target"])
+    if t == "drawing" and isinstance(m.get("model"), str) and m["model"]:
+        return m["model"]
+    return None
+
+
+def _post(fn, m: dict, file: Path, work: Path, info: dict) -> dict | None:
+    """POST 다듬기 — 4번째 인자(passthrough 기록: steps 등)를 받는 함수면 넘긴다"""
+    import inspect
+    try:
+        n = len(inspect.signature(fn).parameters)
+    except (TypeError, ValueError):
+        n = 3
+    return fn(m, file, work, info) if n >= 4 else fn(m, file, work)
+
+
+def plugins() -> tuple[dict, dict]:
+    """앱별 어댑터 꽂기 — scripts/craft/adapters/<앱>.py 가 ADAPTERS = {재료 종류: fn(m, out, work) -> info} 와
+    (선택) POST = {재료 종류: fn(m, file, work) -> dict | None} 를 내놓는다.
+      - ADAPTERS 는 같은 이름의 기본 어댑터를 덮어쓴다. info 에 "file_suffix"(예: ".mp4")가 있으면 그 확장자 파일이 재료다
+      - POST 는 그대로 쓰는 재료(screen · video · web …)를 만든 뒤 다듬는다 — 돌려준 dict 의 "file"(Path)이 있으면 그 파일로 바뀐다
+    모듈 하나가 불러지지 않아도(앱 미설치 · 오류) 나머지는 쓴다"""
+    import importlib
+    ad, post = {}, {}
+    for f in sorted((Path(__file__).parent / "adapters").glob("*.py")):
+        if f.name.startswith("_"):
+            continue
+        try:
+            mod = importlib.import_module(f"{__package__}.adapters.{f.stem}")
+        except Exception as e:  # noqa: BLE001
+            print(f"[재료] 어댑터 {f.stem} 을 불러오지 못했습니다: {e}")
+            continue
+        ad.update(getattr(mod, "ADAPTERS", {}) or {})
+        post.update(getattr(mod, "POST", {}) or {})
+    return ad, post
+
+
+def expand_recipe(m: dict) -> dict:
+    """"recipe": "<이름>" → 레시피의 craft 재료 + "fill"(바꿀 칸, JSON 포인터 → 값) + 콘티의 나머지 칸(id · cue · place …)"""
+    name = m.get("recipe")
+    if not name:
+        return m
+    import copy
+    f = ROOT / ".claude" / "skills" / "crafts" / "recipes" / f"{name}.json"
+    if not f.exists():
+        raise RuntimeError(f"레시피 {name} 이 없습니다 — python3 scripts/craft_variety.py list")
+    mat = copy.deepcopy(json.loads(f.read_text("utf-8"))["material"])
+    for ptr, val in (m.get("fill") or {}).items():
+        keys = [k for k in str(ptr).split("/") if k != ""]
+        cur = mat
+        try:
+            for k in keys[:-1]:
+                cur = cur[int(k)] if isinstance(cur, list) else cur[k]
+            last = keys[-1]
+            if isinstance(cur, list):
+                cur[int(last)] = val
+            else:
+                cur[last] = val
+        except (KeyError, IndexError, ValueError, TypeError):
+            raise RuntimeError(f"레시피 {name} 에 {ptr} 칸이 없습니다(레시피 slots 의 at 을 쓰세요)")
+    rest = {k: v for k, v in m.items() if k not in ("recipe", "fill", "type")}
+    return {**mat, **rest, "type": "craft", "recipe": name}
+
+
+def _files_in(o) -> list[Path]:
+    """재료 칸 안의 저장소 파일 경로(문자열) — craft 재료의 입력이 바뀌면 다시 만들려고"""
+    out = []
+    if isinstance(o, dict):
+        for v in o.values():
+            out += _files_in(v)
+    elif isinstance(o, list):
+        for v in o:
+            out += _files_in(v)
+    elif isinstance(o, str) and len(o) < 400 and "/" in o and not o.startswith("$"):
+        q = _abs(o)
+        try:
+            if q.is_file() and ROOT in q.resolve().parents:
+                out.append(q)
+        except OSError:
+            pass
+    return out
 
 
 # ---------------------------------------------------------------- 디스패처
@@ -331,6 +472,10 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
     indices: 장면 일부만 렌더할 때 각 장면의 원래 번호(0부터) — 재료 폴더 s<NN> 이 원래 번호와 맞게"""
     sid = sb["id"]
     reg = registry()
+    plug, post = plugins()
+    adapters = {**ADAPTERS, **plug}
+    from . import usage
+    usage.SID = sid
     base = ROOT / "compositions" / sid / "craft" / "materials"
     made = []
     scs = sb.get("scenes") or []
@@ -354,25 +499,40 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
                     else:
                         f.unlink(missing_ok=True)
         for i, m in enumerate(sc.get("materials") or []):
-            m = {"id": m.get("id") or f"m{i + 1}", **m}
+            m = expand_recipe({"id": m.get("id") or f"m{i + 1}", **m})
             t = m.get("type")
+            if t == "video" and (m.get("gen") or any(k in m for k in ("in", "out", "fit", "end"))):
+                from engines import aspect_size        # 생성 클립 · 구간 영상: 화면 크기 · 장면 길이에 맞춰 만든다
+                _W, _H = aspect_size(sb)
+                m = {**m, "_clip": True, "_W": _W, "_H": _H, "_sec": float(sc.get("sec") or 0),
+                     **({"_grade": (sb.get("direction") or {}).get("grade")} if m.get("gen") and (sb.get("direction") or {}).get("grade") else {})}
+                if m.get("gen") and not m.get("ask") and not (m.get("src") and _abs(m["src"]).exists()):
+                    m["ask"] = f"생성 클립({m['gen']}) — python3 scripts/genclip.py prompts storyboards/{sid}.json 의 프롬프트로 만들어 올리기"
             d = base / f"s{n:02d}"
             d.mkdir(parents=True, exist_ok=True)
             out = d / f"{m['id']}.png"
             meta_p = d / f"{m['id']}.json"
             # 열쇠 = 요청 + 원본 파일 내용 + 사람이 고친 편집 파일 → 무엇이든 바뀌면 다시 만든다
             srcs = [_hash(_abs(m[k])) if not _abs(m[k]).is_dir() else "|".join(f"{f.name}:{f.stat().st_size}" for f in sorted(_abs(m[k]).iterdir()))
-                    for k in ("src", "csv", "xlsx", "pdf") if isinstance(m.get(k), str)]
-            srcs.append(_hash(out.with_suffix(".vectorcraft")) if t == "illustration" else "")
+                    for k in ("src", "csv", "xlsx", "pdf", "template") if isinstance(m.get(k), str)]
+            old = _load(meta_p)
+            # 사람이 고친 편집 파일: 기록의 editable_hash(우리가 만든 그대로의 해시)와 다르면 열쇠에 넣는다 → 다시 만들어 그 파일을 쓴다.
+            # editable_hash 를 남기는 어댑터(그림 · 사진 카드 · 화면 다듬기 · 3D · 도면)만 — 고친 파일을 알아보고 덮어쓰지 않는 어댑터들
+            ed_p = _editable(old, d)
+            ed_now = _hash(ed_p) if ed_p else ""
+            hand = bool(old.get("editable_hash") and ed_now and ed_now != old["editable_hash"])
+            srcs.append(ed_now if hand else "")
+            dep = _depends(t, m)              # 대상 재료(캡처 · 3D)가 바뀌면 주석 · 도면도 다시
+            if dep:
+                srcs.append(_load(d / f"{dep}.json").get("key") or "missing")
+            if t == "craft":                   # craft 재료: 칸 안의 입력 파일 · 레시피 내용이 바뀌면 다시
+                srcs += [f"{q.relative_to(ROOT)}:{_hash(q)}" for q in _files_in({k: v for k, v in m.items() if k not in ("src", "csv", "xlsx", "pdf")})]
             if m.get("ask"):                   # 사용자가 올린 파일(이름으로 찾은 것)도 열쇠에 — 새로 올리면 다시 만든다
                 up_f = find_upload(sid, m)
                 srcs.append(f"{up_f.name}:{_hash(up_f)}" if up_f else "missing")
             if t == "stock":                   # 스톡 영상은 화면 비율대로 잘라 만든다 → 비율이 바뀌면 다시
                 from engines import aspect_of
                 srcs.append(aspect_of(sb))
-            old = _load(meta_p)
-            if t == "illustration" and old.get("editable_hash") == srcs[-1]:
-                srcs[-1] = ""                  # 우리가 만든 그대로면 열쇠에 넣지 않는다
             key = hashlib.sha1(json.dumps([m, srcs, MAT_VERSION], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
             if old.get("key") == key and (not old.get("file") or (ROOT / old["file"]).exists()):
                 # 예전 기록(글자 인식 전)에는 글자 위치가 없다 → 채워 둔다(짚기 · 재료 검사가 쓴다)
@@ -390,24 +550,39 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
                 made.append(rec)
                 print(f"[재료] {n}장면 {m['id']}: 사용자 녹화 대기 — {m['ask']}")
                 continue
+            usage.begin()
             if t in PASSTHROUGH:
                 if m.get("ask"):
                     m = {**m, "src": str(find_upload(sid, m).relative_to(ROOT))}
                 info = passthrough(m, out, d)
                 file = out.with_suffix(info.pop("file_suffix"))
+                if t in post:                      # 앱으로 다듬기(화면 녹화 줌 · 흐림 · 빨리 감기 등)
+                    extra = _post(post[t], m, file, d, info) or {}
+                    file = Path(extra.pop("file", file))
+                    info.update(extra)
             elif t == "stock":                     # 무료 스톡 영상(실제 촬영) — 키는 설정 화면
                 info = stock(m, out, d, sid)
                 file = out.with_suffix(".mp4")
-            elif t in ADAPTERS:
-                if (t if t != "icon" else "illustration") not in reg:
+            elif t in adapters:
+                if t in ADAPTERS and t not in plug and (t if t != "icon" else "illustration") not in reg:
                     raise RuntimeError(f"'{t}' 재료를 만들 Craft 앱이 설치되지 않았습니다(Craft 앱 화면에서 설치)")
-                info = ADAPTERS[t](m, out, d)
-                file = out if out.exists() else None
+                info = adapters[t](m, out, d)
+                suf = info.pop("file_suffix", None)
+                file = out.with_suffix(suf) if suf else out
+                file = file if file.exists() else None
             elif t in ("text", "stat"):            # 글자 · 수치 카드는 움직임 단계가 바로 그린다(앱 없음)
                 info, file = {"app": None}, None
             else:
-                raise RuntimeError(f"모르는 재료 종류: {t} (chart · stat · doc_quote · illustration · icon · photo · screen · web · video · stock · meme · image · text)")
+                raise RuntimeError(f"모르는 재료 종류: {t} ({' · '.join(sorted({*adapters, *PASSTHROUGH, 'stock', 'text', 'stat'}))})")
             rec = {"scene": n, "id": m["id"], "type": t, "key": key, "spec": m, "file": str(file.relative_to(ROOT)) if file else None, **info}
+            feats = usage.take()
+            if feats and not rec.get("steps_run"):
+                rec["features"] = feats
+            if hand:
+                # 고친 파일을 썼다 — 기준 해시는 처음 만든 그대로 둔다(다음 빌드도 '사람이 고침'으로 알아보고 덮어쓰지 않게)
+                rec["editable_hash"] = old["editable_hash"]
+                rec["edited"] = True
+                print(f"[재료] {n}장면 {m['id']}: 사람이 고친 편집 파일({ed_p.name})로 다시 만들었습니다")
             # 캡처 · 사진 속 글자 위치(글자 인식) — 움직임 단계가 '말하는 낱말을 화면에서 짚기(확대 · 동그라미)'에 쓴다
             if file and t in ("image", "photo", "screen") and file.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
                 rec["ocr"] = read_text_boxes(file)

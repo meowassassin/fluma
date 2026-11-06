@@ -1,0 +1,112 @@
+{
+ "name": "screen-grow-hook",
+ "app": "filmcraft",
+ "desc": "세로 맞춤 캡처 + 서서히 확대 + 훅 자막 바",
+ "purpose": [
+  "screen",
+  "hook",
+  "zoom"
+ ],
+ "look": [
+  "clean",
+  "punchy"
+ ],
+ "features": [
+  "file.import",
+  "timeline.place",
+  "clip.fitToFrame",
+  "effects.apply",
+  "graphics.newText",
+  "graphics.set"
+ ],
+ "slots": [
+  {
+   "at": "/steps/0/params/paths/0",
+   "kind": "file",
+   "example": "compositions/2026-11-03-s0g011z-01/web/psi.png"
+  },
+  {
+   "at": "/steps/4/params/text",
+   "kind": "text",
+   "example": "이거 모르면 손해"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "filmcraft",
+  "steps": [
+   {
+    "id": "file.import",
+    "params": {
+     "paths": [
+      "compositions/2026-11-03-s0g011z-01/web/psi.png"
+     ]
+    }
+   },
+   {
+    "id": "timeline.place",
+    "params": {
+     "item": "$0.items.0",
+     "track": "V1",
+     "seconds": 0,
+     "insert": false,
+     "audio": false
+    }
+   },
+   {
+    "id": "clip.fitToFrame",
+    "params": {
+     "clips": "$1.clips"
+    }
+   },
+   {
+    "id": "effects.apply",
+    "params": {
+     "clips": "$1.clips",
+     "effect": "grow"
+    }
+   },
+   {
+    "id": "graphics.newText",
+    "params": {
+     "text": "이거 모르면 손해",
+     "position": [
+      540,
+      300
+     ],
+     "size": 110,
+     "font": "Noto Sans CJK KR",
+     "fontStyle": "Black",
+     "seconds": 3,
+     "time": 0
+    }
+   },
+   {
+    "id": "graphics.set",
+    "params": {
+     "clip": "$4.clip",
+     "layer": 0,
+     "props": {
+      "align": "center",
+      "fill_color": "#ffffff",
+      "stroke": true,
+      "stroke_color": "#000000",
+      "stroke_width": 12,
+      "background": true,
+      "background_color": "#ff3b30",
+      "background_opacity": 100,
+      "background_size": 24,
+      "background_radius": 20
+     }
+    }
+   }
+  ],
+  "export": {
+   "format": "mp4",
+   "end": 3,
+   "time": 2.5
+  }
+ },
+ "preview": "screen-grow-hook.jpg"
+}

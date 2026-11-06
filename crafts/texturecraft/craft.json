@@ -18,5 +18,12 @@
  ],
  "web": true,
  "kind_en": "3D texture painting",
- "use_en": "Surfaces for 3D objects"
+ "use_en": "Surfaces for 3D objects",
+ "provides": [
+  {
+   "material": "model3d",
+   "in": "SolidCraft 가 만든 OBJ(model3d 재료의 재질 · 로고 단계)",
+   "out": "재질 · 로고 데칼을 입힌 .tcraft 편집 파일 + 9:16 렌더(정지 경로 추적 · 턴테이블 프레임)"
+  }
+ ]
 }

@@ -22,7 +22,12 @@
  "provides": [
   {
    "material": "thumbnail",
-   "in": "제목 · 대표 그림",
+   "in": "제목 · 훅 · 대표 그림 → 세로 1080×1920 + 가로 1280×720",
+   "out": "png"
+  },
+  {
+   "material": "info_card",
+   "in": "제목 · 본문 · 요점 · 출처(여러 장이면 rows · csv 데이터 병합)",
    "out": "png"
   }
  ]

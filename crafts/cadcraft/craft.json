@@ -15,5 +15,12 @@
  "web": true,
  "kind_en": "CAD drafting (AutoCAD-style)",
  "use_en": "Drawings and plans as screen material",
- "sandbox": false
+ "sandbox": false,
+ "provides": [
+  {
+   "material": "drawing",
+   "in": "src(DXF · DWG) | cmd(CADCraft 명령 목록) | model(3D 형태 칸 또는 같은 장면 model3d 재료 id) · 선택: views · title · paper(dark|white) · window · mark",
+   "out": "9:16 도면 PNG(CAD 어두운 화면 또는 흰 종이) — 3D 는 3각법 투영도 + 전체 치수 + 제목, .dxf 편집 파일"
+  }
+ ]
 }

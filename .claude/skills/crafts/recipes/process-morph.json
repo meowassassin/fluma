@@ -1,0 +1,151 @@
+{
+ "name": "process-morph",
+ "app": "deckcraft",
+ "desc": "구조도 두 장 사이 morph 전환 영상",
+ "purpose": [
+  "diagram",
+  "steps",
+  "transition"
+ ],
+ "look": [
+  "diagram",
+  "motion"
+ ],
+ "features": [
+  "design.fonts",
+  "slide.new",
+  "insert.smartArt",
+  "smartArt.layout",
+  "smartArt.style",
+  "smartArt.colors",
+  "slide.new",
+  "insert.smartArt",
+  "transition.set"
+ ],
+ "slots": [
+  {
+   "at": "/steps/2/params/items/0",
+   "kind": "text",
+   "example": "URL 입력"
+  },
+  {
+   "at": "/steps/2/params/items/1",
+   "kind": "text",
+   "example": "분석 실행"
+  },
+  {
+   "at": "/steps/2/params/items/2",
+   "kind": "text",
+   "example": "점수 확인"
+  },
+  {
+   "at": "/steps/2/params/items/3",
+   "kind": "text",
+   "example": "개선 제안"
+  },
+  {
+   "at": "/steps/7/params/items/0",
+   "kind": "text",
+   "example": "보기"
+  },
+  {
+   "at": "/steps/7/params/items/1",
+   "kind": "text",
+   "example": "고치기"
+  },
+  {
+   "at": "/steps/7/params/items/2",
+   "kind": "text",
+   "example": "다시 보기"
+  },
+  {
+   "at": "/steps/7/params/items/3",
+   "kind": "text",
+   "example": "완성"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "deckcraft",
+  "new": {
+   "theme": "Nocturne"
+  },
+  "steps": [
+   {
+    "id": "design.fonts",
+    "params": {
+     "major": "Noto Sans CJK KR",
+     "minor": "Noto Sans CJK KR"
+    }
+   },
+   {
+    "id": "slide.new",
+    "params": {
+     "layout": "blank"
+    }
+   },
+   {
+    "id": "insert.smartArt",
+    "params": {
+     "kind": "process",
+     "items": [
+      "URL 입력",
+      "분석 실행",
+      "점수 확인",
+      "개선 제안"
+     ]
+    }
+   },
+   {
+    "id": "smartArt.layout",
+    "params": {
+     "kind": "verticalProcess"
+    }
+   },
+   {
+    "id": "smartArt.style",
+    "params": {
+     "style": "polished"
+    }
+   },
+   {
+    "id": "smartArt.colors",
+    "params": {
+     "colors": "colorful"
+    }
+   },
+   {
+    "id": "slide.new",
+    "params": {
+     "layout": "blank"
+    }
+   },
+   {
+    "id": "insert.smartArt",
+    "params": {
+     "kind": "cycle",
+     "items": [
+      "보기",
+      "고치기",
+      "다시 보기",
+      "완성"
+     ]
+    }
+   },
+   {
+    "id": "transition.set",
+    "params": {
+     "kind": "morph",
+     "duration": 800
+    }
+   }
+  ],
+  "export": {
+   "format": "mp4",
+   "slide": 1,
+   "duration": 2
+  }
+ },
+ "preview": "process-morph.jpg"
+}

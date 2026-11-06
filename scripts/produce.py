@@ -86,6 +86,31 @@ def stills(video: Path, sb: dict, sid: str) -> list[str]:
     return rows
 
 
+def extras(sid: str) -> list[str]:
+    """썸네일 후보 · 장면 마커 목록 — 조립(FilmCraft file.exportFrame · markers.exportCsv)과 thumbnail 재료(DesignCraft)가 남긴 것"""
+    rows = []
+    man = ROOT / "compositions" / sid / "craft" / "craft.json"
+    try:
+        ed = (json.loads(man.read_text("utf-8")).get("edit") or {}) if man.exists() else {}
+    except ValueError:
+        ed = {}
+    for f in sorted((ROOT / "compositions" / sid / "craft" / "materials").glob("s[0-9][0-9]/*.json")):
+        try:
+            r = json.loads(f.read_text("utf-8"))
+        except ValueError:
+            continue
+        if isinstance(r, dict) and r.get("type") == "thumbnail" and r.get("file"):
+            rows.append(f"{r['file']} | 썸네일(세로, DesignCraft)")
+            if r.get("landscape"):
+                rows.append(f"{r['landscape']} | 썸네일(가로 16:9)")
+    th = (ed.get("thumb") or {}).get("file")
+    if th and (ROOT / th).exists():
+        rows.append(f"{th} | 썸네일 후보(훅 장면 프레임)")
+    if ed.get("markers") and (ROOT / ed["markers"]).exists():
+        rows.append(f"{ed['markers']} | 장면 마커 목록(FilmCraft)")
+    return rows
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("storyboard")
@@ -114,13 +139,20 @@ def main() -> int:
     r = step("lint", [PY, "scripts/lint.py", rel])
     rows = lint_rows(r.stdout)
     hard = [(c, m) for c, m in rows if c.startswith("L")]
-    soft = [(c, m) for c, m in rows if c.startswith("T")]
+    soft = [(c, m) for c, m in rows if c.startswith(("T", "V"))]
     asks = [(c, m) for c, m in hard if c in ("L36", "L38")]
     if hard and not a.keep_going:
         save_times(sid)
         if asks and len(asks) == len(hard):
             needs_input("produce", needs=[f"{c} {m}" for c, m in asks], how="사용자 녹화는 편집기에 올리기(이름에 재료 id) · 키는 설정 → API 키")
         fail("produce", stage="lint", error=" / ".join(f"{c} {m}" for c, m in hard[:6]), lint=[f"{c} {m}" for c, m in hard], time=[f"{k}:{v}" for k, v in TIMES.items()])
+
+    # 2-1) 다양성 — 최근 영상과 같은 구성 · 한 종류 재료 반복(권고, 렌더는 계속). scripts/craft_variety.py
+    try:
+        import craft_variety
+        soft += [(c, m) for c, m in craft_variety.check(sb)]
+    except Exception as e:  # noqa: BLE001
+        print(f"[제작] 다양성 검사 건너뜀: {e}", flush=True)
 
     # 3) 재료 · 초안 렌더(재료는 렌더가 만든다 — scripts/craft/materials.py)
     cmd = [PY, "scripts/render.py", rel, "--draft"] + (["--scenes", a.scenes] if a.scenes else []) + (["--aspect", a.aspect] if a.aspect else [])
@@ -136,7 +168,7 @@ def main() -> int:
 
     # 4) 장면별 정지 화면
     t0 = time.time()
-    media = [f"{b['file'][0]} | 초안"] + (stills(video, sb, sid) if not a.scenes else [])
+    media = [f"{b['file'][0]} | 초안"] + (stills(video, sb, sid) if not a.scenes else []) + (extras(sid) if not a.scenes else [])
     TIMES["stills"] = round(time.time() - t0, 1)
     save_times(sid)
     ok("produce", file=b["file"][0], media=media, warn=warns[:12], lint_soft=len(soft),

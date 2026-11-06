@@ -47,10 +47,20 @@ order: 2
    |---|---|---|
    | 핵심 숫자 하나(훅 · 결론) | `stat` — `value`("+8.4%"), `label`(무엇의 숫자인지, 한국어, 짧게), `source`(설명란용 — 화면엔 안 씀), `cue`. **카드가 아니라 덧씌우기**: 그 장면의 바탕 재료(캡처 · 화면 · 차트) 위에 화면을 어둡게 하고 큰 숫자. 그래서 바탕 재료가 꼭 같이 있어야 한다 | 엔진 |
    | 숫자 여러 개 비교 | `chart` — 원자료는 `compositions/<id>/src/*.csv`. `percent: true` 는 **합계 대비 비율로 바꾸기**(값이 이미 % 면 쓰지 말 것). 가장 큰 값이 노란색 | GridCraft |
-   | 논문 · 보고서 · 기사 근거 | `doc_quote` — `pdf` + `find`(그 문장) | PdfCraft |
+   | 논문 · 보고서 · 기사 근거 | `doc_quote` — `pdf` + `find`(그 문장). 진짜 PDF 형광펜(`mark`: highlight · box · both) · 문장 주변만 잘라 1080 폭 · `redact`(email · phone) | PdfCraft |
    | 인물 · 캐릭터 · 사물 | `illustration` — **illustrate 스킬로 이 영상만의 SVG 를 새로 그린다**. 기본은 통째로 한 장(글자 포함). 캐릭터를 움직이려면 `action`(idle · walk · wave · bounce) + 부품 이름 그룹 | VectorCraft |
-   | 사용자 사진 · 캡처 | `photo` (`cutout: true` 면 누끼) | PhotoCraft |
+   | 사용자 사진 · 캡처 | `photo` — 기사 · 캡처 한 장을 화면 카드로 세울 때 `frame: "card"` + `title` · `highlight`([x,y,w,h]) · `clean`(로고 · 워터마크 지우기). `cutout` 누끼는 단순 배경만 | PhotoCraft |
    | 실제 화면 녹화 · 영상 | `screen` · `video` — 웹 녹화 `src`. **자동 브라우저로 못 찍는 화면**(로그인 · 측정 결과 · 앱)은 `ask`("무엇을 · 몇 초")만 적는다 → 사용자에게 부탁(아래 L36) | 그대로 |
+   | 실제 화면의 짚을 곳(버튼 · 줄 · 숫자) | `overlay` — `target`(같은 장면 앞 재료) + `marks`[{kind: box·arrow·label, box(0~1), text, cue}]. 효과(번쩍임 · 큰 배지) 대신 주석 | VectorCraft |
+   | 화면 녹화의 확대 · 가림 · 건너뛰기 | screen · video · web 에 `zoom`[{t, box, dur}] · `blur`[[x,y,w,h]] · `speed`[{from, to, x}] | FilmCraft |
+   | 캡처를 폰 · 브라우저에 넣어 | `ui_mock` — `src`(실제 캡처) · `device`. 캡처가 없어 그린 화면이면 `screen` + `mock: true`(설명용 가상 UI) | FigCraft |
+   | 단계 · 구조 · 비교 | `diagram` — `kind` + `items` + `cues`(항목이 그 낱말에 하나씩) | DeckCraft |
+   | 약관 · 공지 · 바뀐 문구 | `document` — `src` 또는 `text`, `highlight`[문장], `track`{from, to}, `comments` | WordCraft |
+   | 요점 정리 · 반복 카드 | `info_card`(kicker · title · body · points · source) · `template_card`(틀 + csv · values) | DesignCraft · VectorCraft |
+   | 제품(실물 사진이 없을 때) | `model3d` — `shape`+`size` · `commands` · `src`(STEP) · `material` · `logo` · `turntable` · `exploded`. 치수는 `drawing`(`model`: 앞 model3d id) | SolidCraft · TextureCraft · CADCraft |
+   | 감성 · 광고 사진 톤 | `photo_grade` — `look`(warm · film · clean · mono) · `crop` 9:16 · `credit` | LightCraft |
+   | 썸네일 | `thumbnail`(마지막 장면, 비우면 콘티 제목 · 훅) — 결과 media 에 세로 · 가로 판 | DesignCraft |
+   칸 · 예시 JSON 은 storyboard 스킬 '장면 재료' 절. 어느 앱의 무엇을 쓰는지 · 주의는 crafts 스킬. 렌더 전에 검사 L39 가 칸을 본다.
    - 재료가 없는 장면은 엔진이 그 장면의 핵심어(`visual.primary`) · 목록(`visual.items`)으로 화면을 짠다 — 그래서 `visual` 을 꼭 채운다.
    - 공통 칸: `id`, `cue`(등장할 나레이션 낱말), `place`(center · left · right · top · bottom · full).
    - 같은 캐릭터를 여러 장면에 쓰면 같은 `src` — 한 번 고치면 모든 장면이 바뀐다.
@@ -59,9 +69,16 @@ order: 2
    - L36 사용자 녹화 대기: 초안은 그 재료 없이 렌더된다. 사용자에게 **무엇을 · 몇 초 · 파일 이름에 재료 id 를 넣어 편집기에 올려 달라고** 한 줄로 부탁하고 턴을 끝낸다(올리면 `public/uploads/<id>/` 에서 이름으로 찾아 쓴다). 녹화가 장면보다 짧아도 마지막 화면에서 멈춰 있다
    - 훅(L05): 훅 제목이 3초 안에 뜨면 나레이션은 4.6초까지 괜찮다(T05). 3초를 맞추려 문장을 자르거나 배속을 올리지 않는다
 4. **초안 렌더**: `python3 scripts/render.py storyboards/<id>.json --draft` → `out/<id>-craft-Scenes-draft.mp4`
-   제작 파일: `compositions/<id>/craft/` (`motion/*.ecproj` · `audio/*.scraft` · `edit/*.fcproj` · `materials/`). 사람이 Craft 에서 고친 파일은 해시로 알아채 덮어쓰지 않는다.
+   제작 파일: `compositions/<id>/craft/` (`motion/*.ecproj` · `audio/*.scraft` · `edit/*.fcproj` · `materials/`). 사람이 Craft 에서 고친 파일은 해시로 알아채 덮어쓰지 않는다(재료: .vectorcraft · 카드 .psd · .fcproj · .sc · .dxf).
+   조립 결과: `edit/<id>.thumb.png`(훅 장면 썸네일 후보) · `edit/<id>.markers.csv`(장면 마커) — produce 결과 media 에 같이 나온다. 소리는 SoundCraft 가 -14 LUFS 로 맞추고(craft.json audio.lufs) FilmCraft 는 다시 정규화하지 않는다.
 5. **확인**: `python3 scripts/still.py storyboards/<id>.json <초> …` → PNG 를 Read 로 직접 본다. 글자 겹침 · 잘림 · 빈 화면 · 재료가 말과 맞는지. 고칠 게 있으면 재료 · 콘티를 고치고 4로.
 6. **최종 렌더는 하지 않는다** — 사용자가 편집기의 '렌더'를 눌러 의도 · 시안을 확인한다(관문).
+
+## 다양성 (V 권고)
+produce.py 결과의 warn 에 V41~V45 가 있으면 무시하지 말고 한 장면 이상 바꿔 본다 — `craft_variety.py suggest` 의 ★ 레시피 또는 `craft_catalog.py search` 로 찾은 기능을 `type: craft` 로. 잘 나온 craft 재료는 `craft_variety.py save` 로 레시피에 남긴다(crafts 스킬 0절).
+
+## 생성 클립(Dreamina 등)이 있는 콘티
+produce.py 가 '사용자 녹화 대기'(L36)로 멈추면 생성 클립이 아직 없다는 뜻 — `python3 scripts/genclip.py prompts storyboards/<id>.json` 의 목록을 사용자에게 주고 올려 달라고 한다. 받은 뒤 다시 produce. 클립 끝이 어색하면 `in` · `out` · `end`(slow · loop · freeze)를 고친다(storyboard 스킬 '생성 영상 클립').
 
 ## 하지 말 것
 - compose 스킬 · `compositions/<id>/scene.js` · `direct.py --write` (HyperFrames 경로)

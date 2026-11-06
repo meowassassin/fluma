@@ -1,0 +1,138 @@
+{
+ "name": "photo-poster-title",
+ "app": "designcraft",
+ "desc": "배경 사진 꽉 채우기 + 아래 어둡게 + 큰 한글 제목",
+ "purpose": [
+  "emotional",
+  "title",
+  "thumbnail"
+ ],
+ "look": [
+  "poster",
+  "editorial"
+ ],
+ "features": [
+  "frame.create",
+  "file.place",
+  "object.fit",
+  "frame.create",
+  "object.gradient",
+  "frame.create",
+  "text.select",
+  "type.char"
+ ],
+ "slots": [
+  {
+   "at": "/steps/1/params/path",
+   "kind": "file",
+   "example": "assets/social-preview.png"
+  },
+  {
+   "at": "/steps/5/params/text",
+   "kind": "text",
+   "example": "무료 AI 툴\n5분 만에 끝"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "designcraft",
+  "steps": [
+   {
+    "id": "frame.create",
+    "params": {
+     "rect": [
+      0,
+      0,
+      1080,
+      1920
+     ],
+     "content": "graphic"
+    }
+   },
+   {
+    "id": "file.place",
+    "params": {
+     "path": "assets/social-preview.png",
+     "frame": "$0.id"
+    }
+   },
+   {
+    "id": "object.fit",
+    "params": {
+     "mode": "fillProportionally",
+     "ids": [
+      "$0.id"
+     ]
+    }
+   },
+   {
+    "id": "frame.create",
+    "params": {
+     "rect": [
+      0,
+      1000,
+      1080,
+      1920
+     ],
+     "content": "unassigned"
+    }
+   },
+   {
+    "id": "object.gradient",
+    "params": {
+     "kind": "linear",
+     "angle": -90,
+     "stops": [
+      {
+       "location": 0,
+       "color": "#000000",
+       "opacity": 0
+      },
+      {
+       "location": 100,
+       "color": "#000000",
+       "opacity": 90
+      }
+     ],
+     "ids": [
+      "$3.id"
+     ]
+    }
+   },
+   {
+    "id": "frame.create",
+    "params": {
+     "rect": [
+      60,
+      1300,
+      1020,
+      1700
+     ],
+     "content": "text",
+     "text": "무료 AI 툴\n5분 만에 끝"
+    }
+   },
+   {
+    "id": "text.select",
+    "params": {
+     "story": "$5.story",
+     "anchor": 0,
+     "focus": 60
+    }
+   },
+   {
+    "id": "type.char",
+    "params": {
+     "attrs": {
+      "fontFamily": "Noto Sans CJK SC",
+      "fontStyle": "Bold",
+      "size": 130,
+      "fill": "[Paper]"
+     }
+    }
+   }
+  ]
+ },
+ "preview": "photo-poster-title.jpg"
+}

@@ -58,6 +58,8 @@ def _element_meta(rec: dict) -> dict:
 
 def screen_changes(rec: dict) -> int:
     """이 재료 안에서 화면이 바뀌는 횟수 — 웹 녹화는 상태 화면 수 + 실제 녹화 구간 3초마다 한 번(줄이 쏟아지는 터미널 · 말풍선이 올라오는 대화창)"""
+    if rec.get("layers") and rec.get("type") in ("overlay", "diagram"):
+        return len(rec["layers"])     # 주석 · 도식 항목이 낱말마다 하나씩 나온다 — 나올 때마다 화면이 바뀐다
     if rec.get("type") != "web":
         return 1
     meta = _element_meta(rec)
@@ -70,8 +72,19 @@ def screen_changes(rec: dict) -> int:
 def material_kind(rec: dict) -> str:
     """재료 종류(시청자가 보는 화면의 종류): 문서 캡처 · 그래픽 · 그림/사진 · 화면/영상"""
     t = rec.get("type")
-    if t in ("chart", "text", "stat", "icon"):
+    if t in ("chart", "text", "stat", "icon", "diagram", "info_card", "template_card", "thumbnail"):
         return "그래픽"
+    if t == "model3d":
+        return "3D 제품"
+    if t == "drawing":
+        return "도면"
+    if t == "document":
+        return "문서 캡처"
+    if t == "photo_grade":
+        return "그림 · 사진"
+    if t == "ui_mock":
+        # 실제 캡처를 폰 · 브라우저 틀에 넣은 것은 앱 화면, 설명으로 그린 가상 화면(mock)은 그래픽
+        return "그래픽" if rec.get("mock") or (rec.get("spec") or {}).get("mock") else "앱 화면"
     if t == "meme":
         return "짤 · 반응"
     if t == "web":
@@ -120,9 +133,11 @@ def material_checks(sb: dict) -> list:
     for r in recs:
         if r.get("missing"):
             out.append(("L36", r.get("scene"), f"사용자 녹화가 필요: {r.get('ask')} → 편집기에 파일을 올려 달라고 부탁(이름에 '{r.get('id')}' 포함). 받기 전 초안은 이 재료 없이 렌더됨"))
-    recs = [r for r in recs if not r.get("missing")]
+    # 주석 오버레이는 대상 화면 위에 얹힐 뿐 새 화면이 아니다 — 종류 · 개수 · 전환 수에 세지 않는다
+    notes = [r for r in recs if not r.get("missing") and r.get("type") == "overlay"]
+    recs = [r for r in recs if not r.get("missing") and r.get("type") != "overlay"]
     # 일부 장면만 렌더한 기록으로 영상 전체를 판단하지 않는다(재료는 렌더가 만든다 — 전체 기록이 모자라면 다음 전체 렌더 뒤에 본다)
-    planned = sum(1 for sc in sb.get("scenes") or [] for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("type") not in ("text", "stat"))
+    planned = sum(1 for sc in sb.get("scenes") or [] for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("type") not in ("text", "stat", "overlay"))
     built = sum(1 for r in recs if r.get("type") not in ("text", "stat"))
     if len(recs) < 2 or (planned and built < planned * 0.8):
         return out
@@ -141,10 +156,10 @@ def material_checks(sb: dict) -> list:
         out.append(("L34", None, f"재료 {len(kinds)}개 중 {docs}개가 글자 빽빽한 문서 캡처 — 세로 화면에서 안 읽힌다. 핵심 수치는 그래픽(chart)으로, 근거는 문장 하나만 짚는 doc_quote 로, 나머지는 실제 화면 · 사진 · 그림으로"))
     dur = sum(float(x.get("sec") or 0) for x in sb.get("scenes") or [])
     if dur >= 20 and len(set(kinds)) < 3:
-        out.append(("L35", None, f"재료 종류가 {len(set(kinds))}가지({', '.join(sorted(set(kinds)))}) — 레퍼런스 쇼츠는 화면 종류를 섞는다. 문서 캡처 · 그래픽(stat · chart · icon) · 그림/사진 · 화면/영상(web · screen) · 짤(meme) 중 3가지 이상"))
+        out.append(("L35", None, f"재료 종류가 {len(set(kinds))}가지({', '.join(sorted(set(kinds)))}) — 레퍼런스 쇼츠는 화면 종류를 섞는다. 문서 캡처(doc_quote · document) · 그래픽(stat · chart · diagram · info_card) · 그림/사진(photo · photo_grade) · 화면/영상(web · screen · ui_mock) · 3D 제품(model3d) · 도면(drawing) · 짤(meme) 중 3가지 이상"))
     # L37 재료 개수: 레퍼런스 설명 쇼츠는 10초에 4번 남짓 화면이 바뀐다 → 3초에 하나 이상(같은 파일은 한 번만 셈)
     seen_src: dict[str, int] = {}
-    for r in recs:
+    for r in recs + notes:            # 주석은 새 화면 종류는 아니지만 짚을 때마다 화면이 바뀐다
         key = (r.get("spec") or {}).get("src") or (r.get("spec") or {}).get("csv") or f"{r.get('scene')}/{r.get('id')}"
         seen_src[key] = max(seen_src.get(key, 0), screen_changes(r))
     uniq = sum(seen_src.values())          # 같은 파일은 한 번 · 녹화 재료는 그 안의 화면 전환 수만큼
@@ -167,6 +182,94 @@ def material_checks(sb: dict) -> list:
         en = sum(1 for r in recs if latin_heavy(r))
         if en * 3 >= len(recs):
             out.append(("T35", None, f"영어 글자가 대부분인 캡처가 {en}개 — 한국어 시청자에게 안 읽힌다. 핵심 수치는 한국어 그래픽으로 다시 그리기"))
+    return out
+
+
+IMAGE_LIKE = {"chart", "doc_quote", "illustration", "icon", "photo", "screen", "web", "video", "stock", "meme", "image",
+              "photo_grade", "document", "diagram", "ui_mock", "info_card", "template_card", "model3d", "drawing"}   # 그림 · 영상 파일이 생기는 재료(주석을 얹을 수 있음)
+
+
+def material_spec_checks(sb: dict) -> list:
+    """L39 재료 칸: 재료 단계(앱 어댑터)가 실패할 콘티를 렌더 전에 잡는다 — 필수 칸 · 같은 장면 참조 순서 · 가상 화면 표시 · 파일 존재"""
+    out = []
+    gen_ids: dict[str, int] = {}               # 생성 클립 id → 처음 나온 장면(영상 전체에서 하나)
+    for i, sc in enumerate(sb.get("scenes") or []):
+        mats = [m for m in sc.get("materials") or [] if isinstance(m, dict)]
+        seen: dict[str, str] = {}
+        for k, m in enumerate(mats):
+            mid, t = str(m.get("id") or f"m{k + 1}"), m.get("type")
+            tag = f"재료 {mid}({t})"
+            if "." in mid or "/" in mid:
+                out.append(("L39", i, f"{tag}: id 에 '.' · '/' 를 쓰지 않는다(재료 폴더 정리가 파일 이름의 첫 '.' 앞을 id 로 본다)"))
+            if mid in seen:
+                out.append(("L39", i, f"{tag}: 같은 장면에 id 가 겹침"))
+            def need(*keys, what=""):
+                if not any(m.get(x) not in (None, "", [], {}) for x in keys):
+                    out.append(("L39", i, f"{tag}: {' 또는 '.join(keys)} 가 필요{(' — ' + what) if what else ''}"))
+            def exists(key):
+                v = m.get(key)
+                if isinstance(v, str) and v and not m.get("ask") and not (Path(v) if Path(v).is_absolute() else ROOT / v).exists():
+                    out.append(("L39", i, f"{tag}: {key} 파일이 없음 — {v}"))
+            if t == "overlay":
+                tg = str(m.get("target") or "")
+                if not tg:
+                    out.append(("L39", i, f"{tag}: target(주석을 얹을 같은 장면 재료 id)이 필요"))
+                elif tg not in seen:
+                    later = any(str(x.get("id") or "") == tg for x in mats[k + 1:])
+                    out.append(("L39", i, f"{tag}: 대상 {tg} 가 " + ("overlay 보다 뒤에 있음 — materials 에서 대상을 앞으로(대상 기록을 읽어 그린다)" if later else "이 장면에 없음")))
+                elif seen[tg] not in IMAGE_LIKE:
+                    out.append(("L39", i, f"{tag}: 대상 {tg}({seen[tg]})는 그림 · 화면이 아니라 주석을 얹을 수 없음"))
+                need("marks", what="[{kind: box|arrow|label, box:[x,y,w,h], text, cue}]")
+            elif t == "doc_quote":
+                need("pdf"); need("find"); exists("pdf")
+            elif t in ("photo", "photo_grade"):
+                need("src"); exists("src")
+            elif t == "document":
+                need("src", "text", what="원문 파일 또는 본문"); exists("src")
+            elif t == "diagram":
+                need("kind", what="steps · compare · cycle · hierarchy · pyramid · timeline · list")
+                if len(m.get("items") or []) < 2:
+                    out.append(("L39", i, f"{tag}: items 가 2개 이상 필요"))
+            elif t == "ui_mock":
+                need("src", "screen", what="실제 캡처(src) 또는 가상 화면 설명(screen + mock:true)"); exists("src")
+                if m.get("screen") and not m.get("src") and not m.get("mock"):
+                    out.append(("L39", i, f"{tag}: 설명으로 그린 가상 화면이면 mock: true 를 적는다(실제 서비스 설명에는 실제 캡처)"))
+            elif t == "info_card":
+                need("title", "rows", "csv"); exists("csv")
+            elif t == "template_card":
+                need("csv", "values"); exists("csv"); exists("template")
+            elif t == "model3d":
+                need("shape", "commands", "src", what="내장 형태 · SolidCraft 명령 · STEP/STL 원본"); exists("src")
+                if m.get("turntable") and m.get("exploded"):
+                    out.append(("L39", i, f"{tag}: turntable 과 exploded 는 하나만(재료 하나 = 영상 하나)"))
+            elif t == "drawing":
+                need("src", "cmd", "commands", "model", what="DXF · CADCraft 명령 · 3D 모형"); exists("src")
+                mo = m.get("model")
+                if isinstance(mo, str) and mo and seen.get(mo) != "model3d":
+                    out.append(("L39", i, f"{tag}: model {mo} 은 이 장면에서 도면보다 앞선 model3d 재료여야 함(다른 장면이면 model 에 형태 칸을 다시 쓴다)"))
+            elif t == "video" and m.get("gen"):
+                if mid in gen_ids and gen_ids[mid] != i:
+                    out.append(("L39", i, f"{tag}: 생성 클립 id '{mid}' 가 {gen_ids[mid] + 1}장면에도 있음 — 올린 파일을 id 로 찾으니 영상 전체에서 하나만(같은 파일 다른 구간이면 src 를 적는다)"))
+                gen_ids.setdefault(mid, i)
+                if not m.get("prompt"):
+                    out.append(("L39", i, f"{tag}: 생성 클립은 prompt 가 필요(genclip.py prompts 가 사용자에게 줄 목록을 만든다)"))
+                for nm in m.get("cast") or []:
+                    if nm not in {c.get("name") for c in sb.get("cast") or [] if isinstance(c, dict)}:
+                        out.append(("L39", i, f"{tag}: cast '{nm}' 이 콘티 최상위 cast 에 없음(같은 인물 외모 설명 · 기준 이미지)"))
+                if m.get("in") is not None and m.get("out") is not None and float(m["out"]) <= float(m["in"]):
+                    out.append(("L39", i, f"{tag}: out 이 in 보다 뒤여야 함"))
+            elif t == "craft" or m.get("recipe"):
+                try:
+                    import sys as _s
+                    _s.path.insert(0, str(ROOT / "scripts"))
+                    from craft.materials import expand_recipe
+                    from craft.adapters.craft_script import validate
+                    validate(expand_recipe(dict(m)))
+                except RuntimeError as e:
+                    out.append(("L39", i, f"{tag}: {e}"))
+                except Exception:  # noqa: BLE001  (앱 미설치 등 — 렌더 때 다시 본다)
+                    pass
+            seen[mid] = str(t)
     return out
 
 
@@ -314,6 +417,8 @@ def lint(sb: dict, recent_titles=None) -> list:
     # L33 ~ L35 · T35 재료(시청자 기준): 재료 단계가 남긴 기록(compositions/<id>/craft/materials/sNN/*.json, 글자 인식 포함)으로 본다.
     #     재료를 만들기 전이면 건너뛴다. (2026-11-03: 영어 문서 캡처 9장 · 같은 그래프 3번 → '슬라이드 넘기기' 같은 영상)
     fails += material_checks(sb)
+    # L39 재료 칸(필수 칸 · overlay 대상 · drawing 모형 · 가상 화면 표시) — 렌더 전에 콘티만으로
+    fails += material_spec_checks(sb)
     # L38 스톡 영상 재료: 검색어(영어가 잘 찾힘)가 있어야 받는다 · 키가 없으면 미리 알린다(렌더 중에 멈추지 않게)
     stocks = [(i, m) for i, sc in enumerate(sb.get("scenes") or []) for m in (sc.get("materials") or []) if isinstance(m, dict) and m.get("type") == "stock"]
     for i, m in stocks:

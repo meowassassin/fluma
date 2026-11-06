@@ -1,0 +1,98 @@
+{
+ "name": "vertical-process",
+ "app": "deckcraft",
+ "desc": "세로 4단계 SmartArt 구조도",
+ "purpose": [
+  "diagram",
+  "steps",
+  "tech"
+ ],
+ "look": [
+  "diagram",
+  "flat"
+ ],
+ "features": [
+  "design.fonts",
+  "slide.new",
+  "insert.smartArt",
+  "smartArt.layout",
+  "smartArt.style",
+  "smartArt.colors"
+ ],
+ "slots": [
+  {
+   "at": "/steps/2/params/items/0",
+   "kind": "text",
+   "example": "URL 입력"
+  },
+  {
+   "at": "/steps/2/params/items/1",
+   "kind": "text",
+   "example": "분석 실행"
+  },
+  {
+   "at": "/steps/2/params/items/2",
+   "kind": "text",
+   "example": "점수 확인"
+  },
+  {
+   "at": "/steps/2/params/items/3",
+   "kind": "text",
+   "example": "개선 제안"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "deckcraft",
+  "new": {
+   "theme": "Nocturne"
+  },
+  "steps": [
+   {
+    "id": "design.fonts",
+    "params": {
+     "major": "Noto Sans CJK KR",
+     "minor": "Noto Sans CJK KR"
+    }
+   },
+   {
+    "id": "slide.new",
+    "params": {
+     "layout": "blank"
+    }
+   },
+   {
+    "id": "insert.smartArt",
+    "params": {
+     "kind": "process",
+     "items": [
+      "URL 입력",
+      "분석 실행",
+      "점수 확인",
+      "개선 제안"
+     ]
+    }
+   },
+   {
+    "id": "smartArt.layout",
+    "params": {
+     "kind": "verticalProcess"
+    }
+   },
+   {
+    "id": "smartArt.style",
+    "params": {
+     "style": "polished"
+    }
+   },
+   {
+    "id": "smartArt.colors",
+    "params": {
+     "colors": "colorful"
+    }
+   }
+  ]
+ },
+ "preview": "vertical-process.jpg"
+}

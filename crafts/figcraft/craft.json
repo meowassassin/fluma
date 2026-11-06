@@ -22,7 +22,7 @@
  "provides": [
   {
    "material": "ui_mock",
-   "in": "화면 설명",
+   "in": "실제 캡처(폰 · 브라우저 틀) 또는 화면 설명(가상 앱 화면, mock 표시)",
    "out": "png"
   }
  ]

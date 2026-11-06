@@ -1,0 +1,136 @@
+{
+ "name": "phone-mock",
+ "app": "figcraft",
+ "desc": "폰 프레임 안 캡처 + 제목",
+ "purpose": [
+  "ui",
+  "app",
+  "screen"
+ ],
+ "look": [
+  "device",
+  "clean"
+ ],
+ "features": [
+  "node.create",
+  "image.place",
+  "node.set",
+  "node.create"
+ ],
+ "slots": [
+  {
+   "at": "/steps/1/params/path",
+   "kind": "file",
+   "example": "compositions/2026-11-03-s0g011z-01/web/psi.png"
+  },
+  {
+   "at": "/steps/3/params/text",
+   "kind": "text",
+   "example": "점수 하나로 속도를 본다"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "figcraft",
+  "new": {
+   "name": "Shorts",
+   "props": {
+    "fills": [
+     {
+      "type": "linearGradient",
+      "stops": [
+       "#0F172A",
+       "#1E293B"
+      ]
+     }
+    ]
+   }
+  },
+  "steps": [
+   {
+    "id": "node.create",
+    "as": "phone",
+    "params": {
+     "type": "frame",
+     "parent": {
+      "$ref": "new"
+     },
+     "x": 140,
+     "y": 420,
+     "width": 800,
+     "height": 1300,
+     "name": "Phone",
+     "props": {
+      "fills": [
+       "#FFFFFF"
+      ],
+      "cornerRadius": 64,
+      "clipsContent": true
+     }
+    }
+   },
+   {
+    "id": "image.place",
+    "params": {
+     "path": "compositions/2026-11-03-s0g011z-01/web/psi.png",
+     "parent": {
+      "$ref": "phone"
+     },
+     "x": 0,
+     "y": 120,
+     "width": 800,
+     "height": 681,
+     "name": "Screenshot",
+     "mode": "fill"
+    }
+   },
+   {
+    "id": "node.set",
+    "params": {
+     "ids": [
+      {
+       "$ref": "phone"
+      }
+     ],
+     "props": {
+      "effects": [
+       {
+        "type": "dropShadow",
+        "color": "#00000040",
+        "offset": [
+         0,
+         24
+        ],
+        "radius": 48
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "node.create",
+    "params": {
+     "type": "text",
+     "parent": {
+      "$ref": "new"
+     },
+     "x": 80,
+     "y": 160,
+     "width": 920,
+     "text": "점수 하나로 속도를 본다",
+     "name": "Title",
+     "props": {
+      "fontSize": 84,
+      "fontFamily": "Noto Sans CJK KR",
+      "fontWeight": 900,
+      "fills": [
+       "#FFFFFF"
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "preview": "phone-mock.jpg"
+}

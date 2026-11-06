@@ -1,0 +1,61 @@
+{
+ "name": "material-turntable",
+ "app": "texturecraft",
+ "desc": "재질 공 돌려 찍기 mp4",
+ "purpose": [
+  "product",
+  "3d",
+  "material"
+ ],
+ "look": [
+  "render",
+  "motion"
+ ],
+ "features": [
+  "bake.run",
+  "material.apply",
+  "camera.set"
+ ],
+ "slots": [],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "texturecraft",
+  "new": {
+   "mesh": "builtin:material_ball"
+  },
+  "steps": [
+   {
+    "id": "bake.run",
+    "params": {
+     "ts": "all",
+     "resolution": 512
+    }
+   },
+   {
+    "id": "material.apply",
+    "params": {
+     "material": "iron_rusted"
+    }
+   },
+   {
+    "id": "camera.set",
+    "params": {
+     "yaw": 30,
+     "pitch": 10
+    }
+   }
+  ],
+  "export": {
+   "format": "mp4",
+   "size": [
+    540,
+    960
+   ],
+   "turntable": true,
+   "frames": 8,
+   "fps": 8
+  }
+ },
+ "preview": "material-turntable.jpg"
+}

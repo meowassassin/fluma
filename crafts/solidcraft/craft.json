@@ -18,5 +18,12 @@
  ],
  "web": true,
  "kind_en": "Parametric 3D CAD (community app)",
- "use_en": "3D parts and product models"
+ "use_en": "3D parts and product models",
+ "provides": [
+  {
+   "material": "model3d",
+   "in": "shape(case · phone · bottle · tumbler · puck) + size[mm] | commands(SolidCraft 명령 목록) | src(STEP · IGES · OBJ · STL · 3MF · glTF) · 선택: material(metal · plastic · wood · 색 · {부품: 재질}) · color · logo(글자 · PNG) · turntable · sec · exploded · yaw · pitch",
+   "out": "9:16 제품 컷 PNG(TextureCraft 재질 · 받침 · 로고) 또는 턴테이블 mp4 · 분해도 mp4(벌어졌다 닫힘) + .sc 편집 파일"
+  }
+ ]
 }

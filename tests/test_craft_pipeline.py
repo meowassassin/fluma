@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from craft.audio import RATE, commands, speech_spans  # noqa: E402
+from craft.audio import RATE, commands, finish_commands, speech_spans  # noqa: E402
 from craft.edit import srt  # noqa: E402
 from craft.motion import build_jsx, chunks, cue_time, quoted  # noqa: E402
 
@@ -36,7 +36,11 @@ def test_music_ducks_under_speech_with_points_in_samples():
     pts = [json.loads(c.split("=", 1)[1]) for c in commands(sb, Path(__file__), WORDS, 10.0) if c.startswith("automation.set_point")]
     assert all(isinstance(p["at"], int) for p in pts)                      # 초가 아니라 샘플
     assert any(p["at"] == int(round(0.08 * RATE)) and p["value"] == -20 for p in pts)
-    assert pts[-1]["value"] == -60.0 and pts[-1]["at"] == 10 * RATE        # 끝에서 페이드아웃
+    # 끝 페이드아웃은 자동화 점이 아니라 음악 클립의 s-curve 페이드(두 번째 실행) — 영상보다 긴 음악은 영상 길이로 자른다
+    fin = finish_commands(sb, {"clip": 11, "frames": 20 * RATE}, 10.0)
+    assert any(c.startswith("edit.trim_clip=") and json.loads(c.split("=", 1)[1])["end"] == 10 * RATE for c in fin)
+    outs = [json.loads(c.split("=", 1)[1]) for c in fin if c.startswith("edit.fades_create=")]
+    assert any(f["side"] == "out" and f.get("shape") == "s-curve" for f in outs)
 
 
 def test_srt_is_well_formed():

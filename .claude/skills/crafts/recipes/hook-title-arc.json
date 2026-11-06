@@ -1,0 +1,112 @@
+{
+ "name": "hook-title-arc",
+ "app": "vectorcraft",
+ "desc": "훅 제목 카드: 그라데이션 바탕 + 휜 한글 제목 + 그림자",
+ "purpose": [
+  "hook",
+  "title",
+  "card"
+ ],
+ "look": [
+  "bold",
+  "graphic"
+ ],
+ "features": [
+  "shape.rectangle",
+  "paint.setFill",
+  "paint.setStroke",
+  "text.create",
+  "effect.apply",
+  "effect.apply"
+ ],
+ "slots": [
+  {
+   "at": "/steps/3/params/text",
+   "kind": "text",
+   "example": "무료 AI 툴 3개"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "vectorcraft",
+  "steps": [
+   {
+    "id": "shape.rectangle",
+    "params": {
+     "x": 0,
+     "y": 0,
+     "width": 1080,
+     "height": 1920
+    }
+   },
+   {
+    "id": "paint.setFill",
+    "params": {
+     "id": "$0.id",
+     "gradient": {
+      "kind": "linear",
+      "angle": 90,
+      "stops": [
+       {
+        "offset": 0,
+        "color": "#1b1446"
+       },
+       {
+        "offset": 1,
+        "color": "#e8573f"
+       }
+      ]
+     }
+    }
+   },
+   {
+    "id": "paint.setStroke",
+    "params": {
+     "id": "$0.id",
+     "none": true
+    }
+   },
+   {
+    "id": "text.create",
+    "params": {
+     "x": 540,
+     "y": 800,
+     "text": "무료 AI 툴 3개",
+     "size": 120,
+     "font": "Noto Sans CJK KR",
+     "style": "Bold",
+     "color": "#ffffff",
+     "justify": "center"
+    }
+   },
+   {
+    "id": "effect.apply",
+    "params": {
+     "id": "$3.id",
+     "effect": "warp.arc",
+     "params": {
+      "bend": 25
+     }
+    }
+   },
+   {
+    "id": "effect.apply",
+    "params": {
+     "id": "$3.id",
+     "effect": "stylize.dropShadow",
+     "params": {
+      "x": 0,
+      "y": 12,
+      "blur": 18,
+      "opacity": 60
+     }
+    }
+   }
+  ],
+  "export": {
+   "format": "png"
+  }
+ },
+ "preview": "hook-title-arc.jpg"
+}

@@ -1,0 +1,96 @@
+{
+ "name": "doc-highlight-terms",
+ "app": "wordcraft",
+ "desc": "9:16 약관 문서 + 형광펜",
+ "purpose": [
+  "doc",
+  "evidence",
+  "highlight"
+ ],
+ "look": [
+  "document",
+  "paper"
+ ],
+ "features": [
+  "styles.apply",
+  "text.insert",
+  "text.newParagraph",
+  "styles.apply",
+  "text.insert",
+  "select.text",
+  "format.highlight"
+ ],
+ "slots": [
+  {
+   "at": "/steps/1/params/text",
+   "kind": "text",
+   "example": "이용약관 제7조 (환불)"
+  },
+  {
+   "at": "/steps/4/params/text",
+   "kind": "text",
+   "example": "구독 시작 후 7일 이내에는 전액 환불됩니다.\n7일이 지나면 남은 기간만큼 환불됩니다.\n단, 프로모션 요금제는 환불되지 않습니다."
+  },
+  {
+   "at": "/steps/5/params/text",
+   "kind": "text",
+   "example": "프로모션 요금제는 환불되지 않습니다"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "wordcraft",
+  "new": {
+   "margins": {
+    "top": 36,
+    "bottom": 36,
+    "left": 28,
+    "right": 28
+   }
+  },
+  "steps": [
+   {
+    "id": "styles.apply",
+    "params": {
+     "style": "Heading 1"
+    }
+   },
+   {
+    "id": "text.insert",
+    "params": {
+     "text": "이용약관 제7조 (환불)"
+    }
+   },
+   {
+    "id": "text.newParagraph"
+   },
+   {
+    "id": "styles.apply",
+    "params": {
+     "style": "Normal"
+    }
+   },
+   {
+    "id": "text.insert",
+    "params": {
+     "text": "구독 시작 후 7일 이내에는 전액 환불됩니다.\n7일이 지나면 남은 기간만큼 환불됩니다.\n단, 프로모션 요금제는 환불되지 않습니다.",
+     "paragraphs": true
+    }
+   },
+   {
+    "id": "select.text",
+    "params": {
+     "text": "프로모션 요금제는 환불되지 않습니다"
+    }
+   },
+   {
+    "id": "format.highlight",
+    "params": {
+     "color": "yellow"
+    }
+   }
+  ]
+ },
+ "preview": "doc-highlight-terms.jpg"
+}

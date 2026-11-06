@@ -1,0 +1,483 @@
+{"app": "soundcraft", "kind": "command", "id": "session.new", "label": "New...", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "session.open", "label": "Open Session...", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "session.close", "label": "Close Session", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "session.save", "label": "Save Session", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "session.save_as", "label": "Save Session As...", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "session.save_copy", "label": "Save Session Copy In...", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "session.save_template", "label": "Save As Template...", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "session.revert", "label": "Revert Session to Saved...", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.import_audio", "label": "Audio...", "menu": "", "params": "File > Import", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.import_midi", "label": "MIDI...", "menu": "", "params": "File > Import", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.import_video", "label": "Video...", "menu": "", "params": "File > Import", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.bounce_mix", "label": "Bounce Mix...", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.bounce_stems", "label": "Bounce Stems...", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.export_midi", "label": "MIDI...", "menu": "", "params": "File > Export", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.export_session_text", "label": "Session Info as Text...", "menu": "", "params": "File > Export", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.export_clips", "label": "Export Clips as Files...", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.export_selected_tracks_as_session", "label": "Selected Tracks as New Session...", "menu": "", "params": "File > Export", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.export_sibelius", "label": "Sibelius...", "menu": "", "params": "File > Export", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.send_to_sibelius", "label": "Sibelius", "menu": "", "params": "File > Send To...", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.print_score", "label": "Print Score...", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.score_setup", "label": "Score Setup...", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.export_clip_groups", "label": "Export Clip Groups...", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.import_clip_groups", "label": "Clip Groups...", "menu": "", "params": "File > Import", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.get_info", "label": "Get Info...", "menu": "", "params": "File", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "app.quit", "label": "Quit", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.undo", "label": "Undo", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.redo", "label": "Redo", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.restore_last_selection", "label": "Restore Last Selection", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.cut", "label": "Cut", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.copy", "label": "Copy", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.paste", "label": "Paste", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.clear", "label": "Clear", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.cut_clip_gain", "label": "Clip Gain", "menu": "", "params": "Edit > Cut Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.clear_clip_gain", "label": "Clip Gain", "menu": "", "params": "Edit > Clear Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.cut_all_automation", "label": "All Automation", "menu": "", "params": "Edit > Cut Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.clear_all_automation", "label": "All Automation", "menu": "", "params": "Edit > Clear Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.clear_pan_automation", "label": "Pan Automation", "menu": "", "params": "Edit > Clear Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.clear_plugin_automation", "label": "Plugin Automation", "menu": "", "params": "Edit > Clear Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.paste_repeat_to_fill", "label": "Repeat to Fill Selection", "menu": "", "params": "Edit > Paste Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.select_all", "label": "Select All", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.select", "label": "Set Edit Selection", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.select_none", "label": "Deselect All", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.selection_to_timeline", "label": "Change Timeline to Match Edit", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.timeline_to_selection", "label": "Change Edit to Match Timeline", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.move_selection_left", "label": "Move Edit Left", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.move_selection_right", "label": "Move Edit Right", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.halve_selection", "label": "Halve Edit", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.double_selection", "label": "Double Edit", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.extend_selection_up", "label": "Extend Edit Up", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.extend_selection_down", "label": "Extend Edit Down", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.remove_selection_top", "label": "Remove Edit from Top", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.remove_selection_bottom", "label": "Remove Edit from Bottom", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.duplicate", "label": "Duplicate", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.repeat", "label": "Repeat...", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.shift", "label": "Shift...", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.insert_silence", "label": "Insert Silence", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.separate", "label": "At Selection", "menu": "", "params": "Edit > Separate", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.separate_on_grid", "label": "On Grid", "menu": "", "params": "Edit > Separate", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.separate_at_transients", "label": "At Transients", "menu": "", "params": "Edit > Separate", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.heal", "label": "Heal Separation", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.trim_to_selection", "label": "To Selection", "menu": "", "params": "Edit > Trim", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.trim_start_to_insertion", "label": "Start to Insertion", "menu": "", "params": "Edit > Trim", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.trim_end_to_insertion", "label": "End to Insertion", "menu": "", "params": "Edit > Trim", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.trim_to_file_boundaries", "label": "To File Boundaries", "menu": "", "params": "Edit > Trim", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.trim_to_fill_selection", "label": "To Fill Selection", "menu": "", "params": "Edit > Trim", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.mute_clips", "label": "Mute", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.copy_to_new_playlist", "label": "New Playlist", "menu": "", "params": "Edit > Copy Selection to...", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.strip_silence", "label": "Strip Silence", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.fades_create", "label": "Create...", "menu": "", "params": "Edit > Fades", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.fades_delete", "label": "Delete", "menu": "", "params": "Edit > Fades", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.fade_to_start", "label": "Fade to Start", "menu": "", "params": "Edit > Fades", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.fade_to_end", "label": "Fade to End", "menu": "", "params": "Edit > Fades", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.nudge", "label": "Nudge", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.mode", "label": "Edit Mode", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.snap_to_grid", "label": "Snap to Grid", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.shuffle_lock", "label": "Shuffle Lock", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.tool", "label": "Edit Tool", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.move_clips", "label": "Move Clips", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.trim_clip", "label": "Trim Clip", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.consolidate", "label": "Consolidate", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.cut_pan_automation", "label": "Pan Automation", "menu": "", "params": "Edit > Cut Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.cut_plugin_automation", "label": "Plugin Automation", "menu": "", "params": "Edit > Cut Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.copy_all_automation", "label": "All Automation", "menu": "", "params": "Edit > Copy Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.copy_pan_automation", "label": "Pan Automation", "menu": "", "params": "Edit > Copy Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.copy_plugin_automation", "label": "Plugin Automation", "menu": "", "params": "Edit > Copy Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.copy_clip_gain", "label": "Clip Gain", "menu": "", "params": "Edit > Copy Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.paste_clip_gain", "label": "Paste Clip Gain", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.copy_clip_effects", "label": "Clip Effects", "menu": "", "params": "Edit > Copy Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.cut_clip_effects", "label": "Clip Effects", "menu": "", "params": "Edit > Cut Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.clear_clip_effects", "label": "Clip Effects", "menu": "", "params": "Edit > Clear Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.paste_clip_effects", "label": "Paste Clip Effects", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.paste_merge_midi", "label": "Merge MIDI", "menu": "", "params": "Edit > Paste Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.paste_merge_markers", "label": "Merge Markers", "menu": "", "params": "Edit > Paste Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.paste_to_current_automation", "label": "To Current Automation Type", "menu": "", "params": "Edit > Paste Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.play_timeline", "label": "Play Timeline", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.duplicate_extend", "label": "Duplicate and Extend Edit", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.extend_up_to_members", "label": "Extend Edit Up to Members", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.extend_down_to_members", "label": "Extend Edit Down to Members", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.marker_lane_move_up", "label": "Move Edit Selection To Marker Lane Above Edit > Selection", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.marker_lane_move_down", "label": "Move Edit Selection To Marker Lane Below Edit > Selection", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.marker_lane_extend_up", "label": "Extend Edit Selection To Marker Lane Above Edit > Selection", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.marker_lane_extend_down", "label": "Extend Edit Selection To Marker Lane Below Edit > Selection", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.space_clips", "label": "Space Clips…", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.snap_next", "label": "Next", "menu": "", "params": "Edit > Snap to", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.snap_previous", "label": "Previous", "menu": "", "params": "Edit > Snap to", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.copy_to_target_playlist", "label": "Target Playlist", "menu": "", "params": "Edit > Copy Selection to...", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.copy_to_duplicate_playlist", "label": "Duplicate of Main Playlist", "menu": "", "params": "Edit > Copy Selection to...", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.move_to_target_playlist", "label": "Target Playlist", "menu": "", "params": "Edit > Move Selection to...", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.move_to_new_playlist", "label": "New Playlist", "menu": "", "params": "Edit > Move Selection to...", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.move_to_duplicate_playlist", "label": "Duplicate of Main Playlist", "menu": "", "params": "Edit > Move Selection to...", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.tce_to_timeline", "label": "TCE Edit to Timeline Selection", "menu": "", "params": "Edit", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.automation_coalesce_volume_to_clip_gain", "label": "Coalesce Volume Automation to Clip Gain Edit > Automation", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.automation_coalesce_clip_gain_to_volume", "label": "Coalesce Clip Gain to Volume Automation Edit > Automation", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.automation_trim_to_all", "label": "Trim to All Enabled", "menu": "", "params": "Edit > Automation", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.automation_glide_to_all", "label": "Glide to All Enabled", "menu": "", "params": "Edit > Automation", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.automation_glide_pan", "label": "Glide Pan Only", "menu": "", "params": "Edit > Automation", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.zoom_in", "label": "Zoom In", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.zoom_out", "label": "Zoom Out", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.zoom_by", "label": "Zoom By", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.zoom_set", "label": "Set Zoom", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.zoom_preset", "label": "Zoom Preset", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.zoom_to_selection", "label": "Zoom to Selection", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.zoom_fit", "label": "Fill Window With Session", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.scroll", "label": "Scroll Timeline", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.waveform_zoom", "label": "Waveform Zoom", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler", "label": "Rulers", "menu": "", "params": "View > Rulers", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.main_counter", "label": "Main Counter", "menu": "", "params": "View > Main Counter", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.sub_counter", "label": "Sub Counter", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.grid", "label": "Grid Value", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.grid_lines", "label": "Show Grid Lines", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.nudge", "label": "Nudge Value", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.new", "label": "New...", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.group", "label": "Group...", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.ungroup", "label": "Delete Group", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.group_toggle", "label": "Toggle Group Active", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.group_modify", "label": "Modify Group", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.duplicate", "label": "Duplicate...", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.split_into_mono", "label": "Split into Mono", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.make_inactive", "label": "Make Inactive", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.move_to_new_folder", "label": "Move to New Folder...", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.move_to_folder", "label": "Move to Folder", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.remove_from_folder", "label": "Remove from Folder", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.change_width", "label": "Change Track Width", "menu": "", "params": "Track > Change Track Width", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.delete", "label": "Delete", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.rename", "label": "Rename Track", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.comments", "label": "Track Comments", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.color", "label": "Track Color", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.height", "label": "Track Height", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.height_up", "label": "Increase Track Height", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.height_down", "label": "Decrease Track Height", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.view", "label": "Track View", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.hide", "label": "Hide Track", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.pin", "label": "Pin Track", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.move", "label": "Move Track", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.freeze", "label": "Freeze", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.commit", "label": "Commit...", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.bounce", "label": "Bounce...", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.bypass_inserts", "label": "All", "menu": "", "params": "Track > Bypass Inserts", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.mute_sends", "label": "All", "menu": "", "params": "Track > Mute Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.set_record_to_input_only", "label": "Set Record Tracks to Input Only", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.scroll_to", "label": "Scroll to Track...", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.clear_clip_indicators", "label": "Clear All Clip Indicators", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.clear_trim_automation", "label": "Clear Trim Automation", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.create_click", "label": "Create Click Track", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.playlist_new", "label": "New Playlist", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.playlist_duplicate", "label": "Duplicate Playlist", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.playlist_select", "label": "Select Playlist", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.playlist_delete_unused", "label": "Delete Unused Playlists", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.folder_toggle", "label": "Open/Close Folder", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.vca", "label": "Assign to VCA", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.playlist_promote", "label": "Promote to Main Playlist", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.input", "label": "Track Input", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.output", "label": "Track Output", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.timebase", "label": "Track Timebase", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.elastic", "label": "Elastic Audio", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.edit_lock", "label": "Edit Lock/Unlock", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.time_lock", "label": "Time Lock/Unlock", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.send_to_back", "label": "Send to Back", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.bring_to_front", "label": "Bring to Front", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.rating", "label": "Rating", "menu": "", "params": "Clip > Rating", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.group", "label": "Group", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.ungroup", "label": "Ungroup", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.ungroup_all", "label": "Ungroup All", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.loop", "label": "Loop...", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.rename", "label": "Rename...", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.gain", "label": "Clip Gain", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.gain_nudge_up", "label": "Nudge Clip Gain Up", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.gain_nudge_down", "label": "Nudge Clip Gain Down", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.gain_render", "label": "Render", "menu": "", "params": "Clip > Clip Gain", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.gain_bypass", "label": "Bypass", "menu": "", "params": "Clip > Clip Gain", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.identify_sync_point", "label": "Identify Sync Point", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.remove_sync_point", "label": "Remove Sync Point", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.quantize_to_grid", "label": "Quantize to Grid", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.color", "label": "Clip Color", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.elastic_properties", "label": "Elastic Properties", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.remove_warp", "label": "Remove Warp", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.place_source", "label": "Place Audio File", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.capture", "label": "Capture...", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.tempo", "label": "Tempo Change", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.tempo_remove", "label": "Remove Tempo Change", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.meter", "label": "Change Meter...", "menu": "", "params": "Event > Time Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.tempo_scale", "label": "Scale...", "menu": "", "params": "Event > Tempo Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.tempo_constant", "label": "Constant...", "menu": "", "params": "Event > Tempo Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.insert_time", "label": "Insert Time...", "menu": "", "params": "Event > Time Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.cut_time", "label": "Cut Time...", "menu": "", "params": "Event > Time Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.quantize", "label": "Quantize...", "menu": "", "params": "Event > MIDI Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.transpose", "label": "Transpose...", "menu": "", "params": "Event > MIDI Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.change_velocity", "label": "Change Velocity...", "menu": "", "params": "Event > MIDI Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.change_duration", "label": "Change Duration...", "menu": "", "params": "Event > MIDI Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.remove_duplicate_notes", "label": "Remove Duplicate Notes", "menu": "", "params": "Event", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.add_key_change", "label": "Add Key Change...", "menu": "", "params": "Event", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.renumber_bars", "label": "Renumber Bars...", "menu": "", "params": "Event", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.all_notes_off", "label": "All MIDI Notes Off", "menu": "", "params": "Event", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.midi_note", "label": "Add MIDI Note", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "markers.add", "label": "New Memory Location", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "markers.delete", "label": "Delete Memory Location", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "markers.edit", "label": "Edit Memory Location", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "markers.recall", "label": "Recall Memory Location", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "markers.next", "label": "Go to Next Marker", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "markers.previous", "label": "Go to Previous Marker", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.volume", "label": "Set Volume", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.pan", "label": "Set Pan", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.mute", "label": "Mute", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.solo", "label": "Solo", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.solo_safe", "label": "Solo Safe", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.clear_solos", "label": "Clear All Solos", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.clear_mutes", "label": "Clear All Mutes", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.record_arm", "label": "Record Enable", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.input_monitor", "label": "Input Monitoring", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.phase_invert", "label": "Phase Invert", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.trim", "label": "Input Trim", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.automation_mode", "label": "Automation Mode", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.insert", "label": "Insert Plugin", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.insert_remove", "label": "Remove Insert", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.insert_bypass", "label": "Bypass Insert", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.insert_param", "label": "Set Plugin Parameter", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.insert_params", "label": "Set Plugin Parameters", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.insert_move", "label": "Move Insert", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.send", "label": "Assign Send", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.send_remove", "label": "Remove Send", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.send_level", "label": "Send Level", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.new_bus", "label": "New Bus", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "automation.set_point", "label": "Add Automation Breakpoint", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "automation.write_range", "label": "Write Automation", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "automation.clear", "label": "Clear Automation", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "automation.thin", "label": "Thin", "menu": "", "params": "Edit > Automation", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "automation.thin_all", "label": "Thin All", "menu": "", "params": "Edit > Automation", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "automation.write_to_current", "label": "Write to Current", "menu": "", "params": "Edit > Automation", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "automation.write_to_all", "label": "Write to All Enabled", "menu": "", "params": "Edit > Automation", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "automation.volume_to_clip_gain", "label": "Convert Volume Automation to Clip Gain Edit > Automation", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "automation.clip_gain_to_volume", "label": "Convert Clip Gain to Volume Automation Edit > Automation", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "automation.copy_to_send", "label": "Copy to Send...", "menu": "", "params": "Edit > Automation", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.loop_record", "label": "Loop Record", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.quickpunch", "label": "QuickPunch", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.pre_post_roll", "label": "Pre/Post-Roll", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.loop_playback", "label": "Loop Playback", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.link_timeline_edit", "label": "Link Timeline and Edit Selection", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.link_track_edit", "label": "Link Track and Edit Selection", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.insertion_follows_playback", "label": "Insertion Follows Playback", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.tab_to_transient", "label": "Tab to Transient", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.mirrored_midi", "label": "Mirrored MIDI Editing", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.automation_follows_edit", "label": "Automation Follows Edit", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.markers_follow_edit", "label": "Markers Follow Edit", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.layered_editing", "label": "Layered Editing", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.click", "label": "Click", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.countoff", "label": "Count Off", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.midi_merge", "label": "MIDI Merge", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.pre_fader_metering", "label": "Pre-Fader Metering", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.delay_compensation", "label": "Delay Compensation", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.destructive_record", "label": "Destructive Record", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.trackpunch", "label": "TrackPunch", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.scrolling", "label": "Edit Window Scrolling", "menu": "", "params": "Options > Edit Window Scrolling", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.solo_mode", "label": "Solo Mode", "menu": "", "params": "Options > Solo Mode", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.keyboard_focus", "label": "Keyboard Focus", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.pre_roll", "label": "Pre-Roll Amount", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.post_roll", "label": "Post-Roll Amount", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.session", "label": "Session", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.preferences", "label": "Preferences...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.reset_edit_state", "label": "Reset Edit Settings", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.play", "label": "Play", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.stop", "label": "Stop", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.toggle", "label": "Play/Stop", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.record", "label": "Record", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.pause", "label": "Pause", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.half_speed", "label": "Half-Speed Playback", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.play_selection", "label": "Play Edit", "menu": "", "params": "Edit > Selection", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.rtz", "label": "Return to Zero", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.go_to_end", "label": "Go to End", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.rewind", "label": "Rewind", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.fast_forward", "label": "Fast Forward", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.locate", "label": "Locate", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "transport.status", "label": "Transport Status", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.tab", "label": "Tab", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "session.inspect", "label": "Inspect Session", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.inspect", "label": "Inspect Track", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.inspect", "label": "Inspect Clip", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "engine.commands", "label": "List Commands", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "engine.history", "label": "Undo History", "menu": "", "params": "Window", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "engine.plugins", "label": "List Plugins", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "engine.parity", "label": "Parity Report", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "session.format_time", "label": "Format Time", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "session.audio_health", "label": "Session Audio Health", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "audiosuite.process", "label": "AudioSuite Process", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.copy_audio_as_midi", "label": "Audio as MIDI", "menu": "", "params": "Edit > Copy Special", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "midi.notes", "label": "List MIDI Notes", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "midi.new_clip", "label": "New MIDI Clip", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "midi.note_add", "label": "Add Note", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "midi.note_edit", "label": "Edit Note", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "midi.note_delete", "label": "Delete Notes", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "midi.notes_move", "label": "Move Notes", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_comments", "label": "Comments", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_mic_preamps", "label": "Mic Preamps", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_instruments", "label": "Instruments", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_inserts_ae", "label": "Inserts A-E", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_inserts_fj", "label": "Inserts F-J", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_sends_ae", "label": "Sends A-E", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_sends_fj", "label": "Sends F-J", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_io", "label": "I/O", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_object", "label": "Object", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_realtime_properties", "label": "Real-Time Properties", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_track_color", "label": "Track Color", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_marker_controls", "label": "Marker Controls", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_pinned_tracks", "label": "Pinned Tracks", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_all", "label": "All", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.edit_minimal", "label": "Minimal", "menu": "", "params": "View > Edit Window Views", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler_timecode2", "label": "Timecode 2", "menu": "", "params": "View > Rulers", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler_markers2", "label": "Markers 2", "menu": "", "params": "View > Rulers", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler_markers3", "label": "Markers 3", "menu": "", "params": "View > Rulers", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler_markers4", "label": "Markers 4", "menu": "", "params": "View > Rulers", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler_markers5", "label": "Markers 5", "menu": "", "params": "View > Rulers", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler_all_markers", "label": "All Marker Rulers", "menu": "", "params": "View > Rulers", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler_all", "label": "All", "menu": "", "params": "View > Rulers", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler_minimal", "label": "Minimal", "menu": "", "params": "View > Rulers", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler_tempo_editor", "label": "Tempo Editor", "menu": "", "params": "View > Rulers > Tempo", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.ruler_key_staff", "label": "Key Signature Staff", "menu": "", "params": "View > Rulers > Key Signature", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.marker_track_lane", "label": "Track Lane", "menu": "", "params": "View > Marker Displays", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.marker_ruler_lines", "label": "Ruler Lines", "menu": "", "params": "View > Marker Displays", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.marker_folder_lines", "label": "Folder Lines", "menu": "", "params": "View > Marker Displays", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.marker_ruler_lane_color", "label": "Ruler Lane Color", "menu": "", "params": "View > Marker Displays", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.marker_track_lane_color", "label": "Track Lane Color", "menu": "", "params": "View > Marker Displays", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.midi_input_display", "label": "MIDI Input Display", "menu": "", "params": "View > Other Displays", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.midi_editor_clip_effects", "label": "Clip Effects", "menu": "", "params": "View > Other Displays > Lower Dock > MIDI Editor", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_sync_point", "label": "Sync Point", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_processing_state", "label": "Processing State", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_name", "label": "Name", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_channel_name", "label": "Channel Name", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_scene_take", "label": "Scene And Take", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_rating", "label": "Rating", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_overlap_shadows", "label": "Overlap Shadows", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_transparency", "label": "Transparency", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_overwrite_indicator", "label": "Overwrite Indicator", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_copy_move_indicators", "label": "Copy/Move Indicators", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_gain_line", "label": "Clip Gain Line", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_gain_info", "label": "Clip Gain Info", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_effects_status", "label": "Clip Effects Status", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_ara_note_overlay", "label": "ARA Note Overlay", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_time_current", "label": "Current Time", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_time_original", "label": "Original Time Stamp", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_time_user", "label": "User Time Stamp", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_time_none", "label": "No Time", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.clip_all_channels", "label": "Display on All Channels", "menu": "", "params": "View > Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.waveform_peak", "label": "Peak", "menu": "", "params": "View > Waveforms", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.waveform_power", "label": "Power", "menu": "", "params": "View > Waveforms", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.waveform_rectified", "label": "Rectified", "menu": "", "params": "View > Waveforms", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.waveform_outlines", "label": "Outlines", "menu": "", "params": "View > Waveforms", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.waveform_overlapped_crossfades", "label": "Overlapped Crossfades", "menu": "", "params": "View > Waveforms", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.automation_trim_playlist", "label": "Trim Playlist", "menu": "", "params": "View > Automation", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.automation_composite_playlist", "label": "Composite Playlist", "menu": "", "params": "View > Automation", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_sends_all", "label": "All", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_sends_none", "label": "None", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_send_a", "label": "Send A", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_send_b", "label": "Send B", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_send_c", "label": "Send C", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_send_d", "label": "Send D", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_send_e", "label": "Send E", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_send_f", "label": "Send F", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_send_g", "label": "Send G", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_send_h", "label": "Send H", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_send_i", "label": "Send I", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.expanded_send_j", "label": "Send J", "menu": "", "params": "View > Expanded Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.track_number", "label": "Track Number", "menu": "", "params": "View", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.track_transcription_lane", "label": "Track Transcription Lane", "menu": "", "params": "View", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.dropped_video_frame_indicator", "label": "Dropped Video Frame Indicator", "menu": "", "params": "View", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.transport_counters", "label": "Counters", "menu": "", "params": "View > Transport", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.transport_midi_controls", "label": "MIDI Controls", "menu": "", "params": "View > Transport", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.transport_synchronization", "label": "Synchronization", "menu": "", "params": "View > Transport", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.transport_ableton_link", "label": "Ableton Link", "menu": "", "params": "View > Transport", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.transport_output_meters", "label": "Output Meters", "menu": "", "params": "View > Transport", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.transport_expanded", "label": "Expanded", "menu": "", "params": "View > Transport", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.flags", "label": "View Flags", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.object", "label": "Object / Bed", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.convert_aux_to_folder", "label": "Convert Aux to Routing Folder", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.extract_midi", "label": "Extract MIDI to New Track", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.save_preset", "label": "Save Track Preset...", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.load_preset", "label": "Load Track Preset", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.bypass_inserts_ae", "label": "Inserts A-E", "menu": "", "params": "Track > Bypass Inserts", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.bypass_inserts_fj", "label": "Inserts F-J", "menu": "", "params": "Track > Bypass Inserts", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.bypass_eq", "label": "EQ", "menu": "", "params": "Track > Bypass Inserts", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.bypass_dynamics", "label": "Dynamics", "menu": "", "params": "Track > Bypass Inserts", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.bypass_reverb", "label": "Reverb", "menu": "", "params": "Track > Bypass Inserts", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.bypass_delay", "label": "Delay", "menu": "", "params": "Track > Bypass Inserts", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.bypass_modulation", "label": "Modulation", "menu": "", "params": "Track > Bypass Inserts", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.mute_sends_ae", "label": "Sends A-E", "menu": "", "params": "Track > Mute Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.mute_sends_fj", "label": "Sends F-J", "menu": "", "params": "Track > Mute Sends", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.write_midi_rtp", "label": "Write MIDI Real-Time Properties", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.trim_automation_write", "label": "Write Trim Automation", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.coalesce_trim", "label": "Coalesce Trim Automation", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.coalesce_vca", "label": "Coalesce VCA Controller Automation Track", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.designate_target_playlist", "label": "Designate as Target Playlist", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.show_target_playlist", "label": "Show Target Playlist", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "track.toggle_recent_playlist", "label": "Toggle Recent Playlist", "menu": "", "params": "Track", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.regroup", "label": "Regroup", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.unloop", "label": "Unloop...", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.effects_set", "label": "Set Clip Effects", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.effects_bypass", "label": "Bypass", "menu": "", "params": "Clip > Clip Effects", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.effects_render", "label": "Render", "menu": "", "params": "Clip > Clip Effects", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.conform_to_tempo", "label": "Conform to Tempo", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.remove_pitch_shift", "label": "Remove Pitch Shift", "menu": "", "params": "Clip", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.clear", "label": "Clear Clips", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "clip.auto_rename", "label": "Auto Rename...", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.time_ops_window", "label": "Time Operations Window", "menu": "", "params": "Event > Time Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.tempo_ops_window", "label": "Tempo Operations Window", "menu": "", "params": "Event > Tempo Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.midi_ops_window", "label": "MIDI Operations Window", "menu": "", "params": "Event > MIDI Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.move_song_start", "label": "Move Song Start...", "menu": "", "params": "Event > Time Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.tempo_linear", "label": "Linear...", "menu": "", "params": "Event > Tempo Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.tempo_parabolic", "label": "Parabolic...", "menu": "", "params": "Event > Tempo Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.tempo_s_curve", "label": "S-Curve...", "menu": "", "params": "Event > Tempo Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.tempo_stretch", "label": "Stretch...", "menu": "", "params": "Event > Tempo Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.select_split_notes", "label": "Select/Split Notes...", "menu": "", "params": "Event > MIDI Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.input_quantize", "label": "Input Quantize...", "menu": "", "params": "Event > MIDI Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.step_input", "label": "Step Input...", "menu": "", "params": "Event > MIDI Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.restore_performance", "label": "Restore Performance...", "menu": "", "params": "Event > MIDI Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.flatten_performance", "label": "Flatten Performance...", "menu": "", "params": "Event > MIDI Operations", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.midi_track_offsets", "label": "MIDI Track Offsets", "menu": "", "params": "Event", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.midi_rtp", "label": "MIDI Real-Time Properties", "menu": "", "params": "Event", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.extract_chords", "label": "Extract Chords from Selection", "menu": "", "params": "Event", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.beat_detective", "label": "Beat Detective", "menu": "", "params": "Event", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.identify_beat", "label": "Identify Beat...", "menu": "", "params": "Event", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "event.retrospective_record", "label": "Retrospective Record", "menu": "", "params": "Event", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.destructive_punch", "label": "DestructivePunch", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.transport_online", "label": "Transport Online", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.dynamic_transport", "label": "Dynamic Transport", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.marker_target_follows_selection", "label": "Marker Target Follows First Selected Track Options", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.midi_thru", "label": "MIDI Thru", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.auto_spot_clips", "label": "Auto-Spot Clips", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.keyboard_lock", "label": "Edit/Tool Mode Keyboard Lock", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.calibration_mode", "label": "Calibration Mode", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.midi_live_mode", "label": "MIDI Live Mode", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.low_latency_monitoring", "label": "Low Latency Monitoring", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "options.prepare_dpe_tracks", "label": "Prepare DPE Tracks", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.hardware", "label": "Hardware...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.playback_engine", "label": "Playback Engine...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.disk_allocation", "label": "Disk Allocation...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.peripherals", "label": "Peripherals...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.io", "label": "I/O...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.current_timecode", "label": "Current Timecode Position...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.current_feet_frames", "label": "Current Feet+Frames Position...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.external_timecode_offset", "label": "External Timecode Offset...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.video_sync_offset", "label": "Video Sync Offset...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.click_countoff", "label": "Click/Countoff...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.keyboard_shortcuts", "label": "Keyboard Shortcuts...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.midi_studio", "label": "MIDI Studio...", "menu": "", "params": "Setup > MIDI", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.midi_beat_clock", "label": "MIDI Beat Clock...", "menu": "", "params": "Setup > MIDI", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.midi_input_filter", "label": "MIDI Input Filter...", "menu": "", "params": "Setup > MIDI", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.midi_input_devices", "label": "MIDI Input Devices...", "menu": "", "params": "Setup > MIDI", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.transcription_settings", "label": "Transcription Settings...", "menu": "", "params": "Setup", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "file.import_session_data", "label": "Session Data...", "menu": "", "params": "File > Import", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "engine.clap_plugins", "label": "List CLAP Plugins", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "engine.vst3_plugins", "label": "List VST3 Plugins", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.surround_pan", "label": "Set Surround Pan", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.send_surround_pan", "label": "Set Send Surround Pan", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "setup.main_format", "label": "Main Output Format", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.insert_state", "label": "Store Plugin State", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.instrument", "label": "Set Instrument", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.instrument_param", "label": "Set Instrument Parameter", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.sampler_load", "label": "Load Sampler Sample", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "mix.sampler_clear", "label": "Clear Sampler Sample", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "video.online", "label": "Video Track Online", "menu": "", "params": "Options", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "video.offset", "label": "Set Video Start", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "video.list", "label": "Movies", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.zoom_toggle", "label": "Zoom Toggle", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "view.zoom_toggle_cancel", "label": "Cancel Zoom Toggle", "menu": "", "params": "", "summary": ""}
+{"app": "soundcraft", "kind": "command", "id": "edit.strip_silence_preview", "label": "Strip Silence Rectangles", "menu": "", "params": "", "summary": ""}

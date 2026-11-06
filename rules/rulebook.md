@@ -54,6 +54,7 @@
 - L09 같은 caption 반복 없음
 - L10 최근 30편 title과 유사도 < 0.8 (중복 업로드 방지)
 - L11 hook·outro 외 모든 장면에 숫자 또는 고유명사(또는 screenshot/code/chart 화면) 하나 이상 — 빈약한 장면 금지
+- L39 재료 칸: 종류별 필수 칸(doc_quote pdf · find, diagram kind · items, model3d shape|commands|src …), overlay 의 target 은 같은 장면의 앞선 그림 · 화면 재료, drawing 의 model id 는 앞선 model3d, 가상 화면 ui_mock 은 mock: true, 재료 id 에 '.' 금지
 
 ## 4-1. 조사층 규칙 (scripts/research.py)
 - 생성 전에 반드시 조사. 출처 URL 없는 사실은 버린다. 출처 있는 사실이 5개 미만이면 그 주제는 만들지 않는다.
