@@ -97,6 +97,12 @@ def main():
 
     category = args.category or "28"
     status = {"privacyStatus": args.privacy, "selfDeclaredMadeForKids": False}
+    # 생성 영상(Dreamina 등 AI 클립)이 들어 있으면 '변경 · 합성 콘텐츠' 표시 — YouTube 정책(사실적인 합성 영상 공개)
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from genclip import has_generated
+    if has_generated(sb) or sb.get("synthetic"):
+        status["containsSyntheticMedia"] = True
+        print("[업로드] AI 생성 클립이 있어 '변경되었거나 합성된 콘텐츠' 표시를 켭니다")
     if args.publish_at:
         status["privacyStatus"] = "private"
         status["publishAt"] = dt.datetime.fromisoformat(args.publish_at).astimezone(dt.timezone.utc).isoformat().replace("+00:00", "Z")

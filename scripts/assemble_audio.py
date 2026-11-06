@@ -304,7 +304,18 @@ def main():
     if cont:
         parts = continuous_parts(scenes, work, prov, vid, speed, style, vopts)
         print("[음성] 이어 말하기: 대본 전체를 한 번에 합성하고 단어 사이 쉼에서 장면을 자릅니다")
+    import genclip
     for i, sc in enumerate(scenes if not cont else []):
+        # 생성 클립(Dreamina 등)의 대사를 살리는 장면: 나레이션 대신 클립 소리가 목소리, 클립 길이가 장면 길이, 받아쓰기가 자막
+        dm = genclip.dialogue_scene(sb, i) if not (sc.get("narration") or "").strip() else None
+        cf = genclip.clip_file(sid, dm) if dm else None
+        if cf:
+            a_, b_ = genclip.span(dm, genclip.probe(cf)["dur"])
+            ws = genclip.words(cf, a_, b_, work / "gen", prompt=sb.get("title"))
+            parts.append({"clip": genclip.audio_pcm(cf, a_, b_, SR), "words": ws, "speech": b_ - a_, "need": b_ - a_,
+                          "tempo": 1.0, "text": "", "wav": None, "dialogue": dm["id"]})
+            print(f"[음성] {i + 1}장면: 생성 클립 {dm['id']} 의 대사를 씁니다({b_ - a_:.2f}초 · 낱말 {len(ws)}개)")
+            continue
         # 장면마다 합성할 때는 앞뒤 장면 글을 문맥으로 넘긴다(문맥으로 감정을 고르는 엔진 — typecast smart)
         ctx = {"prev_text": (scenes[i - 1].get("narration") or "").strip() if i else None,
                "next_text": (scenes[i + 1].get("narration") or "").strip() if i + 1 < len(scenes) else None} if prov == "typecast" and not (sb.get("voice") or {}).get("style") else {}
@@ -371,7 +382,7 @@ def main():
                 continue
             captions.append({"text": " " + w["text"], "startMs": round(s0), "endMs": round(min(e0, (t + sec) * 1000)),
                              "timestampMs": round((s0 + e0) / 2), "confidence": None, "scene": i})
-        timing.append({"scene": i, "role": sc["role"], "start": round(t, 3), "end": round(t + sec, 3),
+        timing.append({"scene": i, "role": sc["role"], "start": round(t, 3), "end": round(t + sec, 3), **({"dialogue": p["dialogue"]} if p.get("dialogue") else {}),
                        "narration_ms": int(nar * 1000), "sped": round(sped, 3), "sfx": sfx,
                        "text_hash": text_hash(p["text"])})
         print(f"{i:>4} {sc['role']:<8} {float(sc['sec']):>5.1f} {sec:>5.1f} {nar:>5.2f}s {sped:>5.2f}  {sfx}")
