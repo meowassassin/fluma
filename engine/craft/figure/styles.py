@@ -133,9 +133,29 @@ def contour_paths(alpha, every=3, chunk=60):
     return out
 
 
+def _thin(img):
+    """Zhang-Suen 세선화(numpy) — scikit-image 가 없는 가벼운 설치(lite)에서도 같은 뼈대를 얻는다"""
+    im = np.pad(img.astype(np.uint8), 1)
+    while True:
+        changed = False
+        for step in (0, 1):
+            P = [np.roll(np.roll(im, -dy, 0), -dx, 1) for dy, dx in ((-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1))]
+            B = sum(P)
+            A = sum(((P[i] == 0) & (P[(i + 1) % 8] == 1)).astype(np.uint8) for i in range(8))
+            c = (P[0] * P[2] * P[4] == 0) & (P[2] * P[4] * P[6] == 0) if step == 0 else (P[0] * P[2] * P[6] == 0) & (P[0] * P[4] * P[6] == 0)
+            m = (im == 1) & (B >= 2) & (B <= 6) & (A == 1) & c
+            if m.any():
+                im[m] = 0; changed = True
+        if not changed:
+            return im[1:-1, 1:-1].astype(bool)
+
+
 def inner_paths(edge, limit=900, min_len=14):
-    from skimage.morphology import skeletonize
-    sk = skeletonize(edge > 0)
+    try:
+        from skimage.morphology import skeletonize
+        sk = skeletonize(edge > 0)
+    except ImportError:
+        sk = _thin(edge > 0)
     pts = {(int(y), int(x)) for y, x in zip(*np.nonzero(sk))}
     N = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
     def nb(p):

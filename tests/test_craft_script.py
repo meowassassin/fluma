@@ -82,7 +82,7 @@ def test_paths_read_inside_root(work):
         with pytest.raises(RuntimeError, match="밖"):
             cs.fix_paths({"path": bad}, c, "file.place")
     with pytest.raises(RuntimeError, match="밖"):                 # 키 이름이 낯설어도 절대 경로는 검사
-        cs.fix_paths({"whatever": "/etc/passwd"}, c, "x.y")
+        cs.fix_paths({"whatever": "~/.ssh/id_rsa"}, c, "x.y")   # 모든 OS 에 있는 홈 폴더 아래(/etc 는 Windows 에 없다)
 
 
 def test_paths_write_inside_work(work):

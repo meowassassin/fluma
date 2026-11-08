@@ -20,11 +20,14 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import urllib.request
+import urllib.parse
+import urllib.error
 import zipfile
 from pathlib import Path
 
@@ -82,7 +85,27 @@ def get_json(url: str):
 
 
 def release(app: dict) -> dict:
-    return get_json(f"https://api.github.com/repos/{app['repo']}/releases/latest")
+    try:
+        return get_json(f"https://api.github.com/repos/{app['repo']}/releases/latest")
+    except urllib.error.HTTPError as e:
+        if e.code not in (403, 429):
+            raise
+        return release_from_web(app["repo"])     # API 한도(로그인 없이 시간당 60번)에 걸려도 설치는 계속된다
+
+
+def release_from_web(repo: str) -> dict:
+    """API 대신 공개 릴리스 페이지에서 최신 태그 · 파일 목록을 읽는다(API 와 같은 모양으로, 크기는 모름)"""
+    req = urllib.request.Request(f"https://github.com/{repo}/releases/latest", headers={"User-Agent": UA["User-Agent"]})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        tag = urllib.parse.unquote(r.geturl().rstrip("/").rsplit("/", 1)[1])
+    req = urllib.request.Request(f"https://github.com/{repo}/releases/expanded_assets/{urllib.parse.quote(tag)}", headers={"User-Agent": UA["User-Agent"]})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        html = r.read().decode("utf-8", "replace")
+    pre = f"/{repo}/releases/download/{tag}/"
+    names = sorted({urllib.parse.unquote(m) for m in re.findall(r'href="' + re.escape(pre) + r'([^"?#]+)"', html)})
+    if not names:
+        raise RuntimeError(f"{repo} 릴리스 파일 목록을 읽지 못했습니다(GitHub API 한도 — 잠시 뒤 다시, 또는 GITHUB_TOKEN)")
+    return {"tag_name": tag, "assets": [{"name": n, "size": 0, "browser_download_url": f"https://github.com{pre}{urllib.parse.quote(n)}"} for n in names]}
 
 
 def pick(app: dict, rel: dict, web: bool, desk: bool) -> list[dict]:

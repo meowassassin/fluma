@@ -285,7 +285,7 @@ def fix_paths(params, ctx: Ctx, cmd: str):
                 return resolve_write(v, ctx) if (key in WRITE_KEYS or writes) else resolve_read(v, ctx)
             if key in PATH_KEYS and _looks_path(v) and not v.startswith("$"):
                 return resolve_write(v, ctx) if (key in WRITE_KEYS or (writes and key in ("path", "dir", "folder", "file"))) else resolve_read(v, ctx)
-            if v.startswith(("/", "~")) and _looks_path(v):          # 키 이름과 상관없이 절대 경로는 검사
+            if (v.startswith(("/", "~", "\\")) or re.match(r"[A-Za-z]:[\\/]", v)) and _looks_path(v.replace("\\", "/")):   # 키 이름과 상관없이 절대 경로는 검사(Windows 드라이브 경로 포함)
                 q = Path(os.path.expanduser(v))
                 if q.parts[:2] and Path(*q.parts[:2]).exists() and not (_inside(q, ROOT) or _inside(q, ctx.work)):
                     raise RuntimeError(f"{ctx.app}: 저장소 밖 경로는 쓸 수 없습니다: {v}")

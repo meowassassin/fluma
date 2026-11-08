@@ -89,11 +89,11 @@ jobs:
         run: docker build -f docker/Dockerfile --build-arg PROFILE=lite --build-arg CRAFTS=core --build-arg MODELS=0 -t fluma:ci .
       - name: Container starts and answers
         run: |
-          docker run -d --name f -p 4311:4311 fluma:ci
+          docker run -d --name fluma-ci -p 4311:4311 fluma:ci
           for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:4311/ && break; sleep 2; done
           curl -sf -o /dev/null -w "web %{http_code}\n" http://127.0.0.1:4311/
-          docker exec -w /app f .venv/bin/python engine/doctor.py
-          docker exec -w /app f .venv/bin/python engine/craft/crafts.py list | cat
+          docker exec -w /app fluma-ci .venv/bin/python engine/doctor.py
+          docker exec -w /app fluma-ci .venv/bin/python engine/craft/crafts.py list | cat
       - name: Container log
         if: always()
-        run: docker logs f 2>&1 | tail -50 || true
+        run: docker logs fluma-ci 2>&1 | tail -50 || true
