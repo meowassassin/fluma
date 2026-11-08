@@ -1,62 +1,33 @@
 node_modules/
 references/*/transcripts/
-rules/trends/*.raw.txt
-storyboards/_failed/
+engine/spec/rules/trends/*.raw.txt
+# 실행 중 생기는 데이터(콘티 · 제작 파일 · 음성 · 렌더 · 트렌드 · 작업 공간) — 전부 data/ 아래
+data/*
+!data/README.md
+!data/queue.md
 .env
 __pycache__/
-audio/
-captures/*.png
-public/audio/
-public/captures/
-public/stills/
-out/
-workspace/render/
-engines/*/node_modules/
-web/dist/
-tokens/candidates/
+engine/*/renderer/node_modules/
+studio/dist/
+engine/spec/tokens/candidates/
 ~/.shortsforge/
 .venv/
-workspace/sessions/
-workspace/stills/
-engines/*/.venv/
-workspace/tmp/
-workspace/memory/stats.json
-public/trends/
-public/memes/
-workspace/render/_brandkit/
-workspace/trend-picks.json
+engine/*/renderer/.venv/
 
 # 로컬 비밀값 (Higgsfield HF_KEY 등)
 .env.local
 .env.*.local
 
-# Craft 앱 설치본 (scripts/crafts.py)
+# Craft 앱 설치본 (engine/craft/crafts.py)
 tools/crafts/
 tools/toolchains/
 
 # ---- 사용 데이터: 영상 · 조사 · 업로드 · 기록은 저장소에 올리지 않는다(사람마다 다름 · 개인 정보) ----
-storyboards/*
-!storyboards/.gitkeep
-compositions/*
-!compositions/.gitkeep
-research/*
-!research/.gitkeep
-data/*
-!data/.gitkeep
-scenes/
-briefs/
-characters/*
-!characters/.gitkeep
 styles/*
 !styles/.gitkeep
 library/*
 !library/.gitkeep
 library3d/s3-bucket/
-archive/
-public/uploads/
-public/elements/
-workspace/*
-!workspace/system.md
 .nimbalyst/
 .pytest_cache/
 .claude/settings.local.json

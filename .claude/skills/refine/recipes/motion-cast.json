@@ -1,0 +1,39 @@
+{
+ "id": "motion-cast",
+ "layer": "motion",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "인물이 등장해 연기한다",
+ "when": "cast 재료의 인물을 놓는다 — talk 은 입이 움직이고 나머지는 멈춘 자세",
+ "avoid": "말하지 않는데 talk",
+ "vars": {
+  "WHO": "인물 id",
+  "POSE": "자세",
+  "N": "칸 수(talk 2 · run 8 · 나머지 1)",
+  "X": "x",
+  "Y": "y",
+  "SCALE": "크기 %",
+  "T0": "등장 초",
+  "T1": "퇴장 초",
+  "FLIP": "1 오른쪽 · -1 왼쪽을 본다",
+  "FPS": "초당 칸",
+  "BOB": "흔들림 빠르기",
+  "AMP": "흔들림 폭 px"
+ },
+ "defaults": {
+  "N": "1",
+  "SCALE": "100",
+  "FLIP": "1",
+  "FPS": "7",
+  "BOB": "2.2",
+  "AMP": "5"
+ },
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "for(var k=0;k<@N@;k++){var it=app.project.importFile(new ImportOptions(new File(\"$MATDIR/@WHO@_@POSE@\"+k+\".png\")));var l=C.layers.add(it);l.name=\"@WHO@ @POSE@ \"+k;l.moveToBeginning();l.startTime=0;l.inPoint=@T0@;l.outPoint=@T1@;var T=l.property(\"Transform\");T.property(\"Position\").setValue([@X@,@Y@]);T.property(\"Position\").expression=\"[value[0],value[1]+Math.sin(time*@BOB@)*@AMP@]\";var s=T.property(\"Scale\");K(s,[[@T0@,[@FLIP@*@SCALE@*0.86,@SCALE@*0.86]],[@T0@+0.16,[@FLIP@*@SCALE@,@SCALE@]]]);if(@N@>1)T.property(\"Opacity\").expression=\"(Math.floor(time*@FPS@)%@N@==\"+k+\")?100:0\";}"
+  }
+ ]
+}

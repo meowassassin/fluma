@@ -1,0 +1,36 @@
+{
+ "id": "typo-bubble",
+ "layer": "typo",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "인물의 말풍선",
+ "when": "인물이 말할 때 — 대사는 짧게, 꼬리(TX · TY)로 누가 말하는지 가리킨다",
+ "avoid": "나레이션을 그대로 옮겨 적기 · 꼬리 없이 대사(누구 말인지 모른다)",
+ "vars": {
+  "TEXT": "대사",
+  "X": "가운데 x",
+  "Y": "바닥 y",
+  "SIZE": "크기",
+  "T0": "나타나는 초",
+  "T1": "사라지는 초",
+  "NM": "레이어 이름",
+  "FONT": "글꼴",
+  "TX": "꼬리 끝 x — 말하는 인물의 입 · 머리(-1 이면 꼬리 없음: 나레이터 · 생각)",
+  "TY": "꼬리 끝 y"
+ },
+ "defaults": {
+  "SIZE": "52",
+  "FONT": "GowunBatang-Bold",
+  "NM": "Bubble",
+  "TX": "-1",
+  "TY": "-1"
+ },
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var t=C.layers.addText(\"@TEXT@\");t.name=\"@NM@\";t.moveToBeginning();var S=t.property(\"Source Text\");var d=S.value;d.font=\"@FONT@\";d.fontSize=@SIZE@;d.applyFill=true;d.fillColor=[0.09,0.066,0.047];d.justification=ParagraphJustification.CENTER_JUSTIFY;S.setValue(d);var T=t.property(\"Transform\");T.property(\"Position\").setValue([@X@,@Y@]);t.inPoint=@T0@;t.outPoint=@T1@;var b=C.layers.addShape();b.name=\"@NM@ box\";var g=b.property(\"Contents\").addProperty(\"ADBE Vector Group\");var r=g.property(\"Contents\").addProperty(\"ADBE Vector Shape - Rect\");var q=t.sourceRectAtTime(@T0@,false);r.property(\"Size\").setValue([q.width+70,q.height+46]);r.property(\"Position\").setValue([q.left+q.width/2,q.top+q.height/2]);r.property(\"Roundness\").setValue(34);g.property(\"Contents\").addProperty(\"ADBE Vector Graphic - Fill\").property(\"Color\").setValue([1,0.98,0.92]);var st=g.property(\"Contents\").addProperty(\"ADBE Vector Graphic - Stroke\");st.property(\"Color\").setValue([0.09,0.066,0.047]);st.property(\"Stroke Width\").setValue(5);b.property(\"Transform\").property(\"Position\").setValue([@X@,@Y@]);b.inPoint=@T0@;b.outPoint=@T1@;b.moveAfter(t);var s=T.property(\"Scale\");K(s,[[@T0@,[86,86]],[@T0@+0.14,[100,100]]]);var s2=b.property(\"Transform\").property(\"Scale\");K(s2,[[@T0@,[86,86]],[@T0@+0.14,[100,100]]]);if(@TX@>=0){var cx=@X@+q.left+q.width/2,cy=@Y@+q.top+q.height/2,dx=@TX@-cx,dy=@TY@-cy,D=Math.sqrt(dx*dx+dy*dy),R=D/1.5,ux=dx/D,uy=dy/D;var tl=C.layers.addShape();tl.name=\"@NM@ tail\";var tg=tl.property(\"Contents\").addProperty(\"ADBE Vector Group\");var sp=tg.property(\"Contents\").addProperty(\"ADBE Vector Shape - Star\");sp.property(\"Type\").setValue(2);sp.property(\"Points\").setValue(3);sp.property(\"Outer Radius\").setValue(R);tg.property(\"Contents\").addProperty(\"ADBE Vector Graphic - Fill\").property(\"Color\").setValue([1,0.98,0.92]);var ts=tg.property(\"Contents\").addProperty(\"ADBE Vector Graphic - Stroke\");ts.property(\"Color\").setValue([0.09,0.066,0.047]);ts.property(\"Stroke Width\").setValue(5);tg.property(\"Transform\").property(\"Scale\").setValue([Math.min(100,5400/(1.732*R)),100]);tg.property(\"Transform\").property(\"Rotation\").setValue(Math.atan2(dx,-dy)*180/Math.PI);tl.property(\"Transform\").property(\"Position\").setValue([@TX@-ux*R,@TY@-uy*R]);tl.inPoint=@T0@;tl.outPoint=@T1@;tl.moveAfter(b);K(tl.property(\"Transform\").property(\"Opacity\"),[[@T0@,0],[@T0@+0.1,100]]);}"
+  }
+ ]
+}

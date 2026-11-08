@@ -11,11 +11,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
-
-# ---------- 말투만 고치기: 내용 낱말이 바뀌면 거절 ----------
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 def test_tone_edit_allows_ending_change():
     import tone_edit
     ok, bad = tone_edit.check("이번엔 노트북 하나가 뚫렸고, 서버까지 들어갔고요.", "이번엔 노트북 하나가 뚫렸고요, 서버까지 들어간 거예요.")
@@ -135,7 +132,7 @@ def test_apikeys_order(tmp_path, monkeypatch):
 # ---------- 스키마: 저장소의 예시 콘티가 스키마를 통과 ----------
 def test_storyboard_schema_accepts_intent_and_screen():
     import jsonschema
-    schema = json.loads((ROOT / "schema" / "storyboard.schema.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "engine" / "spec" / "schema" / "storyboard.schema.json").read_text(encoding="utf-8"))
     props = schema["properties"]
     assert "intent" in props and "screen" in schema["$defs"]["scene"]["properties"]
     jsonschema.Draft202012Validator.check_schema(schema)

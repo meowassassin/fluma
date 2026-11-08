@@ -1,0 +1,33 @@
+{
+ "id": "light-sweep-once",
+ "layer": "light",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "빛이 한 번 쓸고 지나감(절제)",
+ "when": "결론 카드 · 제품 · 숫자 강조의 마지막 한 번",
+ "avoid": "한 영상에 두 번 이상 · 정보 화면 전체",
+ "vars": {
+  "MAT": "재료 레이어"
+ },
+ "defaults": {
+  "T0": 0.3,
+  "DUR": 0.9
+ },
+ "at": [
+  0.3,
+  0.75,
+  1.2
+ ],
+ "steps": [
+  {
+   "jsx": "var f=FX(L(\"@MAT@\"),\"CC Light Sweep\");P(f,\"Direction\").setValue(-25);P(f,\"Width\").setValue(140);P(f,\"Sweep Intensity\").setValue(28);P(f,\"Edge Intensity\").setValue(0);P(f,\"Edge Thickness\").setValue(0);var c=P(f,\"Center\");K(c,[[@T0@,[-0.3,0.5]],[@T0@+@DUR@,[1.3,0.5]]]);EASE(c,50);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 2.15,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/light-sweep-once/after.png",
+  "before": "data/workspace/probe/recipes/light-sweep-once/before.png"
+ }
+}

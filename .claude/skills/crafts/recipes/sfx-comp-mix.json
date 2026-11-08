@@ -19,12 +19,12 @@
   {
    "at": "/steps/1/params/path",
    "kind": "file",
-   "example": "assets/sfx/pop.wav"
+   "example": "engine/voice/sfx/pop.wav"
   },
   {
    "at": "/steps/2/params/path",
    "kind": "file",
-   "example": "assets/sfx/swoosh.wav"
+   "example": "engine/voice/sfx/swoosh.wav"
   }
  ],
  "tested": "2026-11-06",
@@ -43,7 +43,7 @@
    {
     "id": "file.import_audio",
     "params": {
-     "path": "assets/sfx/pop.wav",
+     "path": "engine/voice/sfx/pop.wav",
      "track": "SFX",
      "at": 0,
      "new_tracks": false
@@ -52,7 +52,7 @@
    {
     "id": "file.import_audio",
     "params": {
-     "path": "assets/sfx/swoosh.wav",
+     "path": "engine/voice/sfx/swoosh.wav",
      "track": "SFX",
      "at": {
       "seconds": 0.6

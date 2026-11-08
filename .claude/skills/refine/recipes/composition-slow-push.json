@@ -1,0 +1,28 @@
+{
+ "id": "composition-slow-push",
+ "layer": "composition",
+ "target": "motion",
+ "title": "마지막 말로 천천히 다가가기",
+ "when": "끝맺음 글자에 시선을 모은다",
+ "avoid": "이미 가득 찬 화면",
+ "vars": {
+  "MAT": "재료 레이어",
+  "T0": "시작 초",
+  "T1": "끝 초",
+  "ZOOM": "끝 배율(%)",
+  "OY": "다가갈 높이 0~1"
+ },
+ "defaults": {
+  "ZOOM": "106",
+  "OY": "0.5"
+ },
+ "at": [
+  14.5
+ ],
+ "steps": [
+  {
+   "jsx": "var m=L(\"@MAT@\");var s=m.property(\"Transform\").property(\"Scale\");var v=s.valueAtTime(@T0@,false);var q=v[0];K(s,[[@T0@,[q,q]],[@T1@,[q*@ZOOM@/100,q*@ZOOM@/100]]]);EASE(s,55);"
+  }
+ ],
+ "app": "effectcraft"
+}

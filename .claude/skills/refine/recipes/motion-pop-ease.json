@@ -1,0 +1,33 @@
+{
+ "id": "motion-pop-ease",
+ "layer": "motion",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "살짝 작게 시작해 부드럽게 멈추는 등장",
+ "when": "재료(화면 · 사진 · 카드)가 처음 나올 때. 하드 컷보다 정돈된 느낌",
+ "avoid": "레퍼런스가 하드 컷 위주일 때",
+ "vars": {
+  "MAT": "재료 레이어(Mat <id>)"
+ },
+ "defaults": {
+  "T0": 0,
+  "DUR": 0.4
+ },
+ "at": [
+  0.05,
+  0.2,
+  0.6
+ ],
+ "steps": [
+  {
+   "jsx": "var l=L(\"@MAT@\");var s=l.property(\"Transform\").property(\"Scale\");var v=s.value;K(s,[[@T0@,[v[0]*0.9,v[1]*0.9]],[@T0@+@DUR@,[v[0],v[1]]]]);EASE(s,85);var o=l.property(\"Transform\").property(\"Opacity\");K(o,[[@T0@,0],[@T0@+@DUR@*0.6,100]]);EASE(o,60);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 27.4,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/motion-pop-ease/after.png",
+  "before": "data/workspace/probe/recipes/motion-pop-ease/before.png"
+ }
+}

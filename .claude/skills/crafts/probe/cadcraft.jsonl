@@ -1,0 +1,451 @@
+{"id": "new", "kind": "command", "label": "New Drawing...", "menu": "File > New Drawing...", "run": "ok", "visible": false}
+{"id": "open", "kind": "command", "label": "Open...", "menu": "File > Open...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `open`: `path` or `data` (base64) is required"}
+{"id": "close", "kind": "command", "label": "Close", "menu": "File > Close", "run": "needs_context", "msg": "cadcraft: run 실패 — error: no active document"}
+{"id": "closeall", "kind": "command", "label": "Close All", "menu": "File > Close All", "run": "needs_context", "msg": "cadcraft: run 실패 — error: no active document"}
+{"id": "qsave", "kind": "command", "label": "Save", "menu": "File > Save", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `qsave`: drawing has no file name yet; use saveas {path}"}
+{"id": "saveas", "kind": "command", "label": "Save As...", "menu": "File > Save As...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `saveas`: `path` is required"}
+{"id": "document.switch", "kind": "command", "label": "Switch Drawing", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `document.switch`: `index` is required"}
+{"id": "document.bytes", "kind": "command", "label": "Drawing as bytes", "menu": "", "run": "ok", "visible": false}
+{"id": "script", "kind": "command", "label": "Run Script...", "menu": "Tools > Run Script...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `script`: `path` or `data` (base64) is required"}
+{"id": "aliasedit", "kind": "command", "label": "Command Aliases", "menu": "Tools > Customize > Edit Command Aliases (PGP)...", "run": "ok", "visible": false}
+{"id": "reinit", "kind": "command", "label": "Reinitialize", "menu": "", "run": "ok", "visible": false}
+{"id": "audit", "kind": "command", "label": "Audit", "menu": "File > Drawing Utilities > Audit", "run": "ok", "visible": false}
+{"id": "recover", "kind": "command", "label": "Recover...", "menu": "File > Drawing Utilities > Recover...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `recover`: `path` or `data` (base64) is required"}
+{"id": "drawingrecovery", "kind": "command", "label": "Drawing Recovery Manager...", "menu": "File > Drawing Utilities > Drawing Recovery Manager...", "run": "ok", "visible": false}
+{"id": "u", "kind": "command", "label": "Undo", "menu": "Edit > Undo", "run": "ok", "visible": false}
+{"id": "undo", "kind": "command", "label": "Undo", "menu": "", "run": "ok", "visible": false}
+{"id": "redo", "kind": "command", "label": "Redo", "menu": "Edit > Redo", "run": "ok", "visible": false}
+{"id": "mredo", "kind": "command", "label": "Redo", "menu": "", "run": "ok", "visible": false}
+{"id": "cutclip", "kind": "command", "label": "Cut", "menu": "Edit > Cut", "run": "ok", "visible": false}
+{"id": "cutbase", "kind": "command", "label": "Cut with Base Point", "menu": "Edit > Cut with Base Point", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `cutbase`: `base` ([x, y]) is required"}
+{"id": "copyclip", "kind": "command", "label": "Copy", "menu": "Edit > Copy", "run": "ok", "visible": false}
+{"id": "copybase", "kind": "command", "label": "Copy with Base Point", "menu": "Edit > Copy with Base Point", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `copybase`: `base` ([x, y]) is required"}
+{"id": "pasteclip", "kind": "command", "label": "Paste", "menu": "Edit > Paste", "run": "needs_context", "msg": "cadcraft: run 실패 — error: command `pasteclip` is not available right now: the clipboard is empty"}
+{"id": "pasteblock", "kind": "command", "label": "Paste as Block", "menu": "Edit > Paste as Block", "run": "needs_context", "msg": "cadcraft: run 실패 — error: command `pasteblock` is not available right now: the clipboard is empty"}
+{"id": "pasteorig", "kind": "command", "label": "Paste to Original Coordinates", "menu": "Edit > Paste to Original Coordinates", "run": "needs_context", "msg": "cadcraft: run 실패 — error: command `pasteorig` is not available right now: the clipboard is empty"}
+{"id": "erase.selection", "kind": "command", "label": "Clear", "menu": "Edit > Clear", "run": "needs_context", "msg": "cadcraft: run 실패 — error: command `erase.selection` is not available right now: nothing selected"}
+{"id": "selectall", "kind": "command", "label": "Select All", "menu": "Edit > Select All", "run": "ok", "visible": false}
+{"id": "ai_deselect", "kind": "command", "label": "Deselect All", "menu": "", "run": "ok", "visible": false}
+{"id": "select", "kind": "command", "label": "Select", "menu": "", "run": "ok", "visible": false}
+{"id": "qselect", "kind": "command", "label": "Quick Select...", "menu": "Edit > Quick Select...", "run": "ok", "visible": false}
+{"id": "qselect.info", "kind": "command", "label": "Quick Select Properties", "menu": "", "run": "ok", "visible": false}
+{"id": "selectsimilar", "kind": "command", "label": "Select Similar", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `selectsimilar`: select objects to match"}
+{"id": "isolateobjects", "kind": "command", "label": "Isolate Objects", "menu": "Tools > Isolate > Isolate Objects", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `isolateobjects`: select objects to isolate"}
+{"id": "hideobjects", "kind": "command", "label": "Hide Objects", "menu": "Tools > Isolate > Hide Objects", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `hideobjects`: select objects to hide"}
+{"id": "unisolateobjects", "kind": "command", "label": "End Object Isolation", "menu": "Tools > Isolate > End Object Isolation", "run": "ok", "visible": false}
+{"id": "zoom", "kind": "command", "label": "Zoom", "menu": "", "run": "ok", "visible": false}
+{"id": "zoom.realtime", "kind": "command", "label": "Zoom Realtime", "menu": "View > Zoom > Realtime", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `zoom`: `factor` (number) is required"}
+{"id": "zoom.dynamic", "kind": "command", "label": "Zoom Dynamic", "menu": "View > Zoom > Dynamic", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `zoom`: `center` ([x, y]) is required"}
+{"id": "zoom.previous", "kind": "command", "label": "Zoom Previous", "menu": "View > Zoom > Previous", "run": "ok", "visible": false}
+{"id": "zoom.window", "kind": "command", "label": "Zoom Window", "menu": "View > Zoom > Window", "run": "ok", "visible": false}
+{"id": "zoom.in", "kind": "command", "label": "Zoom In", "menu": "View > Zoom > In", "run": "ok", "visible": false}
+{"id": "zoom.out", "kind": "command", "label": "Zoom Out", "menu": "View > Zoom > Out", "run": "ok", "visible": false}
+{"id": "zoom.all", "kind": "command", "label": "Zoom All", "menu": "View > Zoom > All", "run": "ok", "visible": false}
+{"id": "zoom.extents", "kind": "command", "label": "Zoom Extents", "menu": "View > Zoom > Extents", "run": "ok", "visible": false}
+{"id": "zoom.object", "kind": "command", "label": "Zoom Object", "menu": "View > Zoom > Object", "run": "ok", "visible": false}
+{"id": "pan", "kind": "command", "label": "Pan", "menu": "View > Pan > Realtime", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `pan`: `from` ([x, y]) is required"}
+{"id": "pan.left", "kind": "command", "label": "Pan Left", "menu": "View > Pan > Left", "run": "ok", "visible": false}
+{"id": "pan.right", "kind": "command", "label": "Pan Right", "menu": "View > Pan > Right", "run": "ok", "visible": false}
+{"id": "pan.up", "kind": "command", "label": "Pan Up", "menu": "View > Pan > Up", "run": "ok", "visible": false}
+{"id": "pan.down", "kind": "command", "label": "Pan Down", "menu": "View > Pan > Down", "run": "ok", "visible": false}
+{"id": "regen", "kind": "command", "label": "Regen", "menu": "View > Regen", "run": "ok", "visible": false}
+{"id": "regenall", "kind": "command", "label": "Regen All", "menu": "View > Regen All", "run": "ok", "visible": false}
+{"id": "redraw", "kind": "command", "label": "Redraw", "menu": "View > Redraw", "run": "ok", "visible": false}
+{"id": "view.set", "kind": "command", "label": "Set View", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `view.set`: `center` ([x, y]) is required"}
+{"id": "view.get", "kind": "command", "label": "Get View", "menu": "", "run": "ok", "visible": false}
+{"id": "layout.set", "kind": "command", "label": "Switch Layout", "menu": "", "run": "ok", "visible": false}
+{"id": "view", "kind": "command", "label": "Named Views...", "menu": "View > Named Views...", "run": "ok", "visible": false}
+{"id": "-vports", "kind": "command", "label": "Viewports", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — For more information, try '--help'."}
+{"id": "vports.activate", "kind": "command", "label": "Set Current Viewport", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `vports.activate`: `index` is required"}
+{"id": "vports.named", "kind": "command", "label": "Named Viewports...", "menu": "View > Viewports > Named Viewports...", "run": "ok", "visible": false}
+{"id": "line", "kind": "command", "label": "Line", "menu": "Draw > Line", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `line`: `points` [[x,y],...] (2 or more) is required"}
+{"id": "pline", "kind": "command", "label": "Polyline", "menu": "Draw > Polyline", "run": "needs_context", "msg": "cadcraft: run 실패 — error: invalid parameters for `pline`: `vertices` needs at least 2 points"}
+{"id": "circle", "kind": "command", "label": "Circle", "menu": "Draw > Circle > Center, Radius", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `circle`: give {center, radius} or {p1, p2[, p3]}"}
+{"id": "arc", "kind": "command", "label": "Arc", "menu": "Draw > Arc > 3 Points", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc`: give {p1,p2,p3}, {start,center,end} or {center,radius,start,end}"}
+{"id": "rectang", "kind": "command", "label": "Rectangle", "menu": "Draw > Rectangle", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `rectang`: `p1` ([x, y]) is required"}
+{"id": "polygon", "kind": "command", "label": "Polygon", "menu": "Draw > Polygon", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `polygon`: `center` ([x, y]) is required"}
+{"id": "ellipse", "kind": "command", "label": "Ellipse", "menu": "Draw > Ellipse > Center", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `ellipse`: `center` ([x, y]) is required"}
+{"id": "point", "kind": "command", "label": "Point", "menu": "Draw > Point > Single Point", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `point`: `at` or `points` is required"}
+{"id": "point.multiple", "kind": "command", "label": "Multiple Point", "menu": "Draw > Point > Multiple Point", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `point`: `at` or `points` is required"}
+{"id": "xline", "kind": "command", "label": "Construction Line", "menu": "Draw > Construction Line", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `xline`: `base` is required"}
+{"id": "ray", "kind": "command", "label": "Ray", "menu": "Draw > Ray", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `ray`: `base` ([x, y]) is required"}
+{"id": "spline", "kind": "command", "label": "Spline", "menu": "Draw > Spline > Fit Points", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `spline`: `fit` or `control` points are required"}
+{"id": "donut", "kind": "command", "label": "Donut", "menu": "Draw > Donut", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `donut`: `center` ([x, y]) is required"}
+{"id": "solid", "kind": "command", "label": "2D Solid", "menu": "Draw > 2D Solid", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `solid`: `points` is required"}
+{"id": "text", "kind": "command", "label": "Single Line Text", "menu": "Draw > Text > Single Line Text", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `text`: `at` ([x, y]) is required"}
+{"id": "mtext", "kind": "command", "label": "Multiline Text", "menu": "Draw > Text > Multiline Text...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mtext`: `at` ([x, y]) is required"}
+{"id": "arc.sce", "kind": "command", "label": "Start, Center, End", "menu": "Draw > Arc > Start, Center, End", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc`: give start with center and/or end (see params)"}
+{"id": "arc.sca", "kind": "command", "label": "Start, Center, Angle", "menu": "Draw > Arc > Start, Center, Angle", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc`: give start with center and/or end (see params)"}
+{"id": "arc.scl", "kind": "command", "label": "Start, Center, Length", "menu": "Draw > Arc > Start, Center, Length", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc`: give start with center and/or end (see params)"}
+{"id": "arc.sea", "kind": "command", "label": "Start, End, Angle", "menu": "Draw > Arc > Start, End, Angle", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc`: give start with center and/or end (see params)"}
+{"id": "arc.sed", "kind": "command", "label": "Start, End, Direction", "menu": "Draw > Arc > Start, End, Direction", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc`: give start with center and/or end (see params)"}
+{"id": "arc.ser", "kind": "command", "label": "Start, End, Radius", "menu": "Draw > Arc > Start, End, Radius", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc`: give start with center and/or end (see params)"}
+{"id": "arc.cse", "kind": "command", "label": "Center, Start, End", "menu": "Draw > Arc > Center, Start, End", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc`: give start with center and/or end (see params)"}
+{"id": "arc.csa", "kind": "command", "label": "Center, Start, Angle", "menu": "Draw > Arc > Center, Start, Angle", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc`: give start with center and/or end (see params)"}
+{"id": "arc.csl", "kind": "command", "label": "Center, Start, Length", "menu": "Draw > Arc > Center, Start, Length", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc`: give start with center and/or end (see params)"}
+{"id": "arc.continue", "kind": "command", "label": "Continue", "menu": "Draw > Arc > Continue", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arc.continue`: `end` ([x, y]) is required"}
+{"id": "circle.cd", "kind": "command", "label": "Center, Diameter", "menu": "Draw > Circle > Center, Diameter", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `circle`: give {center, diameter}, {p1, p2} or {p1, p2, p3}"}
+{"id": "circle.2p", "kind": "command", "label": "2 Points", "menu": "Draw > Circle > 2 Points", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `circle`: give {center, diameter}, {p1, p2} or {p1, p2, p3}"}
+{"id": "circle.3p", "kind": "command", "label": "3 Points", "menu": "Draw > Circle > 3 Points", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `circle`: give {center, diameter}, {p1, p2} or {p1, p2, p3}"}
+{"id": "circle.ttr", "kind": "command", "label": "Tan, Tan, Radius", "menu": "Draw > Circle > Tan, Tan, Radius", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `circle.ttr`: `h1` is required"}
+{"id": "circle.ttt", "kind": "command", "label": "Tan, Tan, Tan", "menu": "Draw > Circle > Tan, Tan, Tan", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `circle.ttt`: `h1` is required"}
+{"id": "ellipse.axis", "kind": "command", "label": "Axis, End", "menu": "Draw > Ellipse > Axis, End", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `ellipse.axis`: `p1` ([x, y]) is required"}
+{"id": "ellipse.arc", "kind": "command", "label": "Elliptical Arc", "menu": "Draw > Ellipse > Arc", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `ellipse.arc`: `p1` ([x, y]) is required"}
+{"id": "divide", "kind": "command", "label": "Divide", "menu": "Draw > Point > Divide", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `divide`: `handle` is required"}
+{"id": "measure", "kind": "command", "label": "Measure", "menu": "Draw > Point > Measure", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `measure`: `handle` is required"}
+{"id": "revcloud", "kind": "command", "label": "Rectangular", "menu": "Draw > Revision Cloud > Rectangular", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `revcloud`: give {p1, p2}, {points}, {freehand} or {handle}"}
+{"id": "revcloud.polygonal", "kind": "command", "label": "Polygonal", "menu": "Draw > Revision Cloud > Polygonal", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `revcloud`: give {p1, p2}, {points}, {freehand} or {handle}"}
+{"id": "revcloud.freehand", "kind": "command", "label": "Freehand", "menu": "Draw > Revision Cloud > Freehand", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `revcloud`: give {p1, p2}, {points}, {freehand} or {handle}"}
+{"id": "wipeout", "kind": "command", "label": "Wipeout", "menu": "Draw > Wipeout", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `wipeout`: `points` (3 or more) or `handle` is required"}
+{"id": "3dpoly", "kind": "command", "label": "3D Polyline", "menu": "Draw > 3D Polyline", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `3dpoly`: `points` needs 2 or more [x,y,z] points"}
+{"id": "helix", "kind": "command", "label": "Helix", "menu": "Draw > Helix", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `helix`: `center` ([x, y]) is required"}
+{"id": "spline.cv", "kind": "command", "label": "Control Vertices", "menu": "Draw > Spline > Control Vertices", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `spline.cv`: `control` points are required"}
+{"id": "centermark", "kind": "command", "label": "Center Mark", "menu": "Draw > Center Mark", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `centermark`: `handle` or `handles` is required"}
+{"id": "centerline", "kind": "command", "label": "Center Line", "menu": "Draw > Center Line", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `centerline`: `h1` is required"}
+{"id": "mline", "kind": "command", "label": "Multiline", "menu": "Draw > Multiline", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mline`: `points` (2 or more) is required"}
+{"id": "mlstyle", "kind": "command", "label": "Multiline Style...", "menu": "Format > Multiline Style...", "run": "ok", "visible": false}
+{"id": "mledit", "kind": "command", "label": "Multiline...", "menu": "Modify > Object > Multiline...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mledit`: `tool` must be one of CC OC MC CT OT MT CJ AV DV CS CA WA"}
+{"id": "breakline", "kind": "command", "label": "Break-line Symbol", "menu": "Tools > Express Tools > Break-line Symbol", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `breakline`: `p1` ([x, y]) is required"}
+{"id": "dimlinear", "kind": "command", "label": "Linear", "menu": "Dimension > Linear", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimlinear`: `p1` ([x, y]) is required"}
+{"id": "dimaligned", "kind": "command", "label": "Aligned", "menu": "Dimension > Aligned", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimaligned`: `p1` ([x, y]) is required"}
+{"id": "dimradius", "kind": "command", "label": "Radius", "menu": "Dimension > Radius", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimradius`: `handle` of a circle/arc, or {center, point}"}
+{"id": "dimdiameter", "kind": "command", "label": "Diameter", "menu": "Dimension > Diameter", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimdiameter`: `handle` of a circle/arc, or {center, point}"}
+{"id": "dimangular", "kind": "command", "label": "Angular", "menu": "Dimension > Angular", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimangular`: `vertex` ([x, y]) is required"}
+{"id": "dimarc", "kind": "command", "label": "Arc Length", "menu": "Dimension > Arc Length", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimarc`: `handle` of an arc is required"}
+{"id": "dimordinate", "kind": "command", "label": "Ordinate", "menu": "Dimension > Ordinate", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimordinate`: `feature` ([x, y]) is required"}
+{"id": "dimcontinue", "kind": "command", "label": "Continue", "menu": "Dimension > Continue", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimcontinue`: `points` is required"}
+{"id": "dimbaseline", "kind": "command", "label": "Baseline", "menu": "Dimension > Baseline", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimbaseline`: `points` is required"}
+{"id": "qdim", "kind": "command", "label": "Quick Dimension", "menu": "Dimension > Quick Dimension", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `qdim`: `at` ([x, y]) is required"}
+{"id": "dim", "kind": "command", "label": "Dimension", "menu": "Dimension > Dimension", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimlinear`: `p1` ([x, y]) is required"}
+{"id": "mleader", "kind": "command", "label": "Multileader", "menu": "Dimension > Multileader", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mleader`: `points` (arrow … landing) is required"}
+{"id": "leader", "kind": "command", "label": "Leader", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `leader`: `points` is required"}
+{"id": "dimstyle.update", "kind": "command", "label": "Update", "menu": "Dimension > Update", "run": "ok", "visible": false}
+{"id": "dimoverride", "kind": "command", "label": "Override", "menu": "Dimension > Override", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimoverride`: no valid dimension variables given (ignored: )"}
+{"id": "dimreassociate", "kind": "command", "label": "Reassociate Dimensions", "menu": "Dimension > Reassociate Dimensions", "run": "ok", "visible": false}
+{"id": "dimdisassociate", "kind": "command", "label": "Disassociate Dimensions", "menu": "", "run": "ok", "visible": false}
+{"id": "dimtedit.home", "kind": "command", "label": "Home", "menu": "Dimension > Align Text > Home", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimtedit`: select dimensions"}
+{"id": "dimtedit.angle", "kind": "command", "label": "Angle", "menu": "Dimension > Align Text > Angle", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimtedit`: select dimensions"}
+{"id": "dimtedit.left", "kind": "command", "label": "Left", "menu": "Dimension > Align Text > Left", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimtedit`: select dimensions"}
+{"id": "dimtedit.center", "kind": "command", "label": "Center", "menu": "Dimension > Align Text > Center", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimtedit`: select dimensions"}
+{"id": "dimtedit.right", "kind": "command", "label": "Right", "menu": "Dimension > Align Text > Right", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimtedit`: select dimensions"}
+{"id": "dimtedit", "kind": "command", "label": "Dimension Text Edit", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimtedit`: select dimensions"}
+{"id": "dimspace", "kind": "command", "label": "Dimension Space", "menu": "Dimension > Dimension Space", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimspace`: `base` dimension is required"}
+{"id": "dimedit", "kind": "command", "label": "Dimension Edit", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimedit`: select dimensions"}
+{"id": "dimedit.oblique", "kind": "command", "label": "Oblique", "menu": "Dimension > Oblique", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimedit`: select dimensions"}
+{"id": "dimjogged", "kind": "command", "label": "Jogged", "menu": "Dimension > Jogged", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimjogged`: `handle` of an arc or circle is required"}
+{"id": "dimjogline", "kind": "command", "label": "Jogged Linear", "menu": "Dimension > Jogged Linear", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimjogline`: `handle` of a linear or aligned dimension is required"}
+{"id": "dimbreak", "kind": "command", "label": "Dimension Break", "menu": "Dimension > Dimension Break", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimbreak`: select dimensions"}
+{"id": "diminspect", "kind": "command", "label": "Inspection", "menu": "Dimension > Inspection", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `diminspect`: select dimensions"}
+{"id": "mleaderedit", "kind": "command", "label": "Edit Multileader", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mleaderedit`: `handle` (a multileader) is required"}
+{"id": "mleaderedit.add", "kind": "command", "label": "Add Leader", "menu": "Modify > Object > Multileader > Add Leader", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mleaderedit`: `handle` (a multileader) is required"}
+{"id": "mleaderedit.remove", "kind": "command", "label": "Remove Leader", "menu": "Modify > Object > Multileader > Remove Leader", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mleaderedit`: `handle` (a multileader) is required"}
+{"id": "mleaderalign", "kind": "command", "label": "Align Multileaders", "menu": "Modify > Object > Multileader > Align", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mleaderalign`: no multileaders to align"}
+{"id": "mleadercollect", "kind": "command", "label": "Collect Multileaders", "menu": "Modify > Object > Multileader > Collect", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mleadercollect`: `at` ([x, y]) is required"}
+{"id": "scalelistedit", "kind": "command", "label": "Scale List...", "menu": "Format > Scale List...", "run": "ok", "visible": false}
+{"id": "objectscale", "kind": "command", "label": "Add/Delete Scales...", "menu": "Modify > Annotative Object Scale > Add/Delete Scales...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `objectscale`: nothing selected"}
+{"id": "aiobjectscaleadd", "kind": "command", "label": "Add Current Scale", "menu": "Modify > Annotative Object Scale > Add Current Scale", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `objectscale`: nothing selected"}
+{"id": "aiobjectscaleremove", "kind": "command", "label": "Delete Current Scale", "menu": "Modify > Annotative Object Scale > Delete Current Scale", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `objectscale`: nothing selected"}
+{"id": "annoreset", "kind": "command", "label": "Synchronize Multiple-scale Positions", "menu": "Modify > Annotative Object Scale > Synchronize Multiple-scale Positions", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `annoreset`: nothing selected"}
+{"id": "annoupdate", "kind": "command", "label": "Annotative Update", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `annoupdate`: nothing selected"}
+{"id": "annovisible.current", "kind": "command", "label": "Current Scale Only", "menu": "View > Show Annotative Objects > Current Scale Only", "run": "ok", "visible": false}
+{"id": "annovisible.all", "kind": "command", "label": "All Scales", "menu": "View > Show Annotative Objects > All Scales", "run": "ok", "visible": false}
+{"id": "annovisible.toggle", "kind": "command", "label": "Annotation Visibility", "menu": "", "run": "ok", "visible": false}
+{"id": "hatch", "kind": "command", "label": "Hatch...", "menu": "Draw > Hatch...", "run": "error", "msg": "cadcraft: run 실패 — error: No closed boundary objects selected."}
+{"id": "gradient", "kind": "command", "label": "Gradient...", "menu": "Draw > Gradient...", "run": "error", "msg": "cadcraft: run 실패 — error: No closed boundary objects selected."}
+{"id": "boundary", "kind": "command", "label": "Boundary...", "menu": "Draw > Boundary...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `boundary`: `points` is required"}
+{"id": "region", "kind": "command", "label": "Region", "menu": "Draw > Region", "run": "ok", "visible": false}
+{"id": "hatchedit", "kind": "command", "label": "Hatch Edit", "menu": "Modify > Object > Hatch...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `hatchedit`: select one or more hatches"}
+{"id": "hatchpick", "kind": "command", "label": "Hatch Pick", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `hatchpick`: give internal `points` or boundary `handles`"}
+{"id": "overkill", "kind": "command", "label": "Delete Duplicate Objects", "menu": "Modify > Delete Duplicate Objects", "run": "ok", "visible": false}
+{"id": "block", "kind": "command", "label": "Make...", "menu": "Draw > Block > Make...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `block`: `name` is required"}
+{"id": "-block", "kind": "command", "label": "Create Block", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — For more information, try '--help'."}
+{"id": "insert", "kind": "command", "label": "Block...", "menu": "Insert > Block...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `insert`: `name` is required"}
+{"id": "attdef", "kind": "command", "label": "Define Attributes...", "menu": "Draw > Block > Define Attributes...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `attdef`: `tag` is required"}
+{"id": "attedit", "kind": "command", "label": "Single...", "menu": "Modify > Object > Attribute > Single...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `attedit`: `handle` is required"}
+{"id": "-attedit", "kind": "command", "label": "Global", "menu": "Modify > Object > Attribute > Global", "run": "error", "msg": "cadcraft: run 실패 — For more information, try '--help'."}
+{"id": "wblock", "kind": "command", "label": "Write Block", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `wblock`: `path` is required"}
+{"id": "-wblock", "kind": "command", "label": "Write Block", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — For more information, try '--help'."}
+{"id": "base", "kind": "command", "label": "Base", "menu": "Draw > Block > Base", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `base`: `at` ([x, y]) is required"}
+{"id": "blocks.dynamic", "kind": "command", "label": "Dynamic Block Data", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `blocks.dynamic`: `name` is required"}
+{"id": "blocks.reference", "kind": "command", "label": "Dynamic Block Reference", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `blocks.reference`: `handle` is required"}
+{"id": "blocks.reference.set", "kind": "command", "label": "Set Dynamic Property", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `blocks.reference.set`: `handle` is required"}
+{"id": "blocks.reference.grips", "kind": "command", "label": "Dynamic Block Grips", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `blocks.reference.grips`: `handle` is required"}
+{"id": "blocks.reference.grip", "kind": "command", "label": "Drag Dynamic Grip", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `blocks.reference.grip`: `handle` is required"}
+{"id": "purge", "kind": "command", "label": "Purge", "menu": "", "run": "ok", "visible": false}
+{"id": "blocks.list", "kind": "command", "label": "List Blocks", "menu": "", "run": "ok", "visible": false}
+{"id": "battman", "kind": "command", "label": "Block Attribute Manager...", "menu": "Modify > Object > Attribute > Block Attribute Manager...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `battman`: `name` is required"}
+{"id": "attdisp", "kind": "command", "label": "Attribute Display", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `attdisp`: `mode` (\"normal\", \"on\" or \"off\") is required"}
+{"id": "attsync", "kind": "command", "label": "Synchronize Attributes", "menu": "Modify > Object > Attribute > Synchronize Attributes", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `attsync`: `name` (or `handle` of a block reference) is required"}
+{"id": "burst", "kind": "command", "label": "Explode Attributes to Text", "menu": "Tools > Express Tools > Explode Attributes to Text", "run": "ok", "visible": false}
+{"id": "blockreplace", "kind": "command", "label": "Replace Block...", "menu": "Tools > Express Tools > Replace Block...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `blockreplace`: `block` (the block to replace) is required"}
+{"id": "dataextraction", "kind": "command", "label": "Data Extraction...", "menu": "Tools > Data Extraction...", "run": "ok", "visible": false}
+{"id": "eattext", "kind": "command", "label": "Data Extraction...", "menu": "", "run": "ok", "visible": false}
+{"id": "blocks.description", "kind": "command", "label": "Block Description...", "menu": "Modify > Object > Block Description...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `blocks.description`: `name` is required (or open the block in the Block Editor, or select one block reference)"}
+{"id": "attdisp.normal", "kind": "command", "label": "Normal", "menu": "View > Attribute Display > Normal", "run": "ok", "visible": false}
+{"id": "attdisp.on", "kind": "command", "label": "On", "menu": "View > Attribute Display > On", "run": "ok", "visible": false}
+{"id": "attdisp.off", "kind": "command", "label": "Off", "menu": "View > Attribute Display > Off", "run": "ok", "visible": false}
+{"id": "xattach", "kind": "command", "label": "DWG Reference...", "menu": "Insert > DWG Reference...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `xattach`: `path` is required"}
+{"id": "xref", "kind": "command", "label": "Reference Manager", "menu": "Window > Reference Manager", "run": "ok", "visible": false}
+{"id": "-xref", "kind": "command", "label": "External References", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — For more information, try '--help'."}
+{"id": "xbind", "kind": "command", "label": "Bind...", "menu": "Modify > Object > External Reference > Bind...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `xbind`: `type` must be block, dimstyle, layer, linetype or style"}
+{"id": "xopen", "kind": "command", "label": "Open Xref", "menu": "Tools > Open Xref", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `xopen`: the selected object is not an xref"}
+{"id": "refedit", "kind": "command", "label": "Edit Reference In-Place", "menu": "Tools > Xref and Block In-place Editing > Edit Reference In-Place", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `refedit`: select a block reference"}
+{"id": "refset", "kind": "command", "label": "Working Set", "menu": "Tools > Xref and Block In-place Editing > Add to Working Set", "run": "needs_context", "msg": "cadcraft: run 실패 — error: command `refset` is not available right now: no block reference is being edited (REFEDIT)"}
+{"id": "refclose", "kind": "command", "label": "Save Reference Edits", "menu": "Tools > Xref and Block In-place Editing > Save Reference Edits", "run": "needs_context", "msg": "cadcraft: run 실패 — error: command `refclose` is not available right now: no block reference is being edited (REFEDIT)"}
+{"id": "bedit", "kind": "command", "label": "Block Editor", "menu": "Tools > Block Editor", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `bedit`: `name` or `handle` is required (or select one block reference)"}
+{"id": "bsave", "kind": "command", "label": "Save Block", "menu": "", "run": "needs_context", "msg": "cadcraft: run 실패 — error: command `bsave` is not available right now: The Block Editor is not open."}
+{"id": "bsaveas", "kind": "command", "label": "Save Block As", "menu": "", "run": "needs_context", "msg": "cadcraft: run 실패 — error: command `bsaveas` is not available right now: The Block Editor is not open."}
+{"id": "bclose", "kind": "command", "label": "Close Block Editor", "menu": "", "run": "needs_context", "msg": "cadcraft: run 실패 — error: command `bclose` is not available right now: The Block Editor is not open."}
+{"id": "erase", "kind": "command", "label": "Erase", "menu": "Modify > Erase", "run": "ok", "visible": false}
+{"id": "oops", "kind": "command", "label": "Oops", "menu": "", "run": "ok", "visible": false}
+{"id": "move", "kind": "command", "label": "Move", "menu": "Modify > Move", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `move`: `from` ([x, y]) is required"}
+{"id": "copy", "kind": "command", "label": "Copy", "menu": "Modify > Copy", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `copy`: `from` ([x, y]) is required"}
+{"id": "rotate", "kind": "command", "label": "Rotate", "menu": "Modify > Rotate", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `rotate`: `base` ([x, y]) is required"}
+{"id": "scale", "kind": "command", "label": "Scale", "menu": "Modify > Scale", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `scale`: `base` ([x, y]) is required"}
+{"id": "mirror", "kind": "command", "label": "Mirror", "menu": "Modify > Mirror", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mirror`: `p1` ([x, y]) is required"}
+{"id": "stretch", "kind": "command", "label": "Stretch", "menu": "Modify > Stretch", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `stretch`: `from` ([x, y]) is required"}
+{"id": "offset", "kind": "command", "label": "Offset", "menu": "Modify > Offset", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `offset`: `handle` is required"}
+{"id": "trim", "kind": "command", "label": "Trim", "menu": "Modify > Trim", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `trim`: `handle` is required"}
+{"id": "extend", "kind": "command", "label": "Extend", "menu": "Modify > Extend", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `extend`: `handle` is required"}
+{"id": "fillet", "kind": "command", "label": "Fillet", "menu": "Modify > Fillet", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `fillet`: `h1` is required"}
+{"id": "chamfer", "kind": "command", "label": "Chamfer", "menu": "Modify > Chamfer", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `chamfer`: `h1` is required"}
+{"id": "explode", "kind": "command", "label": "Explode", "menu": "Modify > Explode", "run": "ok", "visible": false}
+{"id": "break", "kind": "command", "label": "Break", "menu": "Modify > Break", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `break`: `handle` is required"}
+{"id": "breakatpoint", "kind": "command", "label": "Break At Point", "menu": "Modify > Break At Point", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `breakatpoint`: `handle` is required"}
+{"id": "join", "kind": "command", "label": "Join", "menu": "Modify > Join", "run": "error", "msg": "cadcraft: run 실패 — error: Select at least two objects to join."}
+{"id": "draworder", "kind": "command", "label": "Draw Order", "menu": "", "run": "ok", "visible": false}
+{"id": "draworder.front", "kind": "command", "label": "Bring to Front", "menu": "Tools > Draw Order > Bring to Front", "run": "ok", "visible": false}
+{"id": "draworder.back", "kind": "command", "label": "Send to Back", "menu": "Tools > Draw Order > Send to Back", "run": "ok", "visible": false}
+{"id": "draworder.above", "kind": "command", "label": "Bring Above Objects", "menu": "Tools > Draw Order > Bring Above Objects", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `draworder.above`: `reference` (object handles) is required"}
+{"id": "draworder.under", "kind": "command", "label": "Send Under Objects", "menu": "Tools > Draw Order > Send Under Objects", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `draworder.under`: `reference` (object handles) is required"}
+{"id": "texttofront", "kind": "command", "label": "Bring Annotations to Front", "menu": "", "run": "ok", "visible": false}
+{"id": "texttofront.text", "kind": "command", "label": "Text Objects Only", "menu": "Tools > Draw Order > Bring Annotations to Front > Text Objects Only", "run": "ok", "visible": false}
+{"id": "texttofront.dimensions", "kind": "command", "label": "Dimension Objects Only", "menu": "Tools > Draw Order > Bring Annotations to Front > Dimension Objects Only", "run": "ok", "visible": false}
+{"id": "texttofront.leaders", "kind": "command", "label": "Leaders Only", "menu": "Tools > Draw Order > Bring Annotations to Front > Leaders Only", "run": "ok", "visible": false}
+{"id": "texttofront.all", "kind": "command", "label": "All Annotation Objects", "menu": "Tools > Draw Order > Bring Annotations to Front > All Annotation Objects", "run": "ok", "visible": false}
+{"id": "hatchtoback", "kind": "command", "label": "Send Hatches to Back", "menu": "Tools > Draw Order > Send Hatches to Back", "run": "ok", "visible": false}
+{"id": "array", "kind": "command", "label": "Array", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — error: No objects to array (objects on locked layers are left out)."}
+{"id": "arrayrect", "kind": "command", "label": "Rectangular Array", "menu": "Modify > Array > Rectangular Array", "run": "error", "msg": "cadcraft: run 실패 — error: No objects to array (objects on locked layers are left out)."}
+{"id": "arraypolar", "kind": "command", "label": "Polar Array", "menu": "Modify > Array > Polar Array", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arraypolar`: `center` ([x, y]) is required"}
+{"id": "-array", "kind": "command", "label": "Array", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — For more information, try '--help'."}
+{"id": "arrayedit", "kind": "command", "label": "Edit Array", "menu": "Modify > Object > Array", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arrayedit`: `handle` (the array) is required"}
+{"id": "arrayclose", "kind": "command", "label": "Close Array Editing", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — error: No array is being edited."}
+{"id": "pedit", "kind": "command", "label": "Polyline", "menu": "Modify > Object > Polyline", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `pedit`: `handle` is required"}
+{"id": "splinedit", "kind": "command", "label": "Spline", "menu": "Modify > Object > Spline", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `splinedit`: `handle` is required"}
+{"id": "lengthen", "kind": "command", "label": "Lengthen", "menu": "Modify > Lengthen", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `lengthen`: `handle` is required"}
+{"id": "align", "kind": "command", "label": "Align", "menu": "Modify > 3D Operations > Align", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `align`: `s1` ([x, y]) is required"}
+{"id": "blend", "kind": "command", "label": "Blend", "menu": "Modify > Blend", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `blend`: `h1` is required"}
+{"id": "reverse", "kind": "command", "label": "Reverse", "menu": "", "run": "ok", "visible": false}
+{"id": "ncopy", "kind": "command", "label": "Copy Nested Objects", "menu": "Modify > Copy Nested Objects", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `ncopy`: `handle` (block reference) is required"}
+{"id": "mocoro", "kind": "command", "label": "Move/Copy/Rotate", "menu": "Tools > Express Tools > Move/Copy/Rotate", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mocoro`: `base` ([x, y]) is required"}
+{"id": "chspace", "kind": "command", "label": "Change Space", "menu": "Modify > Change Space", "run": "ok", "visible": false}
+{"id": "flatten", "kind": "command", "label": "Flatten Objects", "menu": "Modify > Flatten Objects", "run": "ok", "visible": false}
+{"id": "arraypath", "kind": "command", "label": "Path Array", "menu": "Modify > Array > Path Array", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `arraypath`: `path` (handle) is required"}
+{"id": "textedit", "kind": "command", "label": "Edit Text...", "menu": "Modify > Object > Edit Text...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `textedit`: `handle` is required"}
+{"id": "group", "kind": "command", "label": "Group", "menu": "Tools > Group", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `group`: no objects to group"}
+{"id": "ungroup", "kind": "command", "label": "Ungroup", "menu": "Tools > Ungroup", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `ungroup`: the objects are not in a group"}
+{"id": "groupedit", "kind": "command", "label": "Group Edit", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `groupedit`: `name` is required"}
+{"id": "groups.list", "kind": "command", "label": "List Groups", "menu": "", "run": "ok", "visible": false}
+{"id": "-group", "kind": "command", "label": "Group Options", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — For more information, try '--help'."}
+{"id": "pickstyle", "kind": "command", "label": "Group Selection", "menu": "", "run": "ok", "visible": false}
+{"id": "grip.move", "kind": "command", "label": "Grip Stretch", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `grip.move`: `handle` is required"}
+{"id": "grip.stretch", "kind": "command", "label": "Grip Stretch", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `grip.stretch`: `handle` is required"}
+{"id": "grip.rotate", "kind": "command", "label": "Grip Rotate", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `grip.rotate`: `base` or `baseHandle` + `index` is required"}
+{"id": "grip.scale", "kind": "command", "label": "Grip Scale", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `grip.scale`: `base` or `baseHandle` + `index` is required"}
+{"id": "grip.mirror", "kind": "command", "label": "Grip Mirror", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `grip.mirror`: `base` or `baseHandle` + `index` is required"}
+{"id": "grip.option", "kind": "command", "label": "Grip Option", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `grip.option`: `handle` is required"}
+{"id": "grip", "kind": "command", "label": "Grip Edit", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `grip`: GRIP is interactive; use grip.stretch, grip.move, grip.rotate, grip.scale or grip.mirror"}
+{"id": "compare", "kind": "command", "label": "Compare Drawings...", "menu": "Tools > Compare Drawings...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `compare`: `path`, `data` (base64) or `document` is required"}
+{"id": "compare.next", "kind": "command", "label": "Next Change", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `compare`: no comparison: run COMPARE first"}
+{"id": "compare.previous", "kind": "command", "label": "Previous Change", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `compare`: no comparison: run COMPARE first"}
+{"id": "compareclose", "kind": "command", "label": "Close Comparison", "menu": "", "run": "ok", "visible": false}
+{"id": "compareexport", "kind": "command", "label": "Export Comparison", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `compareexport`: no comparison: run COMPARE first"}
+{"id": "layer", "kind": "command", "label": "Layers", "menu": "Format > Layers", "run": "ok", "visible": false}
+{"id": "layer.new", "kind": "command", "label": "New Layer", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layer.new`: `name` is required"}
+{"id": "layer.set", "kind": "command", "label": "Set Layer Properties", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layer.set`: `name` is required"}
+{"id": "layer.current", "kind": "command", "label": "Make Current", "menu": "Format > Layer Tools > Make Current", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layer.current`: `name` is required"}
+{"id": "layer.delete", "kind": "command", "label": "Delete Layer", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layer.delete`: `name` is required"}
+{"id": "laymcur", "kind": "command", "label": "Make Object's Layer Current", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `laymcur`: select an object"}
+{"id": "laymch", "kind": "command", "label": "Layer Match", "menu": "Format > Layer Tools > Layer Match", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `laymch`: `layer` is required"}
+{"id": "laycur", "kind": "command", "label": "Change to Current Layer", "menu": "Format > Layer Tools > Change to Current Layer", "run": "ok", "visible": false}
+{"id": "layiso", "kind": "command", "label": "Isolate Layer", "menu": "Format > Layer Tools > Isolate Layer", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layiso`: select objects on the layers to isolate"}
+{"id": "layuniso", "kind": "command", "label": "Unisolate Layer", "menu": "Format > Layer Tools > Unisolate Layer", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layuniso`: No isolated layers."}
+{"id": "layfrz", "kind": "command", "label": "Freeze Layer", "menu": "Format > Layer Tools > Freeze Layer", "run": "ok", "visible": false}
+{"id": "layoff", "kind": "command", "label": "Layer Off", "menu": "Format > Layer Tools > Layer Off", "run": "ok", "visible": false}
+{"id": "laylck", "kind": "command", "label": "Lock Layer", "menu": "Format > Layer Tools > Lock Layer", "run": "ok", "visible": false}
+{"id": "layulk", "kind": "command", "label": "Unlock Layer", "menu": "Format > Layer Tools > Unlock Layer", "run": "ok", "visible": false}
+{"id": "layon", "kind": "command", "label": "Turn All Layers On", "menu": "", "run": "ok", "visible": false}
+{"id": "laythw", "kind": "command", "label": "Thaw All Layers", "menu": "", "run": "ok", "visible": false}
+{"id": "layerp", "kind": "command", "label": "Previous Layer", "menu": "Format > Layer Tools > Previous Layer", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layerp`: No previous layer state."}
+{"id": "layerstate.save", "kind": "command", "label": "Save Layer State", "menu": "Format > Layer States Manager...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layerstate.save`: `name` is required"}
+{"id": "layerstate.restore", "kind": "command", "label": "Restore Layer State", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layerstate.restore`: `name` is required"}
+{"id": "layerstate.list", "kind": "command", "label": "List Layer States", "menu": "", "run": "ok", "visible": false}
+{"id": "layerstate.delete", "kind": "command", "label": "Delete Layer State", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layerstate.delete`: `name` is required"}
+{"id": "layerstate.rename", "kind": "command", "label": "Rename Layer State", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layerstate.rename`: `from` is required"}
+{"id": "laymrg", "kind": "command", "label": "Layer Merge", "menu": "Format > Layer Tools > Layer Merge", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `laymrg`: `to` is required"}
+{"id": "laydel", "kind": "command", "label": "Layer Delete", "menu": "Format > Layer Tools > Layer Delete", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `laydel`: `names` is required"}
+{"id": "layout", "kind": "command", "label": "Layout", "menu": "", "run": "ok", "visible": false}
+{"id": "layout.new", "kind": "command", "label": "New Layout", "menu": "Insert > Layout > New Layout", "run": "ok", "visible": false}
+{"id": "layout.delete", "kind": "command", "label": "Delete Layout", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layout.delete`: `name` is required"}
+{"id": "layout.rename", "kind": "command", "label": "Rename Layout", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layout.rename`: `from` is required in the Model tab"}
+{"id": "layout.copy", "kind": "command", "label": "Copy Layout", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layout.copy`: `from` is required"}
+{"id": "layout.list", "kind": "command", "label": "List Layouts", "menu": "", "run": "ok", "visible": false}
+{"id": "layout.saveas", "kind": "command", "label": "Save Layout as Template", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `layout.saveas`: `path` is required"}
+{"id": "mview", "kind": "command", "label": "Viewports", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mview`: ** Command not allowed in Model Tab ** (switch to a layout or pass `layout`)"}
+{"id": "mview.polygonal", "kind": "command", "label": "Polygonal Viewport", "menu": "View > Viewports > Polygonal Viewport", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mview`: ** Command not allowed in Model Tab ** (switch to a layout or pass `layout`)"}
+{"id": "vpclip", "kind": "command", "label": "Clip Viewport", "menu": "Modify > Clip > Viewport", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `vpclip`: ** Command not allowed in Model Tab ** (switch to a layout or pass `layout`)"}
+{"id": "vports", "kind": "command", "label": "New Viewports...", "menu": "View > Viewports > New Viewports...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mview`: ** Command not allowed in Model Tab ** (switch to a layout or pass `layout`)"}
+{"id": "vports.1", "kind": "command", "label": "1 Viewport", "menu": "View > Viewports > 1 Viewport", "run": "ok", "visible": false}
+{"id": "vports.2", "kind": "command", "label": "2 Viewports", "menu": "View > Viewports > 2 Viewports", "run": "ok", "visible": false}
+{"id": "vports.3", "kind": "command", "label": "3 Viewports", "menu": "View > Viewports > 3 Viewports", "run": "ok", "visible": false}
+{"id": "vports.4", "kind": "command", "label": "4 Viewports", "menu": "View > Viewports > 4 Viewports", "run": "ok", "visible": false}
+{"id": "viewport.set", "kind": "command", "label": "Viewport Properties", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `viewport.set`: no viewport given (pass `handle` or select a viewport)"}
+{"id": "vplayer", "kind": "command", "label": "Viewport Layer Freeze", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `viewport.set`: no viewport given (pass `handle` or select a viewport)"}
+{"id": "pagesetup", "kind": "command", "label": "Page Setup Manager...", "menu": "File > Page Setup Manager...", "run": "ok", "visible": false}
+{"id": "plot", "kind": "command", "label": "Print...", "menu": "File > Print...", "run": "ok", "visible": false}
+{"id": "exportpdf", "kind": "command", "label": "Export to PDF...", "menu": "File > Export to PDF...", "run": "ok", "visible": false}
+{"id": "mspace", "kind": "command", "label": "Model Space (in viewport)", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `mspace`: ** Command not allowed in Model Tab **"}
+{"id": "pspace", "kind": "command", "label": "Paper Space", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `pspace`: ** Command not allowed in Model Tab **"}
+{"id": "plotstyle", "kind": "command", "label": "Plot Style...", "menu": "Format > Plot Style...", "run": "ok", "visible": false}
+{"id": "stylesmanager", "kind": "command", "label": "Plot Style Manager...", "menu": "File > Plot Styles...", "run": "ok", "visible": false}
+{"id": "plotwindow", "kind": "command", "label": "Plot Window", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `plotwindow`: `p1` ([x, y]) is required"}
+{"id": "plottermanager", "kind": "command", "label": "Plotter Manager...", "menu": "File > Plotter Manager...", "run": "ok", "visible": false}
+{"id": "-plottermanager", "kind": "command", "label": "Plotter Manager", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — For more information, try '--help'."}
+{"id": "import", "kind": "command", "label": "Import...", "menu": "File > Import...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `import`: `path` or `data` (base64) is required"}
+{"id": "export", "kind": "command", "label": "Export...", "menu": "File > Export...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `export`: `format` must be dxf, dwg, svg, png or pdf (or give a `path` with one of those extensions)"}
+{"id": "preview", "kind": "command", "label": "Plot Preview", "menu": "File > Plot Preview", "run": "ok", "visible": false}
+{"id": "publish", "kind": "command", "label": "Batch Publish...", "menu": "File > Batch Publish...", "run": "ok", "visible": false}
+{"id": "pdfbook", "kind": "command", "label": "Sheet Books to PDF...", "menu": "File > Sheet Books to PDF...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `pdfbook`: no closed polylines 297 mm high (sheet frames) in model space"}
+{"id": "attach", "kind": "command", "label": "Attach", "menu": "", "run": "needs_context", "msg": "cadcraft: run 실패 — error: ATTACH is not available yet: raster images and PDF/DWF/DGN underlays can't be shown yet"}
+{"id": "share", "kind": "command", "label": "Share", "menu": "", "run": "needs_context", "msg": "cadcraft: run 실패 — error: SHARE is not available yet: there is no online service to share through; EXPORT or PUBLISH the drawing and send the file"}
+{"id": "3dorbit", "kind": "command", "label": "Orbit", "menu": "", "run": "needs_context", "msg": "cadcraft: run 실패 — error: 3DORBIT is not available yet: CADCraft draws in 2D (plan view) only"}
+{"id": "properties", "kind": "command", "label": "Properties", "menu": "Modify > Properties", "run": "ok", "visible": false}
+{"id": "properties.set", "kind": "command", "label": "Set Properties", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `properties.set`: nothing selected"}
+{"id": "chprop", "kind": "command", "label": "Change Properties", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `properties.set`: nothing selected"}
+{"id": "change", "kind": "command", "label": "Change", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `change`: `point` or `elevation` is required"}
+{"id": "matchprop", "kind": "command", "label": "Match Properties", "menu": "Modify > Match Properties", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `matchprop`: `source` (object handle) is required"}
+{"id": "color", "kind": "command", "label": "Color...", "menu": "Format > Color...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `color`: `color` is required"}
+{"id": "linetype", "kind": "command", "label": "Linetype...", "menu": "Format > Linetype...", "run": "ok", "visible": false}
+{"id": "hatch.patterns", "kind": "command", "label": "Hatch Patterns", "menu": "", "run": "ok", "visible": false}
+{"id": "-linetype", "kind": "command", "label": "Linetype", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — For more information, try '--help'."}
+{"id": "lweight", "kind": "command", "label": "Lineweight...", "menu": "Format > Lineweight...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `lweight`: `lineweight` is required"}
+{"id": "ltscale", "kind": "command", "label": "Linetype Scale", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `ltscale`: `scale` (number) is required"}
+{"id": "units", "kind": "command", "label": "Units...", "menu": "Format > Units...", "run": "ok", "visible": false}
+{"id": "-units", "kind": "command", "label": "Units", "menu": "", "run": "error", "msg": "cadcraft: run 실패 — For more information, try '--help'."}
+{"id": "thickness", "kind": "command", "label": "Thickness", "menu": "Format > Thickness", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `thickness`: `thickness` (number) is required"}
+{"id": "limits", "kind": "command", "label": "Drawing Limits", "menu": "Format > Drawing Limits", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `limits`: `min` ([x, y]) is required"}
+{"id": "style", "kind": "command", "label": "Text Style...", "menu": "Format > Text Style...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `style`: `name` is required"}
+{"id": "style.list", "kind": "command", "label": "List Text Styles", "menu": "", "run": "ok", "visible": false}
+{"id": "style.rename", "kind": "command", "label": "Rename Text Style", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `style.rename`: `from` is required"}
+{"id": "style.delete", "kind": "command", "label": "Delete Text Style", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `style.delete`: `name` is required"}
+{"id": "style.current", "kind": "command", "label": "Set Current Text Style", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `style.current`: `name` is required"}
+{"id": "dimstyle", "kind": "command", "label": "Dimension Style...", "menu": "Format > Dimension Style...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimstyle`: `name` is required"}
+{"id": "dimstyle.dimension", "kind": "command", "label": "Dimension Style...", "menu": "Dimension > Dimension Style...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimstyle`: `name` is required"}
+{"id": "dimstyle.list", "kind": "command", "label": "List Dimension Styles", "menu": "", "run": "ok", "visible": false}
+{"id": "dimstyle.rename", "kind": "command", "label": "Rename Dimension Style", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimstyle.rename`: `from` is required"}
+{"id": "dimstyle.delete", "kind": "command", "label": "Delete Dimension Style", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimstyle.delete`: `name` is required"}
+{"id": "dimstyle.current", "kind": "command", "label": "Set Current Dimension Style", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimstyle.current`: `name` is required"}
+{"id": "dimstyle.override", "kind": "command", "label": "Dimension Style Override", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimoverride`: no valid dimension variables given (ignored: )"}
+{"id": "tablestyle", "kind": "command", "label": "Table Style...", "menu": "Format > Table Style...", "run": "ok", "visible": false}
+{"id": "mleaderstyle", "kind": "command", "label": "Multileader Style...", "menu": "Format > Multileader Style...", "run": "ok", "visible": false}
+{"id": "ddptype", "kind": "command", "label": "Point Style...", "menu": "Format > Point Style...", "run": "ok", "visible": false}
+{"id": "rename", "kind": "command", "label": "Rename...", "menu": "Format > Rename...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `rename`: `from` is required"}
+{"id": "dist", "kind": "command", "label": "Distance", "menu": "Tools > Inquiry > Distance", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dist`: `p1` ([x, y]) is required"}
+{"id": "id", "kind": "command", "label": "ID Point", "menu": "Tools > Inquiry > ID Point", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `id`: `at` ([x, y]) is required"}
+{"id": "list", "kind": "command", "label": "List", "menu": "Tools > Inquiry > List", "run": "ok", "visible": false}
+{"id": "area", "kind": "command", "label": "Area", "menu": "Tools > Inquiry > Area", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `area`: `points` or `handle` is required"}
+{"id": "time", "kind": "command", "label": "Time", "menu": "Tools > Inquiry > Time", "run": "ok", "visible": false}
+{"id": "status", "kind": "command", "label": "Status", "menu": "Tools > Inquiry > Status", "run": "ok", "visible": false}
+{"id": "drawing.inspect", "kind": "command", "label": "Inspect Drawing", "menu": "", "run": "ok", "visible": false}
+{"id": "entities", "kind": "command", "label": "Query Entities", "menu": "", "run": "ok", "visible": false}
+{"id": "shapes", "kind": "command", "label": "Analyze Shapes", "menu": "", "run": "ok", "visible": false}
+{"id": "usage", "kind": "command", "label": "Analyze Usage", "menu": "", "run": "ok", "visible": false}
+{"id": "loops", "kind": "command", "label": "Implied Loops", "menu": "", "run": "ok", "visible": false}
+{"id": "texts", "kind": "command", "label": "Query Texts", "menu": "", "run": "ok", "visible": false}
+{"id": "countlist", "kind": "command", "label": "Count List", "menu": "", "run": "ok", "visible": false}
+{"id": "counttable", "kind": "command", "label": "Count Table", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `counttable`: `at` ([x, y]) is required"}
+{"id": "count", "kind": "command", "label": "Count", "menu": "Tools > Count", "run": "ok", "visible": false}
+{"id": "union", "kind": "command", "label": "Union", "menu": "Modify > Solid Editing > Union", "run": "error", "msg": "cadcraft: run 실패 — error: Select at least one region."}
+{"id": "subtract", "kind": "command", "label": "Subtract", "menu": "Modify > Solid Editing > Subtract", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `subtract`: `from` (array of handles) is required"}
+{"id": "intersect", "kind": "command", "label": "Intersect", "menu": "Modify > Solid Editing > Intersect", "run": "error", "msg": "cadcraft: run 실패 — error: Select at least one region."}
+{"id": "massprop", "kind": "command", "label": "Region/Mass Properties", "menu": "Tools > Inquiry > Region/Mass Properties", "run": "error", "msg": "cadcraft: run 실패 — error: Select one or more regions."}
+{"id": "ortho", "kind": "command", "label": "Ortho Mode", "menu": "", "run": "ok", "visible": false}
+{"id": "grid", "kind": "command", "label": "Grid Display", "menu": "", "run": "ok", "visible": false}
+{"id": "snap", "kind": "command", "label": "Snap Mode", "menu": "", "run": "ok", "visible": false}
+{"id": "polar", "kind": "command", "label": "Polar Tracking", "menu": "", "run": "ok", "visible": false}
+{"id": "otrack", "kind": "command", "label": "Object Snap Tracking", "menu": "", "run": "ok", "visible": false}
+{"id": "dynmode", "kind": "command", "label": "Dynamic Input", "menu": "", "run": "ok", "visible": false}
+{"id": "lwdisplay", "kind": "command", "label": "Show/Hide Lineweight", "menu": "", "run": "ok", "visible": false}
+{"id": "isodraft", "kind": "command", "label": "Isometric Drafting", "menu": "", "run": "ok", "visible": false}
+{"id": "isoplane", "kind": "command", "label": "Isometric Plane", "menu": "", "run": "ok", "visible": false}
+{"id": "transparencydisplay", "kind": "command", "label": "Show/Hide Transparency", "menu": "", "run": "ok", "visible": false}
+{"id": "qpmode", "kind": "command", "label": "Quick Properties", "menu": "", "run": "ok", "visible": false}
+{"id": "selectioncycling", "kind": "command", "label": "Selection Cycling", "menu": "", "run": "ok", "visible": false}
+{"id": "osnap", "kind": "command", "label": "Object Snap", "menu": "", "run": "ok", "visible": false}
+{"id": "dsettings", "kind": "command", "label": "Drafting Settings...", "menu": "Tools > Drafting Settings...", "run": "ok", "visible": false}
+{"id": "setvar", "kind": "command", "label": "Set Variable", "menu": "Tools > Inquiry > Set Variable", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `setvar`: `name` is required"}
+{"id": "getvar", "kind": "command", "label": "Get Variable", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `getvar`: `name` is required"}
+{"id": "sysvars", "kind": "command", "label": "List System Variables", "menu": "", "run": "ok", "visible": false}
+{"id": "options", "kind": "command", "label": "Options...", "menu": "Tools > Options...", "run": "ok", "visible": false}
+{"id": "cal", "kind": "command", "label": "QuickCalc", "menu": "Tools > Inquiry > Quick", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `cal`: `expr` is required"}
+{"id": "quickcalc.pick", "kind": "command", "label": "QuickCalc Pick", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `cal`: `points` must be a list of [x, y] points"}
+{"id": "find", "kind": "command", "label": "Find...", "menu": "Edit > Find...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `find`: `find` is required"}
+{"id": "measuregeom", "kind": "command", "label": "Measure Geometry", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dist`: `p1` ([x, y]) is required"}
+{"id": "radius.measure", "kind": "command", "label": "Radius", "menu": "Tools > Inquiry > Radius", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `radius.measure`: `handle` is required"}
+{"id": "angle.measure", "kind": "command", "label": "Angle", "menu": "Tools > Inquiry > Angle", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `angle.measure`: give {vertex,p1,p2} or {h1,h2}"}
+{"id": "volume.measure", "kind": "command", "label": "Volume", "menu": "Tools > Inquiry > Volume", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `volume.measure`: `points` or `handle` is required"}
+{"id": "table", "kind": "command", "label": "Table...", "menu": "Draw > Table...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table`: `at` ([x, y]) is required"}
+{"id": "table.set", "kind": "command", "label": "Set Table Cell", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.set`: `handle` of a table is required"}
+{"id": "table.insertrow", "kind": "command", "label": "Insert Row", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.insertrow`: `handle` of a table is required"}
+{"id": "table.deleterow", "kind": "command", "label": "Delete Row", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.deleterow`: `handle` of a table is required"}
+{"id": "table.insertcol", "kind": "command", "label": "Insert Column", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.insertcol`: `handle` of a table is required"}
+{"id": "table.deletecol", "kind": "command", "label": "Delete Column", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.deletecol`: `handle` of a table is required"}
+{"id": "table.merge", "kind": "command", "label": "Merge Cells", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.merge`: `handle` of a table is required"}
+{"id": "table.unmerge", "kind": "command", "label": "Unmerge Cells", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.unmerge`: `handle` of a table is required"}
+{"id": "tablestyle.cellstyle", "kind": "command", "label": "Table Cell Style", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `tablestyle.cellstyle`: `name` of the cell style is required"}
+{"id": "table.cellstyle", "kind": "command", "label": "Set Table Cell Style", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.cellstyle`: `style` (cell style name) is required"}
+{"id": "table.formula", "kind": "command", "label": "Insert Table Formula", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.formula`: `row` is required"}
+{"id": "table.recalc", "kind": "command", "label": "Recalculate Table Formulas", "menu": "", "run": "ok", "visible": false}
+{"id": "tabledit", "kind": "command", "label": "Edit Table Cell", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.set`: `handle` of a table is required"}
+{"id": "tableexport", "kind": "command", "label": "Export Table", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `tableexport`: `handle` of a table is required"}
+{"id": "table.break", "kind": "command", "label": "Table Breaks", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `table.break`: `handle` of a table is required"}
+{"id": "datalink", "kind": "command", "label": "Data Link...", "menu": "Insert > Data Link...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `datalink`: `path` of a CSV file is required"}
+{"id": "datalinkupdate", "kind": "command", "label": "Update Data Links", "menu": "", "run": "ok", "visible": false}
+{"id": "tolerance", "kind": "command", "label": "Tolerance...", "menu": "Dimension > Tolerance...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `tolerance`: `at` ([x, y]) is required"}
+{"id": "txt2mtxt", "kind": "command", "label": "Convert Text to Mtext", "menu": "Tools > Express Tools > Convert Text to Mtext", "run": "error", "msg": "cadcraft: run 실패 — error: No text objects selected."}
+{"id": "geomconstraint", "kind": "command", "label": "Geometric Constraint", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `type` is required"}
+{"id": "gccoincident", "kind": "command", "label": "Coincident", "menu": "Tools > Parametric > Geometric Constraints > Coincident", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gcperpendicular", "kind": "command", "label": "Perpendicular", "menu": "Tools > Parametric > Geometric Constraints > Perpendicular", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gcparallel", "kind": "command", "label": "Parallel", "menu": "Tools > Parametric > Geometric Constraints > Parallel", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gctangent", "kind": "command", "label": "Tangent", "menu": "Tools > Parametric > Geometric Constraints > Tangent", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gchorizontal", "kind": "command", "label": "Horizontal", "menu": "Tools > Parametric > Geometric Constraints > Horizontal", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gcvertical", "kind": "command", "label": "Vertical", "menu": "Tools > Parametric > Geometric Constraints > Vertical", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gccollinear", "kind": "command", "label": "Collinear", "menu": "Tools > Parametric > Geometric Constraints > Collinear", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gcconcentric", "kind": "command", "label": "Concentric", "menu": "Tools > Parametric > Geometric Constraints > Concentric", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gcsmooth", "kind": "command", "label": "Smooth", "menu": "Tools > Parametric > Geometric Constraints > Smooth", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gcsymmetric", "kind": "command", "label": "Symmetric", "menu": "Tools > Parametric > Geometric Constraints > Symmetric", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gcequal", "kind": "command", "label": "Equal", "menu": "Tools > Parametric > Geometric Constraints > Equal", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "gcfix", "kind": "command", "label": "Fix", "menu": "Tools > Parametric > Geometric Constraints > Fix", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `geomconstraint`: `h1` is required"}
+{"id": "autoconstrain", "kind": "command", "label": "AutoConstrain", "menu": "Tools > Parametric > AutoConstrain", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `autoconstrain`: select objects (or pass `handles`)"}
+{"id": "constraintbar", "kind": "command", "label": "Constraint Bars", "menu": "Tools > Parametric > Constraint Bars > Select Objects", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `constraintbar`: select objects (or pass `handles`)"}
+{"id": "constraintbar.showall", "kind": "command", "label": "Show All Constraint Bars", "menu": "Tools > Parametric > Constraint Bars > Show All", "run": "ok", "visible": false}
+{"id": "constraintbar.hideall", "kind": "command", "label": "Hide All Constraint Bars", "menu": "Tools > Parametric > Constraint Bars > Hide All", "run": "ok", "visible": false}
+{"id": "dimconstraint", "kind": "command", "label": "Dimensional Constraint", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimconstraint`: `h1` is required"}
+{"id": "dcaligned", "kind": "command", "label": "Aligned", "menu": "Tools > Parametric > Dimensional Constraints > Aligned", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimconstraint`: `h1` is required"}
+{"id": "dchorizontal", "kind": "command", "label": "Horizontal", "menu": "Tools > Parametric > Dimensional Constraints > Horizontal", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimconstraint`: `h1` is required"}
+{"id": "dcvertical", "kind": "command", "label": "Vertical", "menu": "Tools > Parametric > Dimensional Constraints > Vertical", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimconstraint`: `h1` is required"}
+{"id": "dcangular", "kind": "command", "label": "Angular", "menu": "Tools > Parametric > Dimensional Constraints > Angular", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimconstraint`: `h1` is required"}
+{"id": "dcradius", "kind": "command", "label": "Radius", "menu": "Tools > Parametric > Dimensional Constraints > Radius", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimconstraint`: `h1` is required"}
+{"id": "dcdiameter", "kind": "command", "label": "Diameter", "menu": "Tools > Parametric > Dimensional Constraints > Diameter", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimconstraint`: `h1` is required"}
+{"id": "dclinear", "kind": "command", "label": "Linear", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dimconstraint`: `h1` is required"}
+{"id": "dcdisplay", "kind": "command", "label": "Dynamic Dimensions", "menu": "Tools > Parametric > Dynamic Dimensions > Select Objects", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `dcdisplay`: select objects (or pass `handles`)"}
+{"id": "dcdisplay.showall", "kind": "command", "label": "Show All Dynamic Dimensions", "menu": "Tools > Parametric > Dynamic Dimensions > Show All", "run": "ok", "visible": false}
+{"id": "dcdisplay.hideall", "kind": "command", "label": "Hide All Dynamic Dimensions", "menu": "Tools > Parametric > Dynamic Dimensions > Hide All", "run": "ok", "visible": false}
+{"id": "delconstraint", "kind": "command", "label": "Delete Constraints", "menu": "Tools > Parametric > Delete Constraints", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `delconstraint`: select objects (or pass `handles` / `ids`)"}
+{"id": "parameters", "kind": "command", "label": "Parameters Manager", "menu": "Tools > Parametric > Parameters Manager", "run": "ok", "visible": false}
+{"id": "constraintsettings", "kind": "command", "label": "Constraint Settings", "menu": "Tools > Parametric > Constraint Settings", "run": "ok", "visible": false}
+{"id": "constraintinfer", "kind": "command", "label": "Infer Constraints", "menu": "", "run": "ok", "visible": false}
+{"id": "constraints.inspect", "kind": "command", "label": "Inspect Constraints", "menu": "", "run": "ok", "visible": false}
+{"id": "constraints.dof", "kind": "command", "label": "Degrees of Freedom", "menu": "", "run": "ok", "visible": false}
+{"id": "appload", "kind": "command", "label": "Load Application...", "menu": "Tools > Load Application...", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `appload`: `path`, or `name` with `data` (base64) or `text`, is required"}
+{"id": "lisp", "kind": "command", "label": "Evaluate LISP", "menu": "", "run": "needs_params", "msg": "cadcraft: run 실패 — error: invalid parameters for `lisp`: `code` is required"}

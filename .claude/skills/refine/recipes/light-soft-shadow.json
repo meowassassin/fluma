@@ -1,0 +1,28 @@
+{
+ "id": "light-soft-shadow",
+ "layer": "light",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "부드럽고 긴 그림자로 띄우기",
+ "when": "카드 · 캡처를 배경에서 띄울 때(기본 그림자보다 자연스러움)",
+ "avoid": "화면 가득(full) 재료 · 아주 어두운 배경(그림자가 안 보인다 — 밝은 바탕에서 쓴다)",
+ "vars": {
+  "MAT": "재료 레이어"
+ },
+ "defaults": {},
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var d=FX(L(\"@MAT@\"),\"Drop Shadow\");P(d,\"Opacity\").setValue(55);P(d,\"Distance\").setValue(26);P(d,\"Softness\").setValue(70);P(d,\"Direction\").setValue(160);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 0.6,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/light-soft-shadow/after.png",
+  "before": "data/workspace/probe/recipes/light-soft-shadow/before.png"
+ }
+}

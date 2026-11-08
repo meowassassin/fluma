@@ -1,0 +1,26 @@
+{
+ "id": "transition-reveal-block",
+ "layer": "transition",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "가림막이 걷히며 한 칸씩 드러난다",
+ "when": "칸 나눈 화면 · 연표를 말에 맞춰 차례로 보여 줄 때",
+ "avoid": "칸이 없는 화면",
+ "vars": {
+  "X": "칸 왼쪽",
+  "Y": "칸 위",
+  "W": "폭",
+  "H": "높이",
+  "T0": "드러나는 초",
+  "COLOR": "[r,g,b] 0~1"
+ },
+ "defaults": {},
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var s=C.layers.addSolid(@COLOR@,\"Cover\",Math.round(@W@),Math.round(@H@),1);s.moveToBeginning();s.property(\"Transform\").property(\"Position\").setValue([@X@+@W@/2,@Y@+@H@/2]);var o=s.property(\"Transform\").property(\"Opacity\");K(o,[[0,100],[@T0@,100],[@T0@+0.22,0]]);EASE(o,60);"
+  }
+ ]
+}

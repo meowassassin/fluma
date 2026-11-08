@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/fluma-spin.gif" width="148" alt="Fluma mascot" />
+<img src="docs/assets/fluma-spin.gif" width="148" alt="Fluma mascot" />
 
 # Fluma
 
@@ -19,28 +19,32 @@
 
 </div>
 
-<p align="center"><img src="assets/screens/home.webp" alt="Fluma home: give a topic and plan the video together" width="880" /></p>
+<p align="center"><img src="docs/assets/screens/home.webp" alt="Fluma home: give a topic and plan the video together" width="880" /></p>
 
 ## What is Fluma
 
 Fluma is a local-first agent workspace for vertical short-form video (YouTube Shorts · Reels · TikTok).
 You chat with an agent (your own Claude Code / Codex CLI, or an API key). It:
 
-1. **studies real Shorts first** — finds Shorts on the same topic, breaks them down (cuts, speech, sentence endings, on-screen text, screen types) and takes their rhythm and tone, never their content;
+1. **studies real Shorts first** — finds Shorts on the same topic, breaks them down (cuts, camera moves, colors, speech, on-screen text, screen types) and takes their rhythm and tone, never their content;
 2. **writes a storyboard** with sourced facts, in that channel's spoken style;
-3. **builds every scene in real creative tools** — the open-source [Craft apps](#the-craft-apps): spreadsheet data → charts, PDF quotes → highlighted zoom, vector illustrations drawn by the agent → animated layers, then motion graphics, an audio mix and a cut edit, each as an editable project file;
-4. **checks the render** like a reviewer — the first second, freezes, gaps in speech, cut density;
-5. **publishes and learns** — uploads to your channel and maps the retention curve back onto the storyboard's scenes, so the next video avoids the scene where people swiped away.
+3. **builds every scene in real creative tools** — 16 open-source [Craft apps](#the-craft-apps) and their 9,000+ commands, effects and presets: real screen recordings, annotated documents, diagrams, app mock-ups, info cards, 3D products, drawings — then motion graphics, a sound mix and a cut edit, each as an editable project file;
+4. **keeps every video different** — searches the apps' full feature list per scene, picks verified recipes the recent videos did not use, and warns when a video repeats itself;
+5. **uses real footage for live action** — sourced short clips (the most-replayed moment, reframed to vertical), free stock video and archive photos; the background song is the one Shorts in the same niche actually attach, added in the Shorts editor at upload;
+6. **checks the render** like a reviewer — the first second, freezes, gaps in speech, cut density;
+7. **publishes and learns** — uploads to your channel and maps the retention curve back onto the storyboard's scenes.
 
-Fluma does **not** generate live-action video. Facts need a source URL or they are dropped.
+Fluma itself does not generate live-action video. Facts need a source URL or they are dropped.
 
 ## Why Fluma
 
 - 🔎 **Reference first, enforced** — a storyboard fails the check (`L30`) until real reference Shorts have been analyzed and linked; narration that ends on a bare noun or mixes polite and casual speech fails too (`L31`).
-- 🧰 **Real tools instead of a template engine** — every stage is a project file in a Craft app (`.ecproj` motion, `.scraft` audio, `.fcproj` cut, `.vectorcraft` art). You can open any of them and keep editing; Fluma notices hand edits by hash and never overwrites them.
-- 🎨 **The agent draws like a designer** — the `illustrate` skill: study the reference's drawing grammar → silhouette thumbnails → draw in VectorCraft → render, look, fix → named parts. Characters can walk, wave or bounce from those parts.
-- ⏱️ **Built for the Shorts feed** — YouTube's core signal is whether people stay instead of swiping away. Every render is measured for an empty first frame, no change in the first second, long freezes and pauses (`L32`, `T32–T34`).
-- 📈 **Closes the loop with real numbers** — connect your channel (official OAuth), upload, and see views, engaged views, *stayed-to-watch* (engaged ÷ views), average % viewed, traffic sources, audience and the retention curve **per storyboard scene**.
+- 🧰 **Real tools, all of them** — every stage is a project file in a Craft app (`.ecproj` motion, `.scraft` audio, `.fcproj` cut, `.vectorcraft` art, `.psd`, `.deckcraft` …). Open any of them and keep editing; Fluma notices hand edits by hash and never overwrites them. When a fixed material type is not enough, the agent writes the app's commands directly (`type: craft`).
+- 🎨 **You pick the look, effects need a reason** — before the full draft Fluma renders 2–3 design drafts of the first scenes (as measured from the reference · plain · a little motion) side by side and you choose; background motion, transitions, text animation, shadows and push-ins stay off unless the reference or you ask for them (`engine/craft/design.py`, `engine/story/directions.py`). The same material can be made by a different app (`method`, e.g. charts by GridCraft or DeckCraft).
+- 🎲 **No two videos alike** — a searchable catalog of every command, effect and preset (`craft_catalog.py`), verified recipes, and variety checks (`V41–V45`) against your recent videos; actual feature usage is recorded per video.
+- 🎬 **Better than "write me a video prompt"** — prompts are compiled per model from what Fluma measured in the reference (shot length, camera moves, real colors, light), with edit handles, caption-safe zones, character locks and last-frame continuity; uploaded clips are checked against the shot plan.
+- ⏱️ **Built for the Shorts feed** — every render is measured for an empty first frame, no change in the first second, long freezes and pauses (`L32`, `T32–T34`).
+- 📈 **Closes the loop with real numbers** — connect your channel (official OAuth), upload, and see views, engaged views, average % viewed, traffic sources and the retention curve **per storyboard scene**.
 - 🌐 **Korean-first, multilingual** — Korean tone analysis and caption grammar; UI in English, 한국어 and 中文.
 - 🔐 **Local-first** — keys and YouTube tokens live in `~/.shortsforge/` (0600); the agent cannot read them.
 
@@ -48,18 +52,22 @@ Fluma does **not** generate live-action video. Facts need a source URL or they a
 
 ```mermaid
 flowchart LR
-  A[Topic] --> R[Reference Shorts<br/>trends · shorts_xray · ref_channel]
-  R --> S[Storyboard<br/>sourced facts · channel tone · lint]
-  S --> V[Voice<br/>TTS · word timings]
-  S --> M[Scene materials]
-  M --> G[GridCraft<br/>data → chart]
-  M --> P[PdfCraft<br/>quote → zoom]
-  M --> VC[VectorCraft<br/>agent-drawn art]
-  M --> PH[PhotoCraft<br/>photos · cutouts]
-  G & P & VC & PH --> E[EffectCraft<br/>motion · captions]
-  V --> SC[SoundCraft<br/>voice · music · ducking]
-  E & SC --> F[FilmCraft<br/>cut edit → MP4]
-  F --> T[Tempo check]
+  A[Topic] --> R[Reference Shorts<br/>trends · X-ray · channel card]
+  R --> S[Storyboard<br/>sourced facts · tone · lint]
+  S --> V[Voice<br/>TTS or clip dialogue]
+  S --> P[Scene materials<br/>catalog search · recipes · variety]
+  subgraph Craft apps
+    P --> RS[Real screens<br/>web · terminal · demo runs<br/>+ FilmCraft zoom · blur]
+    P --> DOC[Documents<br/>PDFCraft highlights<br/>WordCraft pages]
+    P --> DAT[Data · diagrams<br/>GridCraft · DeckCraft]
+    P --> DES[Design<br/>VectorCraft · PhotoCraft<br/>FigCraft · DesignCraft · LightCraft]
+    P --> TD[3D · drawings<br/>SolidCraft · TextureCraft · CADCraft<br/>Blender]
+  end
+  P --> CL[Sourced clips<br/>most-replayed moment · vertical reframe]
+  RS & DOC & DAT & DES & TD & CL --> E[EffectCraft<br/>motion · presets · captions]
+  V --> SC[SoundCraft<br/>voice chain · ducking · −14 LUFS]
+  E & SC --> F[FilmCraft<br/>cut · markers · Shorts export]
+  F --> T[Checks<br/>tempo · density · variety]
   F --> Y[YouTube upload]
   Y --> A2[Analytics<br/>retention → scenes]
   A2 -. next video .-> S
@@ -67,12 +75,14 @@ flowchart LR
 
 | Stage | Where | What it does |
 |---|---|---|
-| References | `scripts/trends.py`, `shorts_xray.py`, `ref_channel.py` | find Shorts by topic, cuts · speech · music BPM · caption bands · screen kinds, channel tone card |
-| Storyboard | `.claude/skills/plan`, `storyboard`, `scripts/lint.py` | scenes with `materials` (chart · doc_quote · illustration · photo · screen), structural lint |
-| Materials | `scripts/craft/materials.py` | picks the Craft app from each app's `provides` list and makes the material |
-| Motion · audio · edit | `scripts/craft/motion.py`, `audio.py`, `edit.py`, `engines/craft/` | EffectCraft comps per scene, SoundCraft mix, FilmCraft assembly |
-| Checks | `scripts/tempo_check.py`, `edit_density.py`, `gate.py` | first second · freezes · pauses · cut density; intent & draft gates before the final render |
-| Publish & learn | `web/youtube.mjs` | OAuth, resumable upload, Analytics API reports mapped to scenes |
+| References | `engine/research/` (`trends.py`, `shorts_xray.py`, `ref_channel.py`) | find Shorts by topic, cuts · camera · colors · speech · BPM · screen kinds, channel tone card |
+| Storyboard | `.claude/skills/plan`, `storyboard`, `engine/checks/lint.py` | scenes with `materials`, structural lint |
+| Materials | `engine/craft/materials.py` + `engine/craft/adapters/<app>.py` | one adapter per Craft app; `type: craft` runs any command list |
+| Variety | `engine/craft/craft_catalog.py`, `craft_variety.py`, `.claude/skills/crafts/` | 9,000+ features searchable, recipes, repetition checks, usage per video |
+| Motion · sound · edit | `engine/craft/motion.py`, `audio.py`, `edit.py` | EffectCraft comps, SoundCraft mix, FilmCraft assembly |
+| One command | `engine/produce.py` | voice → lint → materials · draft → still frame per scene |
+| Checks | `engine/checks/` | first second · freezes · pauses · cut density; intent & draft gates |
+| Publish & learn | `engine/publish/`, `studio/youtube.mjs` | OAuth, resumable upload, Analytics mapped to scenes |
 
 ## The editor
 
@@ -80,8 +90,8 @@ An IDE-style workspace: an **Explorer** tree of what the video is made of — *E
 
 <table>
 <tr>
-<td width="50%"><img src="assets/screens/settings-agent.webp" alt="Models and providers" /><br/><sub><b>Models · Providers</b> — your local Claude Code / Codex CLI, or any API key.</sub></td>
-<td width="50%"><img src="assets/screens/settings-voice.webp" alt="Media settings" /><br/><sub><b>Media</b> — free and paid voice engines, render engines.</sub></td>
+<td width="50%"><img src="docs/assets/screens/settings-agent.webp" alt="Models and providers" /><br/><sub><b>Models · Providers</b> — your local Claude Code / Codex CLI, or any API key.</sub></td>
+<td width="50%"><img src="docs/assets/screens/settings-voice.webp" alt="Media settings" /><br/><sub><b>Media</b> — free and paid voice engines, render engines.</sub></td>
 </tr>
 </table>
 
@@ -90,11 +100,26 @@ An IDE-style workspace: an **Explorer** tree of what the video is made of — *E
 Fluma drives the open-source **Craft** desktop/web apps (by [storytold](https://github.com/storytold), MIT / Apache-2.0) through their CLIs and MCP servers. They are **not bundled** — install the ones you want (about 1.7 GB download for all 16):
 
 ```bash
-python3 scripts/crafts.py plan all        # what would be downloaded, no download
-python3 scripts/crafts.py install all     # or: install effectcraft soundcraft filmcraft vectorcraft gridcraft pdfcraft photocraft
+python3 engine/craft/crafts.py plan all        # what would be downloaded, no download
+python3 engine/craft/crafts.py install all     # or pick: install effectcraft soundcraft filmcraft …
 ```
 
-Releases are verified against their SHA256SUMS and unpacked into `tools/crafts/` (git-ignored). Used in the pipeline: EffectCraft, SoundCraft, FilmCraft, VectorCraft, GridCraft, PdfCraft, PhotoCraft. The others (LightCraft, FigCraft, DeckCraft, DesignCraft, WordCraft, CADCraft, SolidCraft, TextureCraft, Craft Anything) are available to the agent over MCP. Without Craft apps Fluma falls back to its HyperFrames engine.
+| App | What Fluma uses it for |
+|---|---|
+| EffectCraft | motion of every scene — built-in background · entrance · text presets, screen frames, push-ins |
+| SoundCraft | voice chain (EQ · compressor · de-esser), per-word sound effects, ducking, −14 LUFS |
+| FilmCraft | assembly, scene markers, Shorts export, thumbnail; screen-recording zoom · blur · speed; color presets for clips |
+| VectorCraft | illustrations drawn by the agent, annotation overlays (boxes · arrows · labels), CSV card batches |
+| PhotoCraft | 9:16 scene cards from captures, cut-outs, text-to-alpha, watermark-free cleanups |
+| PDFCraft | real highlights and boxes on source documents, cropped high-res evidence shots, redaction |
+| WordCraft | document pages with highlights and tracked changes |
+| GridCraft · DeckCraft | data for charts; SmartArt diagrams and tables |
+| FigCraft · DesignCraft | phone / browser mock-ups; info cards and thumbnails with Korean typesetting |
+| LightCraft | one look across all stills of a video |
+| SolidCraft · TextureCraft · CADCraft | 3D product turntables and exploded views; floor plans and drawings |
+| Blender | organic 3D shapes, characters and film-quality Cycles renders, scripted per video; SolidCraft parts, joints and TextureCraft materials flow into it (`engine/craft/bridge3d.py`) |
+
+Every app's full command list is in `.claude/skills/crafts/catalog/` (`python3 engine/craft/craft_catalog.py search "curved arrow"`), with tested notes in `.claude/skills/crafts/reference/`. Releases are verified against their SHA256SUMS and unpacked into `tools/crafts/` (git-ignored).
 
 ## YouTube
 
@@ -111,13 +136,13 @@ Requirements: Python 3.10+, Node.js 20+, ffmpeg. Details and troubleshooting: [Q
 
 ```bash
 git clone https://github.com/meowassassin/fluma && cd fluma
-python3 scripts/doctor.py --fix              # everything: Python packages · all 16 Craft apps · models · npm
-npm --prefix web run dev                     # → http://localhost:4311
+python3 engine/doctor.py --fix              # everything: Python packages · all 16 Craft apps · models · npm
+npm --prefix studio run dev                     # → http://localhost:4311
 ```
 
 - Which way to install (Docker · direct · development), what your computer needs, where your videos are: [QUICKSTART.md](QUICKSTART.md#pick-a-path)
-- Minimal install: `python3 scripts/doctor.py --fix --profile lite --core` (the rest installs itself on first use)
-- Docker (everything included): `docker compose pull && docker compose up -d`
+- Minimal install: `python3 engine/doctor.py --fix --profile lite --core` (the rest installs itself on first use)
+- Docker (everything included): `cd docker && docker compose pull && docker compose up -d`
 - Or let your own agent install it: give Claude Code / Codex this skill — https://raw.githubusercontent.com/meowassassin/fluma/main/docs/skill/SKILL.md
 
 ## Skills
@@ -127,22 +152,46 @@ npm --prefix web run dev                     # → http://localhost:4311
 | `plan` | plans a video in chat; studies reference Shorts before writing |
 | `storyboard` | writes the storyboard JSON: format, research, scenes, materials, lint loop |
 | `produce` | Craft pipeline: voice → scene materials → lint → draft render → still-frame check |
+| `crafts` | which Craft app and feature to use for a scene; catalog search, recipes, variety rules |
 | `illustrate` | draws characters / props as a designer in VectorCraft, render-and-fix loop |
 | `research` | collects facts with source URLs; fewer than five sources → the topic is dropped |
 | `trends` | finds Shorts by topic or hashtag for the Trends screen |
 | `voice` · `scene-edit` · `character` | narration fitting, one-scene edits, lip-synced mascot |
 | `format-*` | ready formats: compare, daily price, ad, emotional |
-| `compose` | HyperFrames-only scene composition (fallback engine) |
 
-## Architecture
+## Project layout
+
+```text
+fluma/
+├─ engine/                 Python production engine
+│  ├─ produce.py           one command: storyboard → voice → lint → draft → stills
+│  ├─ render.py · pipeline.py · doctor.py · fluma_agent.py · mcp_server.py
+│  ├─ craft/               Craft pipeline — materials · motion · audio · edit · design.py (effects per video) · adapters/<app>.py
+│  │  ├─ apps/             the 16 Craft apps (craft.json each)
+│  │  ├─ renderer/         render-engine entry (engine.json · adapter)
+│  │  └─ craft_catalog.py · craft_variety.py · crafts.py
+│  ├─ voice/               TTS · audio assembly · voice matching · engines/<voice> · sfx
+│  ├─ research/            trends · Shorts X-ray · reference style & channel cards
+│  ├─ capture/             web / terminal recording · demo runs · memes · stock footage · icons
+│  ├─ story/               storyboard helpers — direction · design drafts (directions.py) · variants · tone edit
+│  ├─ checks/              lint · tempo · edit density · gates
+│  ├─ publish/             YouTube upload
+│  ├─ core/                shared — results protocol · engines registry · finish · stills · install
+│  └─ spec/                schema · rules · presets · tokens
+├─ studio/                 web app — React UI (src/), API server, agent harness (agent/system.md)
+├─ .claude/skills/         agent skills (plan · storyboard · produce · crafts · …)
+├─ data/                   everything made while working (git-ignored) — see data/README.md
+├─ docker/                 Dockerfile · docker-compose.yml
+├─ docs/  tests/
+└─ tools/                  installed Craft apps (git-ignored)
+```
 
 | Layer | Stack |
 |---|---|
-| Studio UI | React + Vite (`web/src`), i18n en / ko / zh |
-| API & agent runtime | Node / Express (`web/server.mjs`, `web/agent.mjs`) — local CLIs or API providers, Craft apps as MCP servers |
-| Pipeline | Python (`scripts/`) — analysis, lint, voice, materials, render, checks |
-| Engines | `engines/craft` (default), `engines/hyperframes` (fallback), Manim / Blender as layer elements |
-| Plug-ins | one folder each: `crafts/<app>/craft.json`, `voices/<name>/`, `genmodels/<name>/`, `engines/<name>/` |
+| Studio UI | React + Vite (`studio/src`), i18n en / ko / zh |
+| API & agent runtime | Node / Express (`studio/server.mjs`, `studio/agent.mjs`) — local CLIs or API providers, Craft apps as MCP servers |
+| Engine | Python (`engine/`) — one renderer: the Craft pipeline |
+| Plug-ins | one folder each: `engine/craft/apps/<app>/craft.json`, `engine/craft/adapters/<app>.py`, `engine/voice/engines/<name>/` |
 
 ## Roadmap
 

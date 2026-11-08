@@ -3,14 +3,14 @@
 **한 줄 요약**: Illustrator 류 벡터 앱(순수 Rust, MIT/Apache-2.0). 명령은 911개이고 전부 헤드리스 CLI(`run`)와 MCP 로 부를 수 있다. 쇼츠에서는 **제목 카드 · 실제 화면 위 주석(화살표 · 박스) · 데이터 템플릿 일괄 생산 · 사진/스틸을 평면 그림으로 바꾸는 트레이스 · 아이콘 배지 · 레이어별 PNG** 를 맡는다. 지금 Fluma 는 이 중 `convert`(SVG → PNG/.vectorcraft) 하나만 쓴다.
 
 - 실행 파일: `tools/crafts/vectorcraft/app/vectorcraft-0.21.0-linux-x86_64/bin/vectorcraft-cli`
-  (에이전트는 `python3 scripts/crafts.py run vectorcraft <인자…>` 로 부른다)
+  (에이전트는 `python3 engine/craft/crafts.py run vectorcraft <인자…>` 로 부른다)
 
 ---
 
 ## 0. 지금 Fluma 에서 쓰는 곳 (2026-11-06)
 
-- `scripts/craft/materials.py` `illustration()` · `icon` — `convert`(SVG → PNG · .vectorcraft).
-- `scripts/craft/adapters/vectorcraft.py`:
+- `engine/craft/materials.py` `illustration()` · `icon` — `convert`(SVG → PNG · .vectorcraft).
+- `engine/craft/adapters/vectorcraft.py`:
   - `overlay`: 대상 재료 기록에서 크기를 읽고(mp4 면 첫 프레임) 같은 크기 문서에 마크마다 층(박스 · 화살표 · 설명 알약, clean · hand). 맨 아래에 대상 화면을 템플릿 층(잠김 · 내보내지 않음)으로. 층마다 투명 PNG → 알파 영역만 잘라 box(0~1) 기록. 알약 크기는 같은 글꼴 `text.create` 상자로 먼저 잰다. shape 기본 검은 1pt 선은 `paint.setStroke none` 으로 지운다. 1.0~1.2초.
   - `template_card`: CSV(또는 values) → `dataset.import` → `action.batch`(datasets → document.export png) 로 줄마다 카드. 틀이 없으면 기본 틀(960×720 흰 둥근 카드)을 만들어 남긴다. 머리글과 같은 이름의 변수가 하나도 없으면 오류.
 - 글꼴: Pretendard 불가 → Noto Sans CJK KR. `text.addFontFiles` 는 앱 설정 폴더로 복사하므로 쓰지 않는다.
@@ -22,7 +22,7 @@
 | 된다 (확인) | `run` 배치: 새 문서 → 명령 → PNG/SVG/PSD/.vectorcraft 내보내기. 도형 · 펜 경로 · 글자 · 그라데이션 · 라이브 효과(벡터 · 래스터) · 3D 돌출 · 블렌드 · 이미지 트레이스 · 다시 칠하기 · 그래프 · 변수/데이터 세트 일괄 · 레이어별 내보내기 · 파일 배치(place) |
 | 된다 (확인) | `mcp --headless`: 도구 33개(`command_run` · `command_batch` · `render_preview` · `draw_path` · `draw_shape` · `apply_effect` · `create_graph` · `export` …) |
 | 안 된다 | UI 전용 도구: `ui_inspect` · `ui_screenshot` · `type_text` · `answer_dialog` · `open_panel` (앱을 `vectorcraft --control 7979` 로 띄워야 함) |
-| 안 된다 (확인) | `text.findFontFiles` 는 비동기라 `run` 한 번 안에서 검색이 끝나지 않는다. 검색 대상도 .ttf/.otf/.ttc/.otc 뿐이라 저장소의 `public/fonts/Pretendard-*.woff2` 는 찾지 못한다. Pretendard 를 쓸 방법은 **미확인**. 시스템 글꼴 `Noto Sans CJK KR`(Regular~Black) · `NanumGothic` 을 쓴다 |
+| 안 된다 (확인) | `text.findFontFiles` 는 비동기라 `run` 한 번 안에서 검색이 끝나지 않는다. 검색 대상도 .ttf/.otf/.ttc/.otc 뿐이라 저장소의 `engine/assets/fonts/Pretendard-*.woff2` 는 찾지 못한다. Pretendard 를 쓸 방법은 **미확인**. 시스템 글꼴 `Noto Sans CJK KR`(Regular~Black) · `NanumGothic` 을 쓴다 |
 | 주의 | 속도: 1080×1920 카드 한 장은 약 0.4초. 래스터 효과(watercolor 등)를 넣으면 약 2.5초. 트레이스는 1080×1920 에서 0.5초 |
 | 주의 | 환경 변수 `VECTORCRAFT_NO_PREFS=1` 을 꼭 붙인다. 안 붙이면 `file.new` 크기가 앱 설정(Recent 프리셋)에 기록된다. 바이트까지 같은 결과가 필요하면 `SOURCE_DATE_EPOCH=<초>` 를 쓴다 |
 
@@ -190,9 +190,9 @@ vectorcraft-cli run --in art.vectorcraft --cmd select.all --cmd recolor.colors -
 - Fluma 차트는 GridCraft 수치와 움직임 단계 렌더로 이미 만든다. 그래프는 "정적인 인포그래픽 한 장"이 필요할 때만 쓴다.
 
 ### 3.11 현재 쓰는 것 (유지)
-- `convert a.svg b.png --scale N`: illustration · 아이콘 PNG (`scripts/craft/materials.py` `illustration()`, `chart()` 아이콘).
+- `convert a.svg b.png --scale N`: illustration · 아이콘 PNG (`engine/craft/materials.py` `illustration()`, `chart()` 아이콘).
 - `convert a.svg b.vectorcraft`: 사람이 고칠 편집 파일. 해시로 사람이 고쳤는지 감지해, 고쳤으면 그 파일을 SVG 로 다시 바꿔 원본으로 쓴다.
-- rig 분리 (`scripts/craft/rig.py`): VectorCraft 가 전체를 `Layer_1` 로 감싸므로 그 안의 부품 그룹을 본다.
+- rig 분리 (`engine/craft/rig.py`): VectorCraft 가 전체를 `Layer_1` 로 감싸므로 그 안의 부품 그룹을 본다.
 - illustrate 스킬의 "렌더해서 보기"는 `convert --scale 1`, MCP 로 붙어 있으면 `render_preview`.
 - 확인할 만한 것: `vectorcraft-cli info FILE`(아트보드 · 개체 수 · 글꼴 · 가져오기 경고 JSON). 사용자가 넘긴 .ai/.svg 를 검사할 때 쓴다(미확인).
 

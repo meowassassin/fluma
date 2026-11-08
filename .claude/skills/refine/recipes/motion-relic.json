@@ -1,0 +1,45 @@
+{
+ "id": "motion-relic",
+ "layer": "motion",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "실제 유물이 말한다(레이어 리그)",
+ "when": "relic 재료에 jaw 가 있을 때 — base · mouth · jaw 레이어를 리그로 묶어 말하는 구간에만 턱을 움직인다",
+ "avoid": "말하지 않는 인물",
+ "vars": {
+  "WHO": "relic 재료 id",
+  "X": "x",
+  "Y": "y",
+  "SCALE": "크기 %",
+  "FLIP": "1 그대로 · -1 뒤집기",
+  "T0": "등장 초",
+  "T1": "퇴장 초",
+  "S0": "말 시작 초",
+  "S1": "말 끝 초",
+  "HX": "턱 경첩 x px(재료 그림 기준)",
+  "HY": "턱 경첩 y px",
+  "NX": "목 x px",
+  "NY": "목 y px",
+  "W": "재료 그림 폭 px",
+  "H": "재료 그림 높이 px",
+  "OPEN": "턱 벌림 px",
+  "TILT": "턱 회전 도",
+  "NOD": "머리 끄덕임 도"
+ },
+ "defaults": {
+  "SCALE": "100",
+  "FLIP": "1",
+  "OPEN": "16",
+  "TILT": "3",
+  "NOD": "1.6"
+ },
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var nm=[\"base\",\"mouth\",\"jaw\"];var sx=@FLIP@*@SCALE@/100,sy=@SCALE@/100;var R=C.layers.addNull();R.name=\"@WHO@ rig\";R.moveToBeginning();R.startTime=0;R.inPoint=@T0@;R.outPoint=@T1@;var RT=R.property(\"Transform\");RT.property(\"Anchor Point\").setValue([0,0]);K(RT.property(\"Position\"),[[@T0@,[@X@,@Y@+50]],[@T0@+0.2,[@X@,@Y@]]]);var rk=[[@T0@,0]];for(var t=@T0@+0.5,s=1;t<@T1@;t+=0.9,s=-s)rk.push([t,s*@NOD@]);K(RT.property(\"Rotation\"),rk);EASE(RT.property(\"Rotation\"),60);var jx=(@HX@-@NX@)*sx,jy=(@HY@-@NY@)*sy;var J=null;for(var i=0;i<3;i++){var it=app.project.importFile(new ImportOptions(new File(\"$MATDIR/@WHO@_\"+nm[i]+\".png\")));var l=C.layers.add(it);l.name=\"@WHO@ \"+nm[i];l.moveToBeginning();l.startTime=0;l.inPoint=@T0@;l.outPoint=@T1@;l.parent=R;var T=l.property(\"Transform\");T.property(\"Anchor Point\").setValue(i==2?[@HX@,@HY@]:[@NX@,@NY@]);T.property(\"Scale\").setValue([sx*100,sy*100]);T.property(\"Position\").setValue(i==2?[jx,jy]:[0,0]);if(i==2)J=T;}var pk=[[@S0@,[jx,jy]]],rt=[[@S0@,0]];var pat=[1,0.35,0.8,0.15,1,0.5,0.1,0.7,0.3,0.9,0.05];var n=0;for(var t2=@S0@+0.09;t2<@S1@-0.1;t2+=0.11+(n%3)*0.03){var a=pat[n%pat.length];pk.push([t2,[jx,jy+a*@OPEN@*sy]]);rt.push([t2,-(@FLIP@)*a*@TILT@]);n++;}pk.push([@S1@,[jx,jy]]);rt.push([@S1@,0]);K(J.property(\"Position\"),pk);K(J.property(\"Rotation\"),rt);"
+  }
+ ],
+ "note": "EffectCraft 의 부모는 위치 · 회전만 넘긴다(크기 · 뒤집기는 이미지에 상속되지 않음) — 크기는 각 레이어에 준다"
+}

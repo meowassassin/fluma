@@ -1,0 +1,483 @@
+{"id": "session.new", "kind": "command", "label": "New...", "menu": "", "run": "ok"}
+{"id": "session.open", "kind": "command", "label": "Open Session...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/session_open.craft/steps.txt:1: session.open: bad parameters for `session.open`: `path` required"}
+{"id": "session.close", "kind": "command", "label": "Close Session", "menu": "", "run": "ok"}
+{"id": "session.save", "kind": "command", "label": "Save Session", "menu": "", "run": "ok"}
+{"id": "session.save_as", "kind": "command", "label": "Save Session As...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/session_save_as.craft/steps.txt:1: session.save_as: bad parameters for `session.save_as`: `path` required"}
+{"id": "session.save_copy", "kind": "command", "label": "Save Session Copy In...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/session_save_copy.craft/steps.txt:1: session.save_copy: bad parameters for `session.save_copy`: `path` required"}
+{"id": "session.save_template", "kind": "command", "label": "Save As Template...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/session_save_template.craft/steps.txt:1: session.save_template: bad parameters for `session.save_template`: `path` required"}
+{"id": "session.revert", "kind": "command", "label": "Revert Session to Saved...", "menu": "", "run": "ok"}
+{"id": "file.import_audio", "kind": "command", "label": "Audio...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_import_audio.craft/steps.txt:1: file.import_audio: bad parameters for `file.import_audio`: `path` or `paths` required"}
+{"id": "file.import_midi", "kind": "command", "label": "MIDI...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_import_midi.craft/steps.txt:1: file.import_midi: bad parameters for `file.import_midi`: `path` required"}
+{"id": "file.import_video", "kind": "command", "label": "Video...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_import_video.craft/steps.txt:1: file.import_video: bad parameters for `file.import_video`: `path` required"}
+{"id": "file.bounce_mix", "kind": "command", "label": "Bounce Mix...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_bounce_mix.craft/steps.txt:1: file.bounce_mix: bad parameters for `file.bounce_mix`: `path` required"}
+{"id": "file.bounce_stems", "kind": "command", "label": "Bounce Stems...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_bounce_stems.craft/steps.txt:1: file.bounce_stems: bad parameters for `file.bounce_stems`: `dir` required"}
+{"id": "file.export_midi", "kind": "command", "label": "MIDI...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_export_midi.craft/steps.txt:1: file.export_midi: bad parameters for `file.export_midi`: `path` required"}
+{"id": "file.export_session_text", "kind": "command", "label": "Session Info as Text...", "menu": "", "run": "ok"}
+{"id": "file.export_clips", "kind": "command", "label": "Export Clips as Files...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_export_clips.craft/steps.txt:1: file.export_clips: bad parameters for `file.export_clips`: `dir` required"}
+{"id": "file.export_selected_tracks_as_session", "kind": "command", "label": "Selected Tracks as New Session...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_export_selected_tracks_as_session.craft/steps.txt:1: file.export_selected_tracks_as_session: bad parameters for `file.export_selected_tracks_as_session`: `path` required"}
+{"id": "file.export_sibelius", "kind": "command", "label": "Sibelius...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_export_sibelius.craft/steps.txt:1: file.export_sibelius: bad parameters for `file.export_sibelius`: no MIDI or instrument tracks to notate"}
+{"id": "file.send_to_sibelius", "kind": "command", "label": "Sibelius", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_send_to_sibelius.craft/steps.txt:1: file.send_to_sibelius: bad parameters for `file.send_to_sibelius`: no MIDI or instrument tracks to notate"}
+{"id": "file.print_score", "kind": "command", "label": "Print Score...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_print_score.craft/steps.txt:1: file.print_score: bad parameters for `file.print_score`: no MIDI or instrument tracks to notate"}
+{"id": "file.score_setup", "kind": "command", "label": "Score Setup...", "menu": "", "run": "ok"}
+{"id": "file.export_clip_groups", "kind": "command", "label": "Export Clip Groups...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_export_clip_groups.craft/steps.txt:1: file.export_clip_groups: bad parameters for `file.export_clip_groups`: `path` required"}
+{"id": "file.import_clip_groups", "kind": "command", "label": "Clip Groups...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_import_clip_groups.craft/steps.txt:1: file.import_clip_groups: bad parameters for `file.import_clip_groups`: `path` required"}
+{"id": "file.get_info", "kind": "command", "label": "Get Info...", "menu": "", "run": "ok"}
+{"id": "app.quit", "kind": "command", "label": "Quit", "menu": ""}
+{"id": "edit.undo", "kind": "command", "label": "Undo", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_undo.craft/steps.txt:1: edit.undo: `edit.undo` is not available: nothing to undo"}
+{"id": "edit.redo", "kind": "command", "label": "Redo", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_redo.craft/steps.txt:1: edit.redo: `edit.redo` is not available: nothing to redo"}
+{"id": "edit.restore_last_selection", "kind": "command", "label": "Restore Last Selection", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_restore_last_selection.craft/steps.txt:1: edit.restore_last_selection: `edit.restore_last_selection` is not available: no previous selection to restore"}
+{"id": "edit.cut", "kind": "command", "label": "Cut", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_cut.craft/steps.txt:1: edit.cut: `edit.cut` is not available: make an edit selection first"}
+{"id": "edit.copy", "kind": "command", "label": "Copy", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_copy.craft/steps.txt:1: edit.copy: `edit.copy` is not available: make an edit selection first"}
+{"id": "edit.paste", "kind": "command", "label": "Paste", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_paste.craft/steps.txt:1: edit.paste: `edit.paste` is not available: the clipboard is empty"}
+{"id": "edit.clear", "kind": "command", "label": "Clear", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_clear.craft/steps.txt:1: edit.clear: `edit.clear` is not available: make an edit selection first"}
+{"id": "edit.cut_clip_gain", "kind": "command", "label": "Clip Gain", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_cut_clip_gain.craft/steps.txt:1: edit.cut_clip_gain: `edit.cut_clip_gain` is not available: make an edit selection first"}
+{"id": "edit.clear_clip_gain", "kind": "command", "label": "Clip Gain", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_clear_clip_gain.craft/steps.txt:1: edit.clear_clip_gain: `edit.clear_clip_gain` is not available: make an edit selection first"}
+{"id": "edit.cut_all_automation", "kind": "command", "label": "All Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_cut_all_automation.craft/steps.txt:1: edit.cut_all_automation: `edit.cut_all_automation` is not available: make an edit selection first"}
+{"id": "edit.clear_all_automation", "kind": "command", "label": "All Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_clear_all_automation.craft/steps.txt:1: edit.clear_all_automation: `edit.clear_all_automation` is not available: make an edit selection first"}
+{"id": "edit.clear_pan_automation", "kind": "command", "label": "Pan Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_clear_pan_automation.craft/steps.txt:1: edit.clear_pan_automation: `edit.clear_pan_automation` is not available: make an edit selection first"}
+{"id": "edit.clear_plugin_automation", "kind": "command", "label": "Plugin Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_clear_plugin_automation.craft/steps.txt:1: edit.clear_plugin_automation: `edit.clear_plugin_automation` is not available: make an edit selection first"}
+{"id": "edit.paste_repeat_to_fill", "kind": "command", "label": "Repeat to Fill Selection", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_paste_repeat_to_fill.craft/steps.txt:1: edit.paste_repeat_to_fill: `edit.paste_repeat_to_fill` is not available: the clipboard is empty"}
+{"id": "edit.select_all", "kind": "command", "label": "Select All", "menu": "", "run": "ok"}
+{"id": "edit.select", "kind": "command", "label": "Set Edit Selection", "menu": "", "run": "ok"}
+{"id": "edit.select_none", "kind": "command", "label": "Deselect All", "menu": "", "run": "ok"}
+{"id": "edit.selection_to_timeline", "kind": "command", "label": "Change Timeline to Match Edit", "menu": "", "run": "ok"}
+{"id": "edit.timeline_to_selection", "kind": "command", "label": "Change Edit to Match Timeline", "menu": "", "run": "ok"}
+{"id": "edit.move_selection_left", "kind": "command", "label": "Move Edit Left", "menu": "", "run": "ok"}
+{"id": "edit.move_selection_right", "kind": "command", "label": "Move Edit Right", "menu": "", "run": "ok"}
+{"id": "edit.halve_selection", "kind": "command", "label": "Halve Edit", "menu": "", "run": "ok"}
+{"id": "edit.double_selection", "kind": "command", "label": "Double Edit", "menu": "", "run": "ok"}
+{"id": "edit.extend_selection_up", "kind": "command", "label": "Extend Edit Up", "menu": "", "run": "ok"}
+{"id": "edit.extend_selection_down", "kind": "command", "label": "Extend Edit Down", "menu": "", "run": "ok"}
+{"id": "edit.remove_selection_top", "kind": "command", "label": "Remove Edit from Top", "menu": "", "run": "ok"}
+{"id": "edit.remove_selection_bottom", "kind": "command", "label": "Remove Edit from Bottom", "menu": "", "run": "ok"}
+{"id": "edit.duplicate", "kind": "command", "label": "Duplicate", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_duplicate.craft/steps.txt:1: edit.duplicate: `edit.duplicate` is not available: make an edit selection first"}
+{"id": "edit.repeat", "kind": "command", "label": "Repeat...", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_repeat.craft/steps.txt:1: edit.repeat: `edit.repeat` is not available: make an edit selection first"}
+{"id": "edit.shift", "kind": "command", "label": "Shift...", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_shift.craft/steps.txt:1: edit.shift: `edit.shift` is not available: make an edit selection first"}
+{"id": "edit.insert_silence", "kind": "command", "label": "Insert Silence", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_insert_silence.craft/steps.txt:1: edit.insert_silence: `edit.insert_silence` is not available: make an edit selection first"}
+{"id": "edit.separate", "kind": "command", "label": "At Selection", "menu": "", "run": "ok"}
+{"id": "edit.separate_on_grid", "kind": "command", "label": "On Grid", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_separate_on_grid.craft/steps.txt:1: edit.separate_on_grid: `edit.separate_on_grid` is not available: make an edit selection first"}
+{"id": "edit.separate_at_transients", "kind": "command", "label": "At Transients", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_separate_at_transients.craft/steps.txt:1: edit.separate_at_transients: `edit.separate_at_transients` is not available: make an edit selection first"}
+{"id": "edit.heal", "kind": "command", "label": "Heal Separation", "menu": "", "run": "ok"}
+{"id": "edit.trim_to_selection", "kind": "command", "label": "To Selection", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_trim_to_selection.craft/steps.txt:1: edit.trim_to_selection: `edit.trim_to_selection` is not available: make an edit selection first"}
+{"id": "edit.trim_start_to_insertion", "kind": "command", "label": "Start to Insertion", "menu": "", "run": "ok"}
+{"id": "edit.trim_end_to_insertion", "kind": "command", "label": "End to Insertion", "menu": "", "run": "ok"}
+{"id": "edit.trim_to_file_boundaries", "kind": "command", "label": "To File Boundaries", "menu": "", "run": "ok"}
+{"id": "edit.trim_to_fill_selection", "kind": "command", "label": "To Fill Selection", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_trim_to_fill_selection.craft/steps.txt:1: edit.trim_to_fill_selection: `edit.trim_to_fill_selection` is not available: make an edit selection first"}
+{"id": "edit.mute_clips", "kind": "command", "label": "Mute", "menu": "", "run": "ok"}
+{"id": "edit.copy_to_new_playlist", "kind": "command", "label": "New Playlist", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_copy_to_new_playlist.craft/steps.txt:1: edit.copy_to_new_playlist: `edit.copy_to_new_playlist` is not available: make an edit selection first"}
+{"id": "edit.strip_silence", "kind": "command", "label": "Strip Silence", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_strip_silence.craft/steps.txt:1: edit.strip_silence: `edit.strip_silence` is not available: make an edit selection first"}
+{"id": "edit.fades_create", "kind": "command", "label": "Create...", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_fades_create.craft/steps.txt:1: edit.fades_create: `edit.fades_create` is not available: make an edit selection first"}
+{"id": "edit.fades_delete", "kind": "command", "label": "Delete", "menu": "", "run": "ok"}
+{"id": "edit.fade_to_start", "kind": "command", "label": "Fade to Start", "menu": "", "run": "ok"}
+{"id": "edit.fade_to_end", "kind": "command", "label": "Fade to End", "menu": "", "run": "ok"}
+{"id": "edit.nudge", "kind": "command", "label": "Nudge", "menu": "", "run": "ok"}
+{"id": "edit.mode", "kind": "command", "label": "Edit Mode", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_mode.craft/steps.txt:1: edit.mode: bad parameters for `edit.mode`: mode must be shuffle|slip|spot|grid|relative_grid"}
+{"id": "edit.snap_to_grid", "kind": "command", "label": "Snap to Grid", "menu": "", "run": "ok"}
+{"id": "edit.shuffle_lock", "kind": "command", "label": "Shuffle Lock", "menu": "", "run": "ok"}
+{"id": "edit.tool", "kind": "command", "label": "Edit Tool", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_tool.craft/steps.txt:1: edit.tool: bad parameters for `edit.tool`: unknown tool"}
+{"id": "edit.move_clips", "kind": "command", "label": "Move Clips", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_move_clips.craft/steps.txt:1: edit.move_clips: bad parameters for `edit.move_clips`: no clips"}
+{"id": "edit.trim_clip", "kind": "command", "label": "Trim Clip", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_trim_clip.craft/steps.txt:1: edit.trim_clip: bad parameters for `edit.trim_clip`: `clip` id required"}
+{"id": "edit.consolidate", "kind": "command", "label": "Consolidate", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_consolidate.craft/steps.txt:1: edit.consolidate: `edit.consolidate` is not available: make an edit selection first"}
+{"id": "edit.cut_pan_automation", "kind": "command", "label": "Pan Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_cut_pan_automation.craft/steps.txt:1: edit.cut_pan_automation: `edit.cut_pan_automation` is not available: make an edit selection first"}
+{"id": "edit.cut_plugin_automation", "kind": "command", "label": "Plugin Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_cut_plugin_automation.craft/steps.txt:1: edit.cut_plugin_automation: `edit.cut_plugin_automation` is not available: make an edit selection first"}
+{"id": "edit.copy_all_automation", "kind": "command", "label": "All Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_copy_all_automation.craft/steps.txt:1: edit.copy_all_automation: `edit.copy_all_automation` is not available: make an edit selection first"}
+{"id": "edit.copy_pan_automation", "kind": "command", "label": "Pan Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_copy_pan_automation.craft/steps.txt:1: edit.copy_pan_automation: `edit.copy_pan_automation` is not available: make an edit selection first"}
+{"id": "edit.copy_plugin_automation", "kind": "command", "label": "Plugin Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_copy_plugin_automation.craft/steps.txt:1: edit.copy_plugin_automation: `edit.copy_plugin_automation` is not available: make an edit selection first"}
+{"id": "edit.copy_clip_gain", "kind": "command", "label": "Clip Gain", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_copy_clip_gain.craft/steps.txt:1: edit.copy_clip_gain: `edit.copy_clip_gain` is not available: make an edit selection first"}
+{"id": "edit.paste_clip_gain", "kind": "command", "label": "Paste Clip Gain", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_paste_clip_gain.craft/steps.txt:1: edit.paste_clip_gain: `edit.paste_clip_gain` is not available: no clip gain has been copied"}
+{"id": "edit.copy_clip_effects", "kind": "command", "label": "Clip Effects", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_copy_clip_effects.craft/steps.txt:1: edit.copy_clip_effects: bad parameters for `edit.copy_clip_effects`: select a clip"}
+{"id": "edit.cut_clip_effects", "kind": "command", "label": "Clip Effects", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_cut_clip_effects.craft/steps.txt:1: edit.cut_clip_effects: bad parameters for `edit.cut_clip_effects`: select a clip"}
+{"id": "edit.clear_clip_effects", "kind": "command", "label": "Clip Effects", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_clear_clip_effects.craft/steps.txt:1: edit.clear_clip_effects: bad parameters for `edit.clear_clip_effects`: select a clip"}
+{"id": "edit.paste_clip_effects", "kind": "command", "label": "Paste Clip Effects", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_paste_clip_effects.craft/steps.txt:1: edit.paste_clip_effects: `edit.paste_clip_effects` is not available: no clip effects have been copied"}
+{"id": "edit.paste_merge_midi", "kind": "command", "label": "Merge MIDI", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_paste_merge_midi.craft/steps.txt:1: edit.paste_merge_midi: `edit.paste_merge_midi` is not available: the clipboard is empty"}
+{"id": "edit.paste_merge_markers", "kind": "command", "label": "Merge Markers", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_paste_merge_markers.craft/steps.txt:1: edit.paste_merge_markers: `edit.paste_merge_markers` is not available: no markers on the clipboard"}
+{"id": "edit.paste_to_current_automation", "kind": "command", "label": "To Current Automation Type", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_paste_to_current_automation.craft/steps.txt:1: edit.paste_to_current_automation: `edit.paste_to_current_automation` is not available: no automation has been copied"}
+{"id": "edit.play_timeline", "kind": "command", "label": "Play Timeline", "menu": "", "run": "ok"}
+{"id": "edit.duplicate_extend", "kind": "command", "label": "Duplicate and Extend Edit", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_duplicate_extend.craft/steps.txt:1: edit.duplicate_extend: `edit.duplicate_extend` is not available: make an edit selection first"}
+{"id": "edit.extend_up_to_members", "kind": "command", "label": "Extend Edit Up to Members", "menu": "", "run": "ok"}
+{"id": "edit.extend_down_to_members", "kind": "command", "label": "Extend Edit Down to Members", "menu": "", "run": "ok"}
+{"id": "edit.marker_lane_move_up", "kind": "command", "label": "Move Edit Selection To Marker Lane Above Edit > Selection", "menu": "", "run": "ok"}
+{"id": "edit.marker_lane_move_down", "kind": "command", "label": "Move Edit Selection To Marker Lane Below Edit > Selection", "menu": "", "run": "ok"}
+{"id": "edit.marker_lane_extend_up", "kind": "command", "label": "Extend Edit Selection To Marker Lane Above Edit > Selection", "menu": "", "run": "ok"}
+{"id": "edit.marker_lane_extend_down", "kind": "command", "label": "Extend Edit Selection To Marker Lane Below Edit > Selection", "menu": "", "run": "ok"}
+{"id": "edit.space_clips", "kind": "command", "label": "Space Clips…", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_space_clips.craft/steps.txt:1: edit.space_clips: bad parameters for `edit.space_clips`: select two or more clips"}
+{"id": "edit.snap_next", "kind": "command", "label": "Next", "menu": "", "run": "ok"}
+{"id": "edit.snap_previous", "kind": "command", "label": "Previous", "menu": "", "run": "ok"}
+{"id": "edit.copy_to_target_playlist", "kind": "command", "label": "Target Playlist", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_copy_to_target_playlist.craft/steps.txt:1: edit.copy_to_target_playlist: `edit.copy_to_target_playlist` is not available: make an edit selection first"}
+{"id": "edit.copy_to_duplicate_playlist", "kind": "command", "label": "Duplicate of Main Playlist", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_copy_to_duplicate_playlist.craft/steps.txt:1: edit.copy_to_duplicate_playlist: `edit.copy_to_duplicate_playlist` is not available: make an edit selection first"}
+{"id": "edit.move_to_target_playlist", "kind": "command", "label": "Target Playlist", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_move_to_target_playlist.craft/steps.txt:1: edit.move_to_target_playlist: `edit.move_to_target_playlist` is not available: make an edit selection first"}
+{"id": "edit.move_to_new_playlist", "kind": "command", "label": "New Playlist", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_move_to_new_playlist.craft/steps.txt:1: edit.move_to_new_playlist: `edit.move_to_new_playlist` is not available: make an edit selection first"}
+{"id": "edit.move_to_duplicate_playlist", "kind": "command", "label": "Duplicate of Main Playlist", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_move_to_duplicate_playlist.craft/steps.txt:1: edit.move_to_duplicate_playlist: `edit.move_to_duplicate_playlist` is not available: make an edit selection first"}
+{"id": "edit.tce_to_timeline", "kind": "command", "label": "TCE Edit to Timeline Selection", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_tce_to_timeline.craft/steps.txt:1: edit.tce_to_timeline: bad parameters for `edit.tce_to_timeline`: make a timeline selection first"}
+{"id": "edit.automation_coalesce_volume_to_clip_gain", "kind": "command", "label": "Coalesce Volume Automation to Clip Gain Edit > Automation", "menu": "", "run": "ok"}
+{"id": "edit.automation_coalesce_clip_gain_to_volume", "kind": "command", "label": "Coalesce Clip Gain to Volume Automation Edit > Automation", "menu": "", "run": "ok"}
+{"id": "edit.automation_trim_to_all", "kind": "command", "label": "Trim to All Enabled", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_automation_trim_to_all.craft/steps.txt:1: edit.automation_trim_to_all: `edit.automation_trim_to_all` is not available: make an edit selection first"}
+{"id": "edit.automation_glide_to_all", "kind": "command", "label": "Glide to All Enabled", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_automation_glide_to_all.craft/steps.txt:1: edit.automation_glide_to_all: `edit.automation_glide_to_all` is not available: make an edit selection first"}
+{"id": "edit.automation_glide_pan", "kind": "command", "label": "Glide Pan Only", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_automation_glide_pan.craft/steps.txt:1: edit.automation_glide_pan: `edit.automation_glide_pan` is not available: make an edit selection first"}
+{"id": "view.zoom_in", "kind": "command", "label": "Zoom In", "menu": "", "run": "ok"}
+{"id": "view.zoom_out", "kind": "command", "label": "Zoom Out", "menu": "", "run": "ok"}
+{"id": "view.zoom_by", "kind": "command", "label": "Zoom By", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/view_zoom_by.craft/steps.txt:1: view.zoom_by: bad parameters for `view.zoom_by`: factor must be a positive number"}
+{"id": "view.zoom_set", "kind": "command", "label": "Set Zoom", "menu": "", "run": "ok"}
+{"id": "view.zoom_preset", "kind": "command", "label": "Zoom Preset", "menu": "", "run": "ok"}
+{"id": "view.zoom_to_selection", "kind": "command", "label": "Zoom to Selection", "menu": "", "run": "ok"}
+{"id": "view.zoom_fit", "kind": "command", "label": "Fill Window With Session", "menu": "", "run": "ok"}
+{"id": "view.scroll", "kind": "command", "label": "Scroll Timeline", "menu": "", "run": "ok"}
+{"id": "view.waveform_zoom", "kind": "command", "label": "Waveform Zoom", "menu": "", "run": "ok"}
+{"id": "view.ruler", "kind": "command", "label": "Rulers", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/view_ruler.craft/steps.txt:1: view.ruler: bad parameters for `view.ruler`: unknown ruler"}
+{"id": "view.main_counter", "kind": "command", "label": "Main Counter", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/view_main_counter.craft/steps.txt:1: view.main_counter: bad parameters for `view.main_counter`: unknown format"}
+{"id": "view.sub_counter", "kind": "command", "label": "Sub Counter", "menu": "", "run": "ok"}
+{"id": "view.grid", "kind": "command", "label": "Grid Value", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/view_grid.craft/steps.txt:1: view.grid: bad parameters for `view.grid`: unknown grid value"}
+{"id": "view.grid_lines", "kind": "command", "label": "Show Grid Lines", "menu": "", "run": "ok"}
+{"id": "view.nudge", "kind": "command", "label": "Nudge Value", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/view_nudge.craft/steps.txt:1: view.nudge: bad parameters for `view.nudge`: unknown nudge value"}
+{"id": "track.new", "kind": "command", "label": "New...", "menu": "", "run": "ok"}
+{"id": "track.group", "kind": "command", "label": "Group...", "menu": "", "run": "ok"}
+{"id": "track.ungroup", "kind": "command", "label": "Delete Group", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_ungroup.craft/steps.txt:1: track.ungroup: bad parameters for `track.ungroup`: unknown `group`"}
+{"id": "track.group_toggle", "kind": "command", "label": "Toggle Group Active", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_group_toggle.craft/steps.txt:1: track.group_toggle: bad parameters for `track.group_toggle`: unknown `group`"}
+{"id": "track.group_modify", "kind": "command", "label": "Modify Group", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_group_modify.craft/steps.txt:1: track.group_modify: bad parameters for `track.group_modify`: unknown `group`"}
+{"id": "track.duplicate", "kind": "command", "label": "Duplicate...", "menu": "", "run": "ok"}
+{"id": "track.split_into_mono", "kind": "command", "label": "Split into Mono", "menu": "", "run": "ok"}
+{"id": "track.make_inactive", "kind": "command", "label": "Make Inactive", "menu": "", "run": "ok"}
+{"id": "track.move_to_new_folder", "kind": "command", "label": "Move to New Folder...", "menu": "", "run": "ok"}
+{"id": "track.move_to_folder", "kind": "command", "label": "Move to Folder", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_move_to_folder.craft/steps.txt:1: track.move_to_folder: bad parameters for `track.move_to_folder`: `folder` required"}
+{"id": "track.remove_from_folder", "kind": "command", "label": "Remove from Folder", "menu": "", "run": "ok"}
+{"id": "track.change_width", "kind": "command", "label": "Change Track Width", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_change_width.craft/steps.txt:1: track.change_width: bad parameters for `track.change_width`: `format` required"}
+{"id": "track.delete", "kind": "command", "label": "Delete", "menu": "", "run": "ok"}
+{"id": "track.rename", "kind": "command", "label": "Rename Track", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_rename.craft/steps.txt:1: track.rename: bad parameters for `track.rename`: `track` required"}
+{"id": "track.comments", "kind": "command", "label": "Track Comments", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_comments.craft/steps.txt:1: track.comments: bad parameters for `track.comments`: `track` required"}
+{"id": "track.color", "kind": "command", "label": "Track Color", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_color.craft/steps.txt:1: track.color: bad parameters for `track.color`: `color` must be [r,g,b] or a palette index"}
+{"id": "track.height", "kind": "command", "label": "Track Height", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_height.craft/steps.txt:1: track.height: bad parameters for `track.height`: unknown height"}
+{"id": "track.height_up", "kind": "command", "label": "Increase Track Height", "menu": "", "run": "ok"}
+{"id": "track.height_down", "kind": "command", "label": "Decrease Track Height", "menu": "", "run": "ok"}
+{"id": "track.view", "kind": "command", "label": "Track View", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_view.craft/steps.txt:1: track.view: bad parameters for `track.view`: `view` required"}
+{"id": "track.hide", "kind": "command", "label": "Hide Track", "menu": "", "run": "ok"}
+{"id": "track.pin", "kind": "command", "label": "Pin Track", "menu": "", "run": "ok"}
+{"id": "track.move", "kind": "command", "label": "Move Track", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_move.craft/steps.txt:1: track.move: bad parameters for `track.move`: `track` required"}
+{"id": "track.freeze", "kind": "command", "label": "Freeze", "menu": "", "run": "ok"}
+{"id": "track.commit", "kind": "command", "label": "Commit...", "menu": "", "run": "ok"}
+{"id": "track.bounce", "kind": "command", "label": "Bounce...", "menu": "", "run": "ok"}
+{"id": "track.bypass_inserts", "kind": "command", "label": "All", "menu": "", "run": "ok"}
+{"id": "track.mute_sends", "kind": "command", "label": "All", "menu": "", "run": "ok"}
+{"id": "track.set_record_to_input_only", "kind": "command", "label": "Set Record Tracks to Input Only", "menu": "", "run": "ok"}
+{"id": "track.scroll_to", "kind": "command", "label": "Scroll to Track...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_scroll_to.craft/steps.txt:1: track.scroll_to: bad parameters for `track.scroll_to`: `track` required"}
+{"id": "track.clear_clip_indicators", "kind": "command", "label": "Clear All Clip Indicators", "menu": "", "run": "ok"}
+{"id": "track.clear_trim_automation", "kind": "command", "label": "Clear Trim Automation", "menu": "", "run": "ok"}
+{"id": "track.create_click", "kind": "command", "label": "Create Click Track", "menu": "", "run": "ok"}
+{"id": "track.playlist_new", "kind": "command", "label": "New Playlist", "menu": "", "run": "ok"}
+{"id": "track.playlist_duplicate", "kind": "command", "label": "Duplicate Playlist", "menu": "", "run": "ok"}
+{"id": "track.playlist_select", "kind": "command", "label": "Select Playlist", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_playlist_select.craft/steps.txt:1: track.playlist_select: bad parameters for `track.playlist_select`: no such playlist"}
+{"id": "track.playlist_delete_unused", "kind": "command", "label": "Delete Unused Playlists", "menu": "", "run": "ok"}
+{"id": "track.folder_toggle", "kind": "command", "label": "Open/Close Folder", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_folder_toggle.craft/steps.txt:1: track.folder_toggle: bad parameters for `track.folder_toggle`: `track` required"}
+{"id": "track.vca", "kind": "command", "label": "Assign to VCA", "menu": "", "run": "ok"}
+{"id": "track.playlist_promote", "kind": "command", "label": "Promote to Main Playlist", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_playlist_promote.craft/steps.txt:1: track.playlist_promote: bad parameters for `track.playlist_promote`: `track` required"}
+{"id": "track.input", "kind": "command", "label": "Track Input", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_input.craft/steps.txt:1: track.input: bad parameters for `track.route`: `input` required"}
+{"id": "track.output", "kind": "command", "label": "Track Output", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_output.craft/steps.txt:1: track.output: bad parameters for `track.route`: `output` required"}
+{"id": "track.timebase", "kind": "command", "label": "Track Timebase", "menu": "", "run": "ok"}
+{"id": "track.elastic", "kind": "command", "label": "Elastic Audio", "menu": "", "run": "ok"}
+{"id": "clip.edit_lock", "kind": "command", "label": "Edit Lock/Unlock", "menu": "", "run": "ok"}
+{"id": "clip.time_lock", "kind": "command", "label": "Time Lock/Unlock", "menu": "", "run": "ok"}
+{"id": "clip.send_to_back", "kind": "command", "label": "Send to Back", "menu": "", "run": "ok"}
+{"id": "clip.bring_to_front", "kind": "command", "label": "Bring to Front", "menu": "", "run": "ok"}
+{"id": "clip.rating", "kind": "command", "label": "Rating", "menu": "", "run": "ok"}
+{"id": "clip.group", "kind": "command", "label": "Group", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_group.craft/steps.txt:1: clip.group: bad parameters for `clip.group`: select two or more clips"}
+{"id": "clip.ungroup", "kind": "command", "label": "Ungroup", "menu": "", "run": "ok"}
+{"id": "clip.ungroup_all", "kind": "command", "label": "Ungroup All", "menu": "", "run": "ok"}
+{"id": "clip.loop", "kind": "command", "label": "Loop...", "menu": "", "run": "ok"}
+{"id": "clip.rename", "kind": "command", "label": "Rename...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_rename.craft/steps.txt:1: clip.rename: bad parameters for `clip.rename`: `name` required"}
+{"id": "clip.gain", "kind": "command", "label": "Clip Gain", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_gain.craft/steps.txt:1: clip.gain: bad parameters for `clip.gain`: `db` or `delta_db` required"}
+{"id": "clip.gain_nudge_up", "kind": "command", "label": "Nudge Clip Gain Up", "menu": "", "run": "ok"}
+{"id": "clip.gain_nudge_down", "kind": "command", "label": "Nudge Clip Gain Down", "menu": "", "run": "ok"}
+{"id": "clip.gain_render", "kind": "command", "label": "Render", "menu": "", "run": "ok"}
+{"id": "clip.gain_bypass", "kind": "command", "label": "Bypass", "menu": "", "run": "ok"}
+{"id": "clip.identify_sync_point", "kind": "command", "label": "Identify Sync Point", "menu": "", "run": "ok"}
+{"id": "clip.remove_sync_point", "kind": "command", "label": "Remove Sync Point", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_remove_sync_point.craft/steps.txt:1: clip.remove_sync_point: `clip.remove_sync_point` is not available: no selected clip has a sync point"}
+{"id": "clip.quantize_to_grid", "kind": "command", "label": "Quantize to Grid", "menu": "", "run": "ok"}
+{"id": "clip.color", "kind": "command", "label": "Clip Color", "menu": "", "run": "ok"}
+{"id": "clip.elastic_properties", "kind": "command", "label": "Elastic Properties", "menu": "", "run": "ok"}
+{"id": "clip.remove_warp", "kind": "command", "label": "Remove Warp", "menu": "", "run": "ok"}
+{"id": "clip.place_source", "kind": "command", "label": "Place Audio File", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_place_source.craft/steps.txt:1: clip.place_source: bad parameters for `clip.place_source`: `source` id required"}
+{"id": "clip.capture", "kind": "command", "label": "Capture...", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_capture.craft/steps.txt:1: clip.capture: `clip.capture` is not available: make an edit selection first"}
+{"id": "event.tempo", "kind": "command", "label": "Tempo Change", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_tempo.craft/steps.txt:1: event.tempo: bad parameters for `event.tempo`: invalid tempo NaN"}
+{"id": "event.tempo_remove", "kind": "command", "label": "Remove Tempo Change", "menu": "", "run": "ok"}
+{"id": "event.meter", "kind": "command", "label": "Change Meter...", "menu": "", "run": "ok"}
+{"id": "event.tempo_scale", "kind": "command", "label": "Scale...", "menu": "", "run": "ok"}
+{"id": "event.tempo_constant", "kind": "command", "label": "Constant...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_tempo_constant.craft/steps.txt:1: event.tempo_constant: bad parameters for `event.tempo_constant`: invalid tempo NaN"}
+{"id": "event.insert_time", "kind": "command", "label": "Insert Time...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_insert_time.craft/steps.txt:1: event.insert_time: bad parameters for `event.insert_time`: give `start` and `length` or `end`"}
+{"id": "event.cut_time", "kind": "command", "label": "Cut Time...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_cut_time.craft/steps.txt:1: event.cut_time: bad parameters for `event.cut_time`: selection is empty"}
+{"id": "event.quantize", "kind": "command", "label": "Quantize...", "menu": "", "run": "ok"}
+{"id": "event.transpose", "kind": "command", "label": "Transpose...", "menu": "", "run": "ok"}
+{"id": "event.change_velocity", "kind": "command", "label": "Change Velocity...", "menu": "", "run": "ok"}
+{"id": "event.change_duration", "kind": "command", "label": "Change Duration...", "menu": "", "run": "ok"}
+{"id": "event.remove_duplicate_notes", "kind": "command", "label": "Remove Duplicate Notes", "menu": "", "run": "ok"}
+{"id": "event.add_key_change", "kind": "command", "label": "Add Key Change...", "menu": "", "run": "ok"}
+{"id": "event.renumber_bars", "kind": "command", "label": "Renumber Bars...", "menu": "", "run": "ok"}
+{"id": "event.all_notes_off", "kind": "command", "label": "All MIDI Notes Off", "menu": "", "run": "ok"}
+{"id": "event.midi_note", "kind": "command", "label": "Add MIDI Note", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_midi_note.craft/steps.txt:1: event.midi_note: bad parameters for `event.midi_note`: `clip` required"}
+{"id": "markers.add", "kind": "command", "label": "New Memory Location", "menu": "", "run": "ok"}
+{"id": "markers.delete", "kind": "command", "label": "Delete Memory Location", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/markers_delete.craft/steps.txt:1: markers.delete: bad parameters for `markers.delete`: unknown memory location (give `number`, `id` or `name`)"}
+{"id": "markers.edit", "kind": "command", "label": "Edit Memory Location", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/markers_edit.craft/steps.txt:1: markers.edit: bad parameters for `markers.edit`: unknown memory location (give `number`, `id` or `name`)"}
+{"id": "markers.recall", "kind": "command", "label": "Recall Memory Location", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/markers_recall.craft/steps.txt:1: markers.recall: bad parameters for `markers.recall`: unknown memory location (give `number`, `id` or `name`)"}
+{"id": "markers.next", "kind": "command", "label": "Go to Next Marker", "menu": "", "run": "ok"}
+{"id": "markers.previous", "kind": "command", "label": "Go to Previous Marker", "menu": "", "run": "ok"}
+{"id": "mix.volume", "kind": "command", "label": "Set Volume", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_volume.craft/steps.txt:1: mix.volume: bad parameters for `mix.volume`: `db` or `delta_db` required"}
+{"id": "mix.pan", "kind": "command", "label": "Set Pan", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_pan.craft/steps.txt:1: mix.pan: bad parameters for `mix.pan`: `pan` (number) required"}
+{"id": "mix.mute", "kind": "command", "label": "Mute", "menu": "", "run": "ok"}
+{"id": "mix.solo", "kind": "command", "label": "Solo", "menu": "", "run": "ok"}
+{"id": "mix.solo_safe", "kind": "command", "label": "Solo Safe", "menu": "", "run": "ok"}
+{"id": "mix.clear_solos", "kind": "command", "label": "Clear All Solos", "menu": "", "run": "ok"}
+{"id": "mix.clear_mutes", "kind": "command", "label": "Clear All Mutes", "menu": "", "run": "ok"}
+{"id": "mix.record_arm", "kind": "command", "label": "Record Enable", "menu": "", "run": "ok"}
+{"id": "mix.input_monitor", "kind": "command", "label": "Input Monitoring", "menu": "", "run": "ok"}
+{"id": "mix.phase_invert", "kind": "command", "label": "Phase Invert", "menu": "", "run": "ok"}
+{"id": "mix.trim", "kind": "command", "label": "Input Trim", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_trim.craft/steps.txt:1: mix.trim: bad parameters for `mix.trim`: `db` (number) required"}
+{"id": "mix.automation_mode", "kind": "command", "label": "Automation Mode", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_automation_mode.craft/steps.txt:1: mix.automation_mode: bad parameters for `mix.automation_mode`: unknown mode"}
+{"id": "mix.insert", "kind": "command", "label": "Insert Plugin", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_insert.craft/steps.txt:1: mix.insert: bad parameters for `mix.insert`: `plugin` required"}
+{"id": "mix.insert_remove", "kind": "command", "label": "Remove Insert", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_insert_remove.craft/steps.txt:1: mix.insert_remove: bad parameters for `mix.insert_remove`: `slot` must be 0..9 or a..j"}
+{"id": "mix.insert_bypass", "kind": "command", "label": "Bypass Insert", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_insert_bypass.craft/steps.txt:1: mix.insert_bypass: bad parameters for `mix.insert_bypass`: `slot` must be 0..9 or a..j"}
+{"id": "mix.insert_param", "kind": "command", "label": "Set Plugin Parameter", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_insert_param.craft/steps.txt:1: mix.insert_param: bad parameters for `mix.insert_param`: `slot` must be 0..9 or a..j"}
+{"id": "mix.insert_params", "kind": "command", "label": "Set Plugin Parameters", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_insert_params.craft/steps.txt:1: mix.insert_params: bad parameters for `mix.insert_params`: `slot` must be 0..9 or a..j"}
+{"id": "mix.insert_move", "kind": "command", "label": "Move Insert", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_insert_move.craft/steps.txt:1: mix.insert_move: bad parameters for `mix.insert_move`: `from` slot"}
+{"id": "mix.send", "kind": "command", "label": "Assign Send", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_send.craft/steps.txt:1: mix.send: bad parameters for `mix.send`: `bus` required"}
+{"id": "mix.send_remove", "kind": "command", "label": "Remove Send", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_send_remove.craft/steps.txt:1: mix.send_remove: bad parameters for `mix.send_remove`: `slot` must be 0..9 or a..j"}
+{"id": "mix.send_level", "kind": "command", "label": "Send Level", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_send_level.craft/steps.txt:1: mix.send_level: bad parameters for `mix.send_level`: `slot` must be 0..9 or a..j"}
+{"id": "mix.new_bus", "kind": "command", "label": "New Bus", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_new_bus.craft/steps.txt:1: mix.new_bus: bad parameters for `mix.new_bus`: `name` required"}
+{"id": "automation.set_point", "kind": "command", "label": "Add Automation Breakpoint", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/automation_set_point.craft/steps.txt:1: automation.set_point: bad parameters for `automation.set_point`: `value` required"}
+{"id": "automation.write_range", "kind": "command", "label": "Write Automation", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/automation_write_range.craft/steps.txt:1: automation.write_range: bad parameters for `automation.write_range`: `value` required"}
+{"id": "automation.clear", "kind": "command", "label": "Clear Automation", "menu": "", "run": "ok"}
+{"id": "automation.thin", "kind": "command", "label": "Thin", "menu": "", "run": "ok"}
+{"id": "automation.thin_all", "kind": "command", "label": "Thin All", "menu": "", "run": "ok"}
+{"id": "automation.write_to_current", "kind": "command", "label": "Write to Current", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/automation_write_to_current.craft/steps.txt:1: automation.write_to_current: `automation.write_to_current` is not available: make an edit selection first"}
+{"id": "automation.write_to_all", "kind": "command", "label": "Write to All Enabled", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/automation_write_to_all.craft/steps.txt:1: automation.write_to_all: `automation.write_to_all` is not available: make an edit selection first"}
+{"id": "automation.volume_to_clip_gain", "kind": "command", "label": "Convert Volume Automation to Clip Gain Edit > Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/automation_volume_to_clip_gain.craft/steps.txt:1: automation.volume_to_clip_gain: `automation.volume_to_clip_gain` is not available: make an edit selection first"}
+{"id": "automation.clip_gain_to_volume", "kind": "command", "label": "Convert Clip Gain to Volume Automation Edit > Automation", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/automation_clip_gain_to_volume.craft/steps.txt:1: automation.clip_gain_to_volume: `automation.clip_gain_to_volume` is not available: make an edit selection first"}
+{"id": "automation.copy_to_send", "kind": "command", "label": "Copy to Send...", "menu": "", "run": "ok"}
+{"id": "options.loop_record", "kind": "command", "label": "Loop Record", "menu": "", "run": "ok"}
+{"id": "options.quickpunch", "kind": "command", "label": "QuickPunch", "menu": "", "run": "ok"}
+{"id": "options.pre_post_roll", "kind": "command", "label": "Pre/Post-Roll", "menu": "", "run": "ok"}
+{"id": "options.loop_playback", "kind": "command", "label": "Loop Playback", "menu": "", "run": "ok"}
+{"id": "options.link_timeline_edit", "kind": "command", "label": "Link Timeline and Edit Selection", "menu": "", "run": "ok"}
+{"id": "options.link_track_edit", "kind": "command", "label": "Link Track and Edit Selection", "menu": "", "run": "ok"}
+{"id": "options.insertion_follows_playback", "kind": "command", "label": "Insertion Follows Playback", "menu": "", "run": "ok"}
+{"id": "options.tab_to_transient", "kind": "command", "label": "Tab to Transient", "menu": "", "run": "ok"}
+{"id": "options.mirrored_midi", "kind": "command", "label": "Mirrored MIDI Editing", "menu": "", "run": "ok"}
+{"id": "options.automation_follows_edit", "kind": "command", "label": "Automation Follows Edit", "menu": "", "run": "ok"}
+{"id": "options.markers_follow_edit", "kind": "command", "label": "Markers Follow Edit", "menu": "", "run": "ok"}
+{"id": "options.layered_editing", "kind": "command", "label": "Layered Editing", "menu": "", "run": "ok"}
+{"id": "options.click", "kind": "command", "label": "Click", "menu": "", "run": "ok"}
+{"id": "options.countoff", "kind": "command", "label": "Count Off", "menu": "", "run": "ok"}
+{"id": "options.midi_merge", "kind": "command", "label": "MIDI Merge", "menu": "", "run": "ok"}
+{"id": "options.pre_fader_metering", "kind": "command", "label": "Pre-Fader Metering", "menu": "", "run": "ok"}
+{"id": "options.delay_compensation", "kind": "command", "label": "Delay Compensation", "menu": "", "run": "ok"}
+{"id": "options.destructive_record", "kind": "command", "label": "Destructive Record", "menu": "", "run": "ok"}
+{"id": "options.trackpunch", "kind": "command", "label": "TrackPunch", "menu": "", "run": "ok"}
+{"id": "options.scrolling", "kind": "command", "label": "Edit Window Scrolling", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/options_scrolling.craft/steps.txt:1: options.scrolling: bad parameters for `options.scrolling`: unknown mode"}
+{"id": "options.solo_mode", "kind": "command", "label": "Solo Mode", "menu": "", "run": "ok"}
+{"id": "options.keyboard_focus", "kind": "command", "label": "Keyboard Focus", "menu": "", "run": "ok"}
+{"id": "options.pre_roll", "kind": "command", "label": "Pre-Roll Amount", "menu": "", "run": "ok"}
+{"id": "options.post_roll", "kind": "command", "label": "Post-Roll Amount", "menu": "", "run": "ok"}
+{"id": "setup.session", "kind": "command", "label": "Session", "menu": "", "run": "ok"}
+{"id": "setup.preferences", "kind": "command", "label": "Preferences...", "menu": "", "run": "ok"}
+{"id": "setup.reset_edit_state", "kind": "command", "label": "Reset Edit Settings", "menu": "", "run": "ok"}
+{"id": "transport.play", "kind": "command", "label": "Play", "menu": "", "run": "ok"}
+{"id": "transport.stop", "kind": "command", "label": "Stop", "menu": "", "run": "ok"}
+{"id": "transport.toggle", "kind": "command", "label": "Play/Stop", "menu": "", "run": "ok"}
+{"id": "transport.record", "kind": "command", "label": "Record", "menu": "", "run": "ok"}
+{"id": "transport.pause", "kind": "command", "label": "Pause", "menu": "", "run": "ok"}
+{"id": "transport.half_speed", "kind": "command", "label": "Half-Speed Playback", "menu": "", "run": "ok"}
+{"id": "transport.play_selection", "kind": "command", "label": "Play Edit", "menu": "", "run": "ok"}
+{"id": "transport.rtz", "kind": "command", "label": "Return to Zero", "menu": "", "run": "ok"}
+{"id": "transport.go_to_end", "kind": "command", "label": "Go to End", "menu": "", "run": "ok"}
+{"id": "transport.rewind", "kind": "command", "label": "Rewind", "menu": "", "run": "ok"}
+{"id": "transport.fast_forward", "kind": "command", "label": "Fast Forward", "menu": "", "run": "ok"}
+{"id": "transport.locate", "kind": "command", "label": "Locate", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/transport_locate.craft/steps.txt:1: transport.locate: bad parameters for `transport.locate`: `at` required"}
+{"id": "transport.status", "kind": "command", "label": "Transport Status", "menu": "", "run": "ok"}
+{"id": "edit.tab", "kind": "command", "label": "Tab", "menu": "", "run": "ok"}
+{"id": "session.inspect", "kind": "command", "label": "Inspect Session", "menu": "", "run": "ok"}
+{"id": "track.inspect", "kind": "command", "label": "Inspect Track", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_inspect.craft/steps.txt:1: track.inspect: bad parameters for `track.inspect`: `track` required"}
+{"id": "clip.inspect", "kind": "command", "label": "Inspect Clip", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_inspect.craft/steps.txt:1: clip.inspect: bad parameters for `clip.inspect`: `clip` id required"}
+{"id": "engine.commands", "kind": "command", "label": "List Commands", "menu": "", "run": "ok"}
+{"id": "engine.history", "kind": "command", "label": "Undo History", "menu": "", "run": "ok"}
+{"id": "engine.plugins", "kind": "command", "label": "List Plugins", "menu": "", "run": "ok"}
+{"id": "engine.parity", "kind": "command", "label": "Parity Report", "menu": "", "run": "ok"}
+{"id": "session.format_time", "kind": "command", "label": "Format Time", "menu": "", "run": "ok"}
+{"id": "session.audio_health", "kind": "command", "label": "Session Audio Health", "menu": "", "run": "ok"}
+{"id": "audiosuite.process", "kind": "command", "label": "AudioSuite Process", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/audiosuite_process.craft/steps.txt:1: audiosuite.process: bad parameters for `audiosuite.process`: `process` required"}
+{"id": "edit.copy_audio_as_midi", "kind": "command", "label": "Audio as MIDI", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_copy_audio_as_midi.craft/steps.txt:1: edit.copy_audio_as_midi: `edit.copy_audio_as_midi` is not available: make an edit selection first"}
+{"id": "midi.notes", "kind": "command", "label": "List MIDI Notes", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/midi_notes.craft/steps.txt:1: midi.notes: bad parameters for `midi.notes`: `clip` id required"}
+{"id": "midi.new_clip", "kind": "command", "label": "New MIDI Clip", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/midi_new_clip.craft/steps.txt:1: midi.new_clip: bad parameters for `midi.new_clip`: not a MIDI or instrument track"}
+{"id": "midi.note_add", "kind": "command", "label": "Add Note", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/midi_note_add.craft/steps.txt:1: midi.note_add: bad parameters for `midi.note_add`: `clip` id required"}
+{"id": "midi.note_edit", "kind": "command", "label": "Edit Note", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/midi_note_edit.craft/steps.txt:1: midi.note_edit: bad parameters for `midi.note_edit`: `clip` id required"}
+{"id": "midi.note_delete", "kind": "command", "label": "Delete Notes", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/midi_note_delete.craft/steps.txt:1: midi.note_delete: bad parameters for `midi.note_delete`: `clip` id required"}
+{"id": "midi.notes_move", "kind": "command", "label": "Move Notes", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/midi_notes_move.craft/steps.txt:1: midi.notes_move: bad parameters for `midi.notes_move`: `clip` id required"}
+{"id": "view.edit_comments", "kind": "command", "label": "Comments", "menu": "", "run": "ok"}
+{"id": "view.edit_mic_preamps", "kind": "command", "label": "Mic Preamps", "menu": "", "run": "ok"}
+{"id": "view.edit_instruments", "kind": "command", "label": "Instruments", "menu": "", "run": "ok"}
+{"id": "view.edit_inserts_ae", "kind": "command", "label": "Inserts A-E", "menu": "", "run": "ok"}
+{"id": "view.edit_inserts_fj", "kind": "command", "label": "Inserts F-J", "menu": "", "run": "ok"}
+{"id": "view.edit_sends_ae", "kind": "command", "label": "Sends A-E", "menu": "", "run": "ok"}
+{"id": "view.edit_sends_fj", "kind": "command", "label": "Sends F-J", "menu": "", "run": "ok"}
+{"id": "view.edit_io", "kind": "command", "label": "I/O", "menu": "", "run": "ok"}
+{"id": "view.edit_object", "kind": "command", "label": "Object", "menu": "", "run": "ok"}
+{"id": "view.edit_realtime_properties", "kind": "command", "label": "Real-Time Properties", "menu": "", "run": "ok"}
+{"id": "view.edit_track_color", "kind": "command", "label": "Track Color", "menu": "", "run": "ok"}
+{"id": "view.edit_marker_controls", "kind": "command", "label": "Marker Controls", "menu": "", "run": "ok"}
+{"id": "view.edit_pinned_tracks", "kind": "command", "label": "Pinned Tracks", "menu": "", "run": "ok"}
+{"id": "view.edit_all", "kind": "command", "label": "All", "menu": "", "run": "ok"}
+{"id": "view.edit_minimal", "kind": "command", "label": "Minimal", "menu": "", "run": "ok"}
+{"id": "view.ruler_timecode2", "kind": "command", "label": "Timecode 2", "menu": "", "run": "ok"}
+{"id": "view.ruler_markers2", "kind": "command", "label": "Markers 2", "menu": "", "run": "ok"}
+{"id": "view.ruler_markers3", "kind": "command", "label": "Markers 3", "menu": "", "run": "ok"}
+{"id": "view.ruler_markers4", "kind": "command", "label": "Markers 4", "menu": "", "run": "ok"}
+{"id": "view.ruler_markers5", "kind": "command", "label": "Markers 5", "menu": "", "run": "ok"}
+{"id": "view.ruler_all_markers", "kind": "command", "label": "All Marker Rulers", "menu": "", "run": "ok"}
+{"id": "view.ruler_all", "kind": "command", "label": "All", "menu": "", "run": "ok"}
+{"id": "view.ruler_minimal", "kind": "command", "label": "Minimal", "menu": "", "run": "ok"}
+{"id": "view.ruler_tempo_editor", "kind": "command", "label": "Tempo Editor", "menu": "", "run": "ok"}
+{"id": "view.ruler_key_staff", "kind": "command", "label": "Key Signature Staff", "menu": "", "run": "ok"}
+{"id": "view.marker_track_lane", "kind": "command", "label": "Track Lane", "menu": "", "run": "ok"}
+{"id": "view.marker_ruler_lines", "kind": "command", "label": "Ruler Lines", "menu": "", "run": "ok"}
+{"id": "view.marker_folder_lines", "kind": "command", "label": "Folder Lines", "menu": "", "run": "ok"}
+{"id": "view.marker_ruler_lane_color", "kind": "command", "label": "Ruler Lane Color", "menu": "", "run": "ok"}
+{"id": "view.marker_track_lane_color", "kind": "command", "label": "Track Lane Color", "menu": "", "run": "ok"}
+{"id": "view.midi_input_display", "kind": "command", "label": "MIDI Input Display", "menu": "", "run": "ok"}
+{"id": "view.midi_editor_clip_effects", "kind": "command", "label": "Clip Effects", "menu": "", "run": "ok"}
+{"id": "view.clip_sync_point", "kind": "command", "label": "Sync Point", "menu": "", "run": "ok"}
+{"id": "view.clip_processing_state", "kind": "command", "label": "Processing State", "menu": "", "run": "ok"}
+{"id": "view.clip_name", "kind": "command", "label": "Name", "menu": "", "run": "ok"}
+{"id": "view.clip_channel_name", "kind": "command", "label": "Channel Name", "menu": "", "run": "ok"}
+{"id": "view.clip_scene_take", "kind": "command", "label": "Scene And Take", "menu": "", "run": "ok"}
+{"id": "view.clip_rating", "kind": "command", "label": "Rating", "menu": "", "run": "ok"}
+{"id": "view.clip_overlap_shadows", "kind": "command", "label": "Overlap Shadows", "menu": "", "run": "ok"}
+{"id": "view.clip_transparency", "kind": "command", "label": "Transparency", "menu": "", "run": "ok"}
+{"id": "view.clip_overwrite_indicator", "kind": "command", "label": "Overwrite Indicator", "menu": "", "run": "ok"}
+{"id": "view.clip_copy_move_indicators", "kind": "command", "label": "Copy/Move Indicators", "menu": "", "run": "ok"}
+{"id": "view.clip_gain_line", "kind": "command", "label": "Clip Gain Line", "menu": "", "run": "ok"}
+{"id": "view.clip_gain_info", "kind": "command", "label": "Clip Gain Info", "menu": "", "run": "ok"}
+{"id": "view.clip_effects_status", "kind": "command", "label": "Clip Effects Status", "menu": "", "run": "ok"}
+{"id": "view.clip_ara_note_overlay", "kind": "command", "label": "ARA Note Overlay", "menu": "", "run": "ok"}
+{"id": "view.clip_time_current", "kind": "command", "label": "Current Time", "menu": "", "run": "ok"}
+{"id": "view.clip_time_original", "kind": "command", "label": "Original Time Stamp", "menu": "", "run": "ok"}
+{"id": "view.clip_time_user", "kind": "command", "label": "User Time Stamp", "menu": "", "run": "ok"}
+{"id": "view.clip_time_none", "kind": "command", "label": "No Time", "menu": "", "run": "ok"}
+{"id": "view.clip_all_channels", "kind": "command", "label": "Display on All Channels", "menu": "", "run": "ok"}
+{"id": "view.waveform_peak", "kind": "command", "label": "Peak", "menu": "", "run": "ok"}
+{"id": "view.waveform_power", "kind": "command", "label": "Power", "menu": "", "run": "ok"}
+{"id": "view.waveform_rectified", "kind": "command", "label": "Rectified", "menu": "", "run": "ok"}
+{"id": "view.waveform_outlines", "kind": "command", "label": "Outlines", "menu": "", "run": "ok"}
+{"id": "view.waveform_overlapped_crossfades", "kind": "command", "label": "Overlapped Crossfades", "menu": "", "run": "ok"}
+{"id": "view.automation_trim_playlist", "kind": "command", "label": "Trim Playlist", "menu": "", "run": "ok"}
+{"id": "view.automation_composite_playlist", "kind": "command", "label": "Composite Playlist", "menu": "", "run": "ok"}
+{"id": "view.expanded_sends_all", "kind": "command", "label": "All", "menu": "", "run": "ok"}
+{"id": "view.expanded_sends_none", "kind": "command", "label": "None", "menu": "", "run": "ok"}
+{"id": "view.expanded_send_a", "kind": "command", "label": "Send A", "menu": "", "run": "ok"}
+{"id": "view.expanded_send_b", "kind": "command", "label": "Send B", "menu": "", "run": "ok"}
+{"id": "view.expanded_send_c", "kind": "command", "label": "Send C", "menu": "", "run": "ok"}
+{"id": "view.expanded_send_d", "kind": "command", "label": "Send D", "menu": "", "run": "ok"}
+{"id": "view.expanded_send_e", "kind": "command", "label": "Send E", "menu": "", "run": "ok"}
+{"id": "view.expanded_send_f", "kind": "command", "label": "Send F", "menu": "", "run": "ok"}
+{"id": "view.expanded_send_g", "kind": "command", "label": "Send G", "menu": "", "run": "ok"}
+{"id": "view.expanded_send_h", "kind": "command", "label": "Send H", "menu": "", "run": "ok"}
+{"id": "view.expanded_send_i", "kind": "command", "label": "Send I", "menu": "", "run": "ok"}
+{"id": "view.expanded_send_j", "kind": "command", "label": "Send J", "menu": "", "run": "ok"}
+{"id": "view.track_number", "kind": "command", "label": "Track Number", "menu": "", "run": "ok"}
+{"id": "view.track_transcription_lane", "kind": "command", "label": "Track Transcription Lane", "menu": "", "run": "ok"}
+{"id": "view.dropped_video_frame_indicator", "kind": "command", "label": "Dropped Video Frame Indicator", "menu": "", "run": "ok"}
+{"id": "view.transport_counters", "kind": "command", "label": "Counters", "menu": "", "run": "ok"}
+{"id": "view.transport_midi_controls", "kind": "command", "label": "MIDI Controls", "menu": "", "run": "ok"}
+{"id": "view.transport_synchronization", "kind": "command", "label": "Synchronization", "menu": "", "run": "ok"}
+{"id": "view.transport_ableton_link", "kind": "command", "label": "Ableton Link", "menu": "", "run": "ok"}
+{"id": "view.transport_output_meters", "kind": "command", "label": "Output Meters", "menu": "", "run": "ok"}
+{"id": "view.transport_expanded", "kind": "command", "label": "Expanded", "menu": "", "run": "ok"}
+{"id": "view.flags", "kind": "command", "label": "View Flags", "menu": "", "run": "ok"}
+{"id": "track.object", "kind": "command", "label": "Object / Bed", "menu": "", "run": "ok"}
+{"id": "track.convert_aux_to_folder", "kind": "command", "label": "Convert Aux to Routing Folder", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_convert_aux_to_folder.craft/steps.txt:1: track.convert_aux_to_folder: bad parameters for `track.convert_aux_to_folder`: select one or more aux input tracks"}
+{"id": "track.extract_midi", "kind": "command", "label": "Extract MIDI to New Track", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_extract_midi.craft/steps.txt:1: track.extract_midi: bad parameters for `track.extract_midi`: select a MIDI or instrument track"}
+{"id": "track.save_preset", "kind": "command", "label": "Save Track Preset...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_save_preset.craft/steps.txt:1: track.save_preset: bad parameters for `track.save_preset`: `path` required"}
+{"id": "track.load_preset", "kind": "command", "label": "Load Track Preset", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_load_preset.craft/steps.txt:1: track.load_preset: bad parameters for `track.load_preset`: `path` required"}
+{"id": "track.bypass_inserts_ae", "kind": "command", "label": "Inserts A-E", "menu": "", "run": "ok"}
+{"id": "track.bypass_inserts_fj", "kind": "command", "label": "Inserts F-J", "menu": "", "run": "ok"}
+{"id": "track.bypass_eq", "kind": "command", "label": "EQ", "menu": "", "run": "ok"}
+{"id": "track.bypass_dynamics", "kind": "command", "label": "Dynamics", "menu": "", "run": "ok"}
+{"id": "track.bypass_reverb", "kind": "command", "label": "Reverb", "menu": "", "run": "ok"}
+{"id": "track.bypass_delay", "kind": "command", "label": "Delay", "menu": "", "run": "ok"}
+{"id": "track.bypass_modulation", "kind": "command", "label": "Modulation", "menu": "", "run": "ok"}
+{"id": "track.mute_sends_ae", "kind": "command", "label": "Sends A-E", "menu": "", "run": "ok"}
+{"id": "track.mute_sends_fj", "kind": "command", "label": "Sends F-J", "menu": "", "run": "ok"}
+{"id": "track.write_midi_rtp", "kind": "command", "label": "Write MIDI Real-Time Properties", "menu": "", "run": "ok"}
+{"id": "track.trim_automation_write", "kind": "command", "label": "Write Trim Automation", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_trim_automation_write.craft/steps.txt:1: track.trim_automation_write: bad parameters for `track.trim_automation_write`: the selection is empty"}
+{"id": "track.coalesce_trim", "kind": "command", "label": "Coalesce Trim Automation", "menu": "", "run": "ok"}
+{"id": "track.coalesce_vca", "kind": "command", "label": "Coalesce VCA Controller Automation Track", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/track_coalesce_vca.craft/steps.txt:1: track.coalesce_vca: bad parameters for `track.coalesce_vca`: select a VCA master"}
+{"id": "track.designate_target_playlist", "kind": "command", "label": "Designate as Target Playlist", "menu": "", "run": "ok"}
+{"id": "track.show_target_playlist", "kind": "command", "label": "Show Target Playlist", "menu": "", "run": "ok"}
+{"id": "track.toggle_recent_playlist", "kind": "command", "label": "Toggle Recent Playlist", "menu": "", "run": "ok"}
+{"id": "clip.regroup", "kind": "command", "label": "Regroup", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_regroup.craft/steps.txt:1: clip.regroup: bad parameters for `clip.regroup`: select two or more clips"}
+{"id": "clip.unloop", "kind": "command", "label": "Unloop...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_unloop.craft/steps.txt:1: clip.unloop: bad parameters for `clip.unloop`: the selection is not a looped clip"}
+{"id": "clip.effects_set", "kind": "command", "label": "Set Clip Effects", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_effects_set.craft/steps.txt:1: clip.effects_set: bad parameters for `clip.effects_set`: `params` must be an object of numbers"}
+{"id": "clip.effects_bypass", "kind": "command", "label": "Bypass", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_effects_bypass.craft/steps.txt:1: clip.effects_bypass: bad parameters for `clip.effects_bypass`: select a clip"}
+{"id": "clip.effects_render", "kind": "command", "label": "Render", "menu": "", "run": "ok"}
+{"id": "clip.conform_to_tempo", "kind": "command", "label": "Conform to Tempo", "menu": "", "run": "ok"}
+{"id": "clip.remove_pitch_shift", "kind": "command", "label": "Remove Pitch Shift", "menu": "", "run": "ok"}
+{"id": "clip.clear", "kind": "command", "label": "Clear Clips", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_clear.craft/steps.txt:1: clip.clear: `clip.clear` is not available: select clips or files in the Clip List"}
+{"id": "clip.auto_rename", "kind": "command", "label": "Auto Rename...", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/clip_auto_rename.craft/steps.txt:1: clip.auto_rename: `clip.auto_rename` is not available: select a clip in the Clip List"}
+{"id": "event.time_ops_window", "kind": "command", "label": "Time Operations Window", "menu": "", "run": "ok"}
+{"id": "event.tempo_ops_window", "kind": "command", "label": "Tempo Operations Window", "menu": "", "run": "ok"}
+{"id": "event.midi_ops_window", "kind": "command", "label": "MIDI Operations Window", "menu": "", "run": "ok"}
+{"id": "event.move_song_start", "kind": "command", "label": "Move Song Start...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_move_song_start.craft/steps.txt:1: event.move_song_start: bad parameters for `event.move_song_start`: `to` required"}
+{"id": "event.tempo_linear", "kind": "command", "label": "Linear...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_tempo_linear.craft/steps.txt:1: event.tempo_linear: bad parameters for `event.tempo_linear`: select a range on the timeline"}
+{"id": "event.tempo_parabolic", "kind": "command", "label": "Parabolic...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_tempo_parabolic.craft/steps.txt:1: event.tempo_parabolic: bad parameters for `event.tempo_parabolic`: select a range on the timeline"}
+{"id": "event.tempo_s_curve", "kind": "command", "label": "S-Curve...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_tempo_s_curve.craft/steps.txt:1: event.tempo_s_curve: bad parameters for `event.tempo_s_curve`: select a range on the timeline"}
+{"id": "event.tempo_stretch", "kind": "command", "label": "Stretch...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_tempo_stretch.craft/steps.txt:1: event.tempo_stretch: bad parameters for `event.tempo_stretch`: select a range on the timeline"}
+{"id": "event.select_split_notes", "kind": "command", "label": "Select/Split Notes...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_select_split_notes.craft/steps.txt:1: event.select_split_notes: bad parameters for `event.select_split_notes`: select MIDI clips"}
+{"id": "event.input_quantize", "kind": "command", "label": "Input Quantize...", "menu": "", "run": "ok"}
+{"id": "event.step_input", "kind": "command", "label": "Step Input...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_step_input.craft/steps.txt:1: event.step_input: bad parameters for `event.step_input`: select a MIDI or instrument track"}
+{"id": "event.restore_performance", "kind": "command", "label": "Restore Performance...", "menu": "", "run": "ok"}
+{"id": "event.flatten_performance", "kind": "command", "label": "Flatten Performance...", "menu": "", "run": "ok"}
+{"id": "event.midi_track_offsets", "kind": "command", "label": "MIDI Track Offsets", "menu": "", "run": "ok"}
+{"id": "event.midi_rtp", "kind": "command", "label": "MIDI Real-Time Properties", "menu": "", "run": "ok"}
+{"id": "event.extract_chords", "kind": "command", "label": "Extract Chords from Selection", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_extract_chords.craft/steps.txt:1: event.extract_chords: `event.extract_chords` is not available: make an edit selection first"}
+{"id": "event.beat_detective", "kind": "command", "label": "Beat Detective", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_beat_detective.craft/steps.txt:1: event.beat_detective: `event.beat_detective` is not available: make an edit selection first"}
+{"id": "event.identify_beat", "kind": "command", "label": "Identify Beat...", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/event_identify_beat.craft/steps.txt:1: event.identify_beat: `event.identify_beat` is not available: make an edit selection first"}
+{"id": "event.retrospective_record", "kind": "command", "label": "Retrospective Record", "menu": "", "run": "ok"}
+{"id": "options.destructive_punch", "kind": "command", "label": "DestructivePunch", "menu": "", "run": "ok"}
+{"id": "options.transport_online", "kind": "command", "label": "Transport Online", "menu": "", "run": "ok"}
+{"id": "options.dynamic_transport", "kind": "command", "label": "Dynamic Transport", "menu": "", "run": "ok"}
+{"id": "options.marker_target_follows_selection", "kind": "command", "label": "Marker Target Follows First Selected Track Options", "menu": "", "run": "ok"}
+{"id": "options.midi_thru", "kind": "command", "label": "MIDI Thru", "menu": "", "run": "ok"}
+{"id": "options.auto_spot_clips", "kind": "command", "label": "Auto-Spot Clips", "menu": "", "run": "ok"}
+{"id": "options.keyboard_lock", "kind": "command", "label": "Edit/Tool Mode Keyboard Lock", "menu": "", "run": "ok"}
+{"id": "options.calibration_mode", "kind": "command", "label": "Calibration Mode", "menu": "", "run": "ok"}
+{"id": "options.midi_live_mode", "kind": "command", "label": "MIDI Live Mode", "menu": "", "run": "ok"}
+{"id": "options.low_latency_monitoring", "kind": "command", "label": "Low Latency Monitoring", "menu": "", "run": "ok"}
+{"id": "options.prepare_dpe_tracks", "kind": "command", "label": "Prepare DPE Tracks", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/options_prepare_dpe_tracks.craft/steps.txt:1: options.prepare_dpe_tracks: bad parameters for `options.prepare_dpe_tracks`: record-enable (or pass) the audio tracks to prepare"}
+{"id": "setup.hardware", "kind": "command", "label": "Hardware...", "menu": "", "run": "ok"}
+{"id": "setup.playback_engine", "kind": "command", "label": "Playback Engine...", "menu": "", "run": "ok"}
+{"id": "setup.disk_allocation", "kind": "command", "label": "Disk Allocation...", "menu": "", "run": "ok"}
+{"id": "setup.peripherals", "kind": "command", "label": "Peripherals...", "menu": "", "run": "ok"}
+{"id": "setup.io", "kind": "command", "label": "I/O...", "menu": "", "run": "ok"}
+{"id": "setup.current_timecode", "kind": "command", "label": "Current Timecode Position...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/setup_current_timecode.craft/steps.txt:1: setup.current_timecode: bad parameters for `setup.current_timecode`: `timecode` required (HH:MM:SS:FF)"}
+{"id": "setup.current_feet_frames", "kind": "command", "label": "Current Feet+Frames Position...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/setup_current_feet_frames.craft/steps.txt:1: setup.current_feet_frames: bad parameters for `setup.current_feet_frames`: `feet_frames` required (F+FF)"}
+{"id": "setup.external_timecode_offset", "kind": "command", "label": "External Timecode Offset...", "menu": "", "run": "ok"}
+{"id": "setup.video_sync_offset", "kind": "command", "label": "Video Sync Offset...", "menu": "", "run": "ok"}
+{"id": "setup.click_countoff", "kind": "command", "label": "Click/Countoff...", "menu": "", "run": "ok"}
+{"id": "setup.keyboard_shortcuts", "kind": "command", "label": "Keyboard Shortcuts...", "menu": "", "run": "ok"}
+{"id": "setup.midi_studio", "kind": "command", "label": "MIDI Studio...", "menu": "", "run": "ok"}
+{"id": "setup.midi_beat_clock", "kind": "command", "label": "MIDI Beat Clock...", "menu": "", "run": "ok"}
+{"id": "setup.midi_input_filter", "kind": "command", "label": "MIDI Input Filter...", "menu": "", "run": "ok"}
+{"id": "setup.midi_input_devices", "kind": "command", "label": "MIDI Input Devices...", "menu": "", "run": "ok"}
+{"id": "setup.transcription_settings", "kind": "command", "label": "Transcription Settings...", "menu": "", "run": "ok"}
+{"id": "file.import_session_data", "kind": "command", "label": "Session Data...", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/file_import_session_data.craft/steps.txt:1: file.import_session_data: bad parameters for `file.import_session_data`: `path` required"}
+{"id": "engine.clap_plugins", "kind": "command", "label": "List CLAP Plugins", "menu": "", "run": "ok"}
+{"id": "engine.vst3_plugins", "kind": "command", "label": "List VST3 Plugins", "menu": "", "run": "ok"}
+{"id": "mix.surround_pan", "kind": "command", "label": "Set Surround Pan", "menu": "", "run": "ok"}
+{"id": "mix.send_surround_pan", "kind": "command", "label": "Set Send Surround Pan", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_send_surround_pan.craft/steps.txt:1: mix.send_surround_pan: bad parameters for `mix.send_surround_pan`: `slot` must be 0..9 or a..j"}
+{"id": "setup.main_format", "kind": "command", "label": "Main Output Format", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/setup_main_format.craft/steps.txt:1: setup.main_format: bad parameters for `setup.main_format`: `format` required"}
+{"id": "mix.insert_state", "kind": "command", "label": "Store Plugin State", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_insert_state.craft/steps.txt:1: mix.insert_state: bad parameters for `mix.insert_state`: `track` required"}
+{"id": "mix.instrument", "kind": "command", "label": "Set Instrument", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_instrument.craft/steps.txt:1: mix.instrument: bad parameters for `mix.instrument`: `plugin` required"}
+{"id": "mix.instrument_param", "kind": "command", "label": "Set Instrument Parameter", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_instrument_param.craft/steps.txt:1: mix.instrument_param: bad parameters for `mix.instrument_param`: `param` required"}
+{"id": "mix.sampler_load", "kind": "command", "label": "Load Sampler Sample", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_sampler_load.craft/steps.txt:1: mix.sampler_load: bad parameters for `mix.sampler_load`: `path` required"}
+{"id": "mix.sampler_clear", "kind": "command", "label": "Clear Sampler Sample", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/mix_sampler_clear.craft/steps.txt:1: mix.sampler_clear: bad parameters for `mix.sampler_clear`: only instrument tracks have a sampler"}
+{"id": "video.online", "kind": "command", "label": "Video Track Online", "menu": "", "run": "ok"}
+{"id": "video.offset", "kind": "command", "label": "Set Video Start", "menu": "", "run": "needs_params", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/video_offset.craft/steps.txt:1: video.offset: bad parameters for `video.offset`: `at` required"}
+{"id": "video.list", "kind": "command", "label": "Movies", "menu": "", "run": "ok"}
+{"id": "view.zoom_toggle", "kind": "command", "label": "Zoom Toggle", "menu": "", "run": "ok"}
+{"id": "view.zoom_toggle_cancel", "kind": "command", "label": "Cancel Zoom Toggle", "menu": "", "run": "ok"}
+{"id": "edit.strip_silence_preview", "kind": "command", "label": "Strip Silence Rectangles", "menu": "", "run": "needs_context", "msg": "soundcraft: script 실패 — error: <repo>/data/workspace/probe/soundcraft/cmd/edit_strip_silence_preview.craft/steps.txt:1: edit.strip_silence_preview: `edit.strip_silence_preview` is not available: make an edit selection first"}

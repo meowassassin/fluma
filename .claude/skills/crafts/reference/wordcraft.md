@@ -7,7 +7,7 @@
 
 ## 지금 Fluma 에서 쓰는 곳
 
-- `scripts/craft/adapters/wordcraft.py` — 재료 `document`. 원문(src: docx · md · odt · rtf · html · txt, 또는 title + text)을 9:16 쪽(360×640pt)으로 다시 배치해 렌더(`WORDCRAFT_REGION=ko-KR`).
+- `engine/craft/adapters/wordcraft.py` — 재료 `document`. 원문(src: docx · md · odt · rtf · html · txt, 또는 title + text)을 9:16 쪽(360×640pt)으로 다시 배치해 렌더(`WORDCRAFT_REGION=ko-KR`).
 - 변경 추적: 고친 판을 따로 만들고(`edit.replaceAll`) `review.compare(path, formatting=false)` → '~~7일~~ 14일 이내'. 실패하면 변경 추적을 켜고 바로 바꾸기.
 - 형광펜은 진짜 `format.highlight`(못 찾으면 오류). 메모가 있으면 쪽을 360×1024pt 로 바꾸고 `file.exportPng markup` → 정확히 1080×1920.
 - 글자 크기: 한 쪽이면 높이 86% 안에 드는 데까지 `design.scaleFontSizes`, 여러 쪽이면 +30% 로 하고 형광펜이 있는 쪽을 고른다. 형광펜 글자 경계 1px 이음선은 픽셀로 메운다.

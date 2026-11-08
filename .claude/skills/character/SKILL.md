@@ -1,11 +1,11 @@
 ---
 name: character
-description: 사용자마다 맞는 캐릭터(마스코트 · 진행자)를 만든다. SVG 부품(몸 · 눈 감김 · 입 6종)을 직접 그려 characters/<이름>/ 에 두면, 어느 엔진으로 렌더해도 화면 구석에서 나레이션에 맞춰 립싱크한다.
+description: 사용자마다 맞는 캐릭터(마스코트 · 진행자)를 만든다. SVG 부품(몸 · 눈 감김 · 입 6종)을 직접 그려 data/characters/<이름>/ 에 두면, 어느 엔진으로 렌더해도 화면 구석에서 나레이션에 맞춰 립싱크한다.
 ---
 
 # 캐릭터 만들기
 
-결과: `characters/<이름>/character.json` + `parts/*.svg`. 콘티에 `"character": "<이름>"`→ 마무리 단계가 화면 위에 입힌다.
+결과: `data/characters/<이름>/character.json` + `parts/*.svg`. 콘티에 `"character": "<이름>"`→ 마무리 단계가 화면 위에 입힌다.
 
 ## 부품 (모두 같은 캔버스, 기본 viewBox 0 0 400 480)
 
@@ -34,6 +34,6 @@ description: 사용자마다 맞는 캐릭터(마스코트 · 진행자)를 만�
 
 ## 확인
 
-1. 부품 미리보기: `inkscape characters/<이름>/parts/base.svg --export-type=png --export-filename=/tmp/c.png -w 300` 를 열어 본다(입 · 눈 부품도 base 위에 겹쳐서).
-2. 립싱크 구간: `python3 scripts/character_overlay.py visemes storyboards/<id>.json`
-3. 빠른 렌더: `python3 scripts/render.py storyboards/<id>.json --draft` → 오른쪽 아래 캐릭터 확인.
+1. 부품 미리보기: `inkscape data/characters/<이름>/parts/base.svg --export-type=png --export-filename=/tmp/c.png -w 300` 를 열어 본다(입 · 눈 부품도 base 위에 겹쳐서).
+2. 립싱크 구간: `python3 engine/core/character_overlay.py visemes data/storyboards/<id>.json`
+3. 빠른 렌더: `python3 engine/render.py data/storyboards/<id>.json --draft` → 오른쪽 아래 캐릭터 확인.

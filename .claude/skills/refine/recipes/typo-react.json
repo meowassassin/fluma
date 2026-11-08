@@ -1,0 +1,33 @@
+{
+ "id": "typo-react",
+ "layer": "typo",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "반응 자막(검은 상자 · 흰 글자 · 정해진 동안만)",
+ "when": "모음 · 반응 쇼츠 — 클립 아래 가운데 한 줄. 상황 설명 → 다음 순간 반응(ㅋㅋㅋ · ?..)으로 바뀐다. 커뮤니티 구어",
+ "avoid": "두 줄 이상 · 15자 넘게 · 클립의 주인공을 가림 · 모양 레이어 위치를 [0,0] 에 두고 크기 애니메이션(구석 기준으로 커져 상자가 날아 들어온다)",
+ "vars": {
+  "TEXT": "글(한 줄)",
+  "X": "가운데 x",
+  "Y": "글자 바닥 y",
+  "SIZE": "글자 크기",
+  "T0": "나타나는 초(장면 안)",
+  "T1": "사라지는 초(장면 안)",
+  "NM": "레이어 이름",
+  "FONT": "글꼴"
+ },
+ "defaults": {
+  "X": "540",
+  "SIZE": "52",
+  "NM": "React",
+  "FONT": "Pretendard-Bold"
+ },
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var tx=\"@TEXT@\";var n=0;for(var i=0;i<tx.length;i++){n+=(tx.charCodeAt(i)>255)?1:0.55;}var bw=n*@SIZE@*1.02+@SIZE@*0.9,bh=@SIZE@*1.45;var bd=C.layers.addShape();bd.property(\"Transform\").property(\"Position\").setValue([@X@,@Y@-@SIZE@*0.36]);bd.name=\"@NM@ box\";var g=bd.property(\"Contents\").addProperty(\"ADBE Vector Group\");var r=g.property(\"Contents\").addProperty(\"ADBE Vector Shape - Rect\");r.property(\"Size\").setValue([bw,bh]);r.property(\"Roundness\").setValue(@SIZE@*0.18);r.property(\"Position\").setValue([0,0]);g.property(\"Contents\").addProperty(\"ADBE Vector Graphic - Fill\").property(\"Color\").setValue([0,0,0]);bd.property(\"Transform\").property(\"Opacity\").setValue(82);bd.inPoint=@T0@;bd.outPoint=@T1@;bd.moveToBeginning();var t=C.layers.addText(tx);t.name=\"@NM@\";t.moveToBeginning();var S=t.property(\"Source Text\");var d=S.value;d.font=\"@FONT@\";d.fontSize=@SIZE@;d.applyFill=true;d.fillColor=[1,1,1];d.applyStroke=false;d.justification=ParagraphJustification.CENTER_JUSTIFY;S.setValue(d);t.property(\"Transform\").property(\"Position\").setValue([@X@,@Y@]);t.inPoint=@T0@;t.outPoint=@T1@;var s=t.property(\"Transform\").property(\"Scale\");K(s,[[@T0@,[108,108]],[@T0@+0.14,[100,100]]]);EASE(s,70);var s2=bd.property(\"Transform\").property(\"Scale\");K(s2,[[@T0@,[108,108]],[@T0@+0.14,[100,100]]]);EASE(s2,70);"
+  }
+ ]
+}

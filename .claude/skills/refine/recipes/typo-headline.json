@@ -1,0 +1,38 @@
+{
+ "id": "typo-headline",
+ "layer": "typo",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "상단 고정 제목(두 줄 · 굵은 외곽선)",
+ "when": "모음 · 반응 · 썰 쇼츠 — 영상 내내 위에 떠 있는 제목. 첫 줄은 강조색, 둘째 줄은 흰색",
+ "avoid": "제목이 화면 1/4 을 넘게 · 세 줄 이상",
+ "vars": {
+  "L1": "첫 줄(강조)",
+  "L2": "둘째 줄(없으면 빈칸)",
+  "Y": "첫 줄 기준선 y",
+  "SIZE": "글자 크기",
+  "C1": "첫 줄 색 [r,g,b] 0~1",
+  "T0": "시작 초",
+  "T1": "끝 초",
+  "BAND": "1 이면 뒤에 검은 띠",
+  "NM": "레이어 이름",
+  "FONT": "글꼴"
+ },
+ "defaults": {
+  "L2": "",
+  "SIZE": "74",
+  "C1": "[1,0.86,0.2]",
+  "T0": "0",
+  "BAND": "1",
+  "NM": "Headline",
+  "FONT": "Pretendard-Black"
+ },
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "if(@BAND@){var bd=C.layers.addShape();bd.property(\"Transform\").property(\"Position\").setValue([0,0]);bd.name=\"@NM@ band\";var bg=bd.property(\"Contents\").addProperty(\"ADBE Vector Group\");var br=bg.property(\"Contents\").addProperty(\"ADBE Vector Shape - Rect\");br.property(\"Size\").setValue([C.width,@SIZE@*(\"@L2@\"?2.6:1.5)]);br.property(\"Position\").setValue([C.width/2,@Y@-@SIZE@*0.35+(\"@L2@\"?@SIZE@*0.55:0)]);bg.property(\"Contents\").addProperty(\"ADBE Vector Graphic - Fill\").property(\"Color\").setValue([0,0,0]);bd.inPoint=@T0@;bd.outPoint=@T1@;}var lines=[[\"@L1@\",@C1@,@Y@],[\"@L2@\",[1,1,1],@Y@+@SIZE@*1.12]];for(var i=0;i<2;i++){if(!lines[i][0])continue;var t=C.layers.addText(lines[i][0]);t.name=\"@NM@ \"+(i+1);t.moveToBeginning();var S=t.property(\"Source Text\");var d=S.value;d.font=\"@FONT@\";d.fontSize=i?@SIZE@*0.78:@SIZE@;d.applyFill=true;d.fillColor=lines[i][1];d.applyStroke=true;try{d.strokeOverFill=false;}catch(x){}d.strokeColor=[0,0,0];d.strokeWidth=@SIZE@*0.12;d.justification=ParagraphJustification.CENTER_JUSTIFY;S.setValue(d);t.property(\"Transform\").property(\"Position\").setValue([C.width/2,lines[i][2]]);t.inPoint=@T0@;t.outPoint=@T1@;}"
+  }
+ ]
+}

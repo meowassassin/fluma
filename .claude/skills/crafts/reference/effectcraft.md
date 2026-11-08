@@ -32,8 +32,8 @@
 
 ## 2. 지금 Fluma 가 쓰는 방식
 
-- `engines/craft/adapter.py`: `effectcraft-cli script <job>.jsx` (300s) → `render --project P --comp Main --format h264 --audio off --fps N` (초안은 `--resolution half --quality draft`) → 확인용 `render-frame --time s`.
-- `scripts/craft/motion.py` `build_jsx()`: JSX 를 문자열로 만든다. 기본 기능(`addComp` · `addSolid` · `addText` · `addShape` · 효과 · 표현식 · 키프레임)에 더해 JSX 안 `app.run` 으로(실패하면 손 키프레임으로 대신):
+- `engine/craft/renderer/adapter.py`: `effectcraft-cli script <job>.jsx` (300s) → `render --project P --comp Main --format h264 --audio off --fps N` (초안은 `--resolution half --quality draft`) → 확인용 `render-frame --time s`.
+- `engine/craft/motion.py` `build_jsx()`: JSX 를 문자열로 만든다. 기본 기능(`addComp` · `addSolid` · `addText` · `addShape` · 효과 · 표현식 · 키프레임)에 더해 JSX 안 `app.run` 으로(실패하면 손 키프레임으로 대신):
   - 배경 프리셋(형식별 BG_PRESET, `prop.set` 으로 색 맞춤, 표현식 time 에 장면 시작을 더해 이어짐) · 재료 등장 프리셋(ENTER, `retimeKeys` 로 0.6초) · 퇴장 프리셋(재료 `exit`) · 글자 프리셋(훅 bounceInWords 0.5초, 감성 자막 fadeUpCharacters).
   - 실제 화면: `layer.addMask rounded` + `ADBE Drop Shadow` 효과(레이어 스타일보다 빠름).
   - 주석 층(overlay · DeckCraft 도식 layers): 대상 'Mat <id>' 레이어의 자식으로 cue 시각에.

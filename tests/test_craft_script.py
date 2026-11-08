@@ -1,4 +1,4 @@
-"""범용 Craft 재료(scripts/craft/adapters/craft_script.py) — type: craft.
+"""범용 Craft 재료(engine/craft/adapters/craft_script.py) — type: craft.
 검사(명령 id · 경로 · 참조)는 앱 없이, 실제 실행은 그 앱이 설치됐을 때만."""
 from __future__ import annotations
 
@@ -8,16 +8,29 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from craft import materials  # noqa: E402
 from craft.adapters import craft_script as cs  # noqa: E402
 
 HAS = lambda a: (ROOT / "tools" / "crafts" / a / "installed.json").exists()   # noqa: E731
 CATALOG = (ROOT / ".claude" / "skills" / "crafts" / "catalog" / "vectorcraft.jsonl").exists()
 need_catalog = pytest.mark.skipif(not CATALOG, reason="Craft 명령 목록(catalog)이 없음")
-PNG = "compositions/2026-11-03-s0g011z-01/web/psi.png"
+PNG = "data/workspace/tmp/test-craft-script/capture.png"   # 저장소 안 시험용 캡처(사용자 영상 파일에 기대지 않는다)
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _capture_png():
+    f = ROOT / PNG
+    if not f.exists():
+        from PIL import Image, ImageDraw
+        f.parent.mkdir(parents=True, exist_ok=True)
+        im = Image.new("RGB", (900, 600), (24, 28, 36))
+        d = ImageDraw.Draw(im)
+        for i in range(12):
+            d.rectangle([40, 40 + i * 44, 40 + 60 * (i % 7 + 4), 68 + i * 44], fill=(90 + i * 10, 140, 210))
+        im.save(f)
+    yield
 
 
 def app(name):
@@ -74,7 +87,7 @@ def test_paths_read_inside_root(work):
 
 def test_paths_write_inside_work(work):
     c = ctx(work)
-    p = cs.fix_paths({"path": "out/a.png"}, c, "file.export")
+    p = cs.fix_paths({"path": "data/out/a.png"}, c, "file.export")
     assert Path(p["path"]).is_relative_to(work.resolve())
     p = cs.fix_paths({"path": "$FRAMES"}, c, "motion.export_animation")
     assert p["path"] == str(c.frames.resolve())
@@ -204,7 +217,7 @@ def test_wordcraft(work):
 def test_soundcraft_is_audio_only(work):
     m = {"type": "craft", "id": "m1", "app": "soundcraft", "export": {"end": 1}, "steps": [
         {"id": "track.new", "params": {"kind": "audio", "format": "stereo", "name": "SFX"}},
-        {"id": "file.import_audio", "params": {"path": "assets/sfx/pop.wav", "track": "SFX", "at": 0, "new_tracks": False}}]}
+        {"id": "file.import_audio", "params": {"path": "engine/voice/sfx/pop.wav", "track": "SFX", "at": 0, "new_tracks": False}}]}
     out, info = run(m, work)
     assert not out.exists() and info["media"] == "audio" and (ROOT / info["audio"]).exists()
     assert "file_suffix" not in info

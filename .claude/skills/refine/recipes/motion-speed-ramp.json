@@ -1,0 +1,25 @@
+{
+ "id": "motion-speed-ramp",
+ "layer": "motion",
+ "target": "motion",
+ "title": "결정적 순간 슬로모션(속도 램프)",
+ "when": "무언가 갈라지거나 부딪히는 순간을 천천히 보여 주고, 뒤에서 시간을 되찾아 전체 길이는 그대로",
+ "avoid": "말과 입이 맞아야 하는 화면",
+ "vars": {
+  "MAT": "영상 재료 레이어",
+  "T0": "시작 초",
+  "T1": "천천히 보여 줄 끝 초(영상 시각)",
+  "SLOW": "그 구간이 화면에서 걸리는 초",
+  "BACK": "시간을 되찾아 끝나는 초"
+ },
+ "defaults": {},
+ "at": [
+  1.5
+ ],
+ "steps": [
+  {
+   "jsx": "var m=L(\"@MAT@\");m.timeRemapEnabled=true;var t=m.property(\"Time Remap\");K(t,[[0,0],[@T0@,@T0@],[@T0@+@SLOW@,@T1@],[@BACK@,@BACK@],[C.duration,C.duration]]);EASE(t,50);"
+  }
+ ],
+ "app": "effectcraft"
+}

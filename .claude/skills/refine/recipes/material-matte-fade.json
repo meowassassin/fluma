@@ -1,0 +1,36 @@
+{
+ "id": "material-matte-fade",
+ "layer": "color",
+ "target": "material",
+ "app": "photocraft",
+ "title": "사진 재료: 바랜 필름 톤",
+ "when": "회상 · 옛날 이야기",
+ "avoid": "정보 전달 장면",
+ "vars": {
+  "TOP": "맨 위 레이어"
+ },
+ "defaults": {
+  "TOP": "Title"
+ },
+ "steps": [
+  {
+   "id": "layer.select",
+   "params": {
+    "name": "@TOP@"
+   }
+  },
+  {
+   "id": "layer.newAdjustmentLayer.colorLookup",
+   "params": {
+    "lut": "fadedFilm"
+   }
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 20.29,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/material-matte-fade/after.png",
+  "before": "data/workspace/probe/recipes/material-matte-fade/before.png"
+ }
+}

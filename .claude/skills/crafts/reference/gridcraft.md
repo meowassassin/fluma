@@ -7,11 +7,11 @@
 
 ## 지금 Fluma 가 쓰는 범위
 
-`scripts/craft/materials.py` 의 `chart()` 어댑터 하나뿐이다.
+`engine/craft/materials.py` 의 `chart()` 어댑터 하나뿐이다.
 - `$GC cat <csv|xlsx> --range A1:B20 --csv` 로 표를 읽고,
 - `percent: true` 이면 값마다 `$GC eval "=A{k}/SUM(A2:A{n})*100" --in tmp.csv` 를 **값 개수만큼 따로** 돌려 비율을 낸다.
 - 차트 그림은 EffectCraft 가 화풍 팔레트로 그린다("엑셀 기본 차트는 쇼츠 화풍과 안 맞고 한글이 깨져서" — 아래 시험으로 한글 깨짐 확인).
-- `web/server.mjs` 는 `.csv` · `.xlsx` 자산을 GridCraft 로 열게 연결한다(`ASSET_APP`, `NATIVE: .xlsx`). `scripts/doctor.py` · `ci_render_smoke.py` 는 설치 확인만.
+- `studio/server.mjs` 는 `.csv` · `.xlsx` 자산을 GridCraft 로 열게 연결한다(`ASSET_APP`, `NATIVE: .xlsx`). `engine/doctor.py` · `ci_render_smoke.py` 는 설치 확인만.
 
 ## 헤드리스로 되는 것 / 안 되는 것
 

@@ -3,7 +3,7 @@
 **한 줄 요약**: 소프트웨어 · 웹사이트 · 앱 동작 분석(리버스 엔지니어링) 도구(Rust, MIT/Apache-2.0, 저장소 `storytold/craft-anything`). 도구 315개(17 toolset: core · browser · native · formats · adb · android · apple · runtime · javascript · projects …)를 CLI 하위 명령과 MCP 로 부른다. 쇼츠에서는 **실제 웹사이트를 폰 크기(9:16)로 찍기 · 클릭 순서대로 화면 찍기 · 사이트 디자인 토큰(글꼴 · 색) 뽑기 · 터미널 실행 기록 · 연결된 안드로이드 폰 화면 찍기** 를 맡는다. "실제 화면 > 효과" 원칙의 재료 공급원이다. 지금 Fluma 는 이 앱을 **전혀 쓰지 않는다**(craft.json `agent:false`, 부르는 곳 없음).
 
 - 실행 파일: `tools/crafts/craft-anything/app/craft-anything-0.3.0-linux-x86_64/bin/craft-anything-cli`
-  (에이전트는 `python3 scripts/crafts.py run craft-anything <인자…>` 로 부른다)
+  (에이전트는 `python3 engine/craft/crafts.py run craft-anything <인자…>` 로 부른다)
 
 ---
 

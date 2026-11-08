@@ -7,7 +7,7 @@
 
 ## 지금 Fluma 가 쓰는 범위
 
-`scripts/craft/adapters/pdfcraft.py`(재료 `doc_quote`, 기본 어댑터를 덮어씀). 원본은 건드리지 않고 사본 `work/<id>.src.pdf` 에서:
+`engine/craft/adapters/pdfcraft.py`(재료 `doc_quote`, 기본 어댑터를 덮어씀). 원본은 건드리지 않고 사본 `work/<id>.src.pdf` 에서:
 1. `text_find`. 못 찾으면 `text_lines` 줄 글을 공백 없이 이어 찾고(줄 끝 하이픈 유지 → 제거 순), 걸친 줄마다 조각을 다시 찾아 정확한 사각형.
 2. 렌더 픽셀의 잉크로 사각형을 맞춘다(폭 85% 미만이면 줄임, 24pt 이상 큰 글씨 위아래 보정).
 3. `redact`: 정규식 → `redact_mark words` → `redact_apply`(글자도 실제로 지워짐). phone · email · rrn 은 한국식 정규식(내장 패턴은 '1. 조사 개요' 의 '1' 까지 지웠다).

@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]   # x86 · ARM Linux · Apple Silicon · Windows
     defaults:
       run:
         shell: bash
@@ -31,7 +31,7 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = "macOS" ]; then brew install ffmpeg; elif [ "$RUNNER_OS" = "Windows" ]; then choco install ffmpeg -y --no-progress; else sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; fi
       - name: Install (doctor --fix)
-        run: python scripts/doctor.py --fix --profile lite --core --no-crafts   # 기본(전부: Craft 앱 16개 · 모델)은 OS 마다 2GB 넘게 받는다 — Craft 앱은 아래에서 하나만 시험
+        run: python engine/doctor.py --fix --profile lite --core --no-crafts   # 기본(전부: Craft 앱 16개 · 모델)은 OS 마다 2GB 넘게 받는다 — Craft 앱은 아래에서 하나만 시험
       - name: Windows UTF-8 mode for direct script runs (as QUICKSTART says)
         if: runner.os == 'Windows'
         run: echo "PYTHONUTF8=1" >> $GITHUB_ENV
@@ -39,20 +39,20 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = "Windows" ]; then echo "PY=$PWD/.venv/Scripts/python.exe" >> $GITHUB_ENV; else echo "PY=$PWD/.venv/bin/python" >> $GITHUB_ENV; fi
       - name: Doctor report
-        run: $PY scripts/doctor.py
+        run: $PY engine/doctor.py
       - name: Tests
         run: |
           $PY -m pip install -q "pytest>=8"
           $PY -m pytest -q tests
       - name: Korean output through a pipe
-        run: $PY scripts/crafts.py list | cat
+        run: $PY engine/craft/crafts.py list | cat
       - name: Web typecheck · build
         run: |
-          npm --prefix web run typecheck
-          npm --prefix web run build
+          npm --prefix studio run typecheck
+          npm --prefix studio run build
       - name: Server starts and answers
         run: |
-          (cd web && node server.mjs > ../server.log 2>&1 &)
+          (cd studio && node server.mjs > ../server.log 2>&1 &)
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4310/api/engines > /dev/null && break; sleep 1; done
           curl -sf http://127.0.0.1:4310/api/engines | head -c 300; echo
           curl -sf http://127.0.0.1:4310/api/crafts | head -c 200; echo
@@ -61,12 +61,12 @@ jobs:
       - name: Craft apps for this OS (plan)
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: $PY scripts/crafts.py plan all
+        run: $PY engine/craft/crafts.py plan all
       - name: Craft app install · run (VectorCraft)
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
-          $PY scripts/crafts.py install vectorcraft --no-web
+          $PY engine/craft/crafts.py install vectorcraft --no-web
           CLI=$($PY -c "import json;print(json.load(open('tools/crafts/vectorcraft/installed.json'))['cli'])")
           printf '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="24" fill="#6e5cff"/></svg>' > t.svg
           "$CLI" convert t.svg t.png --scale 1
@@ -76,9 +76,24 @@ jobs:
         run: cat server.log || true
 
   docker:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    name: docker (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, ubuntu-24.04-arm]   # amd64 · arm64 이미지
     steps:
       - uses: actions/checkout@v4
       - name: Build image
-        run: docker build -t fluma:ci .
+        run: docker build -f docker/Dockerfile --build-arg PROFILE=lite --build-arg CRAFTS=core --build-arg MODELS=0 -t fluma:ci .
+      - name: Container starts and answers
+        run: |
+          docker run -d --name f -p 4311:4311 fluma:ci
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://127.0.0.1:4311/ && break; sleep 2; done
+          curl -sf -o /dev/null -w "web %{http_code}\n" http://127.0.0.1:4311/
+          docker exec -w /app f .venv/bin/python engine/doctor.py
+          docker exec -w /app f .venv/bin/python engine/craft/crafts.py list | cat
+      - name: Container log
+        if: always()
+        run: docker logs f 2>&1 | tail -50 || true

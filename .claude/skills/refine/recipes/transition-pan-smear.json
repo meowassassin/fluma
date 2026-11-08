@@ -1,0 +1,26 @@
+{
+ "id": "transition-pan-smear",
+ "layer": "transition",
+ "target": "motion",
+ "title": "카메라 이동 구간 번짐",
+ "when": "원테이크에서 카메라가 크게 움직이는 구간 — 멈춘 화면 사이를 이어 준다",
+ "avoid": "글자를 읽어야 하는 정지 구간",
+ "vars": {
+  "PANS": "[[시작,끝],…] 초",
+  "ANGLE": "방향(도)",
+  "LEN": "최대 길이(px)"
+ },
+ "defaults": {
+  "ANGLE": "0",
+  "LEN": "26"
+ },
+ "at": [
+  4.5
+ ],
+ "steps": [
+  {
+   "jsx": "var a=ADJ(\"Smear\");a.moveToBeginning();var d=FX(a,\"Directional Blur\");P(d,\"Direction\").setValue(@ANGLE@);var b=P(d,\"Blur Length\");var X=@PANS@;b.setValueAtTime(0,0);for(var i=0;i<X.length;i++){var s=X[i][0],e=X[i][1],m=(s+e)/2;b.setValueAtTime(s,0);b.setValueAtTime(m,@LEN@);b.setValueAtTime(e,0);}EASE(b,60);"
+  }
+ ],
+ "app": "effectcraft"
+}

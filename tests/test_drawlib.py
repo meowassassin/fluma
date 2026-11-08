@@ -1,4 +1,4 @@
-"""그리기 엔진(scripts/drawlib) — 설계가 약속한 성질만 고정한다: 닫힌 곡선 · 정확한 넓이 · 날카로운 모서리 · 적은 핸들."""
+"""그리기 엔진(engine/craft/drawlib) — 설계가 약속한 성질만 고정한다: 닫힌 곡선 · 정확한 넓이 · 날카로운 모서리 · 적은 핸들."""
 from __future__ import annotations
 
 import math
@@ -8,9 +8,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from drawlib.geom import Box, Capsule, Circle, Ellipse, Leaf, Polygon, Subtract, Union, bezier_points, outline  # noqa: E402
 
 
@@ -20,7 +19,7 @@ def _area(P: np.ndarray) -> float:
 
 
 # 몸 설계도(library/archetypes)는 실험 데이터 — 순정 상태(라이브러리 비움)에서는 그걸 쓰는 시험을 건너뛴다
-needs_archetypes = pytest.mark.skipif(not (ROOT / "library" / "archetypes").exists() or not any((ROOT / "library" / "archetypes").glob("*.form.json")),
+needs_archetypes = pytest.mark.skipif(not (ROOT / "data" / "library" / "archetypes").exists() or not any((ROOT / "data" / "library" / "archetypes").glob("*.form.json")),
                                       reason="library/archetypes 가 비어 있음(실험 데이터)")
 
 def test_circle_is_smooth_and_accurate():

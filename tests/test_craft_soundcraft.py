@@ -1,4 +1,4 @@
-"""SoundCraft 소리 단계(scripts/craft/audio.py) — 명령 만들기는 앱 없이, 실제 믹스 · 라우드니스는 앱이 설치됐을 때만."""
+"""SoundCraft 소리 단계(engine/craft/audio.py) — 명령 만들기는 앱 없이, 실제 믹스 · 라우드니스는 앱이 설치됐을 때만."""
 from __future__ import annotations
 
 import json
@@ -10,9 +10,8 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from craft import audio  # noqa: E402
 
 HAS_APP = (ROOT / "tools" / "crafts" / "soundcraft" / "installed.json").exists()
@@ -38,7 +37,7 @@ def _wav(p: Path, sec: float, bursts: list[tuple[float, float]] = (), amp: float
 
 @pytest.fixture
 def pub(tmp_path, monkeypatch):
-    """가짜 public/audio · assets/sfx — 저장소 파일은 건드리지 않는다"""
+    """가짜 data/public/audio · assets/sfx — 저장소 파일은 건드리지 않는다"""
     pa = tmp_path / "public" / "audio"
     pa.mkdir(parents=True)
     sfx = tmp_path / "sfx"
@@ -61,8 +60,11 @@ def test_voice_chain_sfx_clips_and_master(pub):
     (pub / "x.sfx.json").write_text(json.dumps([{"scene": 0, "name": "pop", "at": 0.2}, {"scene": 1, "name": "pop", "at": 2.75}]))
     cmds = audio.commands({"id": "x"}, pub / "x.wav", WORDS, 4.0)
     ins = _params(cmds, "mix.insert")
-    assert [i["plugin"] for i in ins if i["track"] == "Voice"] == ["eq_7band", "compressor", "de_esser"]
-    eq = ins[0]["params"]
+    assert [i["plugin"] for i in ins if i["track"] == "Voice"] == ["eq_7band"]          # 기본은 가볍게(저역만) — craft/design.py
+    full = [_ for _ in _params(audio.commands({"id": "x", "direction": {"sound": {"voice_chain": "clean"}}}, pub / "x.wav", WORDS, 4.0), "mix.insert")]
+    assert [i["plugin"] for i in full if i["track"] == "Voice"] == ["eq_7band", "compressor", "de_esser"]   # 말 위주 레퍼런스 · 사용자 선택
+    assert ins[0]["params"] == {"hpf_on": 1, "hpf_freq": 80}                          # 기본: 저역만 정리
+    eq = full[0]["params"]
     assert eq["hpf_on"] == 1 and eq["hpf_freq"] == 90 and eq["high_mid_freq"] == 3500 and 0 < eq["high_mid_gain"] <= 3
     imp = [p for p in _params(cmds, "file.import_audio") if p["track"] == "SFX"]
     assert [p["at"] for p in imp] == [{"seconds": 0.2}, {"seconds": 2.75}]          # 효과음마다 클립 하나, 그 시각에

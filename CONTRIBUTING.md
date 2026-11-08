@@ -15,14 +15,13 @@ Fluma is Apache-2.0, so you're also free to use and modify it in your own projec
 
 | Idea | Where |
 |---|---|
-| connect another Craft app (or any tool) as a material maker | `crafts/<app>/craft.json` (`provides`) + an adapter in `scripts/craft/materials.py` |
-| better motion for a material type | `scripts/craft/motion.py` (`material_jsx`) |
-| a new voice engine | `voices/<name>/` — `voice.json` + `adapter.py` |
-| a free 2D / motion model | `genmodels/<name>/model.json` |
-| a format preset measured from Shorts you like | `scripts/ref_channel.py` → `scripts/format_presets.py build` |
-| a smarter check | `scripts/lint.py`, `scripts/tempo_check.py`, `scripts/edit_density.py` |
-| more YouTube analytics | `web/youtube.mjs`, `web/src/features/studio/PublishView.tsx` |
-| your language in the UI | `web/src/i18n/*.ts` (the Korean string is the key) |
+| connect another Craft app (or any tool) as a material maker | `engine/craft/apps/<app>/craft.json` (`provides`) + an adapter in `engine/craft/materials.py` |
+| better motion for a material type | `engine/craft/motion.py` (`material_jsx`) |
+| a new voice engine | `engine/voice/engines/<name>/` — `voice.json` + `adapter.py` |
+| a format preset measured from Shorts you like | `engine/research/ref_channel.py` → `engine/research/format_presets.py build` |
+| a smarter check | `engine/checks/lint.py`, `engine/checks/tempo_check.py`, `engine/checks/edit_density.py` |
+| more YouTube analytics | `studio/youtube.mjs`, `studio/src/features/studio/PublishView.tsx` |
+| your language in the UI | `studio/src/i18n/*.ts` (the Korean string is the key) |
 | docs, examples, demo Shorts | anywhere — README, `docs/`, a new folder, your call |
 
 ## Sending a PR

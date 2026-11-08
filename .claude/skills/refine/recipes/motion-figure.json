@@ -1,0 +1,38 @@
+{
+ "id": "motion-figure",
+ "layer": "motion",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "3D 인물을 그린 그림으로 놓는다(그려짐 · 순환)",
+ "when": "figure 재료 — sketch_in 은 선이 그려지고, run 은 달리며 화면을 가로지른다, still 은 그대로",
+ "avoid": "프레임이 하나뿐인데 N 을 크게",
+ "vars": {
+  "WHO": "figure 재료 id",
+  "N": "프레임 수",
+  "FPS": "초당 프레임",
+  "X0": "시작 x(인물 가운데)",
+  "Y0": "시작 땅 높이 y(발끝이 닿는 줄 — 인물 그림의 기준점은 발끝)",
+  "X1": "끝 x",
+  "Y1": "끝 땅 높이 y",
+  "SCALE": "크기 %",
+  "FLIP": "1 · -1",
+  "T0": "등장 초",
+  "T1": "퇴장 초",
+  "LOOP": "1 순환 · 0 마지막에서 멈춤"
+ },
+ "defaults": {
+  "N": "1",
+  "FPS": "12",
+  "SCALE": "100",
+  "FLIP": "1",
+  "LOOP": "0"
+ },
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "for(var k=0;k<@N@;k++){var s=(\"00\"+k).slice(-3);var it=app.project.importFile(new ImportOptions(new File(\"$MATDIR/@WHO@_f\"+s+\".png\")));var l=C.layers.add(it);l.name=\"@WHO@ \"+s;l.moveToBeginning();l.startTime=0;l.inPoint=@T0@;l.outPoint=@T1@;var T=l.property(\"Transform\");T.property(\"Anchor Point\").setValue([it.width/2,it.height-90]);T.property(\"Scale\").setValue([@FLIP@*@SCALE@,@SCALE@]);K(T.property(\"Position\"),[[@T0@,[@X0@,@Y0@]],[@T1@,[@X1@,@Y1@]]]);if(@N@>1)T.property(\"Opacity\").expression=(@LOOP@)?\"(Math.floor(time*@FPS@)%@N@==\"+k+\")?100:0\":\"(Math.min(Math.floor((time-@T0@)*@FPS@),@N@-1)==\"+k+\")?100:0\";}"
+  }
+ ]
+}

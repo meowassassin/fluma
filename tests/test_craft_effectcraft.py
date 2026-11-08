@@ -1,4 +1,4 @@
-"""EffectCraft 움직임 단계(scripts/craft/motion.py) — 내장 프리셋 · 실제 화면 다듬기 · 플러그인 계약(모르는 종류 · as · overlay · highlighted).
+"""EffectCraft 움직임 단계(engine/craft/motion.py) — 내장 프리셋 · 실제 화면 다듬기 · 플러그인 계약(모르는 종류 · as · overlay · highlighted).
 JSX 생성은 앱 없이, 실제 실행 · 렌더는 EffectCraft 가 설치됐을 때만."""
 from __future__ import annotations
 
@@ -10,9 +10,8 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from craft import motion  # noqa: E402
 
 INST = ROOT / "tools" / "crafts" / "effectcraft" / "installed.json"
@@ -51,19 +50,20 @@ def test_unknown_material_kind_by_hint_or_extension():
 
 
 def test_enter_preset_defaults_and_overrides():
-    assert motion.enter_preset({"type": "web"}) == "wipeInFromRight"
-    assert motion.enter_preset({"type": "image"}) is None                         # 그림은 예전 '살짝 커지기'
+    motion.DZ = motion._design.resolve({})
+    assert motion.enter_preset({"type": "web"}) is None                           # 근거 없으면 전환 없이 바로 보임(craft/design.py)
     assert motion.enter_preset({"type": "web", "spec": {"enter": False}}) is None  # 콘티에서 끄기
     assert motion.enter_preset({"type": "image", "spec": {"enter": "cardFlipIn"}}) == "cardFlipIn"
     assert motion.enter_preset({"type": "web"}, {"enter": "fadeIn"}) == "fadeIn"
+    assert motion.enter_preset({"type": "web"}, {"enter": {"web": "wipeInFromRight"}}) == "wipeInFromRight"
+    assert motion.enter_preset({"type": "image"}, {"enter": {"web": "wipeInFromRight"}}) is None
 
 
-def test_background_preset_by_format():
-    assert motion.bg_preset({"format": "concept"}) == "blueprintGrid"
-    assert motion.bg_preset({"format": "emotional"}) == "bokehDrift"
-    assert motion.bg_preset({"format_skill": "format-ad"}) == "pulseRings"
-    assert motion.bg_preset({"format": "concept", "direction": {"bg_preset": False}}) is None
-    assert motion.bg_preset({"format": "x"}) is None                              # 모르는 형식은 예전 dressBg
+def test_background_preset_only_from_direction():
+    assert motion.bg_preset({"format": "concept"}) is None                        # 형식만으로는 배경 효과를 넣지 않는다
+    assert motion.bg_preset({"format": "emotional"}) is None
+    assert motion.bg_preset({"format": "concept", "direction": {"bg_preset": "blueprintGrid"}}) == "blueprintGrid"
+    assert motion.bg_preset({"format": "concept", "direction": {"bg_preset": None}}) is None
     t, ef, et = motion.bg_tunes("blueprintGrid", [0.95, 0.94, 0.93], [])
     assert ["effects/#1/color", [0.95, 0.94, 0.93]] in t and ef is None           # 판 = 콘티 바탕색
     _, ef, et = motion.bg_tunes("pulseRings", [0, 0, 0], [[1, 0, 0]])
@@ -90,7 +90,9 @@ def test_overlay_parents_layers_on_target(monkeypatch, tmp_path):
     assert "ol.parent = tg" in js and '"Mat m1"' in js
     assert "os_.setValueAtTime(0.60" in js        # 첫 층: 대상 등장(0초) + 0.6초
     assert "os_.setValueAtTime(2.50" in js        # 둘째 층: cue 낱말 시각
-    assert "roundShadow(ml" in js                  # 실제 화면: 둥근 모서리 + 그림자
+    assert "roundShadow(ml" not in js              # 근거 없으면 액자 없음
+    js = _jsx(monkeypatch, tmp_path, recs, words=[W_("여기", 2.5, 3.0)], direction={"frame": {"shadow": True, "round": True}})
+    assert "roundShadow(ml, true, true)" in js       # 방향이 정하면 둥근 모서리 + 그림자
 
 
 def test_doc_quote_highlighted_skips_fake_marker(monkeypatch, tmp_path):
@@ -107,7 +109,7 @@ def test_next_full_screen_wipes_over_and_previous_holds(monkeypatch, tmp_path):
     b = _png(tmp_path / "b.png", (1000, 1400))
     recs = {1: [{"id": "a", "type": "screen", "key": "k", "file": a, "spec": {"start": 0}},
                 {"id": "b", "type": "screen", "key": "k", "file": b, "spec": {"start": 2.0}}]}
-    js = _jsx(monkeypatch, tmp_path, recs)
+    js = _jsx(monkeypatch, tmp_path, recs, direction={"enter": {"screen": "wipeInFromRight"}})
     assert 'pre(c, ml, "wipeInFromRight", 2.00, 0.6)' in js
     assert "ml.outPoint = 2.63" in js                       # 앞 화면은 닦기가 끝날 때까지 그대로(바탕색 번쩍임 없음)
 
@@ -116,9 +118,12 @@ def test_text_presets_title_and_emotional_subs(monkeypatch, tmp_path):
     words = [W_("짧은", 0.2, 0.6), W_("자막", 0.6, 1.0)]
     el = [{"name": "훅 제목", "what": "'첫 줄'"}]
     js = _jsx(monkeypatch, tmp_path, {}, fmt="emotional", words=words, elements=el)
+    assert "textPreset(" not in js.split("function textPreset")[0] and "popIn(tl" not in js and "bgPreset(c, bgL" not in js   # 형식만으로는 효과 없음
+    js = _jsx(monkeypatch, tmp_path, {}, fmt="emotional", words=words, elements=el,
+              direction={"title_preset": "bounceInWords", "sub_preset": "fadeUpCharacters", "bg_preset": "bokehDrift"})
     assert 'textPreset(c, tl, "bounceInWords"' in js and 'textPreset(c, s, "fadeUpCharacters", 0.200, 0.450)' in js
     assert 'bgPreset(c, bgL, "bokehDrift"' in js
-    js = _jsx(monkeypatch, tmp_path, {}, fmt="concept", words=words, elements=el, direction={"title_preset": False})
+    js = _jsx(monkeypatch, tmp_path, {}, fmt="concept", words=words, elements=el, direction={"title_preset": None, "text_pop": True})
     assert "textPreset(c, s," not in js and "textPreset(c, tl" not in js and "popIn(tl" in js
 
 
@@ -137,7 +142,7 @@ def test_presets_run_and_render(monkeypatch, tmp_path):
     js = _jsx(monkeypatch, tmp_path, recs, fmt="concept", sec=2.0)
     jf = tmp_path / "m.jsx"
     jf.write_text(js, "utf-8")
-    env = {**os.environ, "DO_NOT_TRACK": "1", "EFFECTCRAFT_FONT_DIRS": str(ROOT / "public" / "fonts")}
+    env = {**os.environ, "DO_NOT_TRACK": "1", "EFFECTCRAFT_FONT_DIRS": str(ROOT / "engine" / "assets" / "fonts")}
     r = subprocess.run([str(_cli()), "script", str(jf)], capture_output=True, text=True, env=env, timeout=300)
     assert r.returncode == 0 and "실패" not in r.stdout, r.stdout[-800:] + r.stderr[-800:]
     out = tmp_path / "f.png"

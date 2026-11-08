@@ -1,4 +1,4 @@
-"""SolidCraft 어댑터(scripts/craft/adapters/solidcraft.py) — model3d.
+"""SolidCraft 어댑터(engine/craft/adapters/solidcraft.py) — model3d.
 계산(형태 명령 · 상자 · 재질 규칙)은 앱 없이, 렌더는 SolidCraft · TextureCraft 가 설치됐을 때만."""
 from __future__ import annotations
 
@@ -8,9 +8,8 @@ import sys
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from craft import materials  # noqa: E402
 from craft.adapters import solidcraft as sc  # noqa: E402
 
@@ -22,8 +21,8 @@ app_tc = pytest.mark.skipif(not (HAS("solidcraft") and HAS("texturecraft")), rea
 # ---------------------------------------------------------------- 앱 없이
 def test_plugin_registered():
     ad, _ = materials.plugins()
-    assert ad["model3d"] is sc.model3d
-    assert materials.registry().get("model3d") == "solidcraft"
+    assert ad["model3d@solidcraft"] is sc.model3d
+    assert materials.registry().get("model3d") == "blender"          # 기본은 Blender, SolidCraft 는 method 로
 
 
 def test_builtin_shapes_and_aliases():

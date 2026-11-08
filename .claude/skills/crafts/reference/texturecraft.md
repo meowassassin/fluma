@@ -3,13 +3,13 @@
 **한 줄 요약**: Substance Painter 류 3D 텍스처 페인팅 앱(순수 Rust, MIT/Apache-2.0, 저장소 `storytold/texturecraft`). 명령 162개를 헤드리스 CLI(`new` · `run` · `batch` · `bake` · `render` · `export`)와 MCP 로 부른다. 쇼츠에서는 **3D 개체에 실제 같은 재질(녹 · 금 · 나무 · 벗겨진 페인트 93종) 입히기 · 한글 로고 데칼 · 붓질이 묻는 과정 · 각도 돌려 찍기(턴테이블) · 경로 추적 렌더** 를 맡는다. 지금 Fluma 는 이 앱을 **전혀 쓰지 않는다**(craft.json `agent:false`, 부르는 곳 없음).
 
 - 실행 파일: `tools/crafts/texturecraft/app/texturecraft-0.3.0-linux-x86_64/bin/texturecraft-cli`
-  (에이전트는 `python3 scripts/crafts.py run texturecraft <인자…>` 로 부른다)
+  (에이전트는 `python3 engine/craft/crafts.py run texturecraft <인자…>` 로 부른다)
 
 ---
 
 ## 0. 지금 Fluma 에서 쓰는 곳 (2026-11-06)
 
-- `scripts/craft/adapters/texturecraft.py` — 재료 `model3d` 의 재질 · 로고 · 렌더. OBJ 를 Z 위 → Y 위로 돌리고(x, z, -y) 몸체마다 usemtl, 받침 원판(Stage) 추가 → batch(굽기 → 몸체별 재질 → 로고 데칼 `resource.text` · `resource.import` → `.tcraft`).
+- `engine/craft/adapters/texturecraft.py` — 재료 `model3d` 의 재질 · 로고 · 렌더. OBJ 를 Z 위 → Y 위로 돌리고(x, z, -y) 몸체마다 usemtl, 받침 원판(Stage) 추가 → batch(굽기 → 몸체별 재질 → 로고 데칼 `resource.text` · `resource.import` → `.tcraft`).
 - 쉬운 재질 이름(metal · stainless · plastic · gold …)은 무늬 없는 PBR 칠하기로 — 회전체는 자동 UV 가 늘어나 결 무늬가 줄무늬로 깨진다. wood · oak 는 TextureCraft 재질, 나머지는 재질 id 그대로.
 - 렌더: 헤드리스 MCP `viewport_render` 한 세션에서 **장당 0.3초**(CLI render 장당 2초). 정지 컷 경로 추적 samples 64. 카메라 거리는 직접 투영 계산(9:16 의 86% 안).
 - 실측: 카메라 fov 는 세로 화각(도), 눈 = 대상 + d·(cos p sin y, sin p, cos p cos y). 배경은 불투명(투명 렌더 없음) → model3d 는 9:16 화면 전체 재료. 로고 데칼은 평면 투영이라 둥근 몸체에서 폭 60% 까지, 텍스처 1024.

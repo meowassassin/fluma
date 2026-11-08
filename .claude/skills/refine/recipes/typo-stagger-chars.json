@@ -1,0 +1,33 @@
+{
+ "id": "typo-stagger-chars",
+ "layer": "typo",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "글자가 한 자씩 떠오르며 나타남",
+ "when": "훅 · 핵심 문장 제목. 레퍼런스 자막이 글자 단위로 나타날 때",
+ "avoid": "긴 자막 · 빠른 컷(0.8초 이하 장면)",
+ "vars": {
+  "TEXT": "글자 레이어(Title 1 · Sub 01 …)"
+ },
+ "defaults": {
+  "T0": 0,
+  "DUR": 0.7
+ },
+ "at": [
+  0.15,
+  0.4,
+  1.2
+ ],
+ "steps": [
+  {
+   "jsx": "var t=L(\"@TEXT@\");var an=t.property(\"Text\").property(\"Animators\").addProperty(\"ADBE Text Animator\");an.name=\"Stagger\";var pr=an.property(\"ADBE Text Animator Properties\");pr.addProperty(\"ADBE Text Opacity\").setValue(0);pr.addProperty(\"ADBE Text Position 3D\").setValue([0,40,0]);var sel=an.property(\"ADBE Text Selectors\").addProperty(\"ADBE Text Selector\");var o=sel.property(\"ADBE Text Percent Offset\");K(o,[[@T0@,0],[@T0@+@DUR@,100]]);EASE(o,70);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 0.33,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/typo-stagger-chars/after.png",
+  "before": "data/workspace/probe/recipes/typo-stagger-chars/before.png"
+ }
+}

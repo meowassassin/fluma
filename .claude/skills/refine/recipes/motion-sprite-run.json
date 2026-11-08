@@ -1,0 +1,38 @@
+{
+ "id": "motion-sprite-run",
+ "layer": "motion",
+ "target": "motion",
+ "title": "프레임 순환 인물이 움직인다",
+ "when": "자세 그림을 순환시켜 인물이 달리게 한다 — 왼쪽으로 가면 몸도 왼쪽을 본다",
+ "avoid": "자세가 3장 미만일 때",
+ "vars": {
+  "DIR": "자세 그림 폴더(절대 경로 · $ROOT 가능)",
+  "NAME": "파일 앞이름(run → run0.png…)",
+  "N": "자세 수",
+  "NM": "레이어 이름",
+  "X0": "시작 x",
+  "Y0": "시작 y",
+  "X1": "끝 x",
+  "Y1": "끝 y",
+  "T0": "이동 시작 초",
+  "T1": "이동 끝 초",
+  "SCALE": "크기 %",
+  "FPS": "초당 자세 수"
+ },
+ "defaults": {
+  "N": "8",
+  "FPS": "12",
+  "SCALE": "100",
+  "NM": "Runner",
+  "DIR": "$MATDIR"
+ },
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "for(var k=0;k<@N@;k++){var it=app.project.importFile(new ImportOptions(new File(\"@DIR@/@NAME@\"+k+\".png\")));var l=C.layers.add(it);l.name=\"@NM@ \"+k;l.moveToBeginning();l.startTime=0;l.outPoint=C.duration;var T=l.property(\"Transform\");var fl=(@X1@<@X0@)?-1:1;T.property(\"Scale\").setValue([fl*@SCALE@,@SCALE@]);var P_=T.property(\"Position\");K(P_,[[@T0@,[@X0@,@Y0@]],[@T1@,[@X1@,@Y1@]]]);T.property(\"Opacity\").expression=\"(Math.floor(time*@FPS@)%@N@==\"+k+\")?100:0\";}"
+  }
+ ],
+ "app": "effectcraft"
+}

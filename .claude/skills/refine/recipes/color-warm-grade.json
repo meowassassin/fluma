@@ -1,0 +1,26 @@
+{
+ "id": "color-warm-grade",
+ "layer": "color",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "장면 전체를 따뜻하게(조정 레이어)",
+ "when": "감성 · 음식 · 저녁 장면, 레퍼런스가 따뜻한 톤",
+ "avoid": "기술 화면 · 정확한 색이 필요한 제품",
+ "vars": {},
+ "defaults": {},
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var a=ADJ(\"Grade Warm\");a.moveToBeginning();var pf=FX(a,\"Photo Filter\");P(pf,\"Density\").setValue(9);var vb=FX(a,\"Vibrance\");P(vb,\"Vibrance\").setValue(10);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 2.73,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/color-warm-grade/after.png",
+  "before": "data/workspace/probe/recipes/color-warm-grade/before.png"
+ }
+}

@@ -1,4 +1,4 @@
-"""WordCraft 어댑터(scripts/craft/adapters/wordcraft.py) — 그림 재기는 앱 없이, 문서 렌더는 앱이 설치됐을 때만."""
+"""WordCraft 어댑터(engine/craft/adapters/wordcraft.py) — 그림 재기는 앱 없이, 문서 렌더는 앱이 설치됐을 때만."""
 from __future__ import annotations
 
 import sys
@@ -6,9 +6,8 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from craft import materials  # noqa: E402
 from craft.adapters import wordcraft as wc  # noqa: E402
 

@@ -22,10 +22,10 @@ running and hand the user a Studio with the first video already being planned. D
 1. Get the code (or update it): `git clone https://github.com/meowassassin/fluma ~/fluma` — if it exists, `git -C ~/fluma pull`.
 2. Run, with the working directory `~/fluma`:
    ```bash
-   python3 scripts/fluma_agent.py start --topic "<the user's topic, if any>"
+   python3 engine/fluma_agent.py start --topic "<the user's topic, if any>"
    ```
    It uses Docker when available (pulls the prebuilt image, builds only if that fails), otherwise installs everything locally
-   (`scripts/doctor.py --fix`) and starts the dev server. Add `--local` to skip Docker.
+   (`engine/doctor.py --fix`) and starts the dev server. Add `--local` to skip Docker.
 
 ## Exit codes
 - **0** `FLUMA_RESULT` — `url=` (open this for the user) · `video=` (the new video id when a topic was given). Tell the user:

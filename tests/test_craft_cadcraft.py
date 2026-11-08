@@ -1,4 +1,4 @@
-"""CADCraft 어댑터(scripts/craft/adapters/cadcraft.py) — drawing.
+"""CADCraft 어댑터(engine/craft/adapters/cadcraft.py) — drawing.
 명령 · 창 · 단색 변환은 앱 없이, 도면 렌더는 CADCraft(3D 는 SolidCraft 도)가 설치됐을 때만."""
 from __future__ import annotations
 
@@ -7,9 +7,8 @@ import sys
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from craft import materials  # noqa: E402
 from craft.adapters import cadcraft as cc  # noqa: E402
 

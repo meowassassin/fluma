@@ -21,7 +21,7 @@
   {
    "at": "/steps/1/params/path",
    "kind": "file",
-   "example": "compositions/2026-11-03-s0g011z-01/web/psi.png"
+   "example": "data/compositions/2026-11-03-s0g011z-01/web/psi.png"
   },
   {
    "at": "/steps/3/params/text",
@@ -73,7 +73,7 @@
    {
     "id": "image.place",
     "params": {
-     "path": "compositions/2026-11-03-s0g011z-01/web/psi.png",
+     "path": "data/compositions/2026-11-03-s0g011z-01/web/psi.png",
      "parent": {
       "$ref": "phone"
      },

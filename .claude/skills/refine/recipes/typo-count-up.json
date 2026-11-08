@@ -1,0 +1,37 @@
+{
+ "id": "typo-count-up",
+ "layer": "typo",
+ "target": "motion",
+ "title": "숫자가 올라가는 카운터",
+ "when": "거리 · 시간 · 금액이 쌓이는 장면",
+ "avoid": "숫자가 3개 넘게 동시에",
+ "vars": {
+  "X": "가운데 x",
+  "Y": "바닥 y",
+  "SIZE": "크기",
+  "FONT": "글꼴",
+  "COLOR": "[r,g,b]",
+  "T0": "시작 초",
+  "T1": "끝 초",
+  "FROM": "시작 값",
+  "TO": "끝 값",
+  "FMT": "표시 코드 — v 는 값",
+  "NM": "레이어 이름"
+ },
+ "defaults": {
+  "FONT": "GowunBatang-Bold",
+  "COLOR": "[0.09,0.066,0.047]",
+  "FROM": "0",
+  "FMT": "Math.round(v)",
+  "NM": "Count"
+ },
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var t=C.layers.addText(\"0\");t.name=\"@NM@\";t.moveToBeginning();var S=t.property(\"Source Text\");var d=S.value;d.font=\"@FONT@\";d.fontSize=@SIZE@;d.applyFill=true;d.fillColor=@COLOR@;d.justification=ParagraphJustification.CENTER_JUSTIFY;S.setValue(d);t.property(\"Transform\").property(\"Position\").setValue([@X@,@Y@]);var n=Math.round((@T1@-(@T0@))*12);function fmt(v){return @FMT@;}for(var i=0;i<=n;i++){var u=i/n;var e=1-Math.pow(1-u,2.2);var v=@FROM@+(@TO@-(@FROM@))*e;var x=S.value;x.text=String(fmt(v));S.setValueAtTime(@T0@+(@T1@-(@T0@))*u,x);}"
+  }
+ ],
+ "app": "effectcraft"
+}

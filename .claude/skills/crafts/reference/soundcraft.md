@@ -7,7 +7,7 @@
 
 ## 지금 Fluma 에서 쓰는 곳
 
-- `scripts/craft/audio.py` `mix()` — 세션을 2~4번 짧게 부른다(합쳐 0.5~0.6초).
+- `engine/craft/audio.py` `mix()` — 세션을 2~4번 짧게 부른다(합쳐 0.5~0.6초).
   1. 짓기: Voice · SFX · Music · Master 트랙, **보이스 체인**(Voice 슬롯 0~2: `eq_7band` hpf 90Hz · 3.5kHz +2dB, `compressor` -22dB 3:1, `de_esser` 6.5kHz), 효과음은 `<id>.sfx.json` 표시마다 `file.import_audio at {"seconds": t}` 클립 하나씩(SFX 페이더 = tokens audio.sfx_volume dB), 덕킹은 `automation.write_range`(base) + 말 구간마다 duck 값 + `set_point` 경사(앞 0.2초 · 뒤 0.3초) → `--save`.
   2. `--in --in-place`: Music 클립을 영상 길이로 `edit.trim_clip`, `edit.fades_create`(in 0.05초 · out s-curve 1.5초, 길이는 샘플), `session.audio_health` → 바운스해 lufs 읽기.
   3. 목표(-14 LUFS)에서 0.5 LU 넘게 벗어나면 Master 1 maximizer 를 `mix.insert_params`(threshold · ceiling -1.5)로 다시 맞추고 바운스(최대 2번). 줄일 때는 리미터 뒤 Master 페이더(`mix.volume`).
@@ -15,7 +15,7 @@
 - 기록(craft.json audio): `lufs` · `true_peak_db` · `target_lufs` · `edited`. FilmCraft 조립은 lufs 가 -15~-13 이거나 target_lufs 가 null 이면 다시 정규화하지 않는다.
 - 안 쓰는 것: 스템 바운스, 리버브 센드.
 - 실측: 리미터는 비선형 — 한 번에 안 맞으면 두 번째 조정. 자동화는 페이더를 덮어쓴다(더해지지 않음). Master 페이더는 리미터 뒤.
-- `crafts/soundcraft/craft.json` 의 `agent: true` → 홈 에이전트에 MCP(`soundcraft-cli mcp --automation-read-root $ROOT --automation-write-root $WRITE`)로 붙는다.
+- `engine/craft/apps/soundcraft/craft.json` 의 `agent: true` → 홈 에이전트에 MCP(`soundcraft-cli mcp --automation-read-root $ROOT --automation-write-root $WRITE`)로 붙는다.
 
 ## 헤드리스로 되는 것 / 안 되는 것
 

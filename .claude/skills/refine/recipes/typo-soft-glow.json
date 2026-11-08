@@ -1,0 +1,28 @@
+{
+ "id": "typo-soft-glow",
+ "layer": "typo",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "글자에 은은한 빛 번짐",
+ "when": "어두운 배경 위 흰 글자 · 밤 · 감성 톤",
+ "avoid": "밝은 배경(번짐이 탁해 보임)",
+ "vars": {
+  "TEXT": "글자 레이어"
+ },
+ "defaults": {},
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var g=FX(L(\"@TEXT@\"),\"Glow\");P(g,\"Glow Threshold\").setValue(35);P(g,\"Glow Radius\").setValue(22);P(g,\"Glow Intensity\").setValue(0.7);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 0.51,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/typo-soft-glow/after.png",
+  "before": "data/workspace/probe/recipes/typo-soft-glow/before.png"
+ }
+}

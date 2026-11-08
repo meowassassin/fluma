@@ -19,14 +19,14 @@
   {
    "at": "/open",
    "kind": "file",
-   "example": "assets/social-preview.png"
+   "example": "docs/assets/social-preview.png"
   }
  ],
  "tested": "2026-11-06",
  "material": {
   "type": "craft",
   "app": "lightcraft",
-  "open": "assets/social-preview.png",
+  "open": "docs/assets/social-preview.png",
   "steps": [
    {
     "id": "preset.apply",

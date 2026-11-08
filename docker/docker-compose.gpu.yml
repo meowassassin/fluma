@@ -1,0 +1,9 @@
+# GPU 연결(Linux · Intel/AMD) — Blender EEVEE 렌더가 그래픽 장치를 쓴다. 없으면 Cycles 로 바뀌어 크게 느려진다.
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+# FLUMA_RENDER_GID = 내 컴퓨터의 render 그룹 번호: getent group render
+services:
+  fluma:
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${FLUMA_RENDER_GID:-105}"

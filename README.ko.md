@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/fluma-spin.gif" width="148" alt="Fluma 마스코트" />
+<img src="docs/assets/fluma-spin.gif" width="148" alt="Fluma 마스코트" />
 
 # Fluma
 
@@ -17,59 +17,70 @@
 
 </div>
 
-<p align="center"><img src="assets/screens/home.webp" alt="Fluma 홈" width="880" /></p>
+<p align="center"><img src="docs/assets/screens/home.webp" alt="Fluma 홈" width="880" /></p>
 
 ## Fluma 는
 
-세로 숏폼(유튜브 쇼츠 · 릴스 · 틱톡)을 만드는 로컬 에이전트 작업 공간입니다. 에이전트(내 Claude Code / Codex CLI, 또는 API 키)와 대화하면
+Fluma 는 세로 숏폼(YouTube Shorts · 릴스 · 틱톡)을 만드는 로컬 에이전트 작업 공간입니다.
+에이전트(내 Claude Code · Codex CLI 또는 API 키)와 대화하면:
 
-1. **먼저 실제 쇼츠를 분석합니다** — 같은 주제의 쇼츠를 찾아 컷 · 말 · 문장 끝 · 화면 글자 · 화면 종류를 분해하고, 리듬과 말투만 가져옵니다(내용은 베끼지 않음).
+1. **실제 쇼츠부터 봅니다** — 같은 주제 쇼츠를 찾아 분해하고(컷 · 카메라 움직임 · 색 · 말 · 화면 글자 · 화면 종류) 리듬과 말투만 가져옵니다. 내용은 가져오지 않습니다.
 2. **출처 있는 사실로 콘티를 씁니다** — 그 채널의 말투로.
-3. **실제 제작 툴로 장면을 만듭니다** — 오픈소스 [Craft 앱](#craft-앱): 표 데이터 → 차트, PDF 인용 → 형광펜 확대, 에이전트가 그린 벡터 그림 → 움직이는 레이어, 그리고 모션 그래픽 · 소리 믹스 · 컷 편집. 단계마다 고칠 수 있는 프로젝트 파일이 남습니다.
-4. **렌더를 검사합니다** — 첫 1초 · 멈춘 화면 · 말 끊김 · 컷 밀도.
-5. **올리고 배웁니다** — 내 채널에 올리고, 이탈 곡선을 콘티 장면에 겹쳐 '어느 장면에서 넘겼나'를 다음 영상에 반영합니다.
+3. **장면마다 실제 제작 도구로 만듭니다** — 오픈소스 [Craft 앱](#craft-앱) 16개와 그 명령 · 효과 · 프리셋 9,000개 이상: 실제 화면 녹화, 주석 단 문서, 구조도, 앱 목업, 정보 카드, 3D 제품, 도면. 그다음 움직임 · 소리 · 컷 편집까지, 모두 열어서 고칠 수 있는 프로젝트 파일로 남깁니다.
+4. **영상마다 다르게** — 장면마다 앱 전체 기능에서 찾고, 최근 영상이 안 쓴 검증된 레시피를 고르고, 같은 것을 되풀이하면 알려 줍니다.
+5. **실사 장면은 실제 자료로** — 퍼온 클립(출처 · 짧은 구간 · 가장 많이 다시 본 순간)을 세로로 다시 잡아 쓰고, 무료 스톡 영상 · 자료 사진을 씁니다. 배경 곡은 같은 분야 쇼츠가 실제로 붙이는 곡을 찾아 업로드 때 쇼츠 편집기에서 붙입니다.
+6. **검수자처럼 확인합니다** — 첫 1초, 멈춤, 말 끊김, 컷 밀도.
+7. **올리고 배웁니다** — 내 채널에 올리고 시청 유지 곡선을 콘티 장면에 겹쳐 봅니다.
 
-실사 영상은 생성하지 않습니다. 출처 URL 이 없는 사실은 버립니다.
+Fluma 가 직접 실사 영상을 만들지는 않습니다. 출처 URL 이 없는 사실은 버립니다.
 
 ## 특징
 
-- 🔎 **레퍼런스 먼저(강제)** — 분석한 레퍼런스 쇼츠를 콘티에 연결하지 않으면 검사 실패(`L30`). 명사로 뚝 끊기거나 존댓말 · 반말이 섞인 대사도 실패(`L31`).
-- 🧰 **템플릿 엔진 대신 실제 툴** — 단계마다 Craft 앱 프로젝트 파일(`.ecproj` 움직임 · `.scraft` 소리 · `.fcproj` 컷 · `.vectorcraft` 그림). 사람이 열어 고치면 해시로 알아채 덮어쓰지 않습니다.
-- 🎨 **에이전트가 디자이너처럼 그림** — `illustrate` 스킬: 레퍼런스 그림 문법 연구 → 실루엣 썸네일 → VectorCraft 로 그리기 → 렌더해서 보고 고치기 → 부품 이름. 캐릭터는 그 부품으로 걷고 · 손 흔들고 · 튑니다.
-- ⏱️ **쇼츠 피드에 맞춤** — 유튜브의 핵심 신호는 '넘기지 않고 보는가'. 렌더마다 빈 첫 프레임 · 첫 1초 무변화 · 긴 멈춤 · 말 끊김을 잽니다(`L32`, `T32~T34`).
-- 📈 **실제 숫자로 고리를 닫음** — 공식 OAuth 로 채널 연결 → 업로드 → 조회 · 참여 조회 · **넘기지 않고 본 비율(참여 ÷ 조회)** · 평균 시청 비율 · 유입 경로 · 시청자 · **장면별 이탈 곡선**.
+- 🔎 **레퍼런스 먼저, 검사로 강제** — 실제 레퍼런스 쇼츠를 분석해 연결하기 전에는 콘티가 검사(`L30`)를 통과하지 못합니다. 명사로 끝나는 말 · 존댓말 반말 섞임도 실패(`L31`).
+- 🧰 **실제 도구를 전부** — 단계마다 Craft 앱의 프로젝트 파일(`.ecproj` 움직임 · `.scraft` 소리 · `.fcproj` 컷 · `.vectorcraft` 그림 · `.psd` · `.deckcraft` …). 열어서 계속 고칠 수 있고, 사람이 고친 파일은 해시로 알아채 덮어쓰지 않습니다. 정해진 재료 종류로 안 되면 에이전트가 앱 명령을 직접 짭니다(`type: craft`).
+- 🎨 **모양은 사용자가 고르고, 효과는 근거가 있을 때만** — 전체 초안 전에 첫 장면들을 디자인 시안 2~3개(레퍼런스대로 · 담백하게 · 움직임 조금)로 나란히 렌더해 고르게 합니다. 배경 움직임 · 전환 · 글자 애니메이션 · 그림자 · 밀기는 레퍼런스나 사용자 요청이 없으면 꺼져 있습니다(`engine/craft/design.py` · `engine/story/directions.py`). 같은 재료를 다른 앱으로도 만듭니다(`method` — 예: 차트를 GridCraft 또는 DeckCraft로).
+- 🎲 **같은 영상이 나오지 않게** — 모든 명령 · 효과 · 프리셋 검색(`craft_catalog.py`), 검증된 레시피, 최근 영상과 겹침 검사(`V41~V45`), 영상마다 실제로 쓴 기능 기록.
+- 🎬 **"영상 프롬프트 써 줘"보다 낫게** — 레퍼런스에서 잰 값(샷 길이 · 카메라 움직임 · 실제 색 · 빛)으로 모델마다 문법에 맞춰 쓰고, 편집 여유 · 자막 자리 · 인물 고정 · 마지막 프레임 이어 붙이기를 넣습니다. 올린 클립은 샷 설계와 견줘 고칠 문구를 줍니다.
+- ⏱️ **쇼츠 피드용** — 렌더마다 빈 첫 화면 · 첫 1초 변화 없음 · 긴 멈춤 · 말 끊김을 잽니다(`L32`, `T32~T34`).
+- 📈 **실제 숫자로 다음 영상에** — 내 채널을 공식 OAuth 로 연결해 조회수 · 참여 조회 · 평균 시청 비율 · 유입 경로 · **장면별** 시청 유지를 봅니다.
 - 🌐 **한국어 우선, 다국어** — 한국어 말투 분석 · 자막 문법, 화면은 English · 한국어 · 中文.
-- 🔐 **로컬 우선** — 키와 YouTube 토큰은 `~/.shortsforge/`(0600)에만. 에이전트는 읽지 못합니다.
+- 🔐 **로컬 우선** — 키와 YouTube 토큰은 `~/.shortsforge/`(0600)에 두고, 에이전트는 읽지 못합니다.
 
 ## 작동 방식
 
 ```mermaid
 flowchart LR
-  A[주제] --> R[레퍼런스 쇼츠<br/>trends · shorts_xray · ref_channel]
-  R --> S[콘티<br/>출처 · 채널 말투 · 검사]
-  S --> V[음성]
-  S --> M[장면 재료]
-  M --> G[GridCraft 차트]
-  M --> P[PdfCraft 인용]
-  M --> VC[VectorCraft 그림]
-  M --> PH[PhotoCraft 사진]
-  G & P & VC & PH --> E[EffectCraft 움직임]
-  V --> SC[SoundCraft 믹스]
-  E & SC --> F[FilmCraft 편집 → MP4]
-  F --> T[템포 검사]
+  A[주제] --> R[레퍼런스 쇼츠<br/>트렌드 · X-ray · 채널 카드]
+  R --> S[콘티<br/>출처 있는 사실 · 말투 · 검사]
+  S --> V[음성<br/>TTS 또는 클립 대사]
+  S --> P[장면 재료<br/>기능 검색 · 레시피 · 다양성]
+  subgraph Craft 앱
+    P --> RS[실제 화면<br/>웹 · 터미널 · 실행 데모<br/>+ FilmCraft 줌 · 흐림]
+    P --> DOC[문서<br/>PDFCraft 형광펜<br/>WordCraft 문서 화면]
+    P --> DAT[데이터 · 구조도<br/>GridCraft · DeckCraft]
+    P --> DES[디자인<br/>VectorCraft · PhotoCraft<br/>FigCraft · DesignCraft · LightCraft]
+    P --> TD[3D · 도면<br/>SolidCraft · TextureCraft · CADCraft<br/>Blender]
+  end
+  P --> CL[퍼온 클립<br/>다시 본 순간 · 세로 리프레이밍]
+  RS & DOC & DAT & DES & TD & CL --> E[EffectCraft<br/>움직임 · 프리셋 · 자막]
+  V --> SC[SoundCraft<br/>음성 체인 · 덕킹 · −14 LUFS]
+  E & SC --> F[FilmCraft<br/>컷 · 마커 · 쇼츠 내보내기]
+  F --> T[검사<br/>템포 · 편집 밀도 · 다양성]
   F --> Y[YouTube 업로드]
-  Y --> A2[통계 → 장면별 이탈]
+  Y --> A2[분석<br/>시청 유지 → 장면]
   A2 -. 다음 영상 .-> S
 ```
 
 | 단계 | 위치 | 하는 일 |
 |---|---|---|
-| 레퍼런스 | `scripts/trends.py`, `shorts_xray.py`, `ref_channel.py` | 주제로 쇼츠 찾기, 컷 · 말 · 음악 박자 · 자막 띠 · 화면 종류, 채널 말투 카드 |
-| 콘티 | `.claude/skills/plan`, `storyboard`, `scripts/lint.py` | 장면마다 재료(chart · doc_quote · illustration · photo · screen), 구조 검사 |
-| 재료 | `scripts/craft/materials.py` | 앱마다 적힌 능력 목록(`provides`)을 보고 Craft 앱을 골라 재료를 만듦 |
-| 움직임 · 소리 · 편집 | `scripts/craft/motion.py`, `audio.py`, `edit.py`, `engines/craft/` | 장면별 EffectCraft 컴포지션, SoundCraft 믹스, FilmCraft 조립 |
-| 검사 | `scripts/tempo_check.py`, `edit_density.py`, `gate.py` | 첫 1초 · 멈춤 · 말 끊김 · 컷 밀도, 최종 렌더 전 의도 · 시안 확인 |
-| 게시 · 학습 | `web/youtube.mjs` | OAuth, 재개 가능 업로드, 분석 API 리포트를 장면에 매핑 |
+| 레퍼런스 | `engine/research/`(`trends.py` · `shorts_xray.py` · `ref_channel.py`) | 주제로 쇼츠 찾기, 컷 · 카메라 · 색 · 말 · BPM · 화면 종류, 채널 말투 카드 |
+| 콘티 | `.claude/skills/plan` · `storyboard`, `engine/checks/lint.py` | 장면 `materials`, 구조 검사 |
+| 재료 | `engine/craft/materials.py` + `engine/craft/adapters/<앱>.py` | Craft 앱마다 어댑터 하나, `type: craft` 는 아무 명령 목록이나 실행 |
+| 다양성 | `engine/craft/craft_catalog.py` · `craft_variety.py`, `.claude/skills/crafts/` | 기능 9,000개 이상 검색, 레시피, 반복 검사, 영상별 사용 기록 |
+| 움직임 · 소리 · 편집 | `engine/craft/motion.py` · `audio.py` · `edit.py` | EffectCraft 컴포지션, SoundCraft 믹스, FilmCraft 조립 |
+| 한 줄 제작 | `engine/produce.py` | 음성 → 검사 → 재료 · 초안 → 장면별 정지 화면 |
+| 검사 | `engine/checks/` | 첫 1초 · 멈춤 · 말 끊김 · 컷 밀도, 의도 · 시안 관문 |
+| 올리기 · 배우기 | `engine/publish/`, `studio/youtube.mjs` | OAuth, 재개 업로드, 분석을 장면에 매핑 |
 
 ## 편집기
 
@@ -77,21 +88,36 @@ VS Code 같은 작업 공간입니다. 왼쪽 **탐색기**는 영상이 무엇�
 
 <table>
 <tr>
-<td width="50%"><img src="assets/screens/settings-agent.webp" alt="모델 · 공급자" /><br/><sub><b>모델 · 공급자</b> — 내 Claude Code / Codex CLI, 또는 API 키</sub></td>
-<td width="50%"><img src="assets/screens/settings-voice.webp" alt="미디어 설정" /><br/><sub><b>미디어</b> — 무료 · 유료 음성 엔진, 렌더 엔진</sub></td>
+<td width="50%"><img src="docs/assets/screens/settings-agent.webp" alt="모델 · 공급자" /><br/><sub><b>모델 · 공급자</b> — 내 Claude Code / Codex CLI, 또는 API 키</sub></td>
+<td width="50%"><img src="docs/assets/screens/settings-voice.webp" alt="미디어 설정" /><br/><sub><b>미디어</b> — 무료 · 유료 음성 엔진, 렌더 엔진</sub></td>
 </tr>
 </table>
 
 ## Craft 앱
 
-오픈소스 **Craft** 앱([storytold](https://github.com/storytold), MIT / Apache-2.0)을 명령행 · MCP 로 씁니다. 저장소에 포함되지 않으니 필요한 것만 설치하세요(16개 전부 약 1.7GB):
+Fluma 는 오픈소스 **Craft** 데스크톱 · 웹 앱([storytold](https://github.com/storytold), MIT / Apache-2.0)을 CLI 와 MCP 서버로 씁니다. **함께 들어 있지 않으니** 필요한 것을 설치하세요(16개 전부 약 1.7GB):
 
 ```bash
-python3 scripts/crafts.py plan all        # 받을 파일 · 크기만 보기(받지 않음)
-python3 scripts/crafts.py install all     # 또는: install effectcraft soundcraft filmcraft vectorcraft gridcraft pdfcraft photocraft
+python3 engine/craft/crafts.py plan all        # 받을 것만 보여 줌
+python3 engine/craft/crafts.py install all     # 또는 골라서: install effectcraft soundcraft filmcraft …
 ```
 
-SHA256SUMS 로 검증해 `tools/crafts/`(git 제외)에 풉니다. 파이프라인에 쓰는 것: EffectCraft · SoundCraft · FilmCraft · VectorCraft · GridCraft · PdfCraft · PhotoCraft. 나머지(LightCraft · FigCraft · DeckCraft · DesignCraft · WordCraft · CADCraft · SolidCraft · TextureCraft · Craft Anything)는 에이전트가 MCP 로 씁니다. Craft 앱이 없으면 HyperFrames 엔진으로 대신 렌더합니다.
+| 앱 | Fluma 가 쓰는 곳 |
+|---|---|
+| EffectCraft | 모든 장면의 움직임 — 내장 배경 · 등장 · 글자 프리셋, 화면 액자, 밀기 |
+| SoundCraft | 음성 체인(EQ · 컴프레서 · 치찰음), 낱말마다 효과음, 덕킹, −14 LUFS |
+| FilmCraft | 조립, 장면 마커, 쇼츠 내보내기, 썸네일 · 화면 녹화 줌 · 흐림 · 빨리 감기 · 클립 색 프리셋 |
+| VectorCraft | 에이전트가 그리는 그림, 주석 레이어(박스 · 화살표 · 설명), CSV 카드 일괄 |
+| PhotoCraft | 캡처로 9:16 장면 카드, 누끼, 글자 투명화, 정리 |
+| PDFCraft | 원문 문서에 진짜 형광펜 · 박스, 고해상도로 자른 근거 컷, 가리기 |
+| WordCraft | 형광펜 · 변경 추적이 있는 문서 화면 |
+| GridCraft · DeckCraft | 차트용 데이터, SmartArt 구조도 · 표 |
+| FigCraft · DesignCraft | 폰 · 브라우저 목업, 한글 조판 정보 카드 · 썸네일 |
+| LightCraft | 한 영상의 사진들을 같은 톤으로 |
+| SolidCraft · TextureCraft · CADCraft | 3D 제품 돌려 보기 · 분해, 평면도 · 도면 |
+| Blender | 곡면 · 캐릭터 · Cycles 고품질 렌더(영상마다 스크립트). SolidCraft 부품 · 관절과 TextureCraft 재질을 받아 이어서 쓴다(`engine/craft/bridge3d.py`) |
+
+앱마다 전체 명령 목록은 `.claude/skills/crafts/catalog/`(`python3 engine/craft/craft_catalog.py search "곡선 화살표"`), 시험해 본 사용법은 `.claude/skills/crafts/reference/` 에 있습니다. 릴리스는 SHA256SUMS 로 검증해 `tools/crafts/`(git 제외)에 풉니다.
 
 ## YouTube 연결
 
@@ -108,13 +134,13 @@ SHA256SUMS 로 검증해 `tools/crafts/`(git 제외)에 풉니다. 파이프라�
 
 ```bash
 git clone https://github.com/meowassassin/fluma && cd fluma
-python3 scripts/doctor.py --fix              # 전부: 파이썬 패키지 · Craft 앱 16개 · 모델 · npm
-npm --prefix web run dev                     # → http://localhost:4311
+python3 engine/doctor.py --fix              # 전부: 파이썬 패키지 · Craft 앱 16개 · 모델 · npm
+npm --prefix studio run dev                     # → http://localhost:4311
 ```
 
 - 어떤 방법으로 설치할지(Docker · 바로 설치 · 개발) · 컴퓨터 사양 · 영상이 어디 저장되는지: [빠른 시작](QUICKSTART.ko.md#나에게-맞는-방법-고르기)
-- 최소 설치: `python3 scripts/doctor.py --fix --profile lite --core`(나머지는 처음 쓸 때 스스로 설치)
-- Docker(전부 포함): `docker compose pull && docker compose up -d`
+- 최소 설치: `python3 engine/doctor.py --fix --profile lite --core`(나머지는 처음 쓸 때 스스로 설치)
+- Docker(전부 포함): `cd docker && docker compose pull && docker compose up -d`
 - 내 에이전트에게 맡기기: Claude Code · Codex 에게 이 스킬 주소 — https://raw.githubusercontent.com/meowassassin/fluma/main/docs/skill/SKILL.md
 
 ## 스킬
@@ -124,22 +150,46 @@ npm --prefix web run dev                     # → http://localhost:4311
 | `plan` | 대화로 기획, 콘티 전에 레퍼런스 쇼츠 분석 |
 | `storyboard` | 콘티 JSON: 형식 · 조사 · 장면 · 재료 · 검사 |
 | `produce` | Craft 파이프라인: 음성 → 재료 → 검사 → 초안 → 정지 화면 확인 |
+| `crafts` | 장면마다 어느 Craft 앱 · 기능을 쓸지 — 기능 검색 · 레시피 · 다양성 규칙 |
 | `illustrate` | VectorCraft 로 디자이너처럼 그리기(렌더해서 보고 고치기) |
 | `research` | 출처 URL 있는 사실 모으기 — 5개 미만이면 만들지 않음 |
 | `trends` | 주제 · 해시태그로 쇼츠 찾기 |
 | `voice` · `scene-edit` · `character` | 음성 맞추기 · 장면 하나 고치기 · 립싱크 마스코트 |
 | `format-*` | 비교 · 시세 · 광고 · 감성 형식 |
-| `compose` | HyperFrames 전용(대체 엔진) |
 
 ## 구조
 
+```text
+fluma/
+├─ engine/                 파이썬 제작 엔진
+│  ├─ produce.py           한 줄 제작: 콘티 → 음성 → 검사 → 초안 → 정지 화면
+│  ├─ render.py · pipeline.py · doctor.py · fluma_agent.py · mcp_server.py
+│  ├─ craft/               Craft 파이프라인 — 재료 · 움직임 · 소리 · 편집 · design.py(영상마다 효과) · adapters/<앱>.py
+│  │  ├─ apps/             Craft 앱 16개 등록(앱마다 craft.json)
+│  │  ├─ renderer/         렌더 엔진 등록(engine.json · adapter)
+│  │  └─ craft_catalog.py · craft_variety.py · crafts.py
+│  ├─ voice/               TTS · 음성 조립 · 목소리 맞추기 · engines/<음성> · sfx
+│  ├─ research/            트렌드 · 쇼츠 X-ray · 레퍼런스 스타일 · 채널 카드
+│  ├─ capture/             웹 · 터미널 녹화 · 실행 데모 · 짤 · 스톡 · 아이콘
+│  ├─ story/               콘티 도우미 — 디자인 방향 · 디자인 시안(directions.py) · 여러 버전 · 말투 고치기
+│  ├─ checks/              검사 · 템포 · 편집 밀도 · 관문
+│  ├─ publish/             YouTube 업로드
+│  ├─ core/                공용 — 결과 규약 · 엔진 등록 · 마무리 · 정지 화면 · 설치
+│  └─ spec/                schema · rules · presets · tokens
+├─ studio/                 웹 앱 — React 화면(src/) · API 서버 · 에이전트 하네스(agent/system.md)
+├─ .claude/skills/         에이전트 스킬(plan · storyboard · produce · crafts …)
+├─ data/                   작업하며 생기는 것 전부(git 제외) — data/README.md
+├─ docker/                 Dockerfile · docker-compose.yml
+├─ docs/  tests/
+└─ tools/                  설치한 Craft 앱(git 제외)
+```
+
 | 층 | 기술 |
 |---|---|
-| 화면 | React + Vite(`web/src`), en / ko / zh |
-| API · 에이전트 | Node / Express(`web/server.mjs`, `web/agent.mjs`) — 로컬 CLI 또는 API, Craft 앱은 MCP 서버로 |
-| 파이프라인 | Python(`scripts/`) — 분석 · 검사 · 음성 · 재료 · 렌더 |
-| 엔진 | `engines/craft`(기본), `engines/hyperframes`(대체), Manim · Blender 는 레이어 요소 |
-| 확장 | 폴더 하나씩: `crafts/<앱>/craft.json`, `voices/<이름>/`, `genmodels/<이름>/`, `engines/<이름>/` |
+| 스튜디오 화면 | React + Vite(`studio/src`), 다국어 en / ko / zh |
+| API · 에이전트 실행 | Node / Express(`studio/server.mjs` · `studio/agent.mjs`) — 내 CLI 또는 API, Craft 앱은 MCP 서버 |
+| 엔진 | Python(`engine/`) — 렌더 엔진은 Craft 파이프라인 하나 |
+| 플러그인 | 폴더 하나씩: `engine/craft/apps/<앱>/craft.json` · `engine/craft/adapters/<앱>.py` · `engine/voice/engines/<이름>/` |
 
 ## 로드맵
 

@@ -1,0 +1,26 @@
+{
+ "id": "color-cool-muted",
+ "layer": "color",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "차갑고 채도 낮게(조정 레이어)",
+ "when": "진지한 · 기술 · 문제 제기 장면",
+ "avoid": "밝은 광고 톤",
+ "vars": {},
+ "defaults": {},
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var a=ADJ(\"Grade Cool\");a.moveToBeginning();var hs=FX(a,\"Hue/Saturation\");P(hs,\"Master Saturation\").setValue(-28);var pf=FX(a,\"Photo Filter\");P(pf,\"Color\").setValue([0.3,0.55,0.95,1]);P(pf,\"Density\").setValue(18);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 8.86,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/color-cool-muted/after.png",
+  "before": "data/workspace/probe/recipes/color-cool-muted/before.png"
+ }
+}

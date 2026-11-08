@@ -4,11 +4,11 @@
 
 - 실행 파일: `tools/crafts/deckcraft/app/deckcraft-0.15.0-linux-x86_64/bin/deckcraft-cli`
 - 명령 수: 약 330개 (`deckcraft-cli commands`, JSON 출력 옵션은 없음 — 한 줄에 `id — 이름: {params}`)
-- 지금 Fluma 사용: **없음**. `crafts/deckcraft/craft.json` 에 `provides: diagram (pdf → png)` 만 있고 `scripts/craft/materials.py` 에 diagram 어댑터가 없다. `agent: false` 라 MCP 도 기본 꺼짐. (그리고 PDF 를 거칠 필요 없다 — `render` 가 PNG 를 직접 낸다.)
+- 지금 Fluma 사용: **없음**. `engine/craft/apps/deckcraft/craft.json` 에 `provides: diagram (pdf → png)` 만 있고 `engine/craft/materials.py` 에 diagram 어댑터가 없다. `agent: false` 라 MCP 도 기본 꺼짐. (그리고 PDF 를 거칠 필요 없다 — `render` 가 PNG 를 직접 낸다.)
 
 ## 0. 지금 Fluma 에서 쓰는 곳 (2026-11-06)
 
-- `scripts/craft/adapters/deckcraft.py` — 재료 `diagram`. 540×960pt 덱(Nocturne 테마, Noto Sans CJK KR)에 제목 글상자 + SmartArt, `shape.setBounds` 로 화면에 맞춤, `slide.inspect` 로 칸을 재서 글자 크기.
+- `engine/craft/adapters/deckcraft.py` — 재료 `diagram`. 540×960pt 덱(Nocturne 테마, Noto Sans CJK KR)에 제목 글상자 + SmartArt, `shape.setBounds` 로 화면에 맞춤, `slide.inspect` 로 칸을 재서 글자 크기.
 - kind → 레이아웃: steps verticalProcess · compare hBulletList · cycle · hierarchy · pyramid · timeline · list blockList(verticalBoxList 는 머리 글자가 깨알). `layout` 으로 45종 직접.
 - 빌드 애니메이션은 렌더되지 않는다 → 같은 슬라이드에서 다른 도형만 숨기고 투명 배경으로 내보내 **항목별 층**(위치 정확) + base(배경 + 제목). EffectCraft 가 base 위에 층을 cue 마다 얹는다.
 - 주의: 피라미드 꼭대기는 4글자 이상이면 줄이 바뀐다(짧은 낱말). 비교(hBulletList)는 화면 위쪽 25% 높이로 작다. 밝은 테마는 미확인.

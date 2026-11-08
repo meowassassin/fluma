@@ -1,8 +1,0 @@
-{
-  "name": "Composed",
-  "mood": "영상마다 에이전트가 짠 컴포지션(compositions/<id>/scene.js) — Fluma Kit 부품으로 장면 · 움직임 · 자막 스타일을 매번 새로",
-  "supports": ["number", "text", "compare", "list", "screenshot", "still", "chart", "code", "audio_demo", "price_tag", "icon", "diff"],
-  "formats": ["concept", "mythbust", "compare", "countdown", "fix", "series", "ad", "emotional", "daily"],
-  "captions": "self",
-  "primary": false
-}

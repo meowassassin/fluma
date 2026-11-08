@@ -1,0 +1,33 @@
+{
+ "id": "motion-blur-in",
+ "layer": "motion",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "흐릿하게 들어와 선명해짐",
+ "when": "장면 첫 재료 · 회상 · 꿈 같은 톤",
+ "avoid": "정보 화면(처음 0.4초 글자가 안 읽힘)",
+ "vars": {
+  "MAT": "재료 레이어"
+ },
+ "defaults": {
+  "T0": 0,
+  "DUR": 0.45
+ },
+ "at": [
+  0.05,
+  0.2,
+  0.8
+ ],
+ "steps": [
+  {
+   "jsx": "var l=L(\"@MAT@\");var b=P(FX(l,\"Gaussian Blur\"),\"Blurriness\");K(b,[[@T0@,40],[@T0@+@DUR@,0]]);EASE(b,80);var o=l.property(\"Transform\").property(\"Opacity\");K(o,[[@T0@,0],[@T0@+@DUR@*0.5,100]]);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 24.13,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/motion-blur-in/after.png",
+  "before": "data/workspace/probe/recipes/motion-blur-in/before.png"
+ }
+}

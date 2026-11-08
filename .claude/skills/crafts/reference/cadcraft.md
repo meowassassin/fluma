@@ -3,13 +3,13 @@
 **한 줄 요약**: AutoCAD 류 2D 제도 앱(순수 Rust, MIT/Apache-2.0, 저장소 `storytold/cadcraft`). 명령 451개(AutoCAD 명령 이름 그대로: `line` · `rectang` · `hatch` · `dimlinear` · `mleader` · `plot` …)를 헤드리스 CLI(`run --cmd`)와 MCP 로 부른다. 쇼츠에서는 **평면도 · 설계 도면 화면 재료(어두운 CAD 화면 또는 흰 종이 출력) · 치수가 붙은 설명 도면 · DWG/DXF 실제 파일 미리보기** 를 맡는다. 지금 Fluma 는 이 앱을 **전혀 쓰지 않는다**(craft.json `agent:false`, 부르는 곳 없음).
 
 - 실행 파일: `tools/crafts/cadcraft/app/cadcraft-0.17.0-linux-x86_64/bin/cadcraft-cli`
-  (에이전트는 `python3 scripts/crafts.py run cadcraft <인자…>` 로 부른다)
+  (에이전트는 `python3 engine/craft/crafts.py run cadcraft <인자…>` 로 부른다)
 
 ---
 
 ## 0. 지금 Fluma 에서 쓰는 곳 (2026-11-06)
 
-- `scripts/craft/adapters/cadcraft.py` — 재료 `drawing`. 원본은 `src`(DXF · DWG) · `cmd`(CADCraft 명령) · `model`(model3d 칸 또는 같은 장면 앞선 model3d id → SolidCraft `file.export_view_dxf` 보기별 DXF).
+- `engine/craft/adapters/cadcraft.py` — 재료 `drawing`. 원본은 `src`(DXF · DWG) · `cmd`(CADCraft 명령) · `model`(model3d 칸 또는 같은 장면 앞선 model3d id → SolidCraft `file.export_view_dxf` 보기별 DXF).
 - model 도면: `run` 의 import 로 3각법 배치(평면도는 정면도 위, 측면도는 옆, 등각도는 맨 위) + `dimlinear` 전체 치수 3개(0.1mm 반올림) + 보기 이름 · 제목 → `.dxf` 편집 파일.
 - 화면: `paper: dark`(기본) — MCP `render` 에 9:16 창 → 1080×1920 CAD 화면. `white` — `plot`(A4 세로)을 단색 펜처럼 후처리(**plot 에 단색 펜 옵션 없음**: 노랑 · 하늘색 글자 → 검정, 빨간 표시만 남김) 후 9:16 흰 바탕 가운데.
 - `mark` → 빨간 `revcloud`. 어두운 화면(MCP render)은 lineweight 가 반영되지 않아 구름이 가늘다. 숫자 · 영문은 CAD 선 글꼴, 한글은 고딕.
@@ -99,7 +99,7 @@ tools/call render {"width":1080,"height":1920}          → image/png (base64) 1
 ```
 - 도구 12개: `command_line` · `script` · `execute` · `list_commands` · `inspect_drawing` · `query_entities` · `render` · `find_text` · `new_drawing` · `open` · `save` · `cancel`.
 - `render` 에 `window:[[x0,y0],[x1,y1]]` 를 주면 일부 확대(미확인). 흰 배경 여부 옵션은 없다(흰 종이는 `plot`).
-- 에이전트 실행에서는 web/mcp.mjs 가 craft.json 의 `"mcp":["mcp"]` 로 붙인다. 다만 지금 `agent:false` 라 켜야 붙는다.
+- 에이전트 실행에서는 studio/mcp.mjs 가 craft.json 의 `"mcp":["mcp"]` 로 붙인다. 다만 지금 `agent:false` 라 켜야 붙는다.
 
 ### 3.6 수치 근거 (면적 · 개수) — 미확인
 - `area` · `massprop` · `measuregeom` · `shapes`(닫힌 도형의 면적 · 둘레) · `count` · `dataextraction` 으로 도면에서 숫자를 뽑는다. 자막의 근거로 쓸 수 있다.

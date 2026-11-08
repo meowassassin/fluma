@@ -3,13 +3,13 @@
 **한 줄 요약**: Fusion/SolidWorks 류 파라메트릭 3D CAD(순수 Rust, MIT/Apache-2.0, 저장소 `tangency-labs/solidcraft`). 명령 570개를 전부 헤드리스 CLI(`run` · `snapshot` · `render` · `exec`)와 MCP 로 부를 수 있다. 쇼츠에서는 **제품 · 부품 3D 화면(스케치 → 돌출 → 모깎기가 쌓이는 과정) · 분해도 애니메이션 PNG 프레임 · 한글 각인 · 단면 보기 · 실사풍 제품 렌더** 를 맡는다. 지금 Fluma 는 이 앱을 **전혀 쓰지 않는다**(craft.json `agent:false`, 스크립트 · 스킬에서 부르는 곳 없음).
 
 - 실행 파일: `tools/crafts/solidcraft/app/solidcraft-0.30.1-linux-x86_64/bin/solidcraft-cli`
-  (에이전트는 `python3 scripts/crafts.py run solidcraft <인자…>` 로 부른다. 직접 경로를 부르면 승인에 걸린다)
+  (에이전트는 `python3 engine/craft/crafts.py run solidcraft <인자…>` 로 부른다. 직접 경로를 부르면 승인에 걸린다)
 
 ---
 
 ## 0. 지금 Fluma 에서 쓰는 곳 (2026-11-06)
 
-- `scripts/craft/adapters/solidcraft.py` — 재료 `model3d` 의 형태 · 분해도(재질 · 렌더는 texturecraft.py). 내장 형태 5종(case · phone · bottle · tumbler · puck, size mm) · 에이전트 명령 목록(`commands`) · `src`(STEP · IGES → `file.insert_step`, OBJ · STL · 3MF · glTF → `file.insert_mesh`).
+- `engine/craft/adapters/solidcraft.py` — 재료 `model3d` 의 형태 · 분해도(재질 · 렌더는 texturecraft.py). 내장 형태 5종(case · phone · bottle · tumbler · puck, size mm) · 에이전트 명령 목록(`commands`) · `src`(STEP · IGES → `file.insert_step`, OBJ · STL · 3MF · glTF → `file.insert_mesh`).
 - `.sc` 편집 파일을 남기고 OBJ 는 `file.export quality "fine"`(standard 는 둥근 테두리에 톱니). 사람이 고친 `.sc` 는 해시로 알아보고 원본으로 쓴다.
 - 분해도: `component.from_bodies` + `explode.create` → `motion.export_animation` 프레임 → mp4(가장 벌어진 프레임이 poster). 헤드리스 렌더러라 재질 · 로고 없이 밝은 회색 배경 — 정지 컷 · turntable(어두운 스튜디오)과 톤이 다르다.
 - 도면용: `file.export_view_dxf` 를 먼 거리 + 좁은 화각(fov 0.002)으로 부르면 거의 정투영(cadcraft.py 가 씀).
@@ -29,7 +29,7 @@
 | 주의 (확인) | 기본 글꼴(Liberation Sans)에는 굵은 면이 없어 `bold:true` 를 주면 오류가 난다. 설치 글꼴 이름을 같이 준다 |
 | 주의 (확인) | `--view iso` 를 9:16 에 쓰면 모델이 화면 밖으로 잘린다. 세로 화면에서는 `--camera` 의 `distance` 로 직접 맞춘다(아래 3.2) |
 | 주의 (확인) | `sketch.create` 의 `plane` 을 `{origin}` 으로 주면 `x_dir` · `y_dir` 도 같이 줘야 한다 |
-| 주의 | craft.json 의 MCP 인자 `--automation-read-root/--automation-write-root` 는 SolidCraft `mcp` 의 정식 옵션이 아니다. 시작은 되지만 파일 접근 범위에 반영되지 않는다(시작 로그에 recovery · 임시 폴더만 나옴). `compositions/` 에 저장하려면 문서상 `--allow-path <ROOT>/compositions` 를 써야 한다(무시되는 것은 시작 로그로 확인, `--allow-path` 동작은 미확인) |
+| 주의 | craft.json 의 MCP 인자 `--automation-read-root/--automation-write-root` 는 SolidCraft `mcp` 의 정식 옵션이 아니다. 시작은 되지만 파일 접근 범위에 반영되지 않는다(시작 로그에 recovery · 임시 폴더만 나옴). `data/compositions/` 에 저장하려면 문서상 `--allow-path <ROOT>/compositions` 를 써야 한다(무시되는 것은 시작 로그로 확인, `--allow-path` 동작은 미확인) |
 
 ## 2. 기본 문법
 

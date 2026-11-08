@@ -1,0 +1,23 @@
+{
+ "id": "color-act-shift",
+ "layer": "color",
+ "target": "motion",
+ "title": "막마다 색온도 이동",
+ "when": "이야기의 온도가 바뀔 때 — 따뜻함에서 차가움으로",
+ "avoid": "색이 정보인 차트 위",
+ "vars": {
+  "T0": "바뀌기 시작 초",
+  "T1": "끝나는 초"
+ },
+ "defaults": {},
+ "at": [
+  2.0,
+  12.0
+ ],
+ "steps": [
+  {
+   "jsx": "var a=ADJ(\"Grade\");a.moveToBeginning();var f=FX(a,\"Color Balance (HLS)\");var h=P(f,\"Saturation\");K(h,[[0,8],[@T0@,8],[@T1@,-14]]);EASE(h,60);"
+  }
+ ],
+ "app": "effectcraft"
+}

@@ -7,7 +7,7 @@
 
 ## 지금 Fluma 가 쓰는 범위
 
-- `scripts/craft/adapters/designcraft.py` — 재료 `info_card` · `thumbnail`.
+- `engine/craft/adapters/designcraft.py` — 재료 `info_card` · `thumbnail`.
 - info_card: `script` 조판(머리말 · 제목 76→56pt 중 3줄에 드는 가장 큰 크기 · 짧은 선 · 본문 · 01/02 요점 · 출처) → 여러 장은 `data.merge`(칸 줄 수가 같은 줄끼리 한 틀로), 높이는 시리즈 최댓값. 낱말 경계에서 미리 끊어 U+2028 강제 줄바꿈. `frame: card` 는 카드만(둥근 모서리 투명 · 그림자는 PIL — **DesignCraft 는 투명 PNG 를 못 낸다**), `full` 은 1080×1920.
 - thumbnail: 세로 1080×1920 + 가로 1280×720(`<id>.16x9.png`). Black 제목 + 강조 낱말 색(`text.select` UTF-8 바이트 범위) + 훅 알약 + 그림자, 사진은 아래 · 왼쪽을 그라디언트로 어둡게, 넓은 사진은 흐린 배경 위에 폭 맞춤. 칸이 비면 콘티 title · badge · hook_number · 앞 장면 사진.
 - 글꼴은 Noto Sans CJK KR(Pretendard woff2 못 읽음).
@@ -16,7 +16,7 @@
 
 | 된다(시험함) | 안 된다 / 미확인 |
 |---|---|
-| 새 문서(아무 크기, 1080×1920 등), 프레임 · 텍스트 · 이미지 배치, 채우기 맞춤 | 한국어 글꼴 Pretendard: 시스템에 없어서 못 쓴다. `public/fonts/*.woff2` 를 읽게 하는 방법은 미확인 |
+| 새 문서(아무 크기, 1080×1920 등), 프레임 · 텍스트 · 이미지 배치, 채우기 맞춤 | 한국어 글꼴 Pretendard: 시스템에 없어서 못 쓴다. `engine/assets/fonts/*.woff2` 를 읽게 하는 방법은 미확인 |
 | 문자 서식(글꼴 · 크기 · 색), 단락 스타일 만들기 · 적용 | 웹 빌드(wasm)는 제어 채널이 없다 → 사람이 손으로만 고친다 |
 | 선형 그라디언트(불투명도 스톱), 그림자 · 둥근 모서리, QR 코드 | 실행 중인 앱 조종(`app`, `--connect`)은 데스크톱 앱 필요. 헤드리스에서는 안 씀 |
 | **데이터 병합**(CSV → 페이지 여러 장, 텍스트 · 이미지 필드) | 영상 · 움직임은 없다(정지 지면 전용). 움직임은 EffectCraft 가 맡는다 |
@@ -154,11 +154,11 @@ $DC run --in m2.designcraft --page 2 --scale 0.25 --export p.png --export m2.pdf
 ## MCP
 
 `designcraft-cli mcp --automation-read-root $ROOT --automation-write-root $WRITE`(craft.json 의 `mcp` 줄). 페이지 PNG 가 MCP 내용으로 돌아온다.
-읽기 · 쓰기 루트를 꼭 준다(빠진 쪽은 접근 0). 이 루트는 `--connect` 와 함께 쓸 수 없다. Fluma 에서 MCP 로 붙인 곳은 아직 없다(`web/mcp.mjs` 는 외부 MCP 서버 설정용).
+읽기 · 쓰기 루트를 꼭 준다(빠진 쪽은 접근 0). 이 루트는 `--connect` 와 함께 쓸 수 없다. Fluma 에서 MCP 로 붙인 곳은 아직 없다(`studio/mcp.mjs` 는 외부 MCP 서버 설정용).
 
 ## 공식 문서
 
-- 저장소: https://github.com/storytold/designcraft (README: 기능 · 헤드리스 `run --sample --all-pages out/`)
+- 저장소: https://github.com/storytold/designcraft (README: 기능 · 헤드리스 `run --sample --all-pages data/out/`)
 - 에이전트 · 스크립트: https://github.com/storytold/designcraft/blob/main/docs/agents.md (스크립트 문법 · `$N` 참조 · 데이터 병합 · 색 테마)
 - MCP: https://github.com/storytold/designcraft/blob/main/docs/mcp.md
 - 제어 채널: https://github.com/storytold/designcraft/blob/main/docs/control-protocol.md

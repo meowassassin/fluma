@@ -1,0 +1,33 @@
+{
+ "id": "transition-linear-wipe-in",
+ "layer": "transition",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "부드러운 경계로 닦으며 나타남",
+ "when": "앞 장면과 이어지는 두 번째 재료 · 비교 화면 전환",
+ "avoid": "한 장면에 여러 번",
+ "vars": {
+  "MAT": "재료 레이어"
+ },
+ "defaults": {
+  "T0": 0,
+  "DUR": 0.5
+ },
+ "at": [
+  0.05,
+  0.25,
+  0.7
+ ],
+ "steps": [
+  {
+   "jsx": "var w=FX(L(\"@MAT@\"),\"Linear Wipe\");P(w,\"Wipe Angle\").setValue(270);P(w,\"Feather\").setValue(120);var c=P(w,\"Transition Completion\");K(c,[[@T0@,100],[@T0@+@DUR@,0]]);EASE(c,70);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 35.38,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/transition-linear-wipe-in/after.png",
+  "before": "data/workspace/probe/recipes/transition-linear-wipe-in/before.png"
+ }
+}

@@ -1,0 +1,33 @@
+{
+ "name": "effectcraft",
+ "title": "EffectCraft",
+ "repo": "storytold/effectcraft",
+ "kind": "모션 그래픽 · 합성 (After Effects 류)",
+ "use": "키프레임 · 이징 · 표현식(wiggle) · 효과로 움직임을 만들고 MP4/PNG 시퀀스/Lottie 로 내보냄 → 장면 레이어",
+ "order": 2,
+ "license": "MIT OR Apache-2.0",
+ "agent": true,
+ "bin": "effectcraft",
+ "cli": "effectcraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "Motion graphics & compositing (After Effects-style)",
+ "use_en": "Keyframes, easing, expressions (wiggle) and effects; export MP4, PNG sequences or Lottie as scene layers",
+ "provides": [
+  {
+   "material": "motion",
+   "in": "콘티 + 재료",
+   "out": ".ecproj · 장면 렌더"
+  },
+  {
+   "material": "live",
+   "in": "src(실사 · 생성 영상) · cuts(분리 · 지우기 · 색 바꾸기) · items(3D · 글자 · 그림) — 카메라 추적으로 공간에 맞춘다"
+  }
+ ]
+}

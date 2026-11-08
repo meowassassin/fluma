@@ -1,0 +1,95 @@
+{
+ "measured": "2026-11-02",
+ "videos": 8,
+ "median": {
+  "text_px": 65.0,
+  "kinds": 6.5,
+  "kind_switch": 3.8,
+  "beats_per_10s": 4.5,
+  "fill": 0.4,
+  "longest_still": 3.3
+ },
+ "rows": [
+  {
+   "video": "0-zzUfoR5Z4",
+   "sec": 41.6,
+   "text_px": 101.0,
+   "kinds": 8,
+   "kind_switch": 5.3,
+   "beats_per_10s": 2.6,
+   "fill": 0.5,
+   "longest_still": 3.5
+  },
+  {
+   "video": "GWxltQt5itU",
+   "sec": 25.5,
+   "text_px": 34.0,
+   "kinds": 2,
+   "kind_switch": 0.8,
+   "beats_per_10s": 10.6,
+   "fill": 0.35,
+   "longest_still": 1.9
+  },
+  {
+   "video": "U154TkidDLE",
+   "sec": 26.8,
+   "text_px": 56.0,
+   "kinds": 6,
+   "kind_switch": 6.4,
+   "beats_per_10s": 5.2,
+   "fill": 0.2,
+   "longest_still": 5.5
+  },
+  {
+   "video": "VvQcu09bnfA",
+   "sec": 31.5,
+   "text_px": 83.0,
+   "kinds": 7,
+   "kind_switch": 4.1,
+   "beats_per_10s": 3.8,
+   "fill": 0.24,
+   "longest_still": 7.3
+  },
+  {
+   "video": "foNAPZxCGV4",
+   "sec": 25.5,
+   "text_px": 311.0,
+   "kinds": 3,
+   "kind_switch": 0.8,
+   "beats_per_10s": 0.4,
+   "fill": 0.91,
+   "longest_still": 0.2
+  },
+  {
+   "video": "mgdCHjJjR4M",
+   "sec": 53.2,
+   "text_px": 69.0,
+   "kinds": 8,
+   "kind_switch": 2.6,
+   "beats_per_10s": 2.8,
+   "fill": 0.33,
+   "longest_still": 10.8
+  },
+  {
+   "video": "sSi9QO5aYLU",
+   "sec": 18.3,
+   "text_px": 49.0,
+   "kinds": 7,
+   "kind_switch": 6.0,
+   "beats_per_10s": 7.6,
+   "fill": 0.4,
+   "longest_still": 2.0
+  },
+  {
+   "video": "udDmL5UkI5s",
+   "sec": 34.7,
+   "text_px": 61.0,
+   "kinds": 6,
+   "kind_switch": 3.5,
+   "beats_per_10s": 5.2,
+   "fill": 0.38,
+   "longest_still": 3.1
+  }
+ ],
+ "note": "사람이 편집한 쇼츠의 편집 밀도(숫자만). engine/checks/edit_density.py baseline"
+}

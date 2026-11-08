@@ -23,7 +23,7 @@
   {
    "at": "/steps/0/params/paths/0",
    "kind": "file",
-   "example": "compositions/2026-11-03-s0g011z-01/web/psi.png"
+   "example": "data/compositions/2026-11-03-s0g011z-01/web/psi.png"
   },
   {
    "at": "/steps/4/params/text",
@@ -40,7 +40,7 @@
     "id": "file.import",
     "params": {
      "paths": [
-      "compositions/2026-11-03-s0g011z-01/web/psi.png"
+      "data/compositions/2026-11-03-s0g011z-01/web/psi.png"
      ]
     }
    },

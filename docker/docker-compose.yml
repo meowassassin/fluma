@@ -1,0 +1,67 @@
+# Fluma 컨테이너:  docker compose -f docker/docker-compose.yml up -d  (또는 cd docker && docker compose up -d)  → http://localhost:4311
+# 작업물(콘티 · 제작 파일 · 음성 · 렌더)은 볼륨에. 에이전트는 내 컴퓨터의 Claude Code · Codex 로그인을 그대로 쓴다(아래 연결).
+# 프로젝트 이름 고정 — compose 파일이 docker/ 에 있어도 볼륨 이름(fluma_…)이 폴더 이름에 따라 바뀌지 않게
+name: ${COMPOSE_PROJECT_NAME:-fluma}
+services:
+  fluma:
+    # 미리 빌드한 이미지 — `docker compose pull` 로 받으면 빌드(15분)를 건너뛴다. `docker compose build` 는 이 이름으로 직접 만든다
+    image: ghcr.io/meowassassin/fluma:${FLUMA_TAG:-latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        PROFILE: ${PROFILE:-full}
+        CRAFTS: ${CRAFTS:-all}
+        MODELS: ${MODELS:-1}
+    # 내 사용자 번호(Linux 에서 1000 이 아니면 .env 에 FLUMA_UID · FLUMA_GID) — 로그인 파일 소유자가 바뀌지 않게
+    user: "${FLUMA_UID:-1000}:${FLUMA_GID:-1000}"
+    ports:
+      - "127.0.0.1:4311:4311"     # 웹(이 컴퓨터에서만)
+    volumes:
+      - fluma_workspace:/app/data/workspace
+      - fluma_out:/app/data/out
+      - fluma_storyboards:/app/data/storyboards
+      - fluma_compositions:/app/data/compositions
+      - fluma_audio:/app/data/audio
+      - fluma_public_audio:/app/data/public/audio
+      - fluma_uploads:/app/data/public/uploads
+      - fluma_elements:/app/data/public/elements
+      - fluma_cache:/app/data/cache                    # 인체 모델(49MB) · 인물 렌더 · 색 입힌 그림 캐시 — 다시 만들 때 처음부터 그리지 않게
+      - fluma_clips:/app/data/public/clips             # 클립 후보 목록(clip.py search)
+      - fluma_trends:/app/data/public/trends           # 레퍼런스 분석(분해 · 스타일 · 채널 카드) — 다시 빌드해도 다시 분석하지 않게
+      - fluma_research:/app/data/research
+      - fluma_characters:/app/data/characters
+      - fluma_briefs:/app/data/briefs
+      - fluma_scenes:/app/data/scenes
+      - fluma_keys:/home/node/.shortsforge       # Fluma 설정의 API 키(에이전트는 읽지 못함)
+      # 내 컴퓨터의 에이전트 로그인 — 따로 로그인하지 않는다. 없으면 빈 폴더가 생기고, 그때는 컨테이너 안에서 한 번 로그인
+      # (Mac 의 Claude Code 는 로그인을 키체인에 두어 여기로 오지 않는다 → docker compose exec -it fluma claude 에서 /login 한 번)
+      - type: bind
+        source: ${HOME:-${USERPROFILE}}/.claude
+        target: /home/node/.claude
+        bind:
+          create_host_path: true
+      - type: bind
+        source: ${HOME:-${USERPROFILE}}/.codex
+        target: /home/node/.codex
+        bind:
+          create_host_path: true
+    environment:
+      FLUMA_HOST: 0.0.0.0           # 컨테이너 안에서만 열림 — 바깥은 위 ports 의 127.0.0.1
+volumes:
+  fluma_cache:
+  fluma_clips:
+  fluma_workspace:
+  fluma_out:
+  fluma_storyboards:
+  fluma_compositions:
+  fluma_audio:
+  fluma_public_audio:
+  fluma_uploads:
+  fluma_elements:
+  fluma_trends:
+  fluma_research:
+  fluma_characters:
+  fluma_briefs:
+  fluma_scenes:
+  fluma_keys:

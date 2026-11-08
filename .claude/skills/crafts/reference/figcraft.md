@@ -4,11 +4,11 @@
 
 - 실행 파일: `tools/crafts/figcraft/app/figcraft-0.15.0-linux-x86_64/bin/figcraft-cli` (installed.json 의 `cli`)
 - 명령 수: 635개 (`figcraft-cli commands --json`)
-- 지금 Fluma 사용: **없음**. `crafts/figcraft/craft.json` 에 `provides: ui_mock` 만 적혀 있고 `scripts/craft/materials.py` 의 `ADAPTERS` 에 ui_mock 어댑터가 없다. `agent: false` 라 MCP 로도 기본은 안 붙는다(`web/crafts.mjs` mcpServers).
+- 지금 Fluma 사용: **없음**. `engine/craft/apps/figcraft/craft.json` 에 `provides: ui_mock` 만 적혀 있고 `engine/craft/materials.py` 의 `ADAPTERS` 에 ui_mock 어댑터가 없다. `agent: false` 라 MCP 로도 기본은 안 붙는다(`studio/crafts.mjs` mcpServers).
 
 ## 0. 지금 Fluma 에서 쓰는 곳 (2026-11-06)
 
-- `scripts/craft/adapters/figcraft.py` — 재료 `ui_mock`(`run` → `export --node Mock`). 실제 캡처를 iPhone 류 폰 틀(390×844 화면, 베젤 · 아일랜드 · 홈 표시줄 · 2단 그림자, 없으면 상태 표시줄 붙임) 또는 macOS 브라우저 창에 넣는다. device 를 안 주면 캡처 모양으로.
+- `engine/craft/adapters/figcraft.py` — 재료 `ui_mock`(`run` → `export --node Mock`). 실제 캡처를 iPhone 류 폰 틀(390×844 화면, 베젤 · 아일랜드 · 홈 표시줄 · 2단 그림자, 없으면 상태 표시줄 붙임) 또는 macOS 브라우저 창에 넣는다. device 를 안 주면 캡처 모양으로.
 - 캡처가 없으면 `screen` 설명으로 iOS 문법 가상 화면 — 기록 `mock: true`, 콘티에도 `mock: true` 필수(검사 L39). 실제 서비스 설명에는 실제 캡처.
 - **FigCraft 는 글자 단위로 줄을 바꾼다**('시험입/니다') → PIL 로 글자 폭을 재 낱말 경계에서 미리 끊는다. 공용 함수 `wrap` · `ellipsize` · `text_width` · `break_penalty`.
 - 기록 `screen_box` · `item_boxes`(0~1) 는 overlay box 로 바로 쓸 수 있다.
@@ -133,7 +133,7 @@ $F commands --filter image.place                                # 파라미터 �
 ## 폰트 주의
 - 시스템 폰트를 쓴다. 이 컴퓨터엔 `Noto Sans CJK KR` 이 있고, 폰트를 안 정해도 한글은 대체 글꼴로 나온다(템플릿 Inter + 한글 대체 확인).
 - `--no-system-fonts` 를 주면 내장 폰트만 → 한글이 깨질 수 있다(미확인). 쓰지 말 것.
-- Pretendard 는 `public/fonts/*.woff2` 로만 있어 시스템 폰트가 아니다 → FigCraft 에서 미사용(설치하면 될지 미확인).
+- Pretendard 는 `engine/assets/fonts/*.woff2` 로만 있어 시스템 폰트가 아니다 → FigCraft 에서 미사용(설치하면 될지 미확인).
 
 ## 전체 명령 분류 (635개)
 
@@ -164,7 +164,7 @@ $F commands --filter image.place                                # 파라미터 �
 ## Fluma 에 붙일 때 제안(코드 미수정, 제안만)
 - `ui_mock` 어댑터: 콘티 `{type:"ui_mock", src:"캡처.png", title:"..."}` → 위 1번 스크립트 → `export --node Shorts`.
 - 카드형 장면(훅 · CTA)은 3번 data.fill 로 한 번에.
-- 결과 PNG 는 기존 재료처럼 `compositions/<id>/craft/materials/sNN/<id>.png` 로.
+- 결과 PNG 는 기존 재료처럼 `data/compositions/<id>/craft/materials/sNN/<id>.png` 로.
 
 ## 공식 문서
 - 저장소: https://github.com/storytold/figcraft

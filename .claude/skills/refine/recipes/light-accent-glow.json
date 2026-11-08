@@ -1,0 +1,28 @@
+{
+ "id": "light-accent-glow",
+ "layer": "light",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "재료의 밝은 부분만 은은하게 빛남",
+ "when": "제품 · 화면의 밝은 하이라이트를 살릴 때",
+ "avoid": "밝은 카드 · 흰 화면 대부분(문턱 90 아래로 내리면 전체가 하얗게 날아간다)",
+ "vars": {
+  "MAT": "재료 레이어"
+ },
+ "defaults": {},
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var g=FX(L(\"@MAT@\"),\"Glow\");P(g,\"Glow Threshold\").setValue(97);P(g,\"Glow Radius\").setValue(18);P(g,\"Glow Intensity\").setValue(0.2);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 0.97,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/light-accent-glow/after.png",
+  "before": "data/workspace/probe/recipes/light-accent-glow/before.png"
+ }
+}

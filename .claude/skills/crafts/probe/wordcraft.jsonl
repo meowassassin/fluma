@@ -1,0 +1,651 @@
+{"id": "text.insert", "kind": "command", "label": "Type Text", "menu": "Editing", "run": "needs_params", "msg": "wordcraft: 1번째 명령 text.insert 실패 — wordcraft-cli: command 2 (text.insert): bad parameters: `text` (string) is required"}
+{"id": "text.newParagraph", "kind": "command", "label": "New Paragraph", "menu": "Editing", "run": "ok", "visible": false}
+{"id": "text.lineBreak", "kind": "command", "label": "Line Break", "menu": "Editing", "run": "ok", "visible": false}
+{"id": "text.pageBreak", "kind": "command", "label": "Page Break", "menu": "Insert › Pages", "run": "ok", "visible": false}
+{"id": "text.columnBreak", "kind": "command", "label": "Column Break", "menu": "Layout › Breaks", "run": "ok", "visible": false}
+{"id": "text.tab", "kind": "command", "label": "Tab", "menu": "Editing", "run": "ok", "visible": false}
+{"id": "text.backTab", "kind": "command", "label": "Shift+Tab", "menu": "Editing", "run": "ok", "visible": false}
+{"id": "text.insertTab", "kind": "command", "label": "Tab Character", "menu": "Editing", "run": "ok", "visible": false}
+{"id": "text.backspace", "kind": "command", "label": "Backspace", "menu": "Editing", "run": "ok", "visible": false}
+{"id": "text.delete", "kind": "command", "label": "Delete", "menu": "Editing", "run": "ok", "visible": false}
+{"id": "text.deleteWordBack", "kind": "command", "label": "Delete Previous Word", "menu": "Editing", "run": "ok", "visible": false}
+{"id": "text.deleteWordForward", "kind": "command", "label": "Delete Next Word", "menu": "Editing", "run": "ok", "visible": false}
+{"id": "text.nbsp", "kind": "command", "label": "Nonbreaking Space", "menu": "Insert › Symbols", "run": "ok", "visible": false}
+{"id": "text.nbHyphen", "kind": "command", "label": "Nonbreaking Hyphen", "menu": "Insert › Symbols", "run": "ok", "visible": false}
+{"id": "text.optionalHyphen", "kind": "command", "label": "Optional Hyphen", "menu": "Insert › Symbols", "run": "ok", "visible": false}
+{"id": "text.toggleUnicode", "kind": "command", "label": "Toggle Unicode Character", "menu": "Editing", "run": "needs_context", "msg": "wordcraft: 1번째 명령 text.toggleUnicode 실패 — wordcraft-cli: command 2 (text.toggleUnicode): no character or code before the caret"}
+{"id": "text.typeCode", "kind": "command", "label": "Type Character Code", "menu": "Editing", "run": "needs_params", "msg": "wordcraft: 1번째 명령 text.typeCode 실패 — wordcraft-cli: command 2 (text.typeCode): bad parameters: `code` (string) is required"}
+{"id": "text.emDash", "kind": "command", "label": "Em Dash", "menu": "Insert › Symbols", "run": "ok", "visible": false}
+{"id": "text.copyright", "kind": "command", "label": "Copyright Sign", "menu": "Insert › Symbols", "run": "ok", "visible": false}
+{"id": "text.registered", "kind": "command", "label": "Registered Sign", "menu": "Insert › Symbols", "run": "ok", "visible": false}
+{"id": "text.trademark", "kind": "command", "label": "Trademark Sign", "menu": "Insert › Symbols", "run": "ok", "visible": false}
+{"id": "text.ellipsis", "kind": "command", "label": "Ellipsis", "menu": "Insert › Symbols", "run": "ok", "visible": false}
+{"id": "caret.left", "kind": "command", "label": "Left", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.right", "kind": "command", "label": "Right", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.up", "kind": "command", "label": "Up", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.down", "kind": "command", "label": "Down", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.wordLeft", "kind": "command", "label": "Word Left", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.wordRight", "kind": "command", "label": "Word Right", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.home", "kind": "command", "label": "Line Start", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.end", "kind": "command", "label": "Line End", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.paraUp", "kind": "command", "label": "Paragraph Up", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.paraDown", "kind": "command", "label": "Paragraph Down", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.docStart", "kind": "command", "label": "Document Start", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.docEnd", "kind": "command", "label": "Document End", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.pageUp", "kind": "command", "label": "Page Up", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.pageDown", "kind": "command", "label": "Page Down", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "caret.set", "kind": "command", "label": "Set Caret", "menu": "Navigation", "run": "needs_params", "msg": "wordcraft: 1번째 명령 caret.set 실패 — wordcraft-cli: command 2 (caret.set): bad parameters: `pos` or `page`/`x`/`y` required"}
+{"id": "select.all", "kind": "command", "label": "Select All", "menu": "Home › Editing › Select", "run": "ok", "visible": false}
+{"id": "select.range", "kind": "command", "label": "Select Range", "menu": "Navigation", "run": "needs_params", "msg": "wordcraft: 1번째 명령 select.range 실패 — wordcraft-cli: command 2 (select.range): bad parameters: bad `anchor`"}
+{"id": "select.word", "kind": "command", "label": "Select Word", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "select.sentence", "kind": "command", "label": "Select Sentence", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "select.paragraph", "kind": "command", "label": "Select Paragraph", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "select.dragUnit", "kind": "command", "label": "Extend Selection by Units", "menu": "Navigation", "run": "needs_params", "msg": "wordcraft: 1번째 명령 select.dragUnit 실패 — wordcraft-cli: command 2 (select.dragUnit): bad parameters: `unit` must be word, sentence, line, paragraph or document"}
+{"id": "select.line", "kind": "command", "label": "Select Line", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "select.text", "kind": "command", "label": "Select Text", "menu": "Navigation", "run": "needs_params", "msg": "wordcraft: 1번째 명령 select.text 실패 — wordcraft-cli: command 2 (select.text): bad parameters: `text` (string) is required"}
+{"id": "select.collapse", "kind": "command", "label": "Collapse Selection", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "select.column", "kind": "command", "label": "Column Selection", "menu": "Editing › Selection", "run": "ok", "visible": false}
+{"id": "edit.undo", "kind": "command", "label": "Undo", "menu": "Quick Access Toolbar", "run": "ok", "visible": false}
+{"id": "edit.undoTo", "kind": "command", "label": "Undo Actions", "menu": "Quick Access Toolbar", "run": "needs_params", "msg": "wordcraft: 1번째 명령 edit.undoTo 실패 — wordcraft-cli: command 2 (edit.undoTo): bad parameters: `count` (whole number, 1 or more) is required"}
+{"id": "edit.undoHistory", "kind": "command", "label": "Undo History", "menu": "Quick Access Toolbar", "run": "ok", "visible": false}
+{"id": "edit.redo", "kind": "command", "label": "Redo", "menu": "Quick Access Toolbar", "run": "ok", "visible": false}
+{"id": "edit.cut", "kind": "command", "label": "Cut", "menu": "Home › Clipboard", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.cut 실패 — wordcraft-cli: command 2 (edit.cut): not available: edit.cut: nothing is selected"}
+{"id": "edit.copy", "kind": "command", "label": "Copy", "menu": "Home › Clipboard", "run": "ok", "visible": false}
+{"id": "edit.spike", "kind": "command", "label": "Spike", "menu": "Editing", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.spike 실패 — wordcraft-cli: command 2 (edit.spike): not available: edit.spike: nothing is selected"}
+{"id": "edit.insertSpike", "kind": "command", "label": "Insert Spike", "menu": "Editing", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.insertSpike 실패 — wordcraft-cli: command 2 (edit.insertSpike): not available: edit.insertSpike: the Spike is empty"}
+{"id": "edit.paste", "kind": "command", "label": "Paste", "menu": "Home › Clipboard", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.paste 실패 — wordcraft-cli: command 2 (edit.paste): the clipboard is empty"}
+{"id": "edit.pasteText", "kind": "command", "label": "Paste: Keep Text Only", "menu": "Home › Clipboard › Paste", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.pasteText 실패 — wordcraft-cli: command 2 (edit.pasteText): the clipboard is empty"}
+{"id": "edit.pasteMerge", "kind": "command", "label": "Paste: Merge Formatting", "menu": "Home › Clipboard › Paste", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.pasteMerge 실패 — wordcraft-cli: command 2 (edit.pasteMerge): the clipboard is empty"}
+{"id": "edit.clipboardPane", "kind": "command", "label": "Clipboard Pane", "menu": "Home › Clipboard", "run": "ok", "visible": false}
+{"id": "edit.clipboardItems", "kind": "command", "label": "Clipboard Items", "menu": "Home › Clipboard › Clipboard Pane", "run": "ok", "visible": false}
+{"id": "edit.pasteClipboardItem", "kind": "command", "label": "Paste Clipboard Item", "menu": "Home › Clipboard › Clipboard Pane", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.pasteClipboardItem 실패 — wordcraft-cli: command 2 (edit.pasteClipboardItem): not available: edit.pasteClipboardItem: the Clipboard pane is empty"}
+{"id": "edit.pasteAllClipboard", "kind": "command", "label": "Paste All", "menu": "Home › Clipboard › Clipboard Pane", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.pasteAllClipboard 실패 — wordcraft-cli: command 2 (edit.pasteAllClipboard): not available: edit.pasteAllClipboard: the Clipboard pane is empty"}
+{"id": "edit.deleteClipboardItem", "kind": "command", "label": "Delete Clipboard Item", "menu": "Home › Clipboard › Clipboard Pane", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.deleteClipboardItem 실패 — wordcraft-cli: command 2 (edit.deleteClipboardItem): not available: edit.deleteClipboardItem: the Clipboard pane is empty"}
+{"id": "edit.clearClipboard", "kind": "command", "label": "Clear All", "menu": "Home › Clipboard › Clipboard Pane", "run": "ok", "visible": false}
+{"id": "edit.find", "kind": "command", "label": "Find", "menu": "Home › Editing", "run": "ok", "visible": false}
+{"id": "edit.advancedFind", "kind": "command", "label": "Advanced Find", "menu": "Home › Editing › Find", "run": "ok", "visible": false}
+{"id": "edit.findNext", "kind": "command", "label": "Find Next", "menu": "Home › Editing › Find", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.findNext 실패 — wordcraft-cli: command 2 (edit.findNext): no matches"}
+{"id": "edit.findPrevious", "kind": "command", "label": "Find Previous", "menu": "Home › Editing › Find", "run": "needs_context", "msg": "wordcraft: 1번째 명령 edit.findPrevious 실패 — wordcraft-cli: command 2 (edit.findPrevious): no matches"}
+{"id": "edit.replace", "kind": "command", "label": "Replace", "menu": "Home › Editing", "run": "needs_params", "msg": "wordcraft: 1번째 명령 edit.replace 실패 — wordcraft-cli: command 2 (edit.replace): bad parameters: `text` (string) is required"}
+{"id": "edit.findReplace", "kind": "command", "label": "Find and Replace", "menu": "Home › Editing", "run": "ok", "visible": false}
+{"id": "edit.replaceAll", "kind": "command", "label": "Replace All", "menu": "Home › Editing › Replace", "run": "needs_params", "msg": "wordcraft: 1번째 명령 edit.replaceAll 실패 — wordcraft-cli: command 2 (edit.replaceAll): bad parameters: `text` (string) is required"}
+{"id": "edit.goto", "kind": "command", "label": "Go To", "menu": "Home › Editing › Find", "run": "ok", "visible": false}
+{"id": "edit.goBack", "kind": "command", "label": "Go Back", "menu": "Navigation", "run": "ok", "visible": false}
+{"id": "edit.formatPainter", "kind": "command", "label": "Format Painter", "menu": "Home › Clipboard", "run": "ok", "visible": false}
+{"id": "edit.copyFormat", "kind": "command", "label": "Copy Formatting", "menu": "Home › Clipboard", "run": "ok", "visible": false}
+{"id": "edit.pasteFormat", "kind": "command", "label": "Paste Formatting", "menu": "Home › Clipboard", "run": "error", "msg": "wordcraft: 1번째 명령 edit.pasteFormat 실패 — wordcraft-cli: command 2 (edit.pasteFormat): no formatting copied"}
+{"id": "edit.pasteSpecial", "kind": "command", "label": "Paste Special", "menu": "Home › Clipboard › Paste", "run": "ok", "visible": false}
+{"id": "format.bold", "kind": "command", "label": "Bold", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.italic", "kind": "command", "label": "Italic", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.underline", "kind": "command", "label": "Underline", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.doubleUnderline", "kind": "command", "label": "Double Underline", "menu": "Home › Font › Underline", "run": "ok", "visible": false}
+{"id": "format.wordUnderline", "kind": "command", "label": "Underline Words Only", "menu": "Home › Font › Underline", "run": "ok", "visible": false}
+{"id": "format.strikethrough", "kind": "command", "label": "Strikethrough", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.border", "kind": "command", "label": "Character Border", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.doubleStrikethrough", "kind": "command", "label": "Double Strikethrough", "menu": "Home › Font › Font", "run": "ok", "visible": false}
+{"id": "format.subscript", "kind": "command", "label": "Subscript", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.superscript", "kind": "command", "label": "Superscript", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.allCaps", "kind": "command", "label": "All Caps", "menu": "Home › Font › Font", "run": "ok", "visible": false}
+{"id": "format.smallCaps", "kind": "command", "label": "Small Caps", "menu": "Home › Font › Font", "run": "ok", "visible": false}
+{"id": "format.hidden", "kind": "command", "label": "Hidden", "menu": "Home › Font › Font", "run": "ok", "visible": false}
+{"id": "format.outline", "kind": "command", "label": "Outline", "menu": "Home › Font › Text Effects", "run": "ok", "visible": false}
+{"id": "format.shadow", "kind": "command", "label": "Shadow", "menu": "Home › Font › Text Effects", "run": "ok", "visible": false}
+{"id": "format.emboss", "kind": "command", "label": "Emboss", "menu": "Home › Font › Font", "run": "ok", "visible": false}
+{"id": "format.engrave", "kind": "command", "label": "Engrave", "menu": "Home › Font › Font", "run": "ok", "visible": false}
+{"id": "format.font", "kind": "command", "label": "Font", "menu": "Home › Font", "run": "needs_params", "msg": "wordcraft: 1번째 명령 format.font 실패 — wordcraft-cli: command 2 (format.font): bad parameters: `name` or `eastAsia` (string) is required"}
+{"id": "format.size", "kind": "command", "label": "Font Size", "menu": "Home › Font", "run": "needs_params", "msg": "wordcraft: 1번째 명령 format.size 실패 — wordcraft-cli: command 2 (format.size): bad parameters: `size` (number) is required"}
+{"id": "format.growFont", "kind": "command", "label": "Increase Font Size", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.shrinkFont", "kind": "command", "label": "Decrease Font Size", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.growFont1", "kind": "command", "label": "Grow Font 1 Point", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.shrinkFont1", "kind": "command", "label": "Shrink Font 1 Point", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.color", "kind": "command", "label": "Font Color", "menu": "Home › Font", "run": "needs_params", "msg": "wordcraft: 1번째 명령 format.color 실패 — wordcraft-cli: command 2 (format.color): bad parameters: `color` (string) is required"}
+{"id": "format.underlineColor", "kind": "command", "label": "Underline Color", "menu": "Home › Font › Underline", "run": "needs_params", "msg": "wordcraft: 1번째 명령 format.underlineColor 실패 — wordcraft-cli: command 2 (format.underlineColor): bad parameters: `color` (string) is required"}
+{"id": "format.highlight", "kind": "command", "label": "Text Highlight Color", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.shading", "kind": "command", "label": "Character Shading", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.changeCase", "kind": "command", "label": "Change Case", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.clear", "kind": "command", "label": "Clear All Formatting", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.resetChar", "kind": "command", "label": "Reset Character Formatting", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.spacing", "kind": "command", "label": "Character Spacing", "menu": "Home › Font › Font › Advanced", "run": "needs_params", "msg": "wordcraft: 1번째 명령 format.spacing 실패 — wordcraft-cli: command 2 (format.spacing): bad parameters: `points` (number) is required"}
+{"id": "format.scale", "kind": "command", "label": "Character Scale", "menu": "Home › Font › Font › Advanced", "run": "needs_params", "msg": "wordcraft: 1번째 명령 format.scale 실패 — wordcraft-cli: command 2 (format.scale): bad parameters: `percent` (number) is required"}
+{"id": "format.position", "kind": "command", "label": "Character Position", "menu": "Home › Font › Font › Advanced", "run": "needs_params", "msg": "wordcraft: 1번째 명령 format.position 실패 — wordcraft-cli: command 2 (format.position): bad parameters: `points` (number) is required"}
+{"id": "format.charStyle", "kind": "command", "label": "Apply Character Style", "menu": "Home › Styles", "run": "needs_params", "msg": "wordcraft: 1번째 명령 format.charStyle 실패 — wordcraft-cli: command 2 (format.charStyle): bad parameters: `style` (string) is required"}
+{"id": "format.set", "kind": "command", "label": "Set Character Formatting", "menu": "Home › Font › Font", "run": "needs_params", "msg": "wordcraft: 1번째 명령 format.set 실패 — wordcraft-cli: command 2 (format.set): bad parameters: invalid type: null, expected struct CharProps"}
+{"id": "format.fontDialog", "kind": "command", "label": "Font Dialog", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.enclose", "kind": "command", "label": "Enclose Characters", "menu": "Home › Font", "run": "needs_params", "msg": "wordcraft: 1번째 명령 format.enclose 실패 — wordcraft-cli: command 2 (format.enclose): bad parameters: `shape` is required: circle, square, triangle, diamond, or null to remove"}
+{"id": "format.state", "kind": "command", "label": "Formatting at Selection", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "font.add", "kind": "command", "label": "Add Font…", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "font.list", "kind": "command", "label": "Added Fonts", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "font.remove", "kind": "command", "label": "Remove Added Font", "menu": "Home › Font", "run": "needs_params", "msg": "wordcraft: 1번째 명령 font.remove 실패 — wordcraft-cli: command 2 (font.remove): bad parameters: family is required"}
+{"id": "font.loadSystem", "kind": "command", "label": "Load System Installed Fonts…", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "format.phonetic", "kind": "command", "label": "Phonetic Guide", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "para.alignLeft", "kind": "command", "label": "Align Left", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.alignCenter", "kind": "command", "label": "Center", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.alignRight", "kind": "command", "label": "Align Right", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.justify", "kind": "command", "label": "Justify", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.distribute", "kind": "command", "label": "Distributed", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.align", "kind": "command", "label": "Alignment", "menu": "Home › Paragraph", "run": "needs_params", "msg": "wordcraft: 1번째 명령 para.align 실패 — wordcraft-cli: command 2 (para.align): bad parameters: `value` (string) is required"}
+{"id": "para.rtl", "kind": "command", "label": "Right-to-Left Text Direction", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.ltr", "kind": "command", "label": "Left-to-Right Text Direction", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.indent", "kind": "command", "label": "Increase Indent", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.outdent", "kind": "command", "label": "Decrease Indent", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.hangingIndent", "kind": "command", "label": "Hanging Indent", "menu": "Home › Paragraph › Paragraph", "run": "ok", "visible": false}
+{"id": "para.removeHanging", "kind": "command", "label": "Reduce Hanging Indent", "menu": "Home › Paragraph › Paragraph", "run": "ok", "visible": false}
+{"id": "para.indents", "kind": "command", "label": "Indents", "menu": "Layout › Paragraph", "run": "ok", "visible": false}
+{"id": "para.lineSpacing", "kind": "command", "label": "Line and Paragraph Spacing", "menu": "Home › Paragraph", "run": "needs_params", "msg": "wordcraft: 1번째 명령 para.lineSpacing 실패 — wordcraft-cli: command 2 (para.lineSpacing): bad parameters: `value` (number) is required"}
+{"id": "para.single", "kind": "command", "label": "Single Spacing", "menu": "Home › Paragraph › Line Spacing", "run": "ok", "visible": false}
+{"id": "para.double", "kind": "command", "label": "Double Spacing", "menu": "Home › Paragraph › Line Spacing", "run": "ok", "visible": false}
+{"id": "para.oneAndHalf", "kind": "command", "label": "1.5 Line Spacing", "menu": "Home › Paragraph › Line Spacing", "run": "ok", "visible": false}
+{"id": "para.spacing", "kind": "command", "label": "Paragraph Spacing", "menu": "Layout › Paragraph", "run": "ok", "visible": false}
+{"id": "para.addSpaceBefore", "kind": "command", "label": "Add Space Before Paragraph", "menu": "Home › Paragraph › Line Spacing", "run": "ok", "visible": false}
+{"id": "para.removeSpaceAfter", "kind": "command", "label": "Remove Space After Paragraph", "menu": "Home › Paragraph › Line Spacing", "run": "ok", "visible": false}
+{"id": "para.reset", "kind": "command", "label": "Reset Paragraph Formatting", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.style", "kind": "command", "label": "Apply Style", "menu": "Home › Styles", "run": "needs_params", "msg": "wordcraft: 1번째 명령 para.style 실패 — wordcraft-cli: command 2 (para.style): bad parameters: `style` (string) is required"}
+{"id": "para.normal", "kind": "command", "label": "Normal Style", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "para.heading1", "kind": "command", "label": "Heading 1", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "para.heading2", "kind": "command", "label": "Heading 2", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "para.heading3", "kind": "command", "label": "Heading 3", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "para.bullets", "kind": "command", "label": "Bullets", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.numbering", "kind": "command", "label": "Numbering", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.multilevel", "kind": "command", "label": "Multilevel List", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.listLevel", "kind": "command", "label": "Change List Level", "menu": "Home › Paragraph › Bullets", "run": "ok", "visible": false}
+{"id": "para.restartNumbering", "kind": "command", "label": "Restart at 1", "menu": "Home › Paragraph › Numbering", "run": "error", "msg": "wordcraft: 1번째 명령 para.restartNumbering 실패 — wordcraft-cli: command 2 (para.restartNumbering): not in a numbered list"}
+{"id": "para.moveUp", "kind": "command", "label": "Move Paragraph Up", "menu": "Home › Paragraph", "run": "error", "msg": "wordcraft: 1번째 명령 para.moveUp 실패 — wordcraft-cli: command 2 (para.moveUp): already at the top"}
+{"id": "para.moveDown", "kind": "command", "label": "Move Paragraph Down", "menu": "Home › Paragraph", "run": "error", "msg": "wordcraft: 1번째 명령 para.moveDown 실패 — wordcraft-cli: command 2 (para.moveDown): already at the bottom"}
+{"id": "para.promote", "kind": "command", "label": "Promote", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.demote", "kind": "command", "label": "Demote", "menu": "Home › Paragraph", "run": "needs_context", "msg": "wordcraft: 1번째 명령 para.demote 실패 — wordcraft-cli: command 2 (para.demote): nothing to demote"}
+{"id": "para.shading", "kind": "command", "label": "Shading", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.borders", "kind": "command", "label": "Borders", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.sort", "kind": "command", "label": "Sort", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "para.keepNext", "kind": "command", "label": "Keep with Next", "menu": "Home › Paragraph › Line and Page Breaks", "run": "ok", "visible": false}
+{"id": "para.keepLines", "kind": "command", "label": "Keep Lines Together", "menu": "Home › Paragraph › Line and Page Breaks", "run": "ok", "visible": false}
+{"id": "para.pageBreakBefore", "kind": "command", "label": "Page Break Before", "menu": "Home › Paragraph › Line and Page Breaks", "run": "ok", "visible": false}
+{"id": "para.widowControl", "kind": "command", "label": "Widow/Orphan Control", "menu": "Home › Paragraph › Line and Page Breaks", "run": "ok", "visible": false}
+{"id": "para.asianTypography", "kind": "command", "label": "Asian Typography", "menu": "Home › Paragraph › Asian Typography", "run": "ok", "visible": false}
+{"id": "para.tabs", "kind": "command", "label": "Tabs", "menu": "Home › Paragraph › Paragraph", "run": "ok", "visible": false}
+{"id": "para.outlineLevel", "kind": "command", "label": "Outline Level", "menu": "Home › Paragraph › Paragraph", "run": "ok", "visible": false}
+{"id": "para.set", "kind": "command", "label": "Set Paragraph Formatting", "menu": "Home › Paragraph › Paragraph", "run": "needs_params", "msg": "wordcraft: 1번째 명령 para.set 실패 — wordcraft-cli: command 2 (para.set): bad parameters: invalid type: null, expected struct ParaProps"}
+{"id": "para.dialog", "kind": "command", "label": "Paragraph Settings", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "styles.create", "kind": "command", "label": "Create a Style", "menu": "Home › Styles", "run": "needs_params", "msg": "wordcraft: 1번째 명령 styles.create 실패 — wordcraft-cli: command 2 (styles.create): bad parameters: `name` (string) is required"}
+{"id": "styles.modify", "kind": "command", "label": "Modify Style", "menu": "Home › Styles", "run": "needs_params", "msg": "wordcraft: 1번째 명령 styles.modify 실패 — wordcraft-cli: command 2 (styles.modify): bad parameters: `style` (string) is required"}
+{"id": "styles.updateToMatch", "kind": "command", "label": "Update Style to Match Selection", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "styles.delete", "kind": "command", "label": "Delete Style", "menu": "Home › Styles", "run": "needs_params", "msg": "wordcraft: 1번째 명령 styles.delete 실패 — wordcraft-cli: command 2 (styles.delete): bad parameters: `style` (string) is required"}
+{"id": "styles.manage", "kind": "command", "label": "Manage Styles", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "styles.setVisibility", "kind": "command", "label": "Show or Hide Style", "menu": "Home › Styles", "run": "needs_params", "msg": "wordcraft: 1번째 명령 styles.setVisibility 실패 — wordcraft-cli: command 2 (styles.setVisibility): bad parameters: `style` (string) is required"}
+{"id": "styles.list", "kind": "command", "label": "Styles", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "styles.pane", "kind": "command", "label": "Styles Pane", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "styles.apply", "kind": "command", "label": "Apply Styles", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "styles.addToGallery", "kind": "command", "label": "Add to Style Gallery", "menu": "Home › Styles", "run": "needs_params", "msg": "wordcraft: 1번째 명령 styles.addToGallery 실패 — wordcraft-cli: command 2 (styles.addToGallery): bad parameters: `style` (string) is required"}
+{"id": "list.define", "kind": "command", "label": "Define New Multilevel List", "menu": "Home › Paragraph › Multilevel List", "run": "needs_params", "msg": "wordcraft: 1번째 명령 list.define 실패 — wordcraft-cli: command 2 (list.define): bad parameters: `levels` (array) is required"}
+{"id": "list.get", "kind": "command", "label": "List Definition", "menu": "Home › Paragraph › Multilevel List", "run": "error", "msg": "wordcraft: 1번째 명령 list.get 실패 — wordcraft-cli: command 2 (list.get): not in a list"}
+{"id": "list.multilevelPreset", "kind": "command", "label": "Multilevel List Library", "menu": "Home › Paragraph › Multilevel List", "run": "needs_params", "msg": "wordcraft: 1번째 명령 list.multilevelPreset 실패 — wordcraft-cli: command 2 (list.multilevelPreset): bad parameters: `preset` (string) is required"}
+{"id": "styles.inspector", "kind": "command", "label": "Style Inspector", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "styles.inspect", "kind": "command", "label": "Inspect Styles at Selection", "menu": "Home › Styles › Style Inspector", "run": "ok", "visible": false}
+{"id": "styles.inspectorClear", "kind": "command", "label": "Clear Formatting Level", "menu": "Home › Styles › Style Inspector", "run": "needs_params", "msg": "wordcraft: 1번째 명령 styles.inspectorClear 실패 — wordcraft-cli: command 2 (styles.inspectorClear): bad parameters: `level` (string) is required"}
+{"id": "view.marks", "kind": "command", "label": "Show/Hide ¶", "menu": "Home › Paragraph", "run": "ok", "visible": false}
+{"id": "view.printLayout", "kind": "command", "label": "Print Layout", "menu": "View › Views", "run": "ok", "visible": false}
+{"id": "view.webLayout", "kind": "command", "label": "Web Layout", "menu": "View › Views", "run": "ok", "visible": false}
+{"id": "view.draft", "kind": "command", "label": "Draft", "menu": "View › Views", "run": "ok", "visible": false}
+{"id": "view.outline", "kind": "command", "label": "Outline", "menu": "View › Views", "run": "ok", "visible": false}
+{"id": "view.readMode", "kind": "command", "label": "Read Mode", "menu": "View › Views", "run": "ok", "visible": false}
+{"id": "view.readColumnWidth", "kind": "command", "label": "Reading Column Width", "menu": "Reading › Layout", "run": "needs_params", "msg": "wordcraft: 1번째 명령 view.readColumnWidth 실패 — wordcraft-cli: command 2 (view.readColumnWidth): bad parameters: column width must be auto, narrow, medium, wide, or page"}
+{"id": "view.readTextSize", "kind": "command", "label": "Reading Text Size", "menu": "Reading › Layout", "run": "needs_params", "msg": "wordcraft: 1번째 명령 view.readTextSize 실패 — wordcraft-cli: command 2 (view.readTextSize): bad parameters: reading text size must be a percentage"}
+{"id": "view.readLineSpacing", "kind": "command", "label": "Reading Line Spacing", "menu": "Reading › Layout", "run": "needs_params", "msg": "wordcraft: 1번째 명령 view.readLineSpacing 실패 — wordcraft-cli: command 2 (view.readLineSpacing): bad parameters: reading line spacing must be document, 1, 1.25, 1.5, or 2"}
+{"id": "view.readPageColor", "kind": "command", "label": "Reading Page Color", "menu": "Reading › Layout", "run": "needs_params", "msg": "wordcraft: 1번째 명령 view.readPageColor 실패 — wordcraft-cli: command 2 (view.readPageColor): bad parameters: reading page color must be none, sepia, or inverse"}
+{"id": "view.hideWhiteSpace", "kind": "command", "label": "Hide White Space", "menu": "View › Show", "run": "ok", "visible": false}
+{"id": "view.focus", "kind": "command", "label": "Focus", "menu": "View › Immersive", "run": "ok", "visible": false}
+{"id": "view.fullScreenView", "kind": "command", "label": "Full Screen View", "menu": "View › Immersive", "run": "ok", "visible": false}
+{"id": "view.ruler", "kind": "command", "label": "Ruler", "menu": "View › Show", "run": "ok", "visible": false}
+{"id": "view.gridlines", "kind": "command", "label": "Gridlines", "menu": "View › Show", "run": "ok", "visible": false}
+{"id": "table.viewGridlines", "kind": "command", "label": "View Gridlines", "menu": "Table Layout › Table", "run": "ok", "visible": false}
+{"id": "view.navigationPane", "kind": "command", "label": "Navigation Pane", "menu": "View › Show", "run": "ok", "visible": false}
+{"id": "view.zoom", "kind": "command", "label": "Zoom", "menu": "View › Zoom", "run": "ok", "visible": false}
+{"id": "view.zoom100", "kind": "command", "label": "100%", "menu": "View › Zoom", "run": "ok", "visible": false}
+{"id": "view.zoomIn", "kind": "command", "label": "Zoom In", "menu": "View › Zoom", "run": "ok", "visible": false}
+{"id": "view.zoomOut", "kind": "command", "label": "Zoom Out", "menu": "View › Zoom", "run": "ok", "visible": false}
+{"id": "view.onePage", "kind": "command", "label": "One Page", "menu": "View › Zoom", "run": "ok", "visible": false}
+{"id": "view.multiplePages", "kind": "command", "label": "Multiple Pages", "menu": "View › Zoom", "run": "ok", "visible": false}
+{"id": "view.pageWidth", "kind": "command", "label": "Page Width", "menu": "View › Zoom", "run": "ok", "visible": false}
+{"id": "view.darkMode", "kind": "command", "label": "Switch Modes", "menu": "View › Dark Mode", "run": "ok", "visible": false}
+{"id": "view.interfaceTheme", "kind": "command", "label": "Interface Theme", "menu": "View › Dark Mode", "run": "ok", "visible": false}
+{"id": "view.stylesPane", "kind": "command", "label": "Styles Pane", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "view.stylesPaneDock", "kind": "command", "label": "Styles Pane Position", "menu": "Home › Styles", "run": "ok", "visible": false}
+{"id": "view.commentsPane", "kind": "command", "label": "Comments Pane", "menu": "Review › Comments", "run": "ok", "visible": false}
+{"id": "view.accessibilityPane", "kind": "command", "label": "Accessibility Pane", "menu": "Review › Accessibility", "run": "ok", "visible": false}
+{"id": "view.altTextPane", "kind": "command", "label": "Alt Text Pane", "menu": "Review › Accessibility", "run": "ok", "visible": false}
+{"id": "view.formatShapePane", "kind": "command", "label": "Format Shape Pane", "menu": "Shape Format › Shape Styles", "run": "ok", "visible": false}
+{"id": "view.newWindow", "kind": "command", "label": "New Window", "menu": "View › Window", "run": "ok", "visible": false}
+{"id": "view.switchWindows", "kind": "command", "label": "Switch Windows", "menu": "View › Window", "run": "ok", "visible": false}
+{"id": "view.split", "kind": "command", "label": "Split", "menu": "View › Window", "run": "ok", "visible": false}
+{"id": "view.fullScreen", "kind": "command", "label": "Full Screen", "menu": "View › Window", "run": "ok", "visible": false}
+{"id": "view.state", "kind": "command", "label": "View State", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.numeral", "kind": "command", "label": "Numerals", "menu": "File › Options › Advanced", "run": "ok", "visible": false}
+{"id": "outline.promoteToHeading1", "kind": "command", "label": "Promote to Heading 1", "menu": "Outlining › Outline Tools", "run": "ok", "visible": false}
+{"id": "outline.promote", "kind": "command", "label": "Promote", "menu": "Outlining › Outline Tools", "run": "ok", "visible": false}
+{"id": "outline.demote", "kind": "command", "label": "Demote", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.demote 실패 — wordcraft-cli: command 2 (outline.demote): nothing to demote"}
+{"id": "outline.demoteToBody", "kind": "command", "label": "Demote to Body Text", "menu": "Outlining › Outline Tools", "run": "ok", "visible": false}
+{"id": "outline.level", "kind": "command", "label": "Outline Level", "menu": "Outlining › Outline Tools", "run": "needs_params", "msg": "wordcraft: 1번째 명령 outline.level 실패 — wordcraft-cli: command 2 (outline.level): bad parameters: `level` is required: {\"level\": 1-9 | \"body\"}"}
+{"id": "outline.moveUp", "kind": "command", "label": "Move Up", "menu": "Outlining › Outline Tools", "run": "error", "msg": "wordcraft: 1번째 명령 outline.moveUp 실패 — wordcraft-cli: command 2 (outline.moveUp): already at the top"}
+{"id": "outline.moveDown", "kind": "command", "label": "Move Down", "menu": "Outlining › Outline Tools", "run": "error", "msg": "wordcraft: 1번째 명령 outline.moveDown 실패 — wordcraft-cli: command 2 (outline.moveDown): already at the bottom"}
+{"id": "outline.expand", "kind": "command", "label": "Expand", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.expand 실패 — wordcraft-cli: command 2 (outline.expand): not available: outline.expand: only in Outline view"}
+{"id": "outline.collapse", "kind": "command", "label": "Collapse", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.collapse 실패 — wordcraft-cli: command 2 (outline.collapse): not available: outline.collapse: only in Outline view"}
+{"id": "outline.toggle", "kind": "command", "label": "Expand or Collapse Heading", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.toggle 실패 — wordcraft-cli: command 2 (outline.toggle): not available: outline.toggle: only in Outline view"}
+{"id": "outline.selectSubtree", "kind": "command", "label": "Select Heading and Content", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.selectSubtree 실패 — wordcraft-cli: command 2 (outline.selectSubtree): not available: outline.selectSubtree: only in Outline view"}
+{"id": "outline.showLevel", "kind": "command", "label": "Show Level", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showLevel 실패 — wordcraft-cli: command 2 (outline.showLevel): not available: outline.showLevel: only in Outline view"}
+{"id": "outline.showLevel1", "kind": "command", "label": "Show Level 1", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showLevel1 실패 — wordcraft-cli: command 2 (outline.showLevel1): not available: outline.showLevel1: only in Outline view"}
+{"id": "outline.showLevel2", "kind": "command", "label": "Show Level 2", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showLevel2 실패 — wordcraft-cli: command 2 (outline.showLevel2): not available: outline.showLevel2: only in Outline view"}
+{"id": "outline.showLevel3", "kind": "command", "label": "Show Level 3", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showLevel3 실패 — wordcraft-cli: command 2 (outline.showLevel3): not available: outline.showLevel3: only in Outline view"}
+{"id": "outline.showLevel4", "kind": "command", "label": "Show Level 4", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showLevel4 실패 — wordcraft-cli: command 2 (outline.showLevel4): not available: outline.showLevel4: only in Outline view"}
+{"id": "outline.showLevel5", "kind": "command", "label": "Show Level 5", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showLevel5 실패 — wordcraft-cli: command 2 (outline.showLevel5): not available: outline.showLevel5: only in Outline view"}
+{"id": "outline.showLevel6", "kind": "command", "label": "Show Level 6", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showLevel6 실패 — wordcraft-cli: command 2 (outline.showLevel6): not available: outline.showLevel6: only in Outline view"}
+{"id": "outline.showLevel7", "kind": "command", "label": "Show Level 7", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showLevel7 실패 — wordcraft-cli: command 2 (outline.showLevel7): not available: outline.showLevel7: only in Outline view"}
+{"id": "outline.showLevel8", "kind": "command", "label": "Show Level 8", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showLevel8 실패 — wordcraft-cli: command 2 (outline.showLevel8): not available: outline.showLevel8: only in Outline view"}
+{"id": "outline.showLevel9", "kind": "command", "label": "Show Level 9", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showLevel9 실패 — wordcraft-cli: command 2 (outline.showLevel9): not available: outline.showLevel9: only in Outline view"}
+{"id": "outline.showAll", "kind": "command", "label": "Show All Levels", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showAll 실패 — wordcraft-cli: command 2 (outline.showAll): not available: outline.showAll: only in Outline view"}
+{"id": "outline.firstLineOnly", "kind": "command", "label": "Show First Line Only", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.firstLineOnly 실패 — wordcraft-cli: command 2 (outline.firstLineOnly): not available: outline.firstLineOnly: only in Outline view"}
+{"id": "outline.showFormatting", "kind": "command", "label": "Show Text Formatting", "menu": "Outlining › Outline Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.showFormatting 실패 — wordcraft-cli: command 2 (outline.showFormatting): not available: outline.showFormatting: only in Outline view"}
+{"id": "outline.close", "kind": "command", "label": "Close Outline View", "menu": "Outlining › Close", "run": "needs_context", "msg": "wordcraft: 1번째 명령 outline.close 실패 — wordcraft-cli: command 2 (outline.close): not available: outline.close: only in Outline view"}
+{"id": "outline.state", "kind": "command", "label": "Outline State", "menu": "Outlining", "run": "ok", "visible": false}
+{"id": "insert.pageBreak", "kind": "command", "label": "Page Break", "menu": "Insert › Pages", "run": "ok", "visible": false}
+{"id": "insert.blankPage", "kind": "command", "label": "Blank Page", "menu": "Insert › Pages", "run": "ok", "visible": false}
+{"id": "insert.coverPage", "kind": "command", "label": "Cover Page", "menu": "Insert › Pages", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/insert_coverPage.png"}
+{"id": "insert.table", "kind": "command", "label": "Table", "menu": "Insert › Tables", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/insert_table.png"}
+{"id": "insert.picture", "kind": "command", "label": "Pictures", "menu": "Insert › Illustrations", "run": "ok", "visible": false}
+{"id": "insert.icon", "kind": "command", "label": "Icons", "menu": "Insert › Illustrations", "run": "ok", "visible": false}
+{"id": "insert.shape", "kind": "command", "label": "Shapes", "menu": "Insert › Illustrations", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/insert_shape.png"}
+{"id": "insert.textBox", "kind": "command", "label": "Text Box", "menu": "Insert › Text", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/insert_textBox.png"}
+{"id": "insert.link", "kind": "command", "label": "Link", "menu": "Insert › Links", "run": "ok", "visible": false}
+{"id": "link.targets", "kind": "command", "label": "Link", "menu": "Insert › Links", "run": "ok", "visible": false}
+{"id": "insert.removeLink", "kind": "command", "label": "Remove Hyperlink", "menu": "Insert › Links", "run": "ok", "visible": false}
+{"id": "insert.bookmark", "kind": "command", "label": "Bookmark", "menu": "Insert › Links", "run": "needs_params", "msg": "wordcraft: 1번째 명령 insert.bookmark 실패 — wordcraft-cli: command 2 (insert.bookmark): bad parameters: `name` (string) is required"}
+{"id": "insert.deleteBookmark", "kind": "command", "label": "Delete Bookmark", "menu": "Insert › Links", "run": "needs_params", "msg": "wordcraft: 1번째 명령 insert.deleteBookmark 실패 — wordcraft-cli: command 2 (insert.deleteBookmark): bad parameters: `name` (string) is required"}
+{"id": "insert.header", "kind": "command", "label": "Header", "menu": "Insert › Header & Footer", "run": "ok", "visible": false}
+{"id": "insert.footer", "kind": "command", "label": "Footer", "menu": "Insert › Header & Footer", "run": "ok", "visible": false}
+{"id": "insert.pageNumber", "kind": "command", "label": "Page Number", "menu": "Insert › Header & Footer", "run": "ok", "visible": false}
+{"id": "insert.editHeader", "kind": "command", "label": "Edit Header", "menu": "Insert › Header & Footer › Header", "run": "ok", "visible": false}
+{"id": "insert.editFooter", "kind": "command", "label": "Edit Footer", "menu": "Insert › Header & Footer › Footer", "run": "ok", "visible": false}
+{"id": "insert.createHeader", "kind": "command", "label": "Header", "menu": "Insert › Header & Footer", "run": "ok", "visible": false}
+{"id": "insert.createFooter", "kind": "command", "label": "Footer", "menu": "Insert › Header & Footer", "run": "ok", "visible": false}
+{"id": "insert.closeHeader", "kind": "command", "label": "Close Header and Footer", "menu": "Header & Footer", "run": "ok", "visible": false}
+{"id": "insert.removeEmptyHeaders", "kind": "command", "label": "Close Header and Footer", "menu": "Header & Footer", "run": "ok", "visible": false}
+{"id": "insert.removeHeader", "kind": "command", "label": "Remove Header", "menu": "Insert › Header & Footer › Header", "run": "ok", "visible": false}
+{"id": "insert.removeFooter", "kind": "command", "label": "Remove Footer", "menu": "Insert › Header & Footer › Footer", "run": "ok", "visible": false}
+{"id": "insert.dateTime", "kind": "command", "label": "Date & Time", "menu": "Insert › Text", "run": "ok", "visible": false}
+{"id": "insert.symbol", "kind": "command", "label": "Symbol", "menu": "Insert › Symbols", "run": "needs_params", "msg": "wordcraft: 1번째 명령 insert.symbol 실패 — wordcraft-cli: command 2 (insert.symbol): bad parameters: `char` (string) is required"}
+{"id": "insert.field", "kind": "command", "label": "Field", "menu": "Insert › Text › Quick Parts", "run": "needs_params", "msg": "wordcraft: 1번째 명령 insert.field 실패 — wordcraft-cli: command 2 (insert.field): bad parameters: `instr` (string) is required"}
+{"id": "insert.dateField", "kind": "command", "label": "Insert Date Field", "menu": "Insert › Text › Quick Parts", "run": "ok", "visible": false}
+{"id": "insert.timeField", "kind": "command", "label": "Insert Time Field", "menu": "Insert › Text › Quick Parts", "run": "ok", "visible": false}
+{"id": "insert.pageField", "kind": "command", "label": "Insert Page Field", "menu": "Insert › Text › Quick Parts", "run": "ok", "visible": false}
+{"id": "insert.dropCap", "kind": "command", "label": "Drop Cap", "menu": "Insert › Text", "run": "needs_context", "msg": "wordcraft: 1번째 명령 insert.dropCap 실패 — wordcraft-cli: command 2 (insert.dropCap): not available: insert.dropCap: the paragraph is empty"}
+{"id": "insert.horizontalLine", "kind": "command", "label": "Horizontal Line", "menu": "Home › Paragraph › Borders", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/insert_horizontalLine.png"}
+{"id": "insert.textFromFile", "kind": "command", "label": "Text from File", "menu": "Insert › Text › Object", "run": "needs_params", "msg": "wordcraft: 1번째 명령 insert.textFromFile 실패 — wordcraft-cli: command 2 (insert.textFromFile): bad parameters: `path` (string) is required"}
+{"id": "insert.equation", "kind": "command", "label": "Equation", "menu": "Insert › Symbols", "run": "ok", "visible": false}
+{"id": "equation.edit", "kind": "command", "label": "Edit Equation", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.edit 실패 — wordcraft-cli: command 2 (equation.edit): not available: equation.edit: no equation at the caret"}
+{"id": "equation.exit", "kind": "command", "label": "Leave Equation", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.exit 실패 — wordcraft-cli: command 2 (equation.exit): not available: equation.exit: not editing an equation"}
+{"id": "equation.type", "kind": "command", "label": "Type in Equation", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.type 실패 — wordcraft-cli: command 2 (equation.type): not available: equation.type: not editing an equation"}
+{"id": "equation.insertStructure", "kind": "command", "label": "Insert Structure", "menu": "Equation › Structures", "run": "needs_params", "msg": "wordcraft: 1번째 명령 equation.insertStructure 실패 — wordcraft-cli: command 2 (equation.insertStructure): bad parameters: give an id, linear or latex"}
+{"id": "equation.insertSymbol", "kind": "command", "label": "Insert Symbol", "menu": "Equation › Symbols", "run": "needs_params", "msg": "wordcraft: 1번째 명령 equation.insertSymbol 실패 — wordcraft-cli: command 2 (equation.insertSymbol): bad parameters: `char` (string) is required"}
+{"id": "equation.move", "kind": "command", "label": "Move in Equation", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.move 실패 — wordcraft-cli: command 2 (equation.move): not available: equation.move: not editing an equation"}
+{"id": "equation.backspace", "kind": "command", "label": "Delete Back in Equation", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.backspace 실패 — wordcraft-cli: command 2 (equation.backspace): not available: equation.backspace: not editing an equation"}
+{"id": "equation.delete", "kind": "command", "label": "Delete in Equation", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.delete 실패 — wordcraft-cli: command 2 (equation.delete): not available: equation.delete: not editing an equation"}
+{"id": "equation.deleteSurrounding", "kind": "command", "label": "Delete Around Caret in Equation", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.deleteSurrounding 실패 — wordcraft-cli: command 2 (equation.deleteSurrounding): not available: equation.deleteSurrounding: not editing an equation"}
+{"id": "equation.enter", "kind": "command", "label": "Enter in Equation", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.enter 실패 — wordcraft-cli: command 2 (equation.enter): not available: equation.enter: not editing an equation"}
+{"id": "equation.convert", "kind": "command", "label": "Convert", "menu": "Equation › Conversions", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.convert 실패 — wordcraft-cli: command 2 (equation.convert): not available: no equation at the caret"}
+{"id": "equation.inputFormat", "kind": "command", "label": "Input Format", "menu": "Equation › Conversions", "run": "ok", "visible": false}
+{"id": "equation.normalText", "kind": "command", "label": "Normal Text", "menu": "Equation › Tools", "run": "ok", "visible": false}
+{"id": "equation.display", "kind": "command", "label": "Change to Display", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.display 실패 — wordcraft-cli: command 2 (equation.display): not available: equation.display: no equation at the caret"}
+{"id": "equation.justify", "kind": "command", "label": "Justification", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.justify 실패 — wordcraft-cli: command 2 (equation.justify): not available: equation.justify: no equation at the caret"}
+{"id": "equation.number", "kind": "command", "label": "Equation Number", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.number 실패 — wordcraft-cli: command 2 (equation.number): not available: equation.number: no equation at the caret"}
+{"id": "equation.set", "kind": "command", "label": "Set Equation", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.set 실패 — wordcraft-cli: command 2 (equation.set): not available: equation.set: no equation at the caret"}
+{"id": "equation.get", "kind": "command", "label": "Equation Info", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.get 실패 — wordcraft-cli: command 2 (equation.get): not available: equation.get: no equation at the caret"}
+{"id": "equation.gallery", "kind": "command", "label": "Equation Gallery", "menu": "Equation › Structures", "run": "ok", "visible": false}
+{"id": "equation.structureActions", "kind": "command", "label": "Structure Actions", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.structureActions 실패 — wordcraft-cli: command 2 (equation.structureActions): not available: equation.structureActions: not editing an equation"}
+{"id": "equation.structure", "kind": "command", "label": "Change Structure", "menu": "Equation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 equation.structure 실패 — wordcraft-cli: command 2 (equation.structure): not available: equation.structure: not editing an equation"}
+{"id": "layout.margins", "kind": "command", "label": "Margins", "menu": "Layout › Page Setup", "run": "ok", "visible": false}
+{"id": "layout.orientation", "kind": "command", "label": "Orientation", "menu": "Layout › Page Setup", "run": "ok", "visible": false}
+{"id": "layout.size", "kind": "command", "label": "Size", "menu": "Layout › Page Setup", "run": "needs_params", "msg": "wordcraft: 1번째 명령 layout.size 실패 — wordcraft-cli: command 2 (layout.size): bad parameters: `width` (number) is required"}
+{"id": "layout.columns", "kind": "command", "label": "Columns", "menu": "Layout › Page Setup", "run": "ok", "visible": false}
+{"id": "layout.break", "kind": "command", "label": "Breaks", "menu": "Layout › Page Setup", "run": "ok", "visible": false}
+{"id": "layout.lineNumbers", "kind": "command", "label": "Line Numbers", "menu": "Layout › Page Setup", "run": "ok", "visible": false}
+{"id": "layout.hyphenation", "kind": "command", "label": "Hyphenation", "menu": "Layout › Page Setup", "run": "ok", "visible": false}
+{"id": "layout.manualHyphenation", "kind": "command", "label": "Manual Hyphenation", "menu": "Layout › Page Setup › Hyphenation", "run": "ok", "visible": false}
+{"id": "layout.pageSetup", "kind": "command", "label": "Page Setup", "menu": "Layout › Page Setup", "run": "ok", "visible": false}
+{"id": "layout.verticalAlign", "kind": "command", "label": "Vertical Alignment", "menu": "Layout › Page Setup › Layout", "run": "ok", "visible": false}
+{"id": "layout.sectionRtl", "kind": "command", "label": "Right-to-Left Section", "menu": "Layout › Page Setup", "run": "ok", "visible": false}
+{"id": "layout.textDirection", "kind": "command", "label": "Text Direction", "menu": "Layout › Page Setup", "run": "ok", "visible": false}
+{"id": "layout.differentFirstPage", "kind": "command", "label": "Different First Page", "menu": "Header & Footer › Options", "run": "ok", "visible": false}
+{"id": "layout.differentOddEven", "kind": "command", "label": "Different Odd & Even Pages", "menu": "Header & Footer › Options", "run": "ok", "visible": false}
+{"id": "layout.pageNumberFormat", "kind": "command", "label": "Format Page Numbers", "menu": "Insert › Header & Footer › Page Number", "run": "ok", "visible": false}
+{"id": "layout.documentGrid", "kind": "command", "label": "Document Grid", "menu": "Layout › Page Setup › Document Grid", "run": "ok", "visible": false}
+{"id": "layout.section", "kind": "command", "label": "Section Properties", "menu": "Layout › Page Setup", "run": "ok", "visible": false}
+{"id": "table.insertRowAbove", "kind": "command", "label": "Insert Above", "menu": "Table Layout › Rows & Columns", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.insertRowAbove 실패 — wordcraft-cli: command 2 (table.insertRowAbove): not available: table.insertRowAbove: the cursor isn't in a table"}
+{"id": "table.insertRowBelow", "kind": "command", "label": "Insert Below", "menu": "Table Layout › Rows & Columns", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.insertRowBelow 실패 — wordcraft-cli: command 2 (table.insertRowBelow): not available: table.insertRowBelow: the cursor isn't in a table"}
+{"id": "table.insertColumnLeft", "kind": "command", "label": "Insert Left", "menu": "Table Layout › Rows & Columns", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.insertColumnLeft 실패 — wordcraft-cli: command 2 (table.insertColumnLeft): not available: table.insertColumnLeft: the cursor isn't in a table"}
+{"id": "table.insertColumnRight", "kind": "command", "label": "Insert Right", "menu": "Table Layout › Rows & Columns", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.insertColumnRight 실패 — wordcraft-cli: command 2 (table.insertColumnRight): not available: table.insertColumnRight: the cursor isn't in a table"}
+{"id": "table.deleteRow", "kind": "command", "label": "Delete Rows", "menu": "Table Layout › Rows & Columns › Delete", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.deleteRow 실패 — wordcraft-cli: command 2 (table.deleteRow): not available: table.deleteRow: the cursor isn't in a table"}
+{"id": "table.deleteColumn", "kind": "command", "label": "Delete Columns", "menu": "Table Layout › Rows & Columns › Delete", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.deleteColumn 실패 — wordcraft-cli: command 2 (table.deleteColumn): not available: table.deleteColumn: the cursor isn't in a table"}
+{"id": "table.deleteTable", "kind": "command", "label": "Delete Table", "menu": "Table Layout › Rows & Columns › Delete", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.deleteTable 실패 — wordcraft-cli: command 2 (table.deleteTable): not available: table.deleteTable: the cursor isn't in a table"}
+{"id": "table.deleteCells", "kind": "command", "label": "Delete Cells", "menu": "Table Layout › Rows & Columns › Delete", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.deleteCells 실패 — wordcraft-cli: command 2 (table.deleteCells): not available: table.deleteCells: the cursor isn't in a table"}
+{"id": "table.merge", "kind": "command", "label": "Merge Cells", "menu": "Table Layout › Merge", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.merge 실패 — wordcraft-cli: command 2 (table.merge): not available: table.merge: the cursor isn't in a table"}
+{"id": "table.split", "kind": "command", "label": "Split Cells", "menu": "Table Layout › Merge", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.split 실패 — wordcraft-cli: command 2 (table.split): not available: table.split: the cursor isn't in a table"}
+{"id": "table.splitTable", "kind": "command", "label": "Split Table", "menu": "Table Layout › Merge", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.splitTable 실패 — wordcraft-cli: command 2 (table.splitTable): not available: table.splitTable: the cursor isn't in a table"}
+{"id": "table.style", "kind": "command", "label": "Table Styles", "menu": "Table Design › Table Styles", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.style 실패 — wordcraft-cli: command 2 (table.style): not available: table.style: the cursor isn't in a table"}
+{"id": "table.look", "kind": "command", "label": "Table Style Options", "menu": "Table Design › Table Style Options", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.look 실패 — wordcraft-cli: command 2 (table.look): not available: table.look: the cursor isn't in a table"}
+{"id": "table.shading", "kind": "command", "label": "Shading", "menu": "Table Design › Table Styles", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.shading 실패 — wordcraft-cli: command 2 (table.shading): not available: table.shading: the cursor isn't in a table"}
+{"id": "table.borders", "kind": "command", "label": "Borders", "menu": "Table Design › Borders", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.borders 실패 — wordcraft-cli: command 2 (table.borders): not available: table.borders: the cursor isn't in a table"}
+{"id": "table.cellAlign", "kind": "command", "label": "Alignment", "menu": "Table Layout › Alignment", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.cellAlign 실패 — wordcraft-cli: command 2 (table.cellAlign): not available: table.cellAlign: the cursor isn't in a table"}
+{"id": "table.textDirection", "kind": "command", "label": "Text Direction", "menu": "Table Layout › Alignment", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.textDirection 실패 — wordcraft-cli: command 2 (table.textDirection): not available: table.textDirection: the cursor isn't in a table"}
+{"id": "table.autofit", "kind": "command", "label": "AutoFit", "menu": "Table Layout › Cell Size", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.autofit 실패 — wordcraft-cli: command 2 (table.autofit): not available: table.autofit: the cursor isn't in a table"}
+{"id": "table.distributeColumns", "kind": "command", "label": "Distribute Columns", "menu": "Table Layout › Cell Size", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.distributeColumns 실패 — wordcraft-cli: command 2 (table.distributeColumns): not available: table.distributeColumns: the cursor isn't in a table"}
+{"id": "table.distributeRows", "kind": "command", "label": "Distribute Rows", "menu": "Table Layout › Cell Size", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.distributeRows 실패 — wordcraft-cli: command 2 (table.distributeRows): not available: table.distributeRows: the cursor isn't in a table"}
+{"id": "table.columnWidth", "kind": "command", "label": "Table Column Width", "menu": "Table Layout › Cell Size", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.columnWidth 실패 — wordcraft-cli: command 2 (table.columnWidth): not available: table.columnWidth: the cursor isn't in a table"}
+{"id": "table.rowHeight", "kind": "command", "label": "Table Row Height", "menu": "Table Layout › Cell Size", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.rowHeight 실패 — wordcraft-cli: command 2 (table.rowHeight): not available: table.rowHeight: the cursor isn't in a table"}
+{"id": "table.repeatHeader", "kind": "command", "label": "Repeat Header Rows", "menu": "Table Layout › Data", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.repeatHeader 실패 — wordcraft-cli: command 2 (table.repeatHeader): not available: table.repeatHeader: the cursor isn't in a table"}
+{"id": "table.altText", "kind": "command", "label": "Alt Text", "menu": "Table Layout › Table › Properties", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.altText 실패 — wordcraft-cli: command 2 (table.altText): not available: table.altText: the cursor isn't in a table"}
+{"id": "table.sort", "kind": "command", "label": "Sort", "menu": "Table Layout › Data", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.sort 실패 — wordcraft-cli: command 2 (table.sort): not available: table.sort: the cursor isn't in a table"}
+{"id": "table.toText", "kind": "command", "label": "Convert to Text", "menu": "Table Layout › Data", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.toText 실패 — wordcraft-cli: command 2 (table.toText): not available: table.toText: the cursor isn't in a table"}
+{"id": "table.formula", "kind": "command", "label": "Formula", "menu": "Table Layout › Data", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.formula 실패 — wordcraft-cli: command 2 (table.formula): not available: table.formula: the cursor isn't in a table"}
+{"id": "table.selectTable", "kind": "command", "label": "Select Table", "menu": "Table Layout › Table › Select", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.selectTable 실패 — wordcraft-cli: command 2 (table.selectTable): not available: table.selectTable: the cursor isn't in a table"}
+{"id": "table.selectRow", "kind": "command", "label": "Select Row", "menu": "Table Layout › Table › Select", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.selectRow 실패 — wordcraft-cli: command 2 (table.selectRow): not available: table.selectRow: the cursor isn't in a table"}
+{"id": "table.selectColumn", "kind": "command", "label": "Select Column", "menu": "Table Layout › Table › Select", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.selectColumn 실패 — wordcraft-cli: command 2 (table.selectColumn): not available: table.selectColumn: the cursor isn't in a table"}
+{"id": "table.selectCell", "kind": "command", "label": "Select Cell", "menu": "Table Layout › Table › Select", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.selectCell 실패 — wordcraft-cli: command 2 (table.selectCell): not available: table.selectCell: the cursor isn't in a table"}
+{"id": "table.rtl", "kind": "command", "label": "Right-to-Left Table", "menu": "Table Layout › Table", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.rtl 실패 — wordcraft-cli: command 2 (table.rtl): not available: table.rtl: the cursor isn't in a table"}
+{"id": "table.properties", "kind": "command", "label": "Properties", "menu": "Table Layout › Table", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.properties 실패 — wordcraft-cli: command 2 (table.properties): not available: table.properties: the cursor isn't in a table"}
+{"id": "table.fromText", "kind": "command", "label": "Convert Text to Table", "menu": "Insert › Tables", "run": "ok", "visible": false}
+{"id": "table.quick", "kind": "command", "label": "Quick Tables", "menu": "Insert › Tables", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/table_quick.png"}
+{"id": "table.newStyle", "kind": "command", "label": "New Table Style", "menu": "Table Design › Table Styles", "run": "needs_params", "msg": "wordcraft: 1번째 명령 table.newStyle 실패 — wordcraft-cli: command 2 (table.newStyle): bad parameters: `name` (string) is required"}
+{"id": "table.modifyStyle", "kind": "command", "label": "Modify Table Style", "menu": "Table Design › Table Styles", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.modifyStyle 실패 — wordcraft-cli: command 2 (table.modifyStyle): not available: the cursor isn't in a table with a style"}
+{"id": "table.deleteStyle", "kind": "command", "label": "Delete Table Style", "menu": "Table Design › Table Styles", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.deleteStyle 실패 — wordcraft-cli: command 2 (table.deleteStyle): not available: the cursor isn't in a table with a style"}
+{"id": "table.draw", "kind": "command", "label": "Draw Table", "menu": "Insert › Tables", "run": "needs_params", "msg": "wordcraft: 1번째 명령 table.draw 실패 — wordcraft-cli: command 2 (table.draw): bad parameters: `page` (number) is required"}
+{"id": "table.eraser", "kind": "command", "label": "Eraser", "menu": "Table Layout › Draw", "run": "needs_params", "msg": "wordcraft: 1번째 명령 table.eraser 실패 — wordcraft-cli: command 2 (table.eraser): bad parameters: `page` (number) is required"}
+{"id": "table.resizeDrag", "kind": "command", "label": "Resize Table by Dragging", "menu": "Table Layout › Cell Size", "run": "needs_params", "msg": "wordcraft: 1번째 명령 table.resizeDrag 실패 — wordcraft-cli: command 2 (table.resizeDrag): bad parameters: `page` (number) is required"}
+{"id": "table.selectAt", "kind": "command", "label": "Select Table Cells by Clicking", "menu": "Table Layout › Table › Select", "run": "needs_params", "msg": "wordcraft: 1번째 명령 table.selectAt 실패 — wordcraft-cli: command 2 (table.selectAt): bad parameters: `page` (number) is required"}
+{"id": "table.insertAt", "kind": "command", "label": "Insert Row or Column by Clicking", "menu": "Table Layout › Rows & Columns", "run": "needs_params", "msg": "wordcraft: 1번째 명령 table.insertAt 실패 — wordcraft-cli: command 2 (table.insertAt): bad parameters: `page` (number) is required"}
+{"id": "table.moveDrag", "kind": "command", "label": "Move Table by Dragging", "menu": "Table Layout › Table", "run": "needs_params", "msg": "wordcraft: 1번째 명령 table.moveDrag 실패 — wordcraft-cli: command 2 (table.moveDrag): bad parameters: `page` (number) is required"}
+{"id": "table.fitColumn", "kind": "command", "label": "AutoFit Column by Double-Clicking", "menu": "Table Layout › Cell Size", "run": "needs_params", "msg": "wordcraft: 1번째 명령 table.fitColumn 실패 — wordcraft-cli: command 2 (table.fitColumn): bad parameters: `page` (number) is required"}
+{"id": "review.newComment", "kind": "command", "label": "New Comment", "menu": "Review › Comments", "run": "ok", "visible": false}
+{"id": "review.reply", "kind": "command", "label": "Reply", "menu": "Review › Comments", "run": "needs_params", "msg": "wordcraft: 1번째 명령 review.reply 실패 — wordcraft-cli: command 2 (review.reply): bad parameters: `id` required"}
+{"id": "review.editComment", "kind": "command", "label": "Edit Comment", "menu": "Review › Comments", "run": "needs_params", "msg": "wordcraft: 1번째 명령 review.editComment 실패 — wordcraft-cli: command 2 (review.editComment): bad parameters: `id` required"}
+{"id": "review.deleteComment", "kind": "command", "label": "Delete", "menu": "Review › Comments", "run": "needs_params", "msg": "wordcraft: 1번째 명령 review.deleteComment 실패 — wordcraft-cli: command 2 (review.deleteComment): bad parameters: no comment here"}
+{"id": "review.resolveComment", "kind": "command", "label": "Resolve", "menu": "Review › Comments", "run": "needs_params", "msg": "wordcraft: 1번째 명령 review.resolveComment 실패 — wordcraft-cli: command 2 (review.resolveComment): bad parameters: `id` required"}
+{"id": "review.nextComment", "kind": "command", "label": "Next", "menu": "Review › Comments", "run": "ok", "visible": false}
+{"id": "review.previousComment", "kind": "command", "label": "Previous", "menu": "Review › Comments", "run": "ok", "visible": false}
+{"id": "review.comments", "kind": "command", "label": "Show Comments", "menu": "Review › Comments", "run": "ok", "visible": false}
+{"id": "review.trackChanges", "kind": "command", "label": "Track Changes", "menu": "Review › Tracking", "run": "ok", "visible": false}
+{"id": "review.acceptAll", "kind": "command", "label": "Accept All Changes", "menu": "Review › Changes", "run": "ok", "visible": false}
+{"id": "review.rejectAll", "kind": "command", "label": "Reject All Changes", "menu": "Review › Changes", "run": "ok", "visible": false}
+{"id": "review.accept", "kind": "command", "label": "Accept", "menu": "Review › Changes", "run": "ok", "visible": false}
+{"id": "review.reject", "kind": "command", "label": "Reject", "menu": "Review › Changes", "run": "ok", "visible": false}
+{"id": "review.nextChange", "kind": "command", "label": "Next Change", "menu": "Review › Changes", "run": "ok", "visible": false}
+{"id": "review.previousChange", "kind": "command", "label": "Previous Change", "menu": "Review › Changes", "run": "ok", "visible": false}
+{"id": "review.markup", "kind": "command", "label": "Display for Review", "menu": "Review › Tracking", "run": "ok", "visible": false}
+{"id": "review.trackingOptions", "kind": "command", "label": "Track Changes Options", "menu": "Review › Tracking", "run": "ok", "visible": false}
+{"id": "review.wordCount", "kind": "command", "label": "Word Count", "menu": "Review › Proofing", "run": "ok", "visible": false}
+{"id": "review.changes", "kind": "command", "label": "Reviewing Pane", "menu": "Review › Tracking", "run": "ok", "visible": false}
+{"id": "review.spelling", "kind": "command", "label": "Spelling & Grammar", "menu": "Review › Proofing", "run": "ok", "visible": false}
+{"id": "review.issues", "kind": "command", "label": "Proofing Issues", "menu": "Review › Proofing", "run": "ok", "visible": false}
+{"id": "review.suggestions", "kind": "command", "label": "Spelling Suggestions", "menu": "Review › Proofing", "run": "ok", "visible": false}
+{"id": "review.addToDictionary", "kind": "command", "label": "Add to Dictionary", "menu": "Review › Proofing", "run": "needs_params", "msg": "wordcraft: 1번째 명령 review.addToDictionary 실패 — wordcraft-cli: command 2 (review.addToDictionary): bad parameters: no word"}
+{"id": "review.ignoreAll", "kind": "command", "label": "Ignore All", "menu": "Review › Proofing", "run": "ok", "visible": false}
+{"id": "review.applySuggestion", "kind": "command", "label": "Change", "menu": "Review › Proofing", "run": "needs_params", "msg": "wordcraft: 1번째 명령 review.applySuggestion 실패 — wordcraft-cli: command 2 (review.applySuggestion): bad parameters: `text` (string) is required"}
+{"id": "review.proofing", "kind": "command", "label": "Check Spelling as You Type", "menu": "File › Options › Proofing", "run": "ok", "visible": false}
+{"id": "review.thesaurus", "kind": "command", "label": "Thesaurus", "menu": "Review › Proofing", "run": "ok", "visible": false}
+{"id": "file.rename", "kind": "command", "label": "Rename Document", "menu": "File › Info", "run": "needs_params", "msg": "wordcraft: 1번째 명령 file.rename 실패 — wordcraft-cli: command 2 (file.rename): bad parameters: `name` (string) is required"}
+{"id": "file.new", "kind": "command", "label": "New", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.open", "kind": "command", "label": "Open", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.save", "kind": "command", "label": "Save", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.saveAs", "kind": "command", "label": "Save As", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.encrypt", "kind": "command", "label": "Encrypt with Password", "menu": "File › Info › Protect Document", "run": "needs_params", "msg": "wordcraft: 1번째 명령 file.encrypt 실패 — wordcraft-cli: command 2 (file.encrypt): bad parameters: `password` must be a string, or null to remove the password"}
+{"id": "file.exportPdf", "kind": "command", "label": "Export PDF", "menu": "File › Export", "run": "ok", "visible": false}
+{"id": "file.exportPng", "kind": "command", "label": "Export Page as PNG", "menu": "File › Export", "run": "ok", "visible": false}
+{"id": "file.printMarkup", "kind": "command", "label": "Print Markup", "menu": "File › Print", "run": "ok", "visible": false}
+{"id": "file.printPdf", "kind": "command", "label": "Print to PDF", "menu": "File › Print", "run": "needs_params", "msg": "wordcraft: 1번째 명령 file.printPdf 실패 — wordcraft-cli: command 2 (file.printPdf): bad parameters: `path` (string) is required"}
+{"id": "file.print", "kind": "command", "label": "Print", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.close", "kind": "command", "label": "Close", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.closeDocument", "kind": "command", "label": "Close Document", "menu": "Agents", "run": "error", "msg": "wordcraft: 1번째 명령 file.closeDocument 실패 — wordcraft-cli: command 2 (file.closeDocument): the document has unsaved changes: save it first, or pass \"force\": true to discard them"}
+{"id": "file.properties", "kind": "command", "label": "Properties", "menu": "File › Info", "run": "ok", "visible": false}
+{"id": "file.info", "kind": "command", "label": "Info", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.setAuthor", "kind": "command", "label": "User Name", "menu": "File › Options › General", "run": "needs_params", "msg": "wordcraft: 1번째 명령 file.setAuthor 실패 — wordcraft-cli: command 2 (file.setAuthor): bad parameters: `name` (string) is required"}
+{"id": "file.privacyOptions", "kind": "command", "label": "Privacy Options", "menu": "File › Options › Save", "run": "needs_params", "msg": "wordcraft: 1번째 명령 file.privacyOptions 실패 — wordcraft-cli: command 2 (file.privacyOptions): bad parameters: give removePersonalInfo or removeDateTime (file.privacy reads them)"}
+{"id": "file.privacy", "kind": "command", "label": "Privacy Settings", "menu": "File › Options › Save", "run": "ok", "visible": false}
+{"id": "document.inspect", "kind": "command", "label": "Inspect Document", "menu": "Agents", "run": "ok", "visible": false}
+{"id": "document.text", "kind": "command", "label": "Document Text", "menu": "Agents", "run": "ok", "visible": false}
+{"id": "document.paragraph", "kind": "command", "label": "Paragraph Details", "menu": "Agents", "run": "ok", "visible": false}
+{"id": "document.selection", "kind": "command", "label": "Selection", "menu": "Agents", "run": "ok", "visible": false}
+{"id": "document.layout", "kind": "command", "label": "Layout Summary", "menu": "Agents", "run": "ok", "visible": false}
+{"id": "document.setText", "kind": "command", "label": "Replace Document Text", "menu": "Agents", "run": "needs_params", "msg": "wordcraft: 1번째 명령 document.setText 실패 — wordcraft-cli: command 2 (document.setText): bad parameters: `text` (string) is required"}
+{"id": "file.options", "kind": "command", "label": "Options", "menu": "File", "run": "ok", "visible": false}
+{"id": "text.overtype", "kind": "command", "label": "Overtype", "menu": "File › Options › Advanced", "run": "ok", "visible": false}
+{"id": "proof.packs", "kind": "command", "label": "Language Packs", "menu": "File › Options › Language", "run": "ok", "visible": false}
+{"id": "proof.installPack", "kind": "command", "label": "Install Language Pack", "menu": "File › Options › Language", "run": "needs_params", "msg": "wordcraft: 1번째 명령 proof.installPack 실패 — wordcraft-cli: command 2 (proof.installPack): bad parameters: `locale` (a language tag like nl) is required"}
+{"id": "proof.removePack", "kind": "command", "label": "Remove Language Pack", "menu": "File › Options › Language", "run": "needs_params", "msg": "wordcraft: 1번째 명령 proof.removePack 실패 — wordcraft-cli: command 2 (proof.removePack): bad parameters: `locale` (a language tag like nl) is required"}
+{"id": "design.theme", "kind": "command", "label": "Themes", "menu": "Design › Document Formatting", "run": "needs_params", "msg": "wordcraft: 1번째 명령 design.theme 실패 — wordcraft-cli: command 2 (design.theme): bad parameters: `name` (string) is required"}
+{"id": "design.themeFonts", "kind": "command", "label": "Fonts", "menu": "Design › Document Formatting", "run": "needs_params", "msg": "wordcraft: 1번째 명령 design.themeFonts 실패 — wordcraft-cli: command 2 (design.themeFonts): bad parameters: `heading` (string) is required"}
+{"id": "design.themeColors", "kind": "command", "label": "Colors", "menu": "Design › Document Formatting", "run": "needs_params", "msg": "wordcraft: 1번째 명령 design.themeColors 실패 — wordcraft-cli: command 2 (design.themeColors): bad parameters: `name` (string) is required"}
+{"id": "design.styleSet", "kind": "command", "label": "Style Set", "menu": "Design › Document Formatting", "run": "needs_params", "msg": "wordcraft: 1번째 명령 design.styleSet 실패 — wordcraft-cli: command 2 (design.styleSet): bad parameters: `name` (string) is required"}
+{"id": "design.paragraphSpacing", "kind": "command", "label": "Paragraph Spacing", "menu": "Design › Document Formatting", "run": "needs_params", "msg": "wordcraft: 1번째 명령 design.paragraphSpacing 실패 — wordcraft-cli: command 2 (design.paragraphSpacing): bad parameters: `value` (string) is required"}
+{"id": "design.scaleFontSizes", "kind": "command", "label": "Scale Font Sizes", "menu": "Design › Document Formatting", "run": "needs_params", "msg": "wordcraft: 1번째 명령 design.scaleFontSizes 실패 — wordcraft-cli: command 2 (design.scaleFontSizes): bad parameters: give exactly one of `delta` (points) or `percent`"}
+{"id": "design.watermark", "kind": "command", "label": "Watermark", "menu": "Design › Page Background", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/design_watermark.png"}
+{"id": "design.pageColor", "kind": "command", "label": "Page Color", "menu": "Design › Page Background", "run": "ok", "visible": false}
+{"id": "design.pageBorders", "kind": "command", "label": "Page Borders", "menu": "Design › Page Background", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/design_pageBorders.png"}
+{"id": "design.setDefault", "kind": "command", "label": "Set as Default", "menu": "Design › Document Formatting", "run": "ok", "visible": false}
+{"id": "design.themes", "kind": "command", "label": "Theme List", "menu": "Design › Document Formatting", "run": "ok", "visible": false}
+{"id": "references.toc", "kind": "command", "label": "Table of Contents", "menu": "References › Table of Contents", "run": "ok", "visible": false}
+{"id": "references.updateToc", "kind": "command", "label": "Update Table", "menu": "References › Table of Contents", "run": "ok", "visible": false}
+{"id": "references.removeToc", "kind": "command", "label": "Remove Table of Contents", "menu": "References › Table of Contents", "run": "ok", "visible": false}
+{"id": "references.addText", "kind": "command", "label": "Add Text", "menu": "References › Table of Contents", "run": "ok", "visible": false}
+{"id": "references.footnote", "kind": "command", "label": "Insert Footnote", "menu": "References › Footnotes", "run": "ok", "visible": false}
+{"id": "references.endnote", "kind": "command", "label": "Insert Endnote", "menu": "References › Footnotes", "run": "ok", "visible": false}
+{"id": "references.convertNotes", "kind": "command", "label": "Convert Notes", "menu": "References › Footnotes", "run": "needs_params", "msg": "wordcraft: 1번째 명령 references.convertNotes 실패 — wordcraft-cli: command 2 (references.convertNotes): bad parameters: `to` (string) is required"}
+{"id": "references.nextFootnote", "kind": "command", "label": "Next Footnote", "menu": "References › Footnotes", "run": "ok", "visible": false}
+{"id": "references.notes", "kind": "command", "label": "Show Notes", "menu": "References › Footnotes", "run": "ok", "visible": false}
+{"id": "references.caption", "kind": "command", "label": "Insert Caption", "menu": "References › Captions", "run": "ok", "visible": false}
+{"id": "references.updateFields", "kind": "command", "label": "Update Field", "menu": "References", "run": "ok", "visible": false}
+{"id": "view.fieldCodes", "kind": "command", "label": "Field Codes", "menu": "View › Show", "run": "ok", "visible": false}
+{"id": "fields.toggleCode", "kind": "command", "label": "Toggle Field Codes", "menu": "Insert › Text › Quick Parts", "run": "needs_context", "msg": "wordcraft: 1번째 명령 fields.toggleCode 실패 — wordcraft-cli: command 2 (fields.toggleCode): there is no field in the selection"}
+{"id": "fields.setCode", "kind": "command", "label": "Edit Field Code", "menu": "Insert › Text › Quick Parts", "run": "needs_params", "msg": "wordcraft: 1번째 명령 fields.setCode 실패 — wordcraft-cli: command 2 (fields.setCode): bad parameters: `code` (string) is required"}
+{"id": "fields.unlink", "kind": "command", "label": "Unlink Fields", "menu": "Insert › Text › Quick Parts", "run": "needs_context", "msg": "wordcraft: 1번째 명령 fields.unlink 실패 — wordcraft-cli: command 2 (fields.unlink): there is no field in the selection"}
+{"id": "fields.lock", "kind": "command", "label": "Lock Fields", "menu": "Insert › Text › Quick Parts", "run": "needs_context", "msg": "wordcraft: 1번째 명령 fields.lock 실패 — wordcraft-cli: command 2 (fields.lock): there is no field in the selection"}
+{"id": "fields.unlock", "kind": "command", "label": "Unlock Fields", "menu": "Insert › Text › Quick Parts", "run": "needs_context", "msg": "wordcraft: 1번째 명령 fields.unlock 실패 — wordcraft-cli: command 2 (fields.unlock): there is no field in the selection"}
+{"id": "fields.next", "kind": "command", "label": "Next Field", "menu": "Insert › Text › Quick Parts", "run": "needs_context", "msg": "wordcraft: 1번째 명령 fields.next 실패 — wordcraft-cli: command 2 (fields.next): the document has no fields"}
+{"id": "fields.previous", "kind": "command", "label": "Previous Field", "menu": "Insert › Text › Quick Parts", "run": "needs_context", "msg": "wordcraft: 1번째 명령 fields.previous 실패 — wordcraft-cli: command 2 (fields.previous): the document has no fields"}
+{"id": "fields.selected", "kind": "command", "label": "Selected Fields", "menu": "Insert › Text › Quick Parts", "run": "ok", "visible": false}
+{"id": "mailings.start", "kind": "command", "label": "Start Mail Merge", "menu": "Mailings › Start Mail Merge", "run": "ok", "visible": false}
+{"id": "mailings.recipients", "kind": "command", "label": "Select Recipients", "menu": "Mailings › Start Mail Merge", "run": "needs_params", "msg": "wordcraft: 1번째 명령 mailings.recipients 실패 — wordcraft-cli: command 2 (mailings.recipients): bad parameters: `csv`, `path`, `data` or `rows` required"}
+{"id": "mailings.editRecipients", "kind": "command", "label": "Edit Recipient List", "menu": "Mailings › Start Mail Merge", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.editRecipients 실패 — wordcraft-cli: command 2 (mailings.editRecipients): not available: mailings.editRecipients: select recipients first"}
+{"id": "mailings.filterRecipients", "kind": "command", "label": "Filter Recipients", "menu": "Mailings › Start Mail Merge › Edit Recipient List", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.filterRecipients 실패 — wordcraft-cli: command 2 (mailings.filterRecipients): not available: mailings.filterRecipients: select recipients first"}
+{"id": "mailings.sortRecipients", "kind": "command", "label": "Sort Recipients", "menu": "Mailings › Start Mail Merge › Edit Recipient List", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.sortRecipients 실패 — wordcraft-cli: command 2 (mailings.sortRecipients): not available: mailings.sortRecipients: select recipients first"}
+{"id": "mailings.insertField", "kind": "command", "label": "Insert Merge Field", "menu": "Mailings › Write & Insert Fields", "run": "needs_params", "msg": "wordcraft: 1번째 명령 mailings.insertField 실패 — wordcraft-cli: command 2 (mailings.insertField): bad parameters: `field` (string) is required"}
+{"id": "mailings.addressBlock", "kind": "command", "label": "Address Block", "menu": "Mailings › Write & Insert Fields", "run": "ok", "visible": false}
+{"id": "mailings.greetingLine", "kind": "command", "label": "Greeting Line", "menu": "Mailings › Write & Insert Fields", "run": "ok", "visible": false}
+{"id": "mailings.rules", "kind": "command", "label": "Rules", "menu": "Mailings › Write & Insert Fields", "run": "ok", "visible": false}
+{"id": "mailings.matchFields", "kind": "command", "label": "Match Fields", "menu": "Mailings › Write & Insert Fields", "run": "ok", "visible": false}
+{"id": "mailings.highlightFields", "kind": "command", "label": "Highlight Merge Fields", "menu": "Mailings › Write & Insert Fields", "run": "ok", "visible": false}
+{"id": "mailings.preview", "kind": "command", "label": "Preview Results", "menu": "Mailings › Preview Results", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.preview 실패 — wordcraft-cli: command 2 (mailings.preview): not available: mailings.preview: select recipients first"}
+{"id": "mailings.next", "kind": "command", "label": "Next Record", "menu": "Mailings › Preview Results", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.next 실패 — wordcraft-cli: command 2 (mailings.next): not available: mailings.next: select recipients first"}
+{"id": "mailings.previous", "kind": "command", "label": "Previous Record", "menu": "Mailings › Preview Results", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.previous 실패 — wordcraft-cli: command 2 (mailings.previous): not available: mailings.previous: select recipients first"}
+{"id": "mailings.first", "kind": "command", "label": "First Record", "menu": "Mailings › Preview Results", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.first 실패 — wordcraft-cli: command 2 (mailings.first): not available: mailings.first: select recipients first"}
+{"id": "mailings.last", "kind": "command", "label": "Last Record", "menu": "Mailings › Preview Results", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.last 실패 — wordcraft-cli: command 2 (mailings.last): not available: mailings.last: select recipients first"}
+{"id": "mailings.goToRecord", "kind": "command", "label": "Go to Record", "menu": "Mailings › Preview Results", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.goToRecord 실패 — wordcraft-cli: command 2 (mailings.goToRecord): not available: mailings.goToRecord: select recipients first"}
+{"id": "mailings.findRecipient", "kind": "command", "label": "Find Recipient", "menu": "Mailings › Preview Results", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.findRecipient 실패 — wordcraft-cli: command 2 (mailings.findRecipient): not available: mailings.findRecipient: select recipients first"}
+{"id": "mailings.checkErrors", "kind": "command", "label": "Check for Errors", "menu": "Mailings › Finish", "run": "ok", "visible": false}
+{"id": "mailings.finish", "kind": "command", "label": "Finish & Merge", "menu": "Mailings › Finish", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.finish 실패 — wordcraft-cli: command 2 (mailings.finish): not available: mailings.finish: select recipients first"}
+{"id": "mailings.printDocuments", "kind": "command", "label": "Print Documents", "menu": "Mailings › Finish › Finish & Merge", "run": "needs_context", "msg": "wordcraft: 1번째 명령 mailings.printDocuments 실패 — wordcraft-cli: command 2 (mailings.printDocuments): not available: mailings.printDocuments: select recipients first"}
+{"id": "mailings.envelopes", "kind": "command", "label": "Envelopes", "menu": "Mailings › Create", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/mailings_envelopes.png"}
+{"id": "mailings.labels", "kind": "command", "label": "Labels", "menu": "Mailings › Create", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/mailings_labels.png"}
+{"id": "references.sources", "kind": "command", "label": "Manage Sources", "menu": "References › Citations & Bibliography", "run": "ok", "visible": false}
+{"id": "references.citation", "kind": "command", "label": "Insert Citation", "menu": "References › Citations & Bibliography", "run": "needs_params", "msg": "wordcraft: 1번째 명령 references.citation 실패 — wordcraft-cli: command 2 (references.citation): bad parameters: give `tag` or `source`"}
+{"id": "references.citationStyle", "kind": "command", "label": "Style", "menu": "References › Citations & Bibliography", "run": "ok", "visible": false}
+{"id": "references.bibliography", "kind": "command", "label": "Bibliography", "menu": "References › Citations & Bibliography", "run": "ok", "visible": false}
+{"id": "references.tableOfFigures", "kind": "command", "label": "Insert Table of Figures", "menu": "References › Captions", "run": "ok", "visible": false}
+{"id": "references.updateFigures", "kind": "command", "label": "Update Table", "menu": "References › Captions", "run": "ok", "visible": false}
+{"id": "references.markCitation", "kind": "command", "label": "Mark Citation", "menu": "References › Table of Authorities", "run": "needs_params", "msg": "wordcraft: 1번째 명령 references.markCitation 실패 — wordcraft-cli: command 2 (references.markCitation): bad parameters: select a citation or give `entry`"}
+{"id": "references.tableOfAuthorities", "kind": "command", "label": "Insert Table of Authorities", "menu": "References › Table of Authorities", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/references_tableOfAuthorities.png"}
+{"id": "references.updateAuthorities", "kind": "command", "label": "Update Table", "menu": "References › Table of Authorities", "run": "ok", "visible": false}
+{"id": "insert.crossReference", "kind": "command", "label": "Cross-reference", "menu": "Insert › Links", "run": "ok", "visible": false}
+{"id": "references.noteOptions", "kind": "command", "label": "Footnote and Endnote", "menu": "References › Footnotes", "run": "ok", "visible": false}
+{"id": "references.researcher", "kind": "command", "label": "Researcher", "menu": "References › Research", "run": "ok", "visible": false}
+{"id": "references.markEntry", "kind": "command", "label": "Mark Entry", "menu": "References › Index", "run": "needs_params", "msg": "wordcraft: 1번째 명령 references.markEntry 실패 — wordcraft-cli: command 2 (references.markEntry): bad parameters: select a word or give `entry`"}
+{"id": "references.index", "kind": "command", "label": "Insert Index", "menu": "References › Index", "run": "ok", "visible": false}
+{"id": "references.updateIndex", "kind": "command", "label": "Update Index", "menu": "References › Index", "run": "ok", "visible": false}
+{"id": "picture.size", "kind": "command", "label": "Size", "menu": "Picture Format › Size", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.size 실패 — wordcraft-cli: command 2 (picture.size): not available: picture.size: select a picture or shape first"}
+{"id": "picture.crop", "kind": "command", "label": "Crop", "menu": "Picture Format › Size", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.crop 실패 — wordcraft-cli: command 2 (picture.crop): not available: picture.crop: select a picture first"}
+{"id": "picture.altText", "kind": "command", "label": "Alt Text", "menu": "Picture Format › Accessibility", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.altText 실패 — wordcraft-cli: command 2 (picture.altText): not available: picture.altText: select a picture first"}
+{"id": "object.altText", "kind": "command", "label": "Alt Text", "menu": "Shape Format › Accessibility", "run": "needs_context", "msg": "wordcraft: 1번째 명령 object.altText 실패 — wordcraft-cli: command 2 (object.altText): not available: object.altText: select a picture or shape first"}
+{"id": "picture.corrections", "kind": "command", "label": "Corrections", "menu": "Picture Format › Adjust", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.corrections 실패 — wordcraft-cli: command 2 (picture.corrections): not available: picture.corrections: select a picture first"}
+{"id": "picture.color", "kind": "command", "label": "Color", "menu": "Picture Format › Adjust", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.color 실패 — wordcraft-cli: command 2 (picture.color): not available: picture.color: select a picture first"}
+{"id": "picture.iconColor", "kind": "command", "label": "Icon Color", "menu": "Picture Format › Adjust", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.iconColor 실패 — wordcraft-cli: command 2 (picture.iconColor): not available: picture.iconColor: select a picture first"}
+{"id": "picture.effects", "kind": "command", "label": "Artistic Effects", "menu": "Picture Format › Adjust", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.effects 실패 — wordcraft-cli: command 2 (picture.effects): not available: picture.effects: select a picture first"}
+{"id": "picture.transparency", "kind": "command", "label": "Transparency", "menu": "Picture Format › Adjust", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.transparency 실패 — wordcraft-cli: command 2 (picture.transparency): not available: picture.transparency: select a picture first"}
+{"id": "picture.removeBackground", "kind": "command", "label": "Remove Background", "menu": "Picture Format › Adjust", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.removeBackground 실패 — wordcraft-cli: command 2 (picture.removeBackground): not available: picture.removeBackground: select a picture first"}
+{"id": "picture.compress", "kind": "command", "label": "Compress Pictures", "menu": "Picture Format › Adjust", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.compress 실패 — wordcraft-cli: command 2 (picture.compress): not available: picture.compress: select a picture first"}
+{"id": "picture.reset", "kind": "command", "label": "Reset Picture", "menu": "Picture Format › Adjust", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.reset 실패 — wordcraft-cli: command 2 (picture.reset): not available: picture.reset: select a picture first"}
+{"id": "picture.change", "kind": "command", "label": "Change Picture", "menu": "Picture Format › Adjust", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.change 실패 — wordcraft-cli: command 2 (picture.change): not available: picture.change: select a picture first"}
+{"id": "picture.style", "kind": "command", "label": "Picture Styles", "menu": "Picture Format › Picture Styles", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.style 실패 — wordcraft-cli: command 2 (picture.style): not available: picture.style: select a picture first"}
+{"id": "picture.border", "kind": "command", "label": "Picture Border", "menu": "Picture Format › Picture Styles", "run": "needs_context", "msg": "wordcraft: 1번째 명령 picture.border 실패 — wordcraft-cli: command 2 (picture.border): not available: picture.border: select a picture first"}
+{"id": "arrange.rotate", "kind": "command", "label": "Rotate", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.rotate 실패 — wordcraft-cli: command 2 (arrange.rotate): not available: arrange.rotate: select a picture or shape first"}
+{"id": "arrange.rotation", "kind": "command", "label": "Rotation", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.rotation 실패 — wordcraft-cli: command 2 (arrange.rotation): not available: arrange.rotation: select a picture or shape first"}
+{"id": "arrange.wrap", "kind": "command", "label": "Wrap Text", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.wrap 실패 — wordcraft-cli: command 2 (arrange.wrap): not available: arrange.wrap: select a picture or shape first"}
+{"id": "arrange.wrapText", "kind": "command", "label": "Wrap Text Sides", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.wrapText 실패 — wordcraft-cli: command 2 (arrange.wrapText): not available: arrange.wrapText: select a picture or shape first"}
+{"id": "arrange.moveWithText", "kind": "command", "label": "Move with Text", "menu": "Layout › Arrange › Wrap Text", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.moveWithText 실패 — wordcraft-cli: command 2 (arrange.moveWithText): not available: arrange.moveWithText: select a floating picture or shape first"}
+{"id": "arrange.position", "kind": "command", "label": "Position", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.position 실패 — wordcraft-cli: command 2 (arrange.position): not available: arrange.position: select a picture or shape first"}
+{"id": "arrange.bringForward", "kind": "command", "label": "Bring Forward", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.bringForward 실패 — wordcraft-cli: command 2 (arrange.bringForward): not available: arrange.bringForward: select a picture or shape first"}
+{"id": "arrange.sendBackward", "kind": "command", "label": "Send Backward", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.sendBackward 실패 — wordcraft-cli: command 2 (arrange.sendBackward): not available: arrange.sendBackward: select a picture or shape first"}
+{"id": "arrange.align", "kind": "command", "label": "Align", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.align 실패 — wordcraft-cli: command 2 (arrange.align): not available: arrange.align: select a picture or shape first"}
+{"id": "arrange.selectionPane", "kind": "command", "label": "Selection Pane", "menu": "Layout › Arrange", "run": "ok", "visible": false}
+{"id": "arrange.bounds", "kind": "command", "label": "Move or Resize", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.bounds 실패 — wordcraft-cli: command 2 (arrange.bounds): not available: arrange.bounds: select a picture or shape first"}
+{"id": "arrange.copyTo", "kind": "command", "label": "Copy to", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.copyTo 실패 — wordcraft-cli: command 2 (arrange.copyTo): not available: arrange.copyTo: select a picture or shape first"}
+{"id": "arrange.nudge", "kind": "command", "label": "Nudge", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.nudge 실패 — wordcraft-cli: command 2 (arrange.nudge): not available: arrange.nudge: select a floating picture or shape first"}
+{"id": "arrange.group", "kind": "command", "label": "Group", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.group 실패 — wordcraft-cli: command 2 (arrange.group): not available: arrange.group: select two or more pictures or shapes first (Shift+click)"}
+{"id": "arrange.ungroup", "kind": "command", "label": "Ungroup", "menu": "Layout › Arrange", "run": "needs_context", "msg": "wordcraft: 1번째 명령 arrange.ungroup 실패 — wordcraft-cli: command 2 (arrange.ungroup): not available: arrange.ungroup: select a group first"}
+{"id": "select.addObject", "kind": "command", "label": "Add Object to Selection", "menu": "Home › Editing › Select", "run": "needs_params", "msg": "wordcraft: 1번째 명령 select.addObject 실패 — wordcraft-cli: command 2 (select.addObject): bad parameters: `pos`, `index` or `objects` required"}
+{"id": "select.objects", "kind": "command", "label": "Select Objects", "menu": "Home › Editing › Select", "run": "error", "msg": "wordcraft: 1번째 명령 select.objects 실패 — wordcraft-cli: command 2 (select.objects): no such object"}
+{"id": "shape.outline", "kind": "command", "label": "Shape Outline", "menu": "Shape Format › Shape Styles", "run": "needs_context", "msg": "wordcraft: 1번째 명령 shape.outline 실패 — wordcraft-cli: command 2 (shape.outline): not available: shape.outline: select a shape first"}
+{"id": "shape.effects", "kind": "command", "label": "Shape Effects", "menu": "Shape Format › Shape Styles", "run": "needs_context", "msg": "wordcraft: 1번째 명령 shape.effects 실패 — wordcraft-cli: command 2 (shape.effects): not available: shape.effects: select a shape first"}
+{"id": "shape.change", "kind": "command", "label": "Change Shape", "menu": "Shape Format › Insert Shapes", "run": "needs_context", "msg": "wordcraft: 1번째 명령 shape.change 실패 — wordcraft-cli: command 2 (shape.change): not available: shape.change: select a shape first"}
+{"id": "shape.textDirection", "kind": "command", "label": "Text Direction", "menu": "Shape Format › Text", "run": "needs_context", "msg": "wordcraft: 1번째 명령 shape.textDirection 실패 — wordcraft-cli: command 2 (shape.textDirection): not available: shape.textDirection: select a text box first"}
+{"id": "shape.alignText", "kind": "command", "label": "Align Text", "menu": "Shape Format › Text", "run": "needs_context", "msg": "wordcraft: 1번째 명령 shape.alignText 실패 — wordcraft-cli: command 2 (shape.alignText): not available: shape.alignText: select a text box first"}
+{"id": "shape.link", "kind": "command", "label": "Create Link", "menu": "Shape Format › Text", "run": "needs_context", "msg": "wordcraft: 1번째 명령 shape.link 실패 — wordcraft-cli: command 2 (shape.link): not available: shape.link: select a text box first"}
+{"id": "shape.breakLink", "kind": "command", "label": "Break Link", "menu": "Shape Format › Text", "run": "needs_context", "msg": "wordcraft: 1번째 명령 shape.breakLink 실패 — wordcraft-cli: command 2 (shape.breakLink): not available: shape.breakLink: select a text box linked to another first"}
+{"id": "shape.fill", "kind": "command", "label": "Shape Fill", "menu": "Shape Format › Shape Styles", "run": "needs_context", "msg": "wordcraft: 1번째 명령 shape.fill 실패 — wordcraft-cli: command 2 (shape.fill): not available: shape.fill: select a shape first"}
+{"id": "insert.smartArt", "kind": "command", "label": "SmartArt", "menu": "Insert › Illustrations", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/insert_smartArt.png"}
+{"id": "smartArt.items", "kind": "command", "label": "Edit Items", "menu": "SmartArt Design › Create Graphic", "run": "needs_context", "msg": "wordcraft: 1번째 명령 smartArt.items 실패 — wordcraft-cli: command 2 (smartArt.items): not available: smartArt.items: select a SmartArt graphic first"}
+{"id": "smartArt.textPane", "kind": "command", "label": "Text Pane", "menu": "SmartArt Design › Create Graphic", "run": "ok", "visible": false}
+{"id": "smartArt.addShape", "kind": "command", "label": "Add Shape", "menu": "SmartArt Design › Create Graphic", "run": "needs_context", "msg": "wordcraft: 1번째 명령 smartArt.addShape 실패 — wordcraft-cli: command 2 (smartArt.addShape): not available: smartArt.addShape: select a SmartArt graphic first"}
+{"id": "smartArt.promote", "kind": "command", "label": "Promote", "menu": "SmartArt Design › Create Graphic", "run": "needs_context", "msg": "wordcraft: 1번째 명령 smartArt.promote 실패 — wordcraft-cli: command 2 (smartArt.promote): not available: smartArt.promote: select a SmartArt graphic first"}
+{"id": "smartArt.demote", "kind": "command", "label": "Demote", "menu": "SmartArt Design › Create Graphic", "run": "needs_context", "msg": "wordcraft: 1번째 명령 smartArt.demote 실패 — wordcraft-cli: command 2 (smartArt.demote): not available: smartArt.demote: select a SmartArt graphic first"}
+{"id": "smartArt.layout", "kind": "command", "label": "Change Layout", "menu": "SmartArt Design › Layouts", "run": "needs_context", "msg": "wordcraft: 1번째 명령 smartArt.layout 실패 — wordcraft-cli: command 2 (smartArt.layout): not available: smartArt.layout: select a SmartArt graphic first"}
+{"id": "smartArt.colors", "kind": "command", "label": "Change Colors", "menu": "SmartArt Design › SmartArt Styles", "run": "needs_context", "msg": "wordcraft: 1번째 명령 smartArt.colors 실패 — wordcraft-cli: command 2 (smartArt.colors): not available: smartArt.colors: select a SmartArt graphic first"}
+{"id": "smartArt.reset", "kind": "command", "label": "Reset Graphic", "menu": "SmartArt Design › Reset", "run": "needs_context", "msg": "wordcraft: 1번째 명령 smartArt.reset 실패 — wordcraft-cli: command 2 (smartArt.reset): not available: smartArt.reset: select a SmartArt graphic first"}
+{"id": "insert.chart", "kind": "command", "label": "Chart", "menu": "Insert › Illustrations", "run": "ok", "visible": false}
+{"id": "chart.type", "kind": "command", "label": "Change Chart Type", "menu": "Chart Design › Type", "run": "needs_context", "msg": "wordcraft: 1번째 명령 chart.type 실패 — wordcraft-cli: command 2 (chart.type): not available: chart.type: select a chart first"}
+{"id": "chart.editData", "kind": "command", "label": "Edit Data", "menu": "Chart Design › Data", "run": "needs_context", "msg": "wordcraft: 1번째 명령 chart.editData 실패 — wordcraft-cli: command 2 (chart.editData): not available: chart.editData: select a chart first"}
+{"id": "chart.title", "kind": "command", "label": "Chart Title", "menu": "Chart Design › Chart Layouts › Add Chart Element", "run": "needs_context", "msg": "wordcraft: 1번째 명령 chart.title 실패 — wordcraft-cli: command 2 (chart.title): not available: chart.title: select a chart first"}
+{"id": "chart.legend", "kind": "command", "label": "Legend", "menu": "Chart Design › Chart Layouts › Add Chart Element", "run": "needs_context", "msg": "wordcraft: 1번째 명령 chart.legend 실패 — wordcraft-cli: command 2 (chart.legend): not available: chart.legend: select a chart first"}
+{"id": "chart.dataLabels", "kind": "command", "label": "Data Labels", "menu": "Chart Design › Chart Layouts › Add Chart Element", "run": "needs_context", "msg": "wordcraft: 1번째 명령 chart.dataLabels 실패 — wordcraft-cli: command 2 (chart.dataLabels): not available: chart.dataLabels: select a chart first"}
+{"id": "draw.select", "kind": "command", "label": "Select", "menu": "Draw › Tools", "run": "ok", "visible": false}
+{"id": "draw.lasso", "kind": "command", "label": "Lasso Select", "menu": "Draw › Tools", "run": "ok", "visible": false}
+{"id": "draw.lassoMove", "kind": "command", "label": "Move Selected Ink", "menu": "Draw › Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 draw.lassoMove 실패 — wordcraft-cli: command 2 (draw.lassoMove): nothing is selected with the lasso"}
+{"id": "draw.lassoDelete", "kind": "command", "label": "Delete Selected Ink", "menu": "Draw › Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 draw.lassoDelete 실패 — wordcraft-cli: command 2 (draw.lassoDelete): nothing is selected with the lasso"}
+{"id": "draw.lassoColor", "kind": "command", "label": "Recolor Selected Ink", "menu": "Draw › Tools", "run": "needs_context", "msg": "wordcraft: 1번째 명령 draw.lassoColor 실패 — wordcraft-cli: command 2 (draw.lassoColor): nothing is selected with the lasso"}
+{"id": "draw.eraser", "kind": "command", "label": "Eraser", "menu": "Draw › Tools", "run": "ok", "visible": false}
+{"id": "draw.pen", "kind": "command", "label": "Pen", "menu": "Draw › Pens", "run": "ok", "visible": false}
+{"id": "draw.pencil", "kind": "command", "label": "Pencil", "menu": "Draw › Pens", "run": "ok", "visible": false}
+{"id": "draw.highlighter", "kind": "command", "label": "Highlighter", "menu": "Draw › Pens", "run": "ok", "visible": false}
+{"id": "draw.addPen", "kind": "command", "label": "Add Pen", "menu": "Draw › Pens", "run": "ok", "visible": false}
+{"id": "draw.removePen", "kind": "command", "label": "Remove Pen", "menu": "Draw › Pens", "run": "needs_params", "msg": "wordcraft: 1번째 명령 draw.removePen 실패 — wordcraft-cli: command 2 (draw.removePen): bad parameters: `index` (0-based) is required"}
+{"id": "draw.stroke", "kind": "command", "label": "Draw Ink", "menu": "Draw › Pens", "run": "needs_params", "msg": "wordcraft: 1번째 명령 draw.stroke 실패 — wordcraft-cli: command 2 (draw.stroke): bad parameters: `page` (0-based) is required"}
+{"id": "draw.erase", "kind": "command", "label": "Erase Ink", "menu": "Draw › Tools", "run": "needs_params", "msg": "wordcraft: 1번째 명령 draw.erase 실패 — wordcraft-cli: command 2 (draw.erase): bad parameters: `page` (0-based) is required"}
+{"id": "draw.inkToShape", "kind": "command", "label": "Ink to Shape", "menu": "Draw › Convert", "run": "ok", "visible": false}
+{"id": "draw.convertInk", "kind": "command", "label": "Convert to Shapes", "menu": "Draw › Convert", "run": "needs_context", "msg": "wordcraft: 1번째 명령 draw.convertInk 실패 — wordcraft-cli: command 2 (draw.convertInk): nothing is selected with the lasso"}
+{"id": "draw.replay", "kind": "command", "label": "Ink Replay", "menu": "Draw › Replay", "run": "needs_context", "msg": "wordcraft: 1번째 명령 draw.replay 실패 — wordcraft-cli: command 2 (draw.replay): there is no ink to replay"}
+{"id": "review.hideInk", "kind": "command", "label": "Hide Ink", "menu": "Review › Ink", "run": "ok", "visible": false}
+{"id": "insert.canvas", "kind": "command", "label": "Drawing Canvas", "menu": "Insert › Illustrations", "run": "ok", "visible": false}
+{"id": "canvas.fit", "kind": "command", "label": "Fit", "menu": "Shape Format › Drawing Canvas", "run": "needs_context", "msg": "wordcraft: 1번째 명령 canvas.fit 실패 — wordcraft-cli: command 2 (canvas.fit): not available: canvas.fit: select a drawing canvas first"}
+{"id": "canvas.expand", "kind": "command", "label": "Expand", "menu": "Shape Format › Drawing Canvas", "run": "needs_context", "msg": "wordcraft: 1번째 명령 canvas.expand 실패 — wordcraft-cli: command 2 (canvas.expand): not available: canvas.expand: select a drawing canvas first"}
+{"id": "canvas.scale", "kind": "command", "label": "Scale Drawing", "menu": "Shape Format › Drawing Canvas", "run": "needs_context", "msg": "wordcraft: 1번째 명령 canvas.scale 실패 — wordcraft-cli: command 2 (canvas.scale): not available: canvas.scale: select a drawing canvas first"}
+{"id": "canvas.member", "kind": "command", "label": "Canvas Member", "menu": "Shape Format › Drawing Canvas", "run": "needs_context", "msg": "wordcraft: 1번째 명령 canvas.member 실패 — wordcraft-cli: command 2 (canvas.member): not available: canvas.member: select a drawing canvas first"}
+{"id": "insert.wordArt", "kind": "command", "label": "WordArt", "menu": "Insert › Text", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/insert_wordArt.png"}
+{"id": "format.textEffects", "kind": "command", "label": "Text Effects", "menu": "Home › Font", "run": "ok", "visible": false}
+{"id": "wordArt.style", "kind": "command", "label": "WordArt Styles", "menu": "Shape Format › WordArt Styles", "run": "needs_params", "msg": "wordcraft: 1번째 명령 wordArt.style 실패 — wordcraft-cli: command 2 (wordArt.style): bad parameters: `style` (string) is required"}
+{"id": "wordArt.textFill", "kind": "command", "label": "Text Fill", "menu": "Shape Format › WordArt Styles", "run": "ok", "visible": false}
+{"id": "wordArt.textOutline", "kind": "command", "label": "Text Outline", "menu": "Shape Format › WordArt Styles", "run": "ok", "visible": false}
+{"id": "wordArt.transform", "kind": "command", "label": "Transform", "menu": "Shape Format › WordArt Styles", "run": "needs_params", "msg": "wordcraft: 1번째 명령 wordArt.transform 실패 — wordcraft-cli: command 2 (wordArt.transform): bad parameters: `preset` (string) is required"}
+{"id": "shape.connect", "kind": "command", "label": "Connect Shapes", "menu": "Shape Format › Insert Shapes", "run": "needs_context", "msg": "wordcraft: 1번째 명령 shape.connect 실패 — wordcraft-cli: command 2 (shape.connect): not available: shape.connect: select a connector first"}
+{"id": "edit.repeat", "kind": "command", "label": "Repeat", "menu": "Quick Access Toolbar", "run": "ok", "visible": false}
+{"id": "tools.recordMacro", "kind": "command", "label": "Record Macro", "menu": "View › Macros", "run": "ok", "visible": false}
+{"id": "tools.macros", "kind": "command", "label": "Macros", "menu": "View › Macros", "run": "ok", "visible": false}
+{"id": "tools.autocorrect", "kind": "command", "label": "AutoCorrect Options", "menu": "File › Options › Proofing", "run": "ok", "visible": false}
+{"id": "tools.customizeKeyboard", "kind": "command", "label": "Customize Keyboard", "menu": "File › Options", "run": "ok", "visible": false}
+{"id": "tools.customizeRibbon", "kind": "command", "label": "Customize Ribbon", "menu": "File › Options", "run": "ok", "visible": false}
+{"id": "tools.search", "kind": "command", "label": "Search", "menu": "Title Bar", "run": "ok", "visible": false}
+{"id": "review.compare", "kind": "command", "label": "Compare", "menu": "Review › Compare", "run": "needs_params", "msg": "wordcraft: 1번째 명령 review.compare 실패 — wordcraft-cli: command 2 (review.compare): bad parameters: `path` or `text` of the revised document is required"}
+{"id": "review.combine", "kind": "command", "label": "Combine", "menu": "Review › Compare", "run": "needs_params", "msg": "wordcraft: 1번째 명령 review.combine 실패 — wordcraft-cli: command 2 (review.combine): bad parameters: `path` or `text` of the revised document is required"}
+{"id": "file.accessibility", "kind": "command", "label": "Check Accessibility", "menu": "Review › Accessibility", "run": "ok", "visible": false}
+{"id": "file.inspect", "kind": "command", "label": "Inspect Document", "menu": "File › Info", "run": "ok", "visible": false}
+{"id": "file.protect", "kind": "command", "label": "Protect Document", "menu": "File › Info", "run": "ok", "visible": false}
+{"id": "file.versions", "kind": "command", "label": "Version History", "menu": "File › Info", "run": "ok", "visible": false}
+{"id": "file.recover", "kind": "command", "label": "Recover Unsaved Documents", "menu": "File › Info", "run": "ok", "visible": false}
+{"id": "file.newFromTemplate", "kind": "command", "label": "New from Template", "menu": "File › New", "run": "needs_params", "msg": "wordcraft: 1번째 명령 file.newFromTemplate 실패 — wordcraft-cli: command 2 (file.newFromTemplate): bad parameters: `path` (string) is required"}
+{"id": "file.saveTemplate", "kind": "command", "label": "Save as Template", "menu": "File › Save As", "run": "needs_params", "msg": "wordcraft: 1번째 명령 file.saveTemplate 실패 — wordcraft-cli: command 2 (file.saveTemplate): bad parameters: `path` (string) is required"}
+{"id": "file.autosave", "kind": "command", "label": "AutoSave", "menu": "Quick Access Toolbar", "run": "ok", "visible": false}
+{"id": "file.compatibility", "kind": "command", "label": "Check Compatibility", "menu": "File › Info", "run": "ok", "visible": false}
+{"id": "file.share", "kind": "command", "label": "Share", "menu": "File", "run": "ok", "visible": false}
+{"id": "insert.quickParts", "kind": "command", "label": "Quick Parts", "menu": "Insert › Text", "run": "ok", "visible": false}
+{"id": "insert.autoText", "kind": "command", "label": "AutoText", "menu": "Insert › Text › Quick Parts", "run": "ok", "visible": false}
+{"id": "insert.docProperty", "kind": "command", "label": "Document Property", "menu": "Insert › Text › Quick Parts", "run": "ok", "visible": false}
+{"id": "insert.signatureLine", "kind": "command", "label": "Signature Line", "menu": "Insert › Text", "run": "ok", "visible": false}
+{"id": "insert.object", "kind": "command", "label": "Object", "menu": "Insert › Text", "run": "needs_params", "msg": "wordcraft: 1번째 명령 insert.object 실패 — wordcraft-cli: command 2 (insert.object): bad parameters: `path` (string) is required"}
+{"id": "insert.spreadsheet", "kind": "command", "label": "Spreadsheet Table", "menu": "Insert › Tables", "run": "ok", "visible": true, "thumb": "data/workspace/probe/wordcraft/cmd/insert_spreadsheet.png"}
+{"id": "layout.linkToPrevious", "kind": "command", "label": "Link to Previous", "menu": "Header & Footer › Navigation", "run": "ok", "visible": false}
+{"id": "hf.next", "kind": "command", "label": "Next Section", "menu": "Header & Footer › Navigation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 hf.next 실패 — wordcraft-cli: command 2 (hf.next): not available: edit a header or footer first"}
+{"id": "hf.previous", "kind": "command", "label": "Previous Section", "menu": "Header & Footer › Navigation", "run": "needs_context", "msg": "wordcraft: 1번째 명령 hf.previous 실패 — wordcraft-cli: command 2 (hf.previous): not available: edit a header or footer first"}
+{"id": "hf.position", "kind": "command", "label": "Header/Footer Position", "menu": "Header & Footer › Position", "run": "ok", "visible": false}
+{"id": "table.cellMargins", "kind": "command", "label": "Cell Margins", "menu": "Table Layout › Alignment", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.cellMargins 실패 — wordcraft-cli: command 2 (table.cellMargins): not available: not in a table"}
+{"id": "table.borderPainter", "kind": "command", "label": "Border Painter", "menu": "Table Design › Borders", "run": "needs_context", "msg": "wordcraft: 1번째 명령 table.borderPainter 실패 — wordcraft-cli: command 2 (table.borderPainter): not available: table.borders: the cursor isn't in a table"}
+{"id": "para.setNumberingValue", "kind": "command", "label": "Set Numbering Value", "menu": "Home › Paragraph › Numbering", "run": "error", "msg": "wordcraft: 1번째 명령 para.setNumberingValue 실패 — wordcraft-cli: command 2 (para.setNumberingValue): not in a numbered list"}
+{"id": "para.defineBullet", "kind": "command", "label": "Define New Bullet", "menu": "Home › Paragraph › Bullets", "run": "ok", "visible": false}
+{"id": "para.defineNumber", "kind": "command", "label": "Define New Number Format", "menu": "Home › Paragraph › Numbering", "run": "ok", "visible": false}
+{"id": "review.language", "kind": "command", "label": "Language", "menu": "Review › Language", "run": "ok", "visible": false}
+{"id": "review.showMarkup", "kind": "command", "label": "Show Markup", "menu": "Review › Tracking", "run": "ok", "visible": false}
+{"id": "review.editor", "kind": "command", "label": "Editor", "menu": "Home › Editor", "run": "ok", "visible": false}
+{"id": "select.similar", "kind": "command", "label": "Select Text with Similar Formatting", "menu": "Home › Editing › Select", "run": "ok", "visible": false}
+{"id": "select.extend", "kind": "command", "label": "Extend Selection", "menu": "Editing › Selection", "run": "ok", "visible": false}
+{"id": "design.effects", "kind": "command", "label": "Effects", "menu": "Design › Document Formatting", "run": "ok", "visible": false}
+{"id": "view.immersive", "kind": "command", "label": "Immersive Reader", "menu": "View › Immersive", "run": "ok", "visible": false}
+{"id": "view.vertical", "kind": "command", "label": "Vertical", "menu": "View › Page Movement", "run": "ok", "visible": false}
+{"id": "view.sideToSide", "kind": "command", "label": "Side to Side", "menu": "View › Page Movement", "run": "ok", "visible": false}
+{"id": "tools.templates", "kind": "command", "label": "Templates and Add-ins", "menu": "View › Templates", "run": "ok", "visible": false}
+{"id": "tools.attachTemplate", "kind": "command", "label": "Attach Template", "menu": "View › Templates › Templates and Add-ins", "run": "needs_params", "msg": "wordcraft: 1번째 명령 tools.attachTemplate 실패 — wordcraft-cli: command 2 (tools.attachTemplate): bad parameters: `path` (string) is required"}
+{"id": "tools.detachTemplate", "kind": "command", "label": "Detach Template", "menu": "View › Templates › Templates and Add-ins", "run": "ok", "visible": false}
+{"id": "tools.linkStyles", "kind": "command", "label": "Automatically Update Document Styles", "menu": "View › Templates › Templates and Add-ins", "run": "ok", "visible": false}
+{"id": "tools.updateStyles", "kind": "command", "label": "Update Styles from Template", "menu": "View › Templates › Templates and Add-ins", "run": "needs_params", "msg": "wordcraft: 1번째 명령 tools.updateStyles 실패 — wordcraft-cli: command 2 (tools.updateStyles): bad parameters: no template is attached; give `path`"}
+{"id": "styles.organizer", "kind": "command", "label": "Organizer", "menu": "View › Templates › Organizer", "run": "ok", "visible": false}
+{"id": "styles.copyFrom", "kind": "command", "label": "Copy Styles", "menu": "View › Templates › Organizer", "run": "needs_params", "msg": "wordcraft: 1번째 명령 styles.copyFrom 실패 — wordcraft-cli: command 2 (styles.copyFrom): bad parameters: `path` (string) is required"}
+{"id": "styles.rename", "kind": "command", "label": "Rename Style", "menu": "View › Templates › Organizer", "run": "needs_params", "msg": "wordcraft: 1번째 명령 styles.rename 실패 — wordcraft-cli: command 2 (styles.rename): bad parameters: `style` (string) is required"}
+{"id": "file.listTemplates", "kind": "command", "label": "Personal Templates", "menu": "File › New", "run": "needs_params", "msg": "wordcraft: 1번째 명령 file.listTemplates 실패 — wordcraft-cli: command 2 (file.listTemplates): bad parameters: give `dir`: no user templates folder is saved"}
+{"id": "review.restrict", "kind": "command", "label": "Restrict Editing", "menu": "Review › Protect", "run": "ok", "visible": false}
+{"id": "review.readAloud", "kind": "command", "label": "Read Aloud", "menu": "Review › Speech", "run": "needs_context", "msg": "wordcraft: 1번째 명령 review.readAloud 실패 — wordcraft-cli: command 2 (review.readAloud): there's nothing to read"}
+{"id": "readAloud.playPause", "kind": "command", "label": "Play/Pause", "menu": "Review › Speech", "run": "needs_context", "msg": "wordcraft: 1번째 명령 readAloud.playPause 실패 — wordcraft-cli: command 2 (readAloud.playPause): there's nothing to read"}
+{"id": "readAloud.next", "kind": "command", "label": "Next Sentence", "menu": "Review › Speech", "run": "ok", "visible": false}
+{"id": "readAloud.previous", "kind": "command", "label": "Previous Sentence", "menu": "Review › Speech", "run": "ok", "visible": false}
+{"id": "readAloud.stop", "kind": "command", "label": "Stop Reading", "menu": "Review › Speech", "run": "ok", "visible": false}
+{"id": "readAloud.speed", "kind": "command", "label": "Reading Speed", "menu": "Review › Speech", "run": "needs_params", "msg": "wordcraft: 1번째 명령 readAloud.speed 실패 — wordcraft-cli: command 2 (readAloud.speed): bad parameters: `value` (number, 0.5…3) is required"}
+{"id": "readAloud.skipCitations", "kind": "command", "label": "Skip Citations and Bibliography", "menu": "Review › Speech", "run": "ok", "visible": false}
+{"id": "readAloud.status", "kind": "command", "label": "Read Aloud Status", "menu": "Review › Speech", "run": "ok", "visible": false}
+{"id": "caret.pastCitation", "kind": "command", "label": "Move Past Citation", "menu": "Zotero › Citations", "run": "error", "msg": "wordcraft: 1번째 명령 caret.pastCitation 실패 — wordcraft-cli: command 2 (caret.pastCitation): there's no citation after the caret"}
+{"id": "developer.richText", "kind": "command", "label": "Rich Text Content Control", "menu": "Developer › Controls", "run": "ok", "visible": false}
+{"id": "developer.plainText", "kind": "command", "label": "Plain Text Content Control", "menu": "Developer › Controls", "run": "ok", "visible": false}
+{"id": "developer.picture", "kind": "command", "label": "Picture Content Control", "menu": "Developer › Controls", "run": "ok", "visible": false}
+{"id": "developer.buildingBlock", "kind": "command", "label": "Building Block Gallery Content Control", "menu": "Developer › Controls", "run": "ok", "visible": false}
+{"id": "developer.checkBox", "kind": "command", "label": "Check Box Content Control", "menu": "Developer › Controls", "run": "ok", "visible": false}
+{"id": "developer.comboBox", "kind": "command", "label": "Combo Box Content Control", "menu": "Developer › Controls", "run": "ok", "visible": false}
+{"id": "developer.dropDown", "kind": "command", "label": "Drop-Down List Content Control", "menu": "Developer › Controls", "run": "ok", "visible": false}
+{"id": "developer.datePicker", "kind": "command", "label": "Date Picker Content Control", "menu": "Developer › Controls", "run": "ok", "visible": false}
+{"id": "developer.repeatingSection", "kind": "command", "label": "Repeating Section Content Control", "menu": "Developer › Controls", "run": "ok", "visible": false}
+{"id": "developer.designMode", "kind": "command", "label": "Design Mode", "menu": "Developer › Controls", "run": "ok", "visible": false}
+{"id": "developer.properties", "kind": "command", "label": "Properties", "menu": "Developer › Controls", "run": "needs_context", "msg": "wordcraft: 1번째 명령 developer.properties 실패 — wordcraft-cli: command 2 (developer.properties): not available: the selection isn't in a content control"}
+{"id": "developer.control", "kind": "command", "label": "Content Control at Selection", "menu": "Developer › Controls", "run": "needs_context", "msg": "wordcraft: 1번째 명령 developer.control 실패 — wordcraft-cli: command 2 (developer.control): not available: the selection isn't in a content control"}
+{"id": "developer.toggleCheckBox", "kind": "command", "label": "Toggle Check Box", "menu": "Developer › Controls", "run": "needs_context", "msg": "wordcraft: 1번째 명령 developer.toggleCheckBox 실패 — wordcraft-cli: command 2 (developer.toggleCheckBox): not available: the selection isn't in a content control"}
+{"id": "developer.chooseItem", "kind": "command", "label": "Choose List Item", "menu": "Developer › Controls", "run": "needs_context", "msg": "wordcraft: 1번째 명령 developer.chooseItem 실패 — wordcraft-cli: command 2 (developer.chooseItem): not available: the selection isn't in a content control"}
+{"id": "developer.setDate", "kind": "command", "label": "Set Date", "menu": "Developer › Controls", "run": "needs_context", "msg": "wordcraft: 1번째 명령 developer.setDate 실패 — wordcraft-cli: command 2 (developer.setDate): not available: the selection isn't in a content control"}
+{"id": "developer.removeControl", "kind": "command", "label": "Remove Content Control", "menu": "Developer › Controls", "run": "needs_context", "msg": "wordcraft: 1번째 명령 developer.removeControl 실패 — wordcraft-cli: command 2 (developer.removeControl): not available: the selection isn't in a content control"}

@@ -25,7 +25,7 @@
   {
    "at": "/steps/1/params/path",
    "kind": "file",
-   "example": "assets/social-preview.png"
+   "example": "docs/assets/social-preview.png"
   },
   {
    "at": "/steps/5/params/text",
@@ -53,7 +53,7 @@
    {
     "id": "file.place",
     "params": {
-     "path": "assets/social-preview.png",
+     "path": "docs/assets/social-preview.png",
      "frame": "$0.id"
     }
    },

@@ -5,9 +5,8 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from craft.audio import RATE, commands, finish_commands, speech_spans  # noqa: E402
 from craft.edit import srt  # noqa: E402
 from craft.motion import build_jsx, chunks, cue_time, quoted  # noqa: E402

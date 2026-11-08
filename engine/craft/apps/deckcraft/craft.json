@@ -1,0 +1,35 @@
+{
+ "name": "deckcraft",
+ "title": "DeckCraft",
+ "repo": "storytold/deckcraft",
+ "kind": "프레젠테이션 (PowerPoint 류)",
+ "use": "슬라이드 · 도표를 화면 재료로",
+ "order": 9,
+ "license": "MIT OR Apache-2.0",
+ "agent": false,
+ "bin": "deckcraft",
+ "cli": "deckcraft-cli",
+ "mcp": [
+  "mcp",
+  "--automation-read-root",
+  "$ROOT",
+  "--automation-write-root",
+  "$WRITE"
+ ],
+ "web": true,
+ "kind_en": "Presentations (PowerPoint-style)",
+ "use_en": "Slides and diagrams as screen material",
+ "provides": [
+  {
+   "material": "diagram",
+   "in": "단계 · 비교 · 순환 · 조직도 항목",
+   "out": "9:16 SmartArt png + 항목별 레이어"
+  },
+  {
+   "material": "chart",
+   "in": "항목 · 값(콘티 labels · values / series)",
+   "out": "차트 PNG(DeckCraft 차트 엔진 — method: deckcraft)",
+   "alt": true
+  }
+ ]
+}

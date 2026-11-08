@@ -1,0 +1,35 @@
+{
+ "id": "motion-parallax-25d",
+ "layer": "motion",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "2.5D 시차 — 카메라가 다가가며 재료 · 배경 깊이가 갈림",
+ "when": "사진 · 일러스트 한 장으로 공간감을 낼 때(켄번스 대신)",
+ "avoid": "글자가 많은 화면 캡처(원근에 글자가 흐려짐) · 제목이 재료 바로 위에 붙어 있을 때(재료가 커지며 덮음 — PUSH 를 줄인다)",
+ "vars": {
+  "MAT": "재료 레이어",
+  "BG": "배경 레이어"
+ },
+ "defaults": {
+  "SEC": 4,
+  "Z": 180,
+  "PUSH": 0.05
+ },
+ "at": [
+  0.1,
+  2.0,
+  3.8
+ ],
+ "steps": [
+  {
+   "jsx": "var cam=C.layers.addCamera(\"Parallax Cam\",[C.width/2,C.height/2]);var zm=cam.property(\"Camera Options\").property(\"Zoom\").value;var m=L(\"@MAT@\");m.threeDLayer=true;var mp=m.property(\"Transform\").property(\"Position\").value;m.property(\"Transform\").property(\"Position\").setValue([mp[0],mp[1],-@Z@]);var ms=m.property(\"Transform\").property(\"Scale\").value;m.property(\"Transform\").property(\"Scale\").setValue([ms[0]*(zm-@Z@)/zm,ms[1]*(zm-@Z@)/zm,100]);var b=L(\"@BG@\");b.threeDLayer=true;var bp=b.property(\"Transform\").property(\"Position\").value;b.property(\"Transform\").property(\"Position\").setValue([bp[0],bp[1],@Z@*3]);var k=(zm+@Z@*3)/zm*115;b.property(\"Transform\").property(\"Scale\").setValue([k,k,100]);var cp=cam.property(\"Transform\").property(\"Position\");K(cp,[[0,[C.width/2,C.height/2,-zm]],[@SEC@,[C.width/2,C.height/2,-zm*(1-@PUSH@)]]]);EASE(cp,40);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 9.29,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/motion-parallax-25d/after.png",
+  "before": "data/workspace/probe/recipes/motion-parallax-25d/before.png"
+ }
+}

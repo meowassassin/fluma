@@ -1,0 +1,21 @@
+{
+ "id": "light-impact-flash",
+ "layer": "light",
+ "target": "motion",
+ "title": "부딪히는 순간의 빛과 흔들림",
+ "when": "도장 · 충돌 등 쿵 하는 순간 한 번",
+ "avoid": "한 영상에 두세 번 넘게",
+ "vars": {
+  "T0": "충돌 초"
+ },
+ "defaults": {},
+ "at": [
+  7.25
+ ],
+ "steps": [
+  {
+   "jsx": "var a=ADJ(\"Impact\");a.moveToBeginning();var e=FX(a,\"Exposure\");var p=P(e,\"Exposure\");K(p,[[@T0@-0.02,0],[@T0@+0.03,0.55],[@T0@+0.34,0]]);EASE(p,50);"
+  }
+ ],
+ "app": "effectcraft"
+}

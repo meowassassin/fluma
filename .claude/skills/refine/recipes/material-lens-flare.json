@@ -1,0 +1,37 @@
+{
+ "id": "material-lens-flare",
+ "layer": "light",
+ "target": "material",
+ "app": "photocraft",
+ "title": "사진 재료: 오른쪽 위 렌즈 빛",
+ "when": "야외 · 제품 사진에 햇빛 느낌",
+ "avoid": "실내 · 캡처",
+ "vars": {
+  "PIXEL": "픽셀 레이어"
+ },
+ "defaults": {},
+ "steps": [
+  {
+   "id": "layer.select",
+   "params": {
+    "name": "@PIXEL@"
+   }
+  },
+  {
+   "id": "filter.render.lensFlare",
+   "params": {
+    "brightness": 90,
+    "centerX": 0.82,
+    "centerY": 0.12,
+    "lens": "prime105"
+   }
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 4.69,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/material-lens-flare/after.png",
+  "before": "data/workspace/probe/recipes/material-lens-flare/before.png"
+ }
+}

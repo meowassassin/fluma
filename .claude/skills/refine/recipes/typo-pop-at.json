@@ -1,0 +1,34 @@
+{
+ "id": "typo-pop-at",
+ "layer": "typo",
+ "target": "motion",
+ "title": "정해진 순간에 글자가 놓인다",
+ "when": "숫자 · 지명 · 연도처럼 말과 함께 화면에 찍힐 글자",
+ "avoid": "문장 전체를 받아쓰기",
+ "vars": {
+  "TEXT": "글",
+  "X": "가운데 x",
+  "Y": "글자 바닥 y",
+  "SIZE": "크기",
+  "FONT": "글꼴 PostScript 이름",
+  "COLOR": "[r,g,b] 0~1",
+  "T0": "나타나는 초",
+  "NM": "레이어 이름",
+  "ROT": "기울기 도"
+ },
+ "defaults": {
+  "FONT": "GowunBatang-Bold",
+  "COLOR": "[0.09,0.066,0.047]",
+  "NM": "Label",
+  "ROT": "0"
+ },
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var t=C.layers.addText(\"@TEXT@\");t.name=\"@NM@\";t.moveToBeginning();var S=t.property(\"Source Text\");var d=S.value;d.font=\"@FONT@\";d.fontSize=@SIZE@;d.applyFill=true;d.fillColor=@COLOR@;d.justification=ParagraphJustification.CENTER_JUSTIFY;S.setValue(d);var T=t.property(\"Transform\");T.property(\"Position\").setValue([@X@,@Y@]);T.property(\"Rotation\").setValue(@ROT@);var o=T.property(\"Opacity\");K(o,[[@T0@,0],[@T0@+0.12,100]]);var s=T.property(\"Scale\");K(s,[[@T0@,[112,112]],[@T0@+0.22,[100,100]]]);EASE(s,70);"
+  }
+ ],
+ "app": "effectcraft"
+}

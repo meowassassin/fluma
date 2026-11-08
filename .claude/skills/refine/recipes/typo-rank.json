@@ -1,0 +1,36 @@
+{
+ "id": "typo-rank",
+ "layer": "typo",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "순위표(번호는 계속 · 항목은 그 클립이 나올 때 채워짐)",
+ "when": "TOP N 모음 — 화면 왼쪽 위에 1~N 번호가 늘 보이고, 각 순위 항목 이름이 그 클립 시작에 나타난다(보통 N 위부터 1위로)",
+ "avoid": "항목 이름이 길게(6자 이상) · 순위가 화면 중앙을 가림",
+ "vars": {
+  "N": "순위 수",
+  "ITEMS": "항목 이름(1위부터 | 로 구분)",
+  "TIMES": "각 항목이 나타나는 초(1위부터 | 로 구분)",
+  "X": "왼쪽 x",
+  "Y": "1위 줄 y",
+  "GAP": "줄 간격",
+  "SIZE": "글자 크기",
+  "T1": "끝 초",
+  "NM": "레이어 이름",
+  "FONT": "글꼴"
+ },
+ "defaults": {
+  "X": "60",
+  "GAP": "58",
+  "SIZE": "44",
+  "NM": "Rank",
+  "FONT": "Pretendard-Black"
+ },
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var it=\"@ITEMS@\".split(\"|\"),tm=\"@TIMES@\".split(\"|\"),cols=[[1,0.3,0.25],[1,0.86,0.2],[1,0.62,0.2],[1,1,1],[1,1,1],[1,1,1],[1,1,1]];for(var k=0;k<@N@;k++){var y=@Y@+k*@GAP@;var n=C.layers.addText((k+1)+\".\");n.name=\"@NM@ n\"+(k+1);n.moveToBeginning();var S=n.property(\"Source Text\");var d=S.value;d.font=\"@FONT@\";d.fontSize=@SIZE@;d.applyFill=true;d.fillColor=cols[k];d.applyStroke=true;try{d.strokeOverFill=false;}catch(x){}d.strokeColor=[0,0,0];d.strokeWidth=@SIZE@*0.14;d.justification=ParagraphJustification.LEFT_JUSTIFY;S.setValue(d);n.property(\"Transform\").property(\"Position\").setValue([@X@,y]);n.inPoint=0;n.outPoint=@T1@;if(it[k]){var t=C.layers.addText(it[k]);t.name=\"@NM@ \"+(k+1);t.moveToBeginning();var S2=t.property(\"Source Text\");var e=S2.value;e.font=\"@FONT@\";e.fontSize=@SIZE@*0.82;e.applyFill=true;e.fillColor=cols[k];e.applyStroke=true;try{e.strokeOverFill=false;}catch(x){}e.strokeColor=[0,0,0];e.strokeWidth=@SIZE@*0.12;e.justification=ParagraphJustification.LEFT_JUSTIFY;S2.setValue(e);var T=t.property(\"Transform\");T.property(\"Position\").setValue([@X@+@SIZE@*1.25,y]);var a=parseFloat(tm[k]||0);t.inPoint=a;t.outPoint=@T1@;K(T.property(\"Scale\"),[[a,[60,60]],[a+0.12,[112,112]],[a+0.22,[100,100]]]);}}"
+  }
+ ]
+}

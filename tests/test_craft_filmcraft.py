@@ -1,4 +1,4 @@
-"""FilmCraft — 조립(scripts/craft/edit.py) 과 화면 녹화 다듬기(scripts/craft/adapters/filmcraft.py).
+"""FilmCraft — 조립(engine/craft/edit.py) 과 화면 녹화 다듬기(engine/craft/adapters/filmcraft.py).
 계산(마커 · 썸네일 시각 · 내보내기 설정 · 줌 키프레임 · 속도 시각 바꾸기)은 앱 없이, 실제 내보내기는 앱이 설치됐을 때만."""
 from __future__ import annotations
 
@@ -9,9 +9,8 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from craft import edit  # noqa: E402
 from craft.adapters import filmcraft as fca  # noqa: E402
 
@@ -140,7 +139,7 @@ def test_assemble_markers_thumb_and_loudness_skip(tmp_path, monkeypatch):
     a = tmp_path / "a.wav"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=10:sample_rate=48000",
                     "-af", "volume=-20dB", "-ac", "2", str(a)], check=True)
-    cj = tmp_path / "compositions" / "t-fc" / "craft" / "craft.json"
+    cj = tmp_path / "data" / "compositions" / "t-fc" / "craft" / "craft.json"
     cj.parent.mkdir(parents=True)
     cj.write_text(json.dumps({"audio": {"lufs": -14.1}}))
     out = edit.assemble(SB, v, a, tmp_path / "out.mp4", width=540, height=960)

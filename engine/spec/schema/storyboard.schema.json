@@ -1,0 +1,1588 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "shortsforge/storyboard/v1",
+  "title": "Storyboard",
+  "description": "영상 1편의 내용. 템플릿은 이 구조만 읽는다 (템플릿과의 계약).",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "format",
+    "duration_sec",
+    "title",
+    "scenes",
+    "cta"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}-[a-z0-9-]*\\d{2}$"
+    },
+    "version": {
+      "const": 1
+    },
+    "audience": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 60,
+      "description": "대상 시청자 (자유 문장). 조사·문체 기준. 2026-10-28 channel 대체"
+    },
+    "engine": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "craft",
+        null
+      ],
+      "description": "화면 합성 엔진 — craft(Craft 앱 파이프라인: 재료 → EffectCraft → SoundCraft → FilmCraft). HyperFrames · Blender · Manim 은 2026-11-06 제거"
+    },
+    "template": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[A-Za-z0-9_-]+$",
+      "description": "엔진의 템플릿 이름. 없으면 형식으로 자동"
+    },
+    "format": {
+      "enum": [
+        "concept",
+        "mythbust",
+        "compare",
+        "countdown",
+        "fix",
+        "series",
+        "ad",
+        "emotional",
+        "daily",
+        "ranking",
+        "clip"
+      ],
+      "description": "ranking=퍼온 클립 순위 모음(상단 고정 제목 · 순위표 · 반응 자막, 나레이션 없음), clip=클립 하나 반응(제목 · 원본 말 자막), concept=한 개념 설명, mythbust=오해 깨기, compare=비교·대결, countdown=순위, fix=문제→해결, series=30초 3부작 중 1편, ad=광고(고민→제안→증거 수치→CTA), emotional=감성(현장 장면 + 짧은 문장, 숫자 최소), daily=당일 데이터(현장 + 가격 하나 + 반응)"
+    },
+    "brand": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "화면 하단에 표시할 브랜드·채널 이름 (선택). 예: 호주에서 온 회전초밥"
+    },
+    "badge": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 10,
+      "description": "우상단 고정 배지 (예: '창업 15초', '오늘 시세'). 없으면 null"
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "시안의 제약 (예: '유튜브 영상 스틸만 사용'). 생성층·렌더층이 읽는다"
+    },
+    "duration_sec": {
+      "type": "integer",
+      "minimum": 15,
+      "maximum": 60
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 40,
+      "description": "유튜브 제목 (해시태그 제외)"
+    },
+    "topic": {
+      "type": "string",
+      "description": "입력된 주제 원문"
+    },
+    "hook_number": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 6,
+      "description": "숫자 도장용 핵심 숫자 (예: '37%', '3개', '0원'). 없으면 null"
+    },
+    "scenes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/scene"
+      }
+    },
+    "cta": {
+      "type": "string",
+      "maxLength": 20
+    },
+    "caption": {
+      "type": "string",
+      "maxLength": 300,
+      "description": "플랫폼 게시글 본문"
+    },
+    "hashtags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^#"
+      },
+      "maxItems": 10
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "series": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "part": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "of": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3
+        }
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "생성 과정 기록. 템플릿은 읽지 않는다.",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "llm_calls": {
+          "type": "integer"
+        },
+        "escalated": {
+          "type": "boolean"
+        },
+        "lint_failures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "character": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-z0-9-]+$",
+      "description": "data/characters/<이름>/ — 화면 구석에서 나레이션에 맞춰 립싱크하는 캐릭터. null 이면 끔"
+    },
+    "reference": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "참고한 트렌드 쇼츠 id (data/public/trends/analysis/<id>.json) — 편집기에 참고 리듬으로 표시"
+    },
+    "aspect": {
+      "enum": [
+        "9:16",
+        "16:9",
+        "1:1"
+      ],
+      "description": "출력 화면 비율(기본 9:16 쇼츠). 렌더 옵션 --aspect 가 우선. 같은 콘티로 여러 비율을 뽑을 수 있다"
+    },
+    "variants": {
+      "type": "array",
+      "maxItems": 4,
+      "description": "비교용 버전(engine/story/variants.py): 훅 · 첫 장면 · 제목만 바꾼 2~4개를 초안으로 뽑아 나란히 본다. scenes 는 장면 번호(1부터) → 바꿀 칸만",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "scenes": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "direction": {
+      "type": "object",
+      "description": "디자인 방향 — 효과 · 배치 · 소리를 영상마다 정한다(engine/craft/design.py). 사용자가 정한 값 > 레퍼런스에서 잰 값(direct.py --write) > 효과 없음. 시안 고르기: engine/story/directions.py propose · pick(locked). 그 밖의 칸(색 · 바탕 · pin …)은 글자 · 참거짓 · 숫자",
+      "properties": {
+        "bg_preset": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "EffectCraft 내장 배경 id 또는 null"
+        },
+        "bg_motion": {
+          "type": "boolean"
+        },
+        "enter": {
+          "type": [
+            "string",
+            "object",
+            "null"
+          ],
+          "description": "재료 등장 전환 — 프리셋 id · {재료 종류: id} · null(바로 보임)"
+        },
+        "title_preset": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sub_preset": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text_pop": {
+          "type": "boolean",
+          "description": "제목 · 자막이 나올 때 살짝 커짐"
+        },
+        "cam_push": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1.3,
+          "description": "장면 내내 천천히 밀기 배율(1 = 없음)"
+        },
+        "frame": {
+          "type": "object",
+          "description": "실제 화면 액자 {shadow, round, push}"
+        },
+        "layout": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "full",
+            "card",
+            "band",
+            null
+          ]
+        },
+        "subs": {
+          "type": "object",
+          "description": "자막 모양 {box, bg, fg, hot, y}"
+        },
+        "title": {
+          "type": "object",
+          "description": "제목 모양 {box, bg, fg, y}"
+        },
+        "sound": {
+          "type": "object",
+          "description": "{voice_chain: clean|light|none, duck_db}"
+        },
+        "methods": {
+          "type": "object",
+          "description": "{재료 종류: 앱} — 같은 재료를 어느 앱으로(materials.methods())",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "locked": {
+          "type": "boolean",
+          "description": "사용자가 시안을 골라 고정 — direct.py 가 자동으로 바꾸지 않는다"
+        },
+        "picked": {
+          "type": "string"
+        },
+        "design_from": {
+          "type": "string",
+          "enum": [
+            "reference",
+            "none",
+            "motion",
+            "user"
+          ]
+        },
+        "_auto": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "direct.py 가 레퍼런스에서 자동으로 채운 칸"
+        },
+        "art": {
+          "type": "object",
+          "description": "이 영상의 시각 언어: palette{bg, ink, accent} · rule · avoid[]"
+        },
+        "color_bg": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null",
+          "boolean",
+          "number"
+        ]
+      }
+    },
+    "voice": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "나레이션 음성 엔진 · 목소리 (engine/voice/engines/<엔진>). 없으면 설정의 기본 음성",
+      "properties": {
+        "engine": {
+          "type": "string"
+        },
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.8,
+          "maximum": 1.6,
+          "description": "말 속도 (1 = 엔진 기본). 엔진이 직접 빠르게 말한다"
+        },
+        "style": {
+          "type": "string",
+          "maxLength": 400,
+          "description": "말투 지시(글). Gemini TTS 처럼 연기 지시를 받는 엔진에 넘긴다 — 예: 친구한테 소식 전하듯 빠르고 가볍게"
+        },
+        "continuous": {
+          "type": "boolean",
+          "description": "이어 말하기: 대본 전체를 한 번에 합성하고 장면은 단어 사이 쉼에서 자른다(컷이 바뀌어도 말이 이어짐)"
+        },
+        "ending": {
+          "type": "string",
+          "enum": [
+            "keep",
+            "period"
+          ],
+          "description": "말끝 처리(모든 엔진): period = 합성할 때만 문장 중간 쉼표를 마침표로 — 말끝이 올라가지 않고 떨어져 더 딱딱 · 담담하게. 자막 글은 그대로"
+        },
+        "intensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "description": "감정 강도(typecast 감정 프리셋, 기본 1) — 작을수록 평평"
+        },
+        "pitch": {
+          "type": "integer",
+          "minimum": -12,
+          "maximum": 12,
+          "description": "음높이(반음, typecast) — 레퍼런스 화자 높이에 맞출 때 voice_match.py 가 정한다"
+        }
+      }
+    },
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "의도 카드 — 사용자가 원하는 것을 구조로 적는다(기억이 아니라 이 영상의 규칙). 확인(confirmed)되기 전엔 제작 · 유료 생성을 하지 않는다",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "한 줄: 누구에게 무엇을 어떤 느낌으로"
+        },
+        "reference_use": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "레퍼런스에서 가져올 것(구성 · 말투 · 화면 · 목소리 중 무엇을)과 가져오지 않을 것"
+        },
+        "must": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": "꼭 지킬 것 — 사용자 지적이 나올 때마다 한 줄씩 더한다"
+        },
+        "must_not": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "description": "하지 말 것 — 예: 직접 그린 2D · 이모지(AI 티) · 빨간 네모 강조"
+        },
+        "locked": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "content",
+              "tone",
+              "screen",
+              "voice",
+              "length"
+            ]
+          },
+          "description": "사용자가 확정해 바꾸면 안 되는 축 — content 가 잠기면 말투 수정은 tone_edit.py 로만"
+        },
+        "confirmed": {
+          "type": "boolean",
+          "description": "사용자가 의도 카드를 확인했는지(gate.py intent 로만 켠다)"
+        }
+      }
+    },
+    "preset": {
+      "type": "object",
+      "description": "형식 프리셋(engine/research/format_presets.py pick) — 사람이 편집한 실제 쇼츠에서 잰 숫자: 자막 위치 · 크기 · 글자 수, 고정 제목, 화면 채움, 컷 길이, 화면 종류 비율. 화면 부품(K.talk · K.fmt)이 이 숫자로 배치한다",
+      "additionalProperties": true
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "ko",
+        "en",
+        "zh"
+      ],
+      "default": "ko",
+      "description": "나레이션 · 자막 언어(화면 UI 언어와 별개). 말 속도 검사 · 자막 줄 길이 · 말투 검사가 이것을 따른다"
+    },
+    "punchline": {
+      "type": "string",
+      "maxLength": 40,
+      "description": "영상 내내 떠 있는 고정 펀치라인(참고 쇼츠 문법에 punch 자리가 있을 때) — 예: '아빠는 하품할때만 우는데'"
+    },
+    "grammar": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "참고 쇼츠의 화면 문법(engine/story/previz.py grammar): 고정 제목 · 펀치라인 · 상황 괄호 · 반응 자막 · 속마음 · 영상 칸의 위치 · 크기 · 색. K.talk.gram 이 읽는다"
+    },
+    "music": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "src"
+      ],
+      "description": "배경음악(engine/core/finish.py 가 마무리 때 섞는다). 권리는 사용자 판단 — 엔진은 사용자가 지정한 파일만 섞는다",
+      "properties": {
+        "src": {
+          "type": "string",
+          "description": "음악 파일 경로(저장소 기준, 예: data/public/uploads/<id>/song.mp3)"
+        },
+        "start": {
+          "type": "number",
+          "minimum": 0,
+          "description": "곡의 몇 초부터 쓸지(후렴 · 드롭에 맞추기) — ffmpeg 마무리만 씀(Craft 엔진은 처음부터)"
+        },
+        "gain_db": {
+          "type": "number",
+          "minimum": -40,
+          "maximum": 6,
+          "description": "음량(dB). 기본 -14 — 나레이션이 있으면 그 밑에 깔린다"
+        },
+        "duck": {
+          "type": "boolean",
+          "description": "말할 때 음악을 줄인다(기본 true)"
+        },
+        "fade_in": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "fade_out": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 8,
+          "description": "끝 페이드 아웃 초(Craft 엔진은 s-curve, 기본 1.5)"
+        },
+        "duck_db": {
+          "type": "number",
+          "minimum": -30,
+          "maximum": 0,
+          "description": "말하는 동안 더 내릴 dB(Craft 엔진 SoundCraft, 기본 -5)"
+        }
+      }
+    },
+    "synthetic": {
+      "type": "boolean",
+      "description": "사실적인 합성 장면이 있을 때 업로드에 AI 합성 표시를 켠다"
+    },
+    "refine": {
+      "type": "array",
+      "description": "영상 전체 다듬기(소리 마스터 · 편집 · Main 컴프)",
+      "items": {
+        "$ref": "#/$defs/refine_pass"
+      }
+    },
+    "reference_skip": {
+      "type": "string",
+      "description": "레퍼런스 없이 만들 때 사용자의 말 — 검사 L30 을 넘긴다"
+    },
+    "concept": {
+      "type": "object",
+      "description": "사용자가 고른 콘셉트(engine/story/concepts.py pick)"
+    },
+    "credits": {
+      "type": "object"
+    },
+    "kind": {
+      "type": "string"
+    },
+    "music_library": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "track"
+      ],
+      "description": "업로드 때 유튜브 쇼츠 편집기(오디오 라이브러리)에서 붙일 곡 — 영상 파일에는 넣지 않는다(유튜브가 라이선스를 가진 곡이라 수익 문제가 없다). engine/research/trend_music.py 로 같은 분야 쇼츠가 실제로 붙이는 곡을 찾아 고른다",
+      "properties": {
+        "track": {
+          "type": "string",
+          "description": "쇼츠 편집기에서 검색할 곡 이름(사운드 표시 그대로)"
+        },
+        "examples": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "이 곡을 쓴 쇼츠 id(조회수 높은 순)"
+        },
+        "start_hint": {
+          "type": "string",
+          "description": "곡의 어디부터 쓸지(예: '드롭 직전부터', '처음부터')"
+        },
+        "why": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "scene": {
+      "type": "object",
+      "required": [
+        "role",
+        "sec",
+        "caption",
+        "narration",
+        "visual"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "enum": [
+            "hook",
+            "setup",
+            "item",
+            "contrast",
+            "step",
+            "reveal",
+            "verdict",
+            "outro",
+            "benefit",
+            "proof",
+            "mood",
+            "price",
+            "cta"
+          ],
+          "description": "hook=첫 3초, setup=문제 제시, item=항목(비교·순위), contrast=통념 vs 사실, step=절차 한 단계, reveal=핵심 공개, verdict=결론, outro=CTA·루프 연결, benefit=광고 이점 하나, proof=증거(수치·현장), mood=감성 장면, price=가격 하나, cta=행동 유도"
+        },
+        "sec": {
+          "type": "number",
+          "minimum": 2,
+          "maximum": 12
+        },
+        "caption": {
+          "type": "string",
+          "maxLength": 28,
+          "description": "화면 자막. 2줄 이내, 줄바꿈은 \\n"
+        },
+        "narration": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "음성 대사. 초당 4~5자 기준으로 sec에 맞춤"
+        },
+        "visual": {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "number",
+                "text",
+                "compare",
+                "list",
+                "diff",
+                "code",
+                "screenshot",
+                "icon",
+                "chart",
+                "still",
+                "footage",
+                "price_tag",
+                "audio_demo"
+              ],
+              "description": "템플릿이 그릴 화면 종류. still=사진 위 자막(켄번스), footage=영상 위 자막, price_tag=현장 사진/영상 + 가격 하나 크게, audio_demo=음성 샘플 재생 + 파형. 분석 결과 still/footage/price_tag가 1순위 증거"
+            },
+            "motion": {
+              "enum": [
+                "kenburns_in",
+                "kenburns_out",
+                "pan_left",
+                "pan_right",
+                "static"
+              ],
+              "description": "still/footage 의 움직임"
+            },
+            "primary": {
+              "type": "string",
+              "description": "강조 값 (숫자, 항목명, 아이콘 id 등)"
+            },
+            "secondary": {
+              "type": "string"
+            },
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 5
+            },
+            "before": {
+              "type": "string"
+            },
+            "after": {
+              "type": "string"
+            },
+            "asset": {
+              "type": "string",
+              "description": "data/public/ 기준 경로: captures/… · uploads/<id>/<파일>(사용자가 올린 사진 · 영상) · elements/<id>/<이름>(웹 · 터미널 녹화 · 짤 요소 폴더)"
+            },
+            "emphasis": {
+              "enum": [
+                "good",
+                "bad",
+                "neutral"
+              ],
+              "default": "neutral"
+            },
+            "clip_start": {
+              "type": "number",
+              "minimum": 0,
+              "description": "footage(올린 실사 영상)에서 쓸 시작 초 — 장면 길이만큼 이어서 씀(트림)"
+            },
+            "src": {
+              "type": "string",
+              "description": "쓸 재료 파일(data/public/ 아래: 그림 또는 프레임 폴더). 없으면 미리 보기에서 회색 자리표시 카드"
+            }
+          }
+        },
+        "sfx": {
+          "anyOf": [
+            {
+              "enum": [
+                "stamp",
+                "pop",
+                "tick",
+                "swoosh",
+                "none"
+              ]
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "enum": [
+                      "stamp",
+                      "pop",
+                      "tick",
+                      "swoosh"
+                    ]
+                  },
+                  "at": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          ],
+          "default": "none",
+          "description": "효과음. 문자열 = 장면 시작, 배열 = [{name, at(장면 안 초)}] 화면 동작 순간에"
+        },
+        "music_cue": {
+          "enum": [
+            "up",
+            "calm",
+            "drop",
+            "none"
+          ],
+          "description": "감성/광고용 음악 포인트"
+        },
+        "engine": {
+          "type": "string",
+          "description": "(예전 필드 · 무시) 엔진은 Craft 하나"
+        },
+        "template": {
+          "type": "string",
+          "description": "이 장면의 엔진 템플릿. 없으면 콘티 template(같은 엔진일 때) 또는 자동"
+        },
+        "elements": {
+          "type": "array",
+          "maxItems": 12,
+          "description": "이 장면에 필요한 시각 요소(장면 설계 단계에서 정함 → 재료 materials 로 만든다)",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "source"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 40,
+                "description": "요소 이름 (예: \"GitHub 로고\", \"S3 버킷\", \"훅 제목\")"
+              },
+              "what": {
+                "type": "string",
+                "maxLength": 120,
+                "description": "무엇을 · 어떻게 움직이는지 한 줄"
+              },
+              "source": {
+                "type": "string",
+                "enum": [
+                  "kit",
+                  "icon",
+                  "upload",
+                  "capture",
+                  "webrec",
+                  "meme"
+                ],
+                "description": "kit=움직임 단계가 그리는 도형 · 글자 · 선 / icon=engine/capture/icons.py / upload=사용자 파일 / capture=화면 캡처 / webrec=웹 화면 녹화(engine/capture/webrec.py) / meme=짤(engine/capture/meme.py)"
+              },
+              "reuse": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "library3d 이름 (source=library)"
+              },
+              "cue": {
+                "type": "string",
+                "maxLength": 30,
+                "description": "이 요소가 등장 · 움직이는 나레이션 단어 (움직임 단계가 그 낱말에 맞춰 등장시킨다)"
+              }
+            }
+          }
+        },
+        "beat": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "박자 역할(채널 카드 · 스타일 카드) — 예: 소식 · 설명 · 방법 안내 · 반전 · joke(농담: 화면 · 앞말을 살짝 비트는 한마디) · 맺음"
+        },
+        "screen": {
+          "type": "string",
+          "enum": [
+            "실제 화면",
+            "기사",
+            "사람",
+            "실사 영상",
+            "제품",
+            "음식",
+            "짤",
+            "애니메이션 · 일러스트",
+            "카드(글자)",
+            "도표",
+            "게임 화면",
+            "3D 그래픽",
+            "아이콘 · 그래픽"
+          ],
+          "description": "이 장면에 주로 보이는 것 — 채널 카드 structure.screens · engine/research/vision_tags.py 와 같은 갈래. 이야기하는 대상 자체가 기사 캡처보다 먼저"
+        },
+        "beats": {
+          "type": "array",
+          "maxItems": 12,
+          "description": "장면 안에서 화면이 바뀌는 순간(사람 편집처럼 한 문장 안에서도 재료를 바꾼다). 재료 전환이 10초에 약 2.5번 이상이어야 한다(engine/spec/presets/density.json, lint L29). at = 나레이션 속 단어",
+          "items": {
+            "type": "object",
+            "required": [
+              "at",
+              "do"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "at": {
+                "type": "string",
+                "description": "이 단어가 들릴 때(나레이션에 있는 단어)"
+              },
+              "do": {
+                "type": "string",
+                "enum": [
+                  "재료",
+                  "확대",
+                  "표시",
+                  "글자"
+                ],
+                "description": "재료 = 다른 재료로 바꾸거나 위에 얹기(짤 · 사진 · 기사 · 사람), 확대 = 지금 화면의 한 곳을 크게, 표시 = 빨간 상자 · 화살표, 글자 = 핵심 단어를 크게"
+              },
+              "screen": {
+                "type": "string",
+                "enum": [
+                  "실제 화면",
+                  "기사",
+                  "사람",
+                  "실사 영상",
+                  "제품",
+                  "음식",
+                  "짤",
+                  "애니메이션 · 일러스트",
+                  "카드(글자)",
+                  "도표",
+                  "게임 화면",
+                  "3D 그래픽",
+                  "아이콘 · 그래픽"
+                ],
+                "description": "do=재료 일 때 무엇인지(장면 screen 과 같은 갈래)"
+              },
+              "what": {
+                "type": "string",
+                "description": "무엇을(짤 이름 · 사진 · 확대할 곳 · 띄울 단어)"
+              },
+              "src": {
+                "type": "string",
+                "description": "쓸 파일(data/public/ 아래 경로) — 있으면"
+              },
+              "hold": {
+                "type": "number",
+                "description": "보여 줄 초(재료 기본 1.4, 글자 1.2)"
+              },
+              "ar": {
+                "type": "number",
+                "description": "재료(프레임 폴더)의 높이/너비"
+              },
+              "fit": {
+                "type": "string",
+                "enum": [
+                  "cover",
+                  "contain"
+                ]
+              }
+            }
+          }
+        },
+        "view": {
+          "type": "string",
+          "enum": [
+            "전체",
+            "확대"
+          ],
+          "description": "웹 화면 보기 방식. 전체 = 페이지 폭 그대로(기사 · 논문 · 문서 — 중요한 곳은 beats do:표시 빨간 상자), 확대 = 말하는 대상을 당겨 읽히게(버튼 · 숫자 · 메뉴). 비우면 screen 이 기사면 전체, 나머지는 확대"
+        },
+        "situation": {
+          "type": "string",
+          "maxLength": 24,
+          "description": "상황 괄호 — 예: '동생이 울 때' (괄호는 그릴 때 붙는다)"
+        },
+        "thought": {
+          "type": "string",
+          "maxLength": 24,
+          "description": "속마음 괄호(가운데) — 예: '우리집 망한건가..'"
+        },
+        "caption_at": {
+          "type": "number",
+          "description": "반응 자막이 뜨는 장면 안 시각(초, 기본 0.3)"
+        },
+        "thought_at": {
+          "type": "number",
+          "description": "속마음이 뜨는 장면 안 시각(초, 기본 0.6)"
+        },
+        "materials": {
+          "type": "array",
+          "description": "장면 재료(Craft 엔진) — 툴 이름 없이 무엇이 필요한가만. engine/craft/materials.py 가 engine/craft/apps/*/craft.json 능력 목록으로 앱을 고른다. 기술 설명: screen · web · overlay · doc_quote · ui_mock · diagram · document / 제품: model3d · drawing / 감성 · 광고: photo(frame card) · photo_grade / 반복 형식: template_card · info_card / 썸네일: thumbnail. 칸 설명 · 예시는 .claude/skills/storyboard/SKILL.md",
+          "items": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "재료 id(장면 안에서 유일, 파일 이름이 된다 — 점 없이)"
+              },
+              "type": {
+                "enum": [
+                  "chart",
+                  "stat",
+                  "doc_quote",
+                  "illustration",
+                  "icon",
+                  "photo",
+                  "screen",
+                  "web",
+                  "video",
+                  "stock",
+                  "meme",
+                  "image",
+                  "text",
+                  "overlay",
+                  "photo_grade",
+                  "document",
+                  "diagram",
+                  "ui_mock",
+                  "info_card",
+                  "thumbnail",
+                  "template_card",
+                  "model3d",
+                  "drawing",
+                  "craft",
+                  "live",
+                  "form",
+                  "archive",
+                  "cast",
+                  "art",
+                  "silhouette",
+                  "relic",
+                  "figure"
+                ]
+              },
+              "camera": {
+                "type": "string",
+                "description": "gen: 카메라 움직임(slow dolly in · handheld …)"
+              },
+              "speaker": {
+                "type": "string",
+                "description": "gen: 대사를 말하는 사람(cast 이름 또는 설명)"
+              },
+              "continue": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "gen: 이 클립의 첫 프레임 = 그 클립(id)의 마지막 프레임(이어 붙이기). 생략하면 바로 앞 장면에 같은 인물이면 자동"
+              },
+              "framing": {
+                "type": "string",
+                "description": "gen: close-up · medium shot · wide shot … (생략하면 레퍼런스 샷에서)"
+              },
+              "lens": {
+                "type": "string"
+              },
+              "lighting": {
+                "type": "string"
+              },
+              "setting": {
+                "type": "string"
+              },
+              "mood": {
+                "type": "string"
+              },
+              "style": {
+                "type": "string",
+                "description": "overlay: clean(기본) · hand"
+              },
+              "beats": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                },
+                "description": "gen: 초 단위 동작 [{t: '0.5-2s', what: …}]"
+              },
+              "gen_sec": {
+                "type": "number",
+                "description": "gen: 만들 클립 길이(초)"
+              },
+              "in": {
+                "type": "number",
+                "minimum": 0,
+                "description": "video: 클립에서 쓸 구간 시작(초)"
+              },
+              "out": {
+                "type": "number",
+                "minimum": 0,
+                "description": "video: 클립에서 쓸 구간 끝(초)"
+              },
+              "grade": {
+                "type": "string",
+                "description": "video · screen: FilmCraft Lumetri 색 프리셋 이름(Teal Shadows, Warm Skin · Golden Dusk · Faded Print …)"
+              },
+              "fit": {
+                "type": "string",
+                "enum": [
+                  "cover",
+                  "contain"
+                ],
+                "description": "video: cover(화면 비율로 가운데 자르기 · gen 기본) | contain"
+              },
+              "end": {
+                "type": "string",
+                "enum": [
+                  "slow",
+                  "loop",
+                  "freeze"
+                ],
+                "description": "video: 장면보다 짧을 때 — slow(1.25배까지 늦춤 · 기본) | loop | freeze"
+              },
+              "recipe": {
+                "type": "string",
+                "description": "검증된 Craft 명령 조합(.claude/skills/crafts/recipes/<이름>.json)으로 만든다 — type 은 craft. 고르기: python3 engine/craft/craft_variety.py suggest \"<장면 용도>\""
+              },
+              "fill": {
+                "type": "object",
+                "description": "recipe 의 바꿀 칸: {\"/steps/3/params/text\": \"새 제목\", …} (레시피 slots 의 at)"
+              },
+              "app": {
+                "type": "string",
+                "description": "craft: 실행할 Craft 앱(vectorcraft · effectcraft · filmcraft · photocraft · figcraft · designcraft · deckcraft · lightcraft · pdfcraft · solidcraft · texturecraft · cadcraft · wordcraft · gridcraft · soundcraft)"
+              },
+              "steps": {
+                "type": "array",
+                "description": "craft: [{id: 명령 id(craft_catalog.py search 로 찾기), params: {…}}] — 앞 결과 참조 \"$N.키\", $WORK · $FRAMES",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "new": {
+                "type": "object",
+                "description": "craft: 새 문서 · 프로젝트 params(기본 1080×1920)"
+              },
+              "open": {
+                "type": "string",
+                "description": "craft: 열어서 시작할 저장소 안 파일(원본은 고치지 않음)"
+              },
+              "export": {
+                "type": "object",
+                "description": "craft: {format: png|mp4, size, time, start, end, fps, …앱별}"
+              },
+              "as": {
+                "type": "string",
+                "enum": [
+                  "image",
+                  "video"
+                ],
+                "description": "craft: 움직임 단계 배치 힌트"
+              },
+              "cue": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "이 낱말을 말할 때 등장"
+              },
+              "place": {
+                "type": "string",
+                "description": "center(기본) · full · left · right · top · bottom · card"
+              },
+              "src": {
+                "type": [
+                  "string",
+                  "boolean"
+                ],
+                "description": "원본 파일(저장소 기준). thumbnail 은 false 면 글자만"
+              },
+              "enter": {
+                "type": [
+                  "string",
+                  "boolean"
+                ],
+                "description": "등장 프리셋 id(EffectCraft) 또는 false — 기본은 종류별"
+              },
+              "exit": {
+                "type": "string",
+                "description": "퇴장 프리셋 id"
+              },
+              "shadow": {
+                "type": "boolean",
+                "description": "실제 화면 그림자(기본 true)"
+              },
+              "push": {
+                "type": "number",
+                "minimum": 0.9,
+                "maximum": 1.3,
+                "description": "칸에 놓인 재료의 느린 밀기 배율(실제 화면 기본 1.04)"
+              },
+              "target": {
+                "type": "string",
+                "description": "overlay: 주석을 얹을 같은 장면 재료 id(이 재료보다 앞에 있어야 함)"
+              },
+              "marks": {
+                "type": "array",
+                "description": "overlay: [{kind: box|arrow|label, box:[x,y,w,h] 0~1(대상 기준) 또는 px, from/to:[x,y](arrow), text, cue, color, size}]",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "kind"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "enum": [
+                        "box",
+                        "arrow",
+                        "label"
+                      ]
+                    },
+                    "box": {
+                      "type": "array",
+                      "minItems": 4,
+                      "maxItems": 4
+                    },
+                    "from": {
+                      "type": "array"
+                    },
+                    "to": {
+                      "type": "array"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "cue": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "type": "string",
+                "description": "photo: card(9:16 장면 카드 PSD) · info_card: card(기본, 투명 카드) | full(1080×1920)"
+              },
+              "highlight": {
+                "description": "photo: [x,y,w,h] 강조 상자(원본 기준) · document: [문장…] 진짜 형광펜"
+              },
+              "spotlight": {
+                "type": "boolean",
+                "description": "photo card: 강조 상자 밖을 어둡게"
+              },
+              "clean": {
+                "type": "array",
+                "description": "photo: 지울 상자 [[x,y,w,h]…](로고 · 워터마크, 0~1 또는 px)"
+              },
+              "alpha_text": {
+                "type": "boolean",
+                "description": "photo: 흰 배경 → 투명(글자만 남김)"
+              },
+              "cutout": {
+                "type": "boolean",
+                "description": "photo: 누끼(단순 배경에서만 쓸 만함)"
+              },
+              "pdf": {
+                "type": "string",
+                "description": "doc_quote: PDF 경로"
+              },
+              "find": {
+                "type": "string",
+                "description": "doc_quote: 찾을 문장(줄바꿈 · 띄어쓰기 무관)"
+              },
+              "mark": {
+                "enum": [
+                  "highlight",
+                  "underline",
+                  "box",
+                  "both",
+                  "none"
+                ],
+                "description": "doc_quote: 진짜 PDF 주석(기본 highlight)"
+              },
+              "redact": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "doc_quote: 가릴 것(email · phone · rrn · credit-card · ssn · date · 정규식)"
+              },
+              "context": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10,
+                "description": "doc_quote: 위아래 줄 수(기본 2)"
+              },
+              "look": {
+                "type": "string",
+                "description": "photo_grade: warm · film · clean(기본) · mono · none · lc.<프리셋>"
+              },
+              "crop": {
+                "description": "photo_grade: 9:16(기본) · 4:5 · 1:1 · 16:9 · [w,h] · false / web: [x,y,w,h] 0~1 / doc_quote: false 면 쪽 전체"
+              },
+              "credit": {
+                "type": "string",
+                "description": "photo_grade: 오른쪽 위 출처 글"
+              },
+              "text": {
+                "type": "string",
+                "description": "document: 본문(src 가 없을 때) · text 재료: 글자"
+              },
+              "title": {
+                "type": "string",
+                "description": "document · diagram · info_card · thumbnail · drawing · photo card 의 제목"
+              },
+              "track": {
+                "description": "document: 변경 추적 {from, to} 또는 목록"
+              },
+              "comments": {
+                "type": "array",
+                "description": "document: 메모 [{at, text}]"
+              },
+              "kind": {
+                "type": "string",
+                "description": "chart: bar 등 · diagram: steps · compare · cycle · hierarchy · pyramid · timeline · list"
+              },
+              "items": {
+                "type": "array",
+                "description": "diagram: 항목(탭 = 하위, compare 는 [[머리, 내용…]…])"
+              },
+              "cues": {
+                "type": "array",
+                "description": "diagram: 항목별 등장 낱말(null 이면 0.6초 간격)"
+              },
+              "device": {
+                "type": "string",
+                "description": "ui_mock: phone · browser(생략하면 캡처 모양으로)"
+              },
+              "url": {
+                "type": "string",
+                "description": "ui_mock: 브라우저 주소창 글"
+              },
+              "mock": {
+                "type": "boolean",
+                "description": "ui_mock: 가상 화면(screen 설명으로 그림)이면 반드시 true — 실제 서비스 설명에는 실제 캡처(src)"
+              },
+              "screen": {
+                "type": "object",
+                "description": "ui_mock 가상 화면 설명 {title, subtitle, search, header, items, highlight, button, tabs, tab, theme, accent}"
+              },
+              "kicker": {
+                "type": "string",
+                "description": "info_card: 머리말"
+              },
+              "body": {
+                "type": "string",
+                "description": "info_card: 본문"
+              },
+              "points": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "info_card: 요점(최대 5)"
+              },
+              "source": {
+                "type": "string",
+                "description": "info_card: 출처"
+              },
+              "rows": {
+                "type": "array",
+                "description": "info_card: 여러 장 [{name, kicker, title, body, points, source}]"
+              },
+              "row": {
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "description": "info_card · template_card: 쓸 줄(번호 또는 name)"
+              },
+              "csv": {
+                "type": "string",
+                "description": "chart · template_card · info_card: CSV 경로"
+              },
+              "values": {
+                "description": "chart: 숫자 목록 · template_card: {머리글: 값} 한 줄"
+              },
+              "template": {
+                "type": "string",
+                "description": "template_card: .vectorcraft 틀(없으면 기본 틀)"
+              },
+              "hook": {
+                "type": "string",
+                "description": "thumbnail: 훅 알약 글"
+              },
+              "emphasis": {
+                "type": "string",
+                "description": "thumbnail: 색칠할 낱말"
+              },
+              "accent": {
+                "type": "string",
+                "description": "ui_mock · info_card · thumbnail 강조색"
+              },
+              "shape": {
+                "type": "string",
+                "description": "model3d: case · phone · bottle · tumbler · puck(한국어 별칭 가능)"
+              },
+              "size": {
+                "type": "array",
+                "description": "model3d: [폭,깊이,높이] 또는 [지름,높이] mm"
+              },
+              "commands": {
+                "type": "array",
+                "description": "model3d: SolidCraft 명령 목록 · drawing: CADCraft 명령"
+              },
+              "material": {
+                "description": "model3d: metal · plastic · wood · #rrggbb · {부품: 재질}"
+              },
+              "color": {
+                "type": "string",
+                "description": "model3d 색 · overlay 색 · document 형광펜 색"
+              },
+              "logo": {
+                "description": "model3d: 글자 · PNG 경로 · {text|image, color, size, side}"
+              },
+              "turntable": {
+                "type": "boolean",
+                "description": "model3d: 돌려 찍은 영상(mp4)"
+              },
+              "exploded": {
+                "type": "boolean",
+                "description": "model3d: 분해도 영상(부품 2개 이상)"
+              },
+              "sec": {
+                "type": "number",
+                "minimum": 0.5,
+                "maximum": 20,
+                "description": "model3d 영상 길이(초)"
+              },
+              "model": {
+                "type": [
+                  "string",
+                  "object"
+                ],
+                "description": "drawing: 같은 장면의 앞선 model3d 재료 id 또는 model3d 칸(dict)"
+              },
+              "views": {
+                "type": "array",
+                "items": {
+                  "enum": [
+                    "front",
+                    "top",
+                    "right",
+                    "left",
+                    "back",
+                    "iso"
+                  ]
+                },
+                "description": "drawing: 보기(기본 iso · top · front · right)"
+              },
+              "paper": {
+                "enum": [
+                  "dark",
+                  "white"
+                ],
+                "description": "drawing: 어두운 CAD 화면(기본) · 흰 종이"
+              },
+              "cmd": {
+                "type": "array",
+                "description": "drawing: CADCraft 명령('id {json}' 또는 {id, params})"
+              },
+              "window": {
+                "type": "array",
+                "description": "drawing: 도면 좌표 [x0,y0,x1,y1] 확대"
+              },
+              "zoom": {
+                "type": "array",
+                "description": "screen · video · web: FilmCraft 펀치인 [{t, box:[x,y,w,h], dur, scale?}](녹화 시각)"
+              },
+              "blur": {
+                "type": "array",
+                "description": "screen · video · web: 흐릴 상자 [[x,y,w,h]] 또는 [{box, amount}](녹화 내내)"
+              },
+              "speed": {
+                "type": "array",
+                "description": "screen · video · web: 빨리 감기 [{from, to, x}](녹화 시각)"
+              },
+              "ask": {
+                "type": "string",
+                "description": "사용자 녹화 부탁 문장(자동으로 못 찍는 화면)"
+              },
+              "cuts": {
+                "type": "object",
+                "description": "live: 이름 → {strokes, span?, recolor?, remove?, frame?, grow?, method?}"
+              },
+              "form": {
+                "type": "string"
+              },
+              "poses": {
+                "type": "array"
+              },
+              "bbox": {
+                "type": "array"
+              },
+              "route": {
+                "type": "array"
+              },
+              "panels": {
+                "type": "array"
+              },
+              "bars": {
+                "type": "array"
+              },
+              "svg": {
+                "type": "string"
+              },
+              "hide": {
+                "type": "array"
+              },
+              "moon": {
+                "type": "array"
+              },
+              "cut": {
+                "type": "string"
+              },
+              "keep": {
+                "type": "array"
+              },
+              "shard": {
+                "type": "array"
+              },
+              "erase": {
+                "type": "array"
+              },
+              "jaw": {
+                "type": "object"
+              },
+              "kit": {},
+              "pose": {},
+              "style_params": {
+                "type": "object"
+              },
+              "anim": {
+                "type": "string"
+              },
+              "frames": {
+                "type": "integer"
+              },
+              "head_yaw": {
+                "type": "number"
+              },
+              "swing": {
+                "type": "number"
+              },
+              "stride": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "refine": {
+          "type": "array",
+          "description": "장면 다듬기(움직임 · 소리 · 편집) — engine/craft/session.py keep 이 쓴다",
+          "items": {
+            "$ref": "#/$defs/refine_pass"
+          }
+        },
+        "detail": {
+          "type": "object",
+          "description": "장면 디테일 계획 — 층마다 할 일 한 줄(session.py plan)",
+          "propertyNames": {
+            "enum": [
+              "composition",
+              "typo",
+              "color",
+              "light",
+              "texture",
+              "motion",
+              "transition",
+              "sound"
+            ]
+          },
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "surprise": {
+          "type": "string",
+          "description": "이 장면의 놀라운 사실"
+        }
+      }
+    },
+    "refine_pass": {
+      "type": "object",
+      "description": "다듬기 한 번(engine/craft/refine.py) — 초벌 위에 앱의 전체 명령으로 디테일",
+      "required": [
+        "layer",
+        "steps",
+        "why"
+      ],
+      "properties": {
+        "target": {
+          "enum": [
+            "motion",
+            "sound",
+            "edit"
+          ]
+        },
+        "layer": {
+          "enum": [
+            "composition",
+            "typo",
+            "color",
+            "light",
+            "texture",
+            "motion",
+            "transition",
+            "sound"
+          ]
+        },
+        "app": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "params": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "why": {
+          "type": "string"
+        },
+        "export": {
+          "type": "object"
+        },
+        "recipe": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

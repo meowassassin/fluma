@@ -14,13 +14,13 @@ description: 그림 · 카툰 장면을 '구조로 그리기'로 만든다. 좌�
 
 ## 1. 화풍 시스템 — 레퍼런스에서 잰다 (open-design 의 DESIGN.md 처럼)
 ```
-python3 scripts/style_card.py <참고 영상 id> [<id> …] --name <이름>    # → styles/<이름>/STYLE.md + style.json
+python3 engine/research/style_card.py <참고 영상 id> [<id> …] --name <이름>    # → styles/<이름>/STYLE.md + style.json
 ```
-영상의 `compositions/<id>/style.json` 은 `{ "system": "<이름>" }` 한 줄. 팔레트 · 명도 구조 · 외곽선 · 명암 단계를 손으로 정하지 않는다.
+영상의 `data/compositions/<id>/style.json` 은 `{ "system": "<이름>" }` 한 줄. 팔레트 · 명도 구조 · 외곽선 · 명암 단계를 손으로 정하지 않는다.
 부품은 역할(`main` · `main_dark` · `accent` · `accent2` · `light` · `dark` · `white` · `black`)로만 색을 받는다. 형태의 `palette` 로 역할 색을 바꿀 때도 STYLE.md 의 측정한 색 무리에서 고른다.
-보편 규칙은 `rules/illustration/`(도형 언어 · 매력 · 색/명도 · 움직임 · 초딩 티 목록) — 형태를 짓기 전에 읽는다.
+보편 규칙은 `engine/spec/rules/illustration/`(도형 언어 · 매력 · 색/명도 · 움직임 · 초딩 티 목록) — 형태를 짓기 전에 읽는다.
 
-## 2. 형태 — `compositions/<id>/forms/<이름>.form.json`
+## 2. 형태 — `data/compositions/<id>/forms/<이름>.form.json`
 몸 설계도(`library/archetypes/`)에서 시작해 바꿀 것만 쓴다.
 `biped` · `quadruped` · `bird` · `blob_creature` · `prop` · `plant` · `building` · `vehicle` · `icon`
 ```json
@@ -40,8 +40,8 @@ python3 scripts/style_card.py <참고 영상 id> [<id> …] --name <이름>    #
 
 확인:
 ```
-python3 scripts/draw.py check  compositions/<id>/forms/<이름>.form.json
-python3 scripts/draw.py render compositions/<id>/forms/<이름>.form.json --style compositions/<id>/style.json --out workspace/tmp/<이름>.svg --png workspace/tmp/<이름>.png
+python3 engine/craft/draw.py check  data/compositions/<id>/forms/<이름>.form.json
+python3 engine/craft/draw.py render data/compositions/<id>/forms/<이름>.form.json --style data/compositions/<id>/style.json --out data/workspace/tmp/<이름>.svg --png data/workspace/tmp/<이름>.png
 ```
 
 ## 3. 장면에 세우기 — 콘티 장면의 `figures`
@@ -51,20 +51,20 @@ python3 scripts/draw.py render compositions/<id>/forms/<이름>.form.json --styl
 - `action`: `idle`(숨쉬기) · `walk`(다리 반대 위상 · 팔 반대 · 몸 들썩 · 이동) · `wave` · `bounce`. 부속(꼬리 · 더듬이)은 한 박자 늦게 따라 흔들린다.
 - 자리는 말로: `left` · `center` · `right` · `far_left` · `far_right`. 크기는 화면 높이 비율.
 - Craft 엔진이 부품 레이어를 관절에 회전축을 둔 인형으로 조립한다(EffectCraft 프로젝트에서 사람이 그대로 열어 고칠 수 있음).
-- 렌더: `python3 scripts/render.py storyboards/<id>.json --engine craft --draft`
+- 렌더: `python3 engine/render.py data/storyboards/<id>.json --engine craft --draft`
 
 ## 4. 그림 lint + 비평 고리 (내보내기 전에 스스로)
 ```
-python3 scripts/draw.py check    <form> --style <style.json> --bg <배경색>        # lint: P0 는 그리기 거절
-python3 scripts/draw.py critique <form> --style <style.json> --ref <참고 영상 id>  # 비평용 한 장 · lint · 숫자 · 빈 평가지
-python3 scripts/draw.py critique <form> --style <style.json> --score <채운 평가지>  # 회차 기록 · 멈춤 여부
+python3 engine/craft/draw.py check    <form> --style <style.json> --bg <배경색>        # lint: P0 는 그리기 거절
+python3 engine/craft/draw.py critique <form> --style <style.json> --ref <참고 영상 id>  # 비평용 한 장 · lint · 숫자 · 빈 평가지
+python3 engine/craft/draw.py critique <form> --style <style.json> --score <채운 평가지>  # 회차 기록 · 멈춤 여부
 ```
-1. 비평용 한 장(컬러 · 실루엣 · 흑백 · 엄지손톱 · 레퍼런스)을 **실제로 보고**, `rules/illustration/critique.md` 루브릭대로 다섯 기준(화풍 · 실루엣 · 매력 · 디테일 · 명도)에 0–10점 + 근거.
+1. 비평용 한 장(컬러 · 실루엣 · 흑백 · 엄지손톱 · 레퍼런스)을 **실제로 보고**, `engine/spec/rules/illustration/critique.md` 루브릭대로 다섯 기준(화풍 · 실루엣 · 매력 · 디테일 · 명도)에 0–10점 + 근거.
 2. `changes` 를 형태의 관계 · 비율 · 역할 색으로만 고친다 → 다시 critique. 고친 곳이 다른 곳을 망치면 점수를 내린다(정직하게).
 3. 멈춤: 모든 기준 7 이상 + lint 깨끗, 또는 3회. 3회 뒤 7 미만이면 회차별 점수와 원인(엔진 한계면 무엇이 필요한지)을 사용자에게 그대로 말한다.
 4. 사용자에게 보여 줄 때는 비평용 한 장 + 회차별 점수표를 함께.
 
 ## 하지 말 것
-- SVG 경로 · 좌표 · 키프레임 숫자를 직접 쓰기(scene.js 에 도형 그리기 포함).
+- SVG 경로 · 좌표 · 키프레임 숫자를 직접 쓰기(JSX · SVG 에 도형 직접 그리기 포함).
 - 레퍼런스 캐릭터 · 그림을 베끼거나 트레이스하기 — 화풍 카드의 숫자와 그림 문법만 가져온다.
 - 그림체가 안 맞는데 "비슷해졌다"고 말하기 — 숫자로 말한다.

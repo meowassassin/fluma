@@ -15,14 +15,13 @@ Fluma 는 Apache-2.0 이라 상업용이든 아니든 내 프로젝트에 자유
 
 | 아이디어 | 위치 |
 |---|---|
-| 다른 Craft 앱(또는 아무 툴)을 재료 만드는 곳으로 연결 | `crafts/<앱>/craft.json`(`provides`) + `scripts/craft/materials.py` 의 어댑터 |
-| 재료 종류별 움직임 개선 | `scripts/craft/motion.py`(`material_jsx`) |
-| 새 음성 엔진 | `voices/<이름>/` — `voice.json` + `adapter.py` |
-| 무료 2D · 모션 모델 | `genmodels/<이름>/model.json` |
-| 좋아하는 쇼츠에서 잰 형식 프리셋 | `scripts/ref_channel.py` → `scripts/format_presets.py build` |
-| 더 똑똑한 검사 | `scripts/lint.py`, `scripts/tempo_check.py`, `scripts/edit_density.py` |
-| YouTube 통계 더하기 | `web/youtube.mjs`, `web/src/features/studio/PublishView.tsx` |
-| 화면에 내 언어 | `web/src/i18n/*.ts`(한국어 문장이 키) |
+| 다른 Craft 앱(또는 아무 툴)을 재료 만드는 곳으로 연결 | `engine/craft/apps/<앱>/craft.json`(`provides`) + `engine/craft/materials.py` 의 어댑터 |
+| 재료 종류별 움직임 개선 | `engine/craft/motion.py`(`material_jsx`) |
+| 새 음성 엔진 | `engine/voice/engines/<이름>/` — `voice.json` + `adapter.py` |
+| 좋아하는 쇼츠에서 잰 형식 프리셋 | `engine/research/ref_channel.py` → `engine/research/format_presets.py build` |
+| 더 똑똑한 검사 | `engine/checks/lint.py`, `engine/checks/tempo_check.py`, `engine/checks/edit_density.py` |
+| YouTube 통계 더하기 | `studio/youtube.mjs`, `studio/src/features/studio/PublishView.tsx` |
+| 화면에 내 언어 | `studio/src/i18n/*.ts`(한국어 문장이 키) |
 | 문서 · 예시 · 데모 쇼츠 | 어디든 — README, `docs/`, 새 폴더, 마음대로 |
 
 ## PR 보내기

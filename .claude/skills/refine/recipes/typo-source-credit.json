@@ -1,0 +1,29 @@
+{
+ "id": "typo-source-credit",
+ "layer": "typo",
+ "target": "motion",
+ "title": "끝에 작게 들어오는 출처",
+ "when": "사실을 다룬 영상의 마지막 — 출처를 화면 언어로",
+ "avoid": "글자가 이미 많은 끝 화면",
+ "vars": {
+  "TEXT": "출처 글",
+  "T0": "나타나는 초",
+  "FONT": "글꼴 이름",
+  "COLOR": "[r,g,b] 0~1",
+  "SIZE": "글자 크기"
+ },
+ "defaults": {
+  "FONT": "GowunBatang-Regular",
+  "COLOR": "[0.12,0.22,0.28]",
+  "SIZE": "44"
+ },
+ "at": [
+  14.5
+ ],
+ "steps": [
+  {
+   "jsx": "var t=C.layers.addText(\"@TEXT@\");t.name=\"Source\";t.moveToBeginning();var S=t.property(\"Source Text\");var d=S.value;d.font=\"@FONT@\";d.fontSize=@SIZE@;d.applyFill=true;d.fillColor=@COLOR@;d.tracking=40;d.justification=ParagraphJustification.CENTER_JUSTIFY;S.setValue(d);t.property(\"Transform\").property(\"Position\").setValue([C.width/2,C.height-120]);var o=t.property(\"Transform\").property(\"Opacity\");K(o,[[@T0@,0],[@T0@+0.5,100]]);EASE(o,60);"
+  }
+ ],
+ "app": "effectcraft"
+}

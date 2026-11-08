@@ -1,0 +1,635 @@
+{"id": "node.create", "kind": "command", "label": "Create layer", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 node.create 실패 — the script's document changes were rolled back"}
+{"id": "frame.create", "kind": "command", "label": "Create frame", "menu": "", "run": "ok", "visible": true, "thumb": "data/workspace/probe/figcraft/cmd/frame_create.png"}
+{"id": "shape.rectangle", "kind": "command", "label": "Rectangle", "menu": "", "run": "ok", "visible": true, "thumb": "data/workspace/probe/figcraft/cmd/shape_rectangle.png"}
+{"id": "shape.ellipse", "kind": "command", "label": "Ellipse", "menu": "", "run": "ok", "visible": true, "thumb": "data/workspace/probe/figcraft/cmd/shape_ellipse.png"}
+{"id": "shape.polygon", "kind": "command", "label": "Polygon", "menu": "", "run": "ok", "visible": true, "thumb": "data/workspace/probe/figcraft/cmd/shape_polygon.png"}
+{"id": "shape.star", "kind": "command", "label": "Star", "menu": "", "run": "ok", "visible": true, "thumb": "data/workspace/probe/figcraft/cmd/shape_star.png"}
+{"id": "shape.line", "kind": "command", "label": "Line", "menu": "", "run": "ok", "visible": true, "thumb": "data/workspace/probe/figcraft/cmd/shape_line.png"}
+{"id": "shape.arrow", "kind": "command", "label": "Arrow", "menu": "", "run": "ok", "visible": true, "thumb": "data/workspace/probe/figcraft/cmd/shape_arrow.png"}
+{"id": "text.create", "kind": "command", "label": "Text", "menu": "", "run": "ok", "visible": false}
+{"id": "vector.create", "kind": "command", "label": "Vector", "menu": "", "run": "ok", "visible": false}
+{"id": "image.place", "kind": "command", "label": "Place image", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 image.place 실패 — the script's document changes were rolled back"}
+{"id": "frame.swapOrientation", "kind": "command", "label": "Swap orientation", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 frame.swapOrientation 실패 — the script's document changes were rolled back"}
+{"id": "frame.presets", "kind": "command", "label": "List frame presets", "menu": "", "run": "ok", "visible": false}
+{"id": "edit.undo", "kind": "command", "label": "Undo", "menu": "Edit", "run": "ok", "visible": false}
+{"id": "edit.redo", "kind": "command", "label": "Redo", "menu": "Edit", "run": "ok", "visible": false}
+{"id": "edit.delete", "kind": "command", "label": "Delete", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.delete 실패 — the script's document changes were rolled back"}
+{"id": "edit.duplicate", "kind": "command", "label": "Duplicate", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.duplicate 실패 — the script's document changes were rolled back"}
+{"id": "edit.copy", "kind": "command", "label": "Copy", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.copy 실패 — the script's document changes were rolled back"}
+{"id": "edit.cut", "kind": "command", "label": "Cut", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.cut 실패 — the script's document changes were rolled back"}
+{"id": "edit.paste", "kind": "command", "label": "Paste", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.paste 실패 — the script's document changes were rolled back"}
+{"id": "edit.pasteDesignLayers", "kind": "command", "label": "Paste design layers", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 edit.pasteDesignLayers 실패 — the script's document changes were rolled back"}
+{"id": "edit.pasteOver", "kind": "command", "label": "Paste over selection", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.pasteOver 실패 — the script's document changes were rolled back"}
+{"id": "edit.pasteReplace", "kind": "command", "label": "Paste to replace", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.pasteReplace 실패 — the script's document changes were rolled back"}
+{"id": "edit.copyProperties", "kind": "command", "label": "Copy properties", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.copyProperties 실패 — the script's document changes were rolled back"}
+{"id": "edit.pasteProperties", "kind": "command", "label": "Paste properties", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.pasteProperties 실패 — the script's document changes were rolled back"}
+{"id": "edit.findReplace", "kind": "command", "label": "Find and replace", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.findReplace 실패 — the script's document changes were rolled back"}
+{"id": "edit.setDefaultProperties", "kind": "command", "label": "Set default properties", "menu": "Edit", "run": "error", "msg": "figcraft: 1번째 명령 edit.setDefaultProperties 실패 — the script's document changes were rolled back"}
+{"id": "select.set", "kind": "command", "label": "Select", "menu": "", "run": "ok", "visible": false}
+{"id": "select.add", "kind": "command", "label": "Add to selection", "menu": "", "run": "ok", "visible": false}
+{"id": "select.remove", "kind": "command", "label": "Remove from selection", "menu": "", "run": "ok", "visible": false}
+{"id": "select.layersAt", "kind": "command", "label": "Layers at a point", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 select.layersAt 실패 — the script's document changes were rolled back"}
+{"id": "select.all", "kind": "command", "label": "Select all", "menu": "Edit", "run": "ok", "visible": false}
+{"id": "select.none", "kind": "command", "label": "Select none", "menu": "Edit", "run": "ok", "visible": false}
+{"id": "select.inverse", "kind": "command", "label": "Select inverse", "menu": "Edit", "run": "ok", "visible": false}
+{"id": "select.area", "kind": "command", "label": "Select area", "menu": "", "run": "ok", "visible": false}
+{"id": "select.children", "kind": "command", "label": "Select children", "menu": "Object/Select layer", "run": "ok", "visible": false}
+{"id": "select.parent", "kind": "command", "label": "Select parent", "menu": "Object/Select layer", "run": "ok", "visible": false}
+{"id": "select.next", "kind": "command", "label": "Select next sibling", "menu": "Object/Select layer", "run": "ok", "visible": false}
+{"id": "select.previous", "kind": "command", "label": "Select previous sibling", "menu": "Object/Select layer", "run": "ok", "visible": false}
+{"id": "select.matching", "kind": "command", "label": "Select matching layers", "menu": "Edit", "run": "ok", "visible": false}
+{"id": "select.sameFill", "kind": "command", "label": "Select same fill", "menu": "Edit/Select all with same", "run": "ok", "visible": false}
+{"id": "select.sameStroke", "kind": "command", "label": "Select same stroke", "menu": "Edit/Select all with same", "run": "ok", "visible": false}
+{"id": "select.sameEffect", "kind": "command", "label": "Select same effect", "menu": "Edit/Select all with same", "run": "ok", "visible": false}
+{"id": "select.sameText", "kind": "command", "label": "Select same text properties", "menu": "Edit/Select all with same", "run": "ok", "visible": false}
+{"id": "select.sameFont", "kind": "command", "label": "Select same font", "menu": "Edit/Select all with same", "run": "ok", "visible": false}
+{"id": "select.sameInstance", "kind": "command", "label": "Select same instance", "menu": "Edit/Select all with same", "run": "ok", "visible": false}
+{"id": "select.sameProperties", "kind": "command", "label": "Select same properties", "menu": "Edit/Select all with same", "run": "ok", "visible": false}
+{"id": "select.byName", "kind": "command", "label": "Select layers by name", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 select.byName 실패 — the script's document changes were rolled back"}
+{"id": "transform.nudge", "kind": "command", "label": "Nudge", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 transform.nudge 실패 — the script's document changes were rolled back"}
+{"id": "transform.nudgeSize", "kind": "command", "label": "Resize by nudge", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 transform.nudgeSize 실패 — the script's document changes were rolled back"}
+{"id": "object.rename", "kind": "command", "label": "Rename", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.rename 실패 — the script's document changes were rolled back"}
+{"id": "object.batchRename", "kind": "command", "label": "Batch rename", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.batchRename 실패 — the script's document changes were rolled back"}
+{"id": "object.toggleVisible", "kind": "command", "label": "Show/Hide selection", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.toggleVisible 실패 — the script's document changes were rolled back"}
+{"id": "object.toggleLock", "kind": "command", "label": "Lock/Unlock selection", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.toggleLock 실패 — the script's document changes were rolled back"}
+{"id": "object.hideOthers", "kind": "command", "label": "Hide other layers", "menu": "Object", "run": "ok", "visible": true, "thumb": "data/workspace/probe/figcraft/cmd/object_hideOthers.png"}
+{"id": "object.opacityKeys", "kind": "command", "label": "Opacity from number keys", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 object.opacityKeys 실패 — the script's document changes were rolled back"}
+{"id": "object.removeFill", "kind": "command", "label": "Remove fill", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.removeFill 실패 — the script's document changes were rolled back"}
+{"id": "object.removeStroke", "kind": "command", "label": "Remove stroke", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.removeStroke 실패 — the script's document changes were rolled back"}
+{"id": "object.swapFillStroke", "kind": "command", "label": "Swap fill and stroke", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.swapFillStroke 실패 — the script's document changes were rolled back"}
+{"id": "layers.collapseAll", "kind": "command", "label": "Collapse layers", "menu": "Object", "run": "ok", "visible": false}
+{"id": "node.set", "kind": "command", "label": "Set properties", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 node.set 실패 — the script's document changes were rolled back"}
+{"id": "node.get", "kind": "command", "label": "Get layer", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 node.get 실패 — the script's document changes were rolled back"}
+{"id": "node.find", "kind": "command", "label": "Find layers", "menu": "", "run": "ok", "visible": false}
+{"id": "node.reparent", "kind": "command", "label": "Move layer into", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 node.reparent 실패 — the script's document changes were rolled back"}
+{"id": "node.reorder", "kind": "command", "label": "Reorder layer", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 node.reorder 실패 — the script's document changes were rolled back"}
+{"id": "fill.add", "kind": "command", "label": "Add fill", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 fill.add 실패 — the script's document changes were rolled back"}
+{"id": "stroke.add", "kind": "command", "label": "Add stroke", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 stroke.add 실패 — the script's document changes were rolled back"}
+{"id": "fill.remove", "kind": "command", "label": "Remove fill", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 fill.remove 실패 — the script's document changes were rolled back"}
+{"id": "stroke.remove", "kind": "command", "label": "Remove stroke", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 stroke.remove 실패 — the script's document changes were rolled back"}
+{"id": "fill.set", "kind": "command", "label": "Set fill", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 fill.set 실패 — the script's document changes were rolled back"}
+{"id": "stroke.set", "kind": "command", "label": "Set stroke", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 stroke.set 실패 — the script's document changes were rolled back"}
+{"id": "fill.copy", "kind": "command", "label": "Copy fill", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 fill.copy 실패 — the script's document changes were rolled back"}
+{"id": "fill.paste", "kind": "command", "label": "Paste fill", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 fill.paste 실패 — the script's document changes were rolled back"}
+{"id": "stroke.copy", "kind": "command", "label": "Copy stroke", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 stroke.copy 실패 — the script's document changes were rolled back"}
+{"id": "stroke.paste", "kind": "command", "label": "Paste stroke", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 stroke.paste 실패 — the script's document changes were rolled back"}
+{"id": "fill.pattern", "kind": "command", "label": "Pattern fill", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 fill.pattern 실패 — the script's document changes were rolled back"}
+{"id": "stroke.widthProfile", "kind": "command", "label": "Width profile", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 stroke.widthProfile 실패 — the script's document changes were rolled back"}
+{"id": "stroke.brush", "kind": "command", "label": "Brush", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 stroke.brush 실패 — the script's document changes were rolled back"}
+{"id": "effect.add", "kind": "command", "label": "Add effect", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 effect.add 실패 — the script's document changes were rolled back"}
+{"id": "effect.remove", "kind": "command", "label": "Remove effect", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 effect.remove 실패 — the script's document changes were rolled back"}
+{"id": "effect.set", "kind": "command", "label": "Set effect", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 effect.set 실패 — the script's document changes were rolled back"}
+{"id": "effect.copy", "kind": "command", "label": "Copy effect", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 effect.copy 실패 — the script's document changes were rolled back"}
+{"id": "effect.paste", "kind": "command", "label": "Paste effect", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 effect.paste 실패 — the script's document changes were rolled back"}
+{"id": "grid.add", "kind": "command", "label": "Add layout grid", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 grid.add 실패 — the script's document changes were rolled back"}
+{"id": "grid.remove", "kind": "command", "label": "Remove layout grid", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 grid.remove 실패 — the script's document changes were rolled back"}
+{"id": "export.add", "kind": "command", "label": "Add export setting", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 export.add 실패 — the script's document changes were rolled back"}
+{"id": "export.update", "kind": "command", "label": "Edit export setting", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 export.update 실패 — the script's document changes were rolled back"}
+{"id": "export.remove", "kind": "command", "label": "Remove export setting", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 export.remove 실패 — the script's document changes were rolled back"}
+{"id": "command.batch", "kind": "command", "label": "Run several commands", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 command.batch 실패 — the script's document changes were rolled back"}
+{"id": "edit.repeat", "kind": "command", "label": "Repeat last command", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 edit.repeat 실패 — the script's document changes were rolled back"}
+{"id": "fill.move", "kind": "command", "label": "Move fill", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 fill.move 실패 — the script's document changes were rolled back"}
+{"id": "stroke.move", "kind": "command", "label": "Move stroke", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 stroke.move 실패 — the script's document changes were rolled back"}
+{"id": "effect.move", "kind": "command", "label": "Move effect", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 effect.move 실패 — the script's document changes were rolled back"}
+{"id": "grid.move", "kind": "command", "label": "Move layout grid", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 grid.move 실패 — the script's document changes were rolled back"}
+{"id": "selection.colors", "kind": "command", "label": "Selection colors", "menu": "", "run": "ok", "visible": false}
+{"id": "selection.setPaint", "kind": "command", "label": "Change selection color", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 selection.setPaint 실패 — the script's document changes were rolled back"}
+{"id": "selection.applyColorStyle", "kind": "command", "label": "Apply selection color style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 selection.applyColorStyle 실패 — the script's document changes were rolled back"}
+{"id": "selection.bindColorVariable", "kind": "command", "label": "Apply selection color variable", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 selection.bindColorVariable 실패 — the script's document changes were rolled back"}
+{"id": "selection.detachColor", "kind": "command", "label": "Detach selection color", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 selection.detachColor 실패 — the script's document changes were rolled back"}
+{"id": "selection.selectColor", "kind": "command", "label": "Select layers with color", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 selection.selectColor 실패 — the script's document changes were rolled back"}
+{"id": "align.left", "kind": "command", "label": "Align left", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 align.left 실패 — the script's document changes were rolled back"}
+{"id": "align.hcenter", "kind": "command", "label": "Align horizontal centers", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 align.hcenter 실패 — the script's document changes were rolled back"}
+{"id": "align.right", "kind": "command", "label": "Align right", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 align.right 실패 — the script's document changes were rolled back"}
+{"id": "align.top", "kind": "command", "label": "Align top", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 align.top 실패 — the script's document changes were rolled back"}
+{"id": "align.vcenter", "kind": "command", "label": "Align vertical centers", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 align.vcenter 실패 — the script's document changes were rolled back"}
+{"id": "align.bottom", "kind": "command", "label": "Align bottom", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 align.bottom 실패 — the script's document changes were rolled back"}
+{"id": "distribute.horizontal", "kind": "command", "label": "Distribute horizontal spacing", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 distribute.horizontal 실패 — the script's document changes were rolled back"}
+{"id": "distribute.vertical", "kind": "command", "label": "Distribute vertical spacing", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 distribute.vertical 실패 — the script's document changes were rolled back"}
+{"id": "arrange.spacing", "kind": "command", "label": "Spacing", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 arrange.spacing 실패 — the script's document changes were rolled back"}
+{"id": "arrange.tidy", "kind": "command", "label": "Tidy up", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 arrange.tidy 실패 — the script's document changes were rolled back"}
+{"id": "arrange.reorder", "kind": "command", "label": "Reorder selection", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 arrange.reorder 실패 — the script's document changes were rolled back"}
+{"id": "arrange.packH", "kind": "command", "label": "Pack horizontal", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 arrange.packH 실패 — the script's document changes were rolled back"}
+{"id": "arrange.packV", "kind": "command", "label": "Pack vertical", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 arrange.packV 실패 — the script's document changes were rolled back"}
+{"id": "arrange.roundToPixels", "kind": "command", "label": "Round to pixels", "menu": "Arrange", "run": "error", "msg": "figcraft: 1번째 명령 arrange.roundToPixels 실패 — the script's document changes were rolled back"}
+{"id": "arrange.front", "kind": "command", "label": "Bring to front", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 arrange.front 실패 — the script's document changes were rolled back"}
+{"id": "arrange.forward", "kind": "command", "label": "Bring forward", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 arrange.forward 실패 — the script's document changes were rolled back"}
+{"id": "arrange.backward", "kind": "command", "label": "Send backward", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 arrange.backward 실패 — the script's document changes were rolled back"}
+{"id": "arrange.back", "kind": "command", "label": "Send to back", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 arrange.back 실패 — the script's document changes were rolled back"}
+{"id": "object.flipH", "kind": "command", "label": "Flip horizontal", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.flipH 실패 — the script's document changes were rolled back"}
+{"id": "object.flipV", "kind": "command", "label": "Flip vertical", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.flipV 실패 — the script's document changes were rolled back"}
+{"id": "object.rotate180", "kind": "command", "label": "Rotate 180°", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.rotate180 실패 — the script's document changes were rolled back"}
+{"id": "object.rotateLeft", "kind": "command", "label": "Rotate 90° left", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.rotateLeft 실패 — the script's document changes were rolled back"}
+{"id": "object.rotateRight", "kind": "command", "label": "Rotate 90° right", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.rotateRight 실패 — the script's document changes were rolled back"}
+{"id": "transform.move", "kind": "command", "label": "Move", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 transform.move 실패 — the script's document changes were rolled back"}
+{"id": "transform.moveTo", "kind": "command", "label": "Move to", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 transform.moveTo 실패 — the script's document changes were rolled back"}
+{"id": "transform.rotate", "kind": "command", "label": "Rotate", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 transform.rotate 실패 — the script's document changes were rolled back"}
+{"id": "transform.rotationOrigin", "kind": "command", "label": "Move rotation origin", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 transform.rotationOrigin 실패 — the script's document changes were rolled back"}
+{"id": "transform.setRotationOrigin", "kind": "command", "label": "Set rotation origin", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 transform.setRotationOrigin 실패 — the script's document changes were rolled back"}
+{"id": "transform.scale", "kind": "command", "label": "Scale", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 transform.scale 실패 — the script's document changes were rolled back"}
+{"id": "transform.resize", "kind": "command", "label": "Resize", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 transform.resize 실패 — the script's document changes were rolled back"}
+{"id": "object.group", "kind": "command", "label": "Group selection", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.group 실패 — the script's document changes were rolled back"}
+{"id": "object.ungroup", "kind": "command", "label": "Ungroup selection", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.ungroup 실패 — the script's document changes were rolled back"}
+{"id": "object.frameSelection", "kind": "command", "label": "Frame selection", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.frameSelection 실패 — the script's document changes were rolled back"}
+{"id": "object.removeFrame", "kind": "command", "label": "Remove frame", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.removeFrame 실패 — the script's document changes were rolled back"}
+{"id": "object.convertToGroup", "kind": "command", "label": "Convert to group", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 object.convertToGroup 실패 — the script's document changes were rolled back"}
+{"id": "object.convertToFrame", "kind": "command", "label": "Convert to frame", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 object.convertToFrame 실패 — the script's document changes were rolled back"}
+{"id": "object.convertToSection", "kind": "command", "label": "Convert to section", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 object.convertToSection 실패 — the script's document changes were rolled back"}
+{"id": "object.wrapInSection", "kind": "command", "label": "Wrap in new section", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 object.wrapInSection 실패 — the script's document changes were rolled back"}
+{"id": "object.resizeToFit", "kind": "command", "label": "Resize to fit", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.resizeToFit 실패 — the script's document changes were rolled back"}
+{"id": "object.mask", "kind": "command", "label": "Use as mask", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.mask 실패 — the script's document changes were rolled back"}
+{"id": "object.releaseMask", "kind": "command", "label": "Release mask", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.releaseMask 실패 — the script's document changes were rolled back"}
+{"id": "bool.union", "kind": "command", "label": "Union selection", "menu": "Object/Boolean groups", "run": "error", "msg": "figcraft: 1번째 명령 bool.union 실패 — the script's document changes were rolled back"}
+{"id": "bool.subtract", "kind": "command", "label": "Subtract selection", "menu": "Object/Boolean groups", "run": "error", "msg": "figcraft: 1번째 명령 bool.subtract 실패 — the script's document changes were rolled back"}
+{"id": "bool.intersect", "kind": "command", "label": "Intersect selection", "menu": "Object/Boolean groups", "run": "error", "msg": "figcraft: 1번째 명령 bool.intersect 실패 — the script's document changes were rolled back"}
+{"id": "bool.exclude", "kind": "command", "label": "Exclude selection", "menu": "Object/Boolean groups", "run": "error", "msg": "figcraft: 1번째 명령 bool.exclude 실패 — the script's document changes were rolled back"}
+{"id": "bool.flatten", "kind": "command", "label": "Flatten boolean", "menu": "Object/Boolean groups", "run": "error", "msg": "figcraft: 1번째 명령 bool.flatten 실패 — the script's document changes were rolled back"}
+{"id": "vector.flatten", "kind": "command", "label": "Flatten", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 vector.flatten 실패 — the script's document changes were rolled back"}
+{"id": "vector.outlineStroke", "kind": "command", "label": "Outline stroke", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 vector.outlineStroke 실패 — the script's document changes were rolled back"}
+{"id": "layout.add", "kind": "command", "label": "Add auto layout", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 layout.add 실패 — the script's document changes were rolled back"}
+{"id": "layout.remove", "kind": "command", "label": "Remove auto layout", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 layout.remove 실패 — the script's document changes were rolled back"}
+{"id": "layout.removeAll", "kind": "command", "label": "Remove all auto layout", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 layout.removeAll 실패 — the script's document changes were rolled back"}
+{"id": "layout.suggest", "kind": "command", "label": "Suggest auto layout", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 layout.suggest 실패 — the script's document changes were rolled back"}
+{"id": "object.moveToPage", "kind": "command", "label": "Move to page", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.moveToPage 실패 — the script's document changes were rolled back"}
+{"id": "object.setThumbnail", "kind": "command", "label": "Set as thumbnail", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.setThumbnail 실패 — the script's document changes were rolled back"}
+{"id": "object.rasterize", "kind": "command", "label": "Rasterize selection", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 object.rasterize 실패 — the script's document changes were rolled back"}
+{"id": "vector.reverse", "kind": "command", "label": "Reverse path direction", "menu": "Vector", "run": "error", "msg": "figcraft: 1번째 명령 vector.reverse 실패 — the script's document changes were rolled back"}
+{"id": "vector.fillRule", "kind": "command", "label": "Set fill rule", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.fillRule 실패 — the script's document changes were rolled back"}
+{"id": "vector.reverseLoop", "kind": "command", "label": "Reverse loop", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.reverseLoop 실패 — the script's document changes were rolled back"}
+{"id": "vector.simplify", "kind": "command", "label": "Simplify vector", "menu": "Vector", "run": "error", "msg": "figcraft: 1번째 명령 vector.simplify 실패 — the script's document changes were rolled back"}
+{"id": "vector.offset", "kind": "command", "label": "Offset path", "menu": "Vector", "run": "error", "msg": "figcraft: 1번째 명령 vector.offset 실패 — the script's document changes were rolled back"}
+{"id": "vector.join", "kind": "command", "label": "Join selection", "menu": "Vector", "run": "error", "msg": "figcraft: 1번째 명령 vector.join 실패 — the script's document changes were rolled back"}
+{"id": "vector.smoothJoin", "kind": "command", "label": "Smooth join selection", "menu": "Vector", "run": "error", "msg": "figcraft: 1번째 명령 vector.smoothJoin 실패 — the script's document changes were rolled back"}
+{"id": "section.toggleContents", "kind": "command", "label": "Hide/Show section contents", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 section.toggleContents 실패 — the script's document changes were rolled back"}
+{"id": "dev.resolveChange", "kind": "command", "label": "Resolve change", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 dev.resolveChange 실패 — the script's document changes were rolled back"}
+{"id": "dev.compare", "kind": "command", "label": "Compare changes", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 dev.compare 실패 — the script's document changes were rolled back"}
+{"id": "dev.focus", "kind": "command", "label": "Focus view", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 dev.focus 실패 — the script's document changes were rolled back"}
+{"id": "dev.unfocus", "kind": "command", "label": "Exit focus view", "menu": "", "run": "ok", "visible": false}
+{"id": "layout.setTrack", "kind": "command", "label": "Set grid track size", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 layout.setTrack 실패 — the script's document changes were rolled back"}
+{"id": "file.new", "kind": "command", "label": "New design file", "menu": "File", "run": "needs_context", "msg": "figcraft: export 실패 — error: command `file.export` is not available right now: nothing to export"}
+{"id": "file.newBoard", "kind": "command", "label": "New board", "menu": "File", "run": "needs_context", "msg": "figcraft: export 실패 — error: command `file.export` is not available right now: nothing to export"}
+{"id": "file.open", "kind": "command", "label": "Open", "menu": "File", "run": "error", "msg": "figcraft: 1번째 명령 file.open 실패 — the script's document changes were rolled back"}
+{"id": "file.openRecent", "kind": "command", "label": "Open recent", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.fontReport", "kind": "command", "label": "Inspect document fonts", "menu": "", "run": "ok", "visible": false}
+{"id": "file.save", "kind": "command", "label": "Save", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.saveAs", "kind": "command", "label": "Save as", "menu": "File", "run": "error", "msg": "figcraft: 1번째 명령 file.saveAs 실패 — the script's document changes were rolled back"}
+{"id": "file.markSaved", "kind": "command", "label": "Mark saved", "menu": "", "run": "ok", "visible": false}
+{"id": "file.export", "kind": "command", "label": "Export", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.exportLayers", "kind": "command", "label": "Export layers", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 file.exportLayers 실패 — the script's document changes were rolled back"}
+{"id": "file.exportSvg", "kind": "command", "label": "Export selection as SVG", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.exportFramesPdf", "kind": "command", "label": "Export frames to PDF", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.import", "kind": "command", "label": "Import", "menu": "File", "run": "error", "msg": "figcraft: 1번째 명령 file.import 실패 — the script's document changes were rolled back"}
+{"id": "file.placeImage", "kind": "command", "label": "Place image", "menu": "File", "run": "error", "msg": "figcraft: 1번째 명령 file.placeImage 실패 — the script's document changes were rolled back"}
+{"id": "file.close", "kind": "command", "label": "Close tab", "menu": "File", "run": "error", "msg": "figcraft: run 실패 — error: no open document"}
+{"id": "file.moveTab", "kind": "command", "label": "Move tab", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 file.moveTab 실패 — the script's document changes were rolled back"}
+{"id": "file.recover", "kind": "command", "label": "Recover file", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 file.recover 실패 — the script's document changes were rolled back"}
+{"id": "file.rename", "kind": "command", "label": "Rename file", "menu": "File", "run": "error", "msg": "figcraft: 1번째 명령 file.rename 실패 — the script's document changes were rolled back"}
+{"id": "file.colorProfile", "kind": "command", "label": "Color profile", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.duplicate", "kind": "command", "label": "Duplicate file", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.revert", "kind": "command", "label": "Revert to saved", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.saveVersion", "kind": "command", "label": "Save to version history", "menu": "File", "run": "ok", "visible": false}
+{"id": "file.versionHistory", "kind": "command", "label": "Show version history", "menu": "File", "run": "ok", "visible": false}
+{"id": "version.list", "kind": "command", "label": "List versions", "menu": "", "run": "ok", "visible": false}
+{"id": "version.restore", "kind": "command", "label": "Restore version", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 version.restore 실패 — the script's document changes were rolled back"}
+{"id": "version.rename", "kind": "command", "label": "Rename version", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 version.rename 실패 — the script's document changes were rolled back"}
+{"id": "version.delete", "kind": "command", "label": "Delete version", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 version.delete 실패 — the script's document changes were rolled back"}
+{"id": "version.preview", "kind": "command", "label": "View version", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 version.preview 실패 — the script's document changes were rolled back"}
+{"id": "version.autosave", "kind": "command", "label": "Autosave version", "menu": "", "run": "ok", "visible": false}
+{"id": "version.exitPreview", "kind": "command", "label": "Back to current version", "menu": "", "run": "ok", "visible": false}
+{"id": "version.duplicate", "kind": "command", "label": "Duplicate version", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 version.duplicate 실패 — the script's document changes were rolled back"}
+{"id": "doc.switch", "kind": "command", "label": "Switch document", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 doc.switch 실패 — the script's document changes were rolled back"}
+{"id": "doc.nextTab", "kind": "command", "label": "Next tab", "menu": "", "run": "ok", "visible": false}
+{"id": "doc.previousTab", "kind": "command", "label": "Previous tab", "menu": "", "run": "ok", "visible": false}
+{"id": "doc.list", "kind": "command", "label": "List documents", "menu": "", "run": "ok", "visible": false}
+{"id": "doc.home", "kind": "command", "label": "Home", "menu": "", "run": "ok", "visible": false}
+{"id": "page.add", "kind": "command", "label": "Add page", "menu": "", "run": "ok", "visible": false}
+{"id": "page.select", "kind": "command", "label": "Go to page", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 page.select 실패 — the script's document changes were rolled back"}
+{"id": "page.rename", "kind": "command", "label": "Rename page", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 page.rename 실패 — the script's document changes were rolled back"}
+{"id": "page.delete", "kind": "command", "label": "Delete page", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 page.delete 실패 — the script's document changes were rolled back"}
+{"id": "page.duplicate", "kind": "command", "label": "Duplicate page", "menu": "", "run": "ok", "visible": false}
+{"id": "page.move", "kind": "command", "label": "Move page", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 page.move 실패 — the script's document changes were rolled back"}
+{"id": "page.setBackground", "kind": "command", "label": "Page background", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 page.setBackground 실패 — the script's document changes were rolled back"}
+{"id": "page.list", "kind": "command", "label": "List pages", "menu": "", "run": "ok", "visible": false}
+{"id": "guide.add", "kind": "command", "label": "Add guide", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 guide.add 실패 — the script's document changes were rolled back"}
+{"id": "guide.move", "kind": "command", "label": "Move guide", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 guide.move 실패 — the script's document changes were rolled back"}
+{"id": "guide.remove", "kind": "command", "label": "Remove guide", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 guide.remove 실패 — the script's document changes were rolled back"}
+{"id": "guide.select", "kind": "command", "label": "Select guide", "menu": "", "run": "ok", "visible": false}
+{"id": "guide.clear", "kind": "command", "label": "Remove all guides", "menu": "", "run": "ok", "visible": false}
+{"id": "view.zoomIn", "kind": "command", "label": "Zoom in", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.zoomOut", "kind": "command", "label": "Zoom out", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.zoom100", "kind": "command", "label": "Zoom to 100%", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.zoom50", "kind": "command", "label": "Zoom to 50%", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.zoom200", "kind": "command", "label": "Zoom to 200%", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.zoomFit", "kind": "command", "label": "Zoom to fit", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.zoomSelection", "kind": "command", "label": "Zoom to selection", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.set", "kind": "command", "label": "Set view", "menu": "", "run": "ok", "visible": false}
+{"id": "view.zoomAt", "kind": "command", "label": "Zoom tool", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 view.zoomAt 실패 — the script's document changes were rolled back"}
+{"id": "view.get", "kind": "command", "label": "Get view", "menu": "", "run": "ok", "visible": false}
+{"id": "view.prevFrame", "kind": "command", "label": "Zoom to previous frame", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.nextFrame", "kind": "command", "label": "Zoom to next frame", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.prevPage", "kind": "command", "label": "Previous page", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.nextPage", "kind": "command", "label": "Next page", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.pixelGrid", "kind": "command", "label": "Pixel grid", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.layoutGrids", "kind": "command", "label": "Layout grids", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.rulers", "kind": "command", "label": "Rulers", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.slices", "kind": "command", "label": "Slices", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.comments", "kind": "command", "label": "Comments", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.multiplayerCursors", "kind": "command", "label": "Multiplayer cursors", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.pan", "kind": "command", "label": "Pan the view", "menu": "", "run": "ok", "visible": false}
+{"id": "view.outlines", "kind": "command", "label": "Outlines", "menu": "View/Outlines", "run": "ok", "visible": false}
+{"id": "view.outlinesSelection", "kind": "command", "label": "Outlines for selection", "menu": "View/Outlines", "run": "ok", "visible": false}
+{"id": "view.outlinesHiddenLayers", "kind": "command", "label": "Include hidden layers in outlines", "menu": "View/Outlines", "run": "ok", "visible": false}
+{"id": "view.outlinesObjectBounds", "kind": "command", "label": "Include object bounds in outlines", "menu": "View/Outlines", "run": "ok", "visible": false}
+{"id": "view.maskOutlines", "kind": "command", "label": "Mask outlines", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.pixelPreview", "kind": "command", "label": "Pixel preview", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.frameOutlines", "kind": "command", "label": "Frame outlines", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.proofSrgb", "kind": "command", "label": "Soft-proof sRGB", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.snapGeometry", "kind": "command", "label": "Snap to geometry", "menu": "Preferences", "run": "ok", "visible": false}
+{"id": "view.snapObjects", "kind": "command", "label": "Snap to objects", "menu": "Preferences", "run": "ok", "visible": false}
+{"id": "view.snapPixel", "kind": "command", "label": "Snap to pixel grid", "menu": "Preferences", "run": "ok", "visible": false}
+{"id": "view.toggleUi", "kind": "command", "label": "Show/Hide UI", "menu": "View/Panels", "run": "ok", "visible": false}
+{"id": "view.minimize", "kind": "command", "label": "Minimize the interface", "menu": "", "run": "ok", "visible": false}
+{"id": "view.fullscreen", "kind": "command", "label": "Full screen", "menu": "View", "run": "ok", "visible": false}
+{"id": "view.layers", "kind": "command", "label": "Layers panel", "menu": "View/Panels", "run": "ok", "visible": false}
+{"id": "view.assets", "kind": "command", "label": "Assets panel", "menu": "View/Panels", "run": "ok", "visible": false}
+{"id": "view.design", "kind": "command", "label": "Design panel", "menu": "View/Panels", "run": "ok", "visible": false}
+{"id": "view.prototype", "kind": "command", "label": "Prototype panel", "menu": "View/Panels", "run": "ok", "visible": false}
+{"id": "view.designPrototype", "kind": "command", "label": "Switch between Design and Prototype", "menu": "", "run": "ok", "visible": false}
+{"id": "view.devMode", "kind": "command", "label": "Dev Mode", "menu": "", "run": "ok", "visible": false}
+{"id": "view.leftSidebar", "kind": "command", "label": "Show/Hide left sidebar", "menu": "", "run": "ok", "visible": false}
+{"id": "view.panelWidths", "kind": "command", "label": "Reset panel widths", "menu": "View/Panels", "run": "ok", "visible": false}
+{"id": "window.new", "kind": "command", "label": "New window", "menu": "File"}
+{"id": "window.focus", "kind": "command", "label": "Bring window to front", "menu": ""}
+{"id": "view.nextRegion", "kind": "command", "label": "Focus next region", "menu": "", "run": "ok", "visible": false}
+{"id": "view.previousRegion", "kind": "command", "label": "Focus previous region", "menu": "", "run": "ok", "visible": false}
+{"id": "view.contextMenu", "kind": "command", "label": "Show context menu", "menu": "", "run": "ok", "visible": false}
+{"id": "view.themeLight", "kind": "command", "label": "Light theme", "menu": "View/Theme", "run": "ok", "visible": false}
+{"id": "view.themeDark", "kind": "command", "label": "Dark theme", "menu": "View/Theme", "run": "ok", "visible": false}
+{"id": "view.themeSystem", "kind": "command", "label": "Follow system theme", "menu": "View/Theme", "run": "ok", "visible": false}
+{"id": "pref.keepTool", "kind": "command", "label": "Keep tool selected after use", "menu": "Preferences", "run": "ok", "visible": false}
+{"id": "pref.highlightHover", "kind": "command", "label": "Highlight layers on hover", "menu": "Preferences", "run": "ok", "visible": false}
+{"id": "pref.renameDuplicates", "kind": "command", "label": "Rename duplicated layers", "menu": "Preferences", "run": "ok", "visible": false}
+{"id": "pref.showDimensions", "kind": "command", "label": "Show dimensions on objects", "menu": "Preferences", "run": "ok", "visible": false}
+{"id": "pref.numberKeysOpacity", "kind": "command", "label": "Use number keys for opacity", "menu": "Preferences", "run": "ok", "visible": false}
+{"id": "pref.scrollWheelZoom", "kind": "command", "label": "Scroll wheel zoom", "menu": "", "run": "ok", "visible": false}
+{"id": "pref.reduceMotion", "kind": "command", "label": "Reduce motion", "menu": "", "run": "ok", "visible": false}
+{"id": "pref.uiScale", "kind": "command", "label": "Interface size", "menu": "", "run": "ok", "visible": false}
+{"id": "pref.uiScaleUp", "kind": "command", "label": "Larger interface", "menu": "", "run": "ok", "visible": false}
+{"id": "pref.uiScaleDown", "kind": "command", "label": "Smaller interface", "menu": "", "run": "ok", "visible": false}
+{"id": "pref.uiScaleReset", "kind": "command", "label": "Default interface size", "menu": "", "run": "ok", "visible": false}
+{"id": "pref.autoSave", "kind": "command", "label": "Save files automatically", "menu": "", "run": "ok", "visible": false}
+{"id": "pref.startOnHome", "kind": "command", "label": "Start on the Home screen", "menu": "", "run": "ok", "visible": false}
+{"id": "pref.nudge", "kind": "command", "label": "Nudge amount", "menu": "Preferences", "run": "ok", "visible": false}
+{"id": "pref.userName", "kind": "command", "label": "Your name", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 pref.userName 실패 — the script's document changes were rolled back"}
+{"id": "pref.publishServer", "kind": "command", "label": "Server for online sharing", "menu": "", "run": "ok", "visible": false}
+{"id": "pref.language", "kind": "command", "label": "Interface language", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 pref.language 실패 — the script's document changes were rolled back"}
+{"id": "app.preferences", "kind": "command", "label": "Preferences", "menu": "Preferences", "run": "ok", "visible": false}
+{"id": "app.actions", "kind": "command", "label": "Actions", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "help.shortcuts", "kind": "command", "label": "Keyboard shortcuts", "menu": "Help"}
+{"id": "help.about", "kind": "command", "label": "About FigCraft", "menu": "Help"}
+{"id": "help.page", "kind": "command", "label": "Help page", "menu": "Help"}
+{"id": "help.gettingStarted", "kind": "command", "label": "Getting started", "menu": "Help"}
+{"id": "libraries.open", "kind": "command", "label": "Libraries", "menu": "Libraries", "run": "ok", "visible": false}
+{"id": "tool.set", "kind": "command", "label": "Choose tool", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 tool.set 실패 — the script's document changes were rolled back"}
+{"id": "tool.place", "kind": "command", "label": "Place with the tool", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 tool.place 실패 — the script's document changes were rolled back"}
+{"id": "tool.pencilBrush", "kind": "command", "label": "Pencil brush", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.scaleAnchor", "kind": "command", "label": "Scale anchor", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.move", "kind": "command", "label": "Move", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.scale", "kind": "command", "label": "Scale", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.hand", "kind": "command", "label": "Hand", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.frame", "kind": "command", "label": "Frame", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.section", "kind": "command", "label": "Section", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.slice", "kind": "command", "label": "Slice", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.rectangle", "kind": "command", "label": "Rectangle", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.line", "kind": "command", "label": "Line", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.arrow", "kind": "command", "label": "Arrow", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.ellipse", "kind": "command", "label": "Ellipse", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.polygon", "kind": "command", "label": "Polygon", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.star", "kind": "command", "label": "Star", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.pen", "kind": "command", "label": "Pen", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.pencil", "kind": "command", "label": "Pencil", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.text", "kind": "command", "label": "Text", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.textOnPath", "kind": "command", "label": "Text on a path", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.comment", "kind": "command", "label": "Comment", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "tool.shapeBuilder", "kind": "command", "label": "Shape builder", "menu": "Tools", "run": "ok", "visible": false}
+{"id": "edit.pickColor", "kind": "command", "label": "Pick color", "menu": "Edit", "run": "ok", "visible": false}
+{"id": "text.onPath", "kind": "command", "label": "Text on path", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.onPath 실패 — the script's document changes were rolled back"}
+{"id": "text.pathOptions", "kind": "command", "label": "Text path options", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.pathOptions 실패 — the script's document changes were rolled back"}
+{"id": "text.removeFromPath", "kind": "command", "label": "Remove text from path", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.removeFromPath 실패 — the script's document changes were rolled back"}
+{"id": "text.bold", "kind": "command", "label": "Bold", "menu": "Text", "run": "error", "msg": "figcraft: 1번째 명령 text.bold 실패 — the script's document changes were rolled back"}
+{"id": "text.italic", "kind": "command", "label": "Italic", "menu": "Text", "run": "error", "msg": "figcraft: 1번째 명령 text.italic 실패 — the script's document changes were rolled back"}
+{"id": "text.underline", "kind": "command", "label": "Underline", "menu": "Text", "run": "error", "msg": "figcraft: 1번째 명령 text.underline 실패 — the script's document changes were rolled back"}
+{"id": "text.strikethrough", "kind": "command", "label": "Strikethrough", "menu": "Text", "run": "error", "msg": "figcraft: 1번째 명령 text.strikethrough 실패 — the script's document changes were rolled back"}
+{"id": "text.link", "kind": "command", "label": "Create link", "menu": "Text", "run": "error", "msg": "figcraft: 1번째 명령 text.link 실패 — the script's document changes were rolled back"}
+{"id": "text.bulletList", "kind": "command", "label": "Bulleted list", "menu": "Text", "run": "error", "msg": "figcraft: 1번째 명령 text.bulletList 실패 — the script's document changes were rolled back"}
+{"id": "text.numberList", "kind": "command", "label": "Numbered list", "menu": "Text", "run": "error", "msg": "figcraft: 1번째 명령 text.numberList 실패 — the script's document changes were rolled back"}
+{"id": "text.alignLeft", "kind": "command", "label": "Align left", "menu": "Text/Alignment", "run": "error", "msg": "figcraft: 1번째 명령 text.alignLeft 실패 — the script's document changes were rolled back"}
+{"id": "text.alignCenter", "kind": "command", "label": "Align center", "menu": "Text/Alignment", "run": "error", "msg": "figcraft: 1번째 명령 text.alignCenter 실패 — the script's document changes were rolled back"}
+{"id": "text.alignRight", "kind": "command", "label": "Align right", "menu": "Text/Alignment", "run": "error", "msg": "figcraft: 1번째 명령 text.alignRight 실패 — the script's document changes were rolled back"}
+{"id": "text.alignJustify", "kind": "command", "label": "Justify", "menu": "Text/Alignment", "run": "error", "msg": "figcraft: 1번째 명령 text.alignJustify 실패 — the script's document changes were rolled back"}
+{"id": "text.sizeUp", "kind": "command", "label": "Increase font size", "menu": "Text/Adjust", "run": "error", "msg": "figcraft: 1번째 명령 text.sizeUp 실패 — the script's document changes were rolled back"}
+{"id": "text.sizeDown", "kind": "command", "label": "Decrease font size", "menu": "Text/Adjust", "run": "error", "msg": "figcraft: 1번째 명령 text.sizeDown 실패 — the script's document changes were rolled back"}
+{"id": "text.weightUp", "kind": "command", "label": "Increase font weight", "menu": "Text/Adjust", "run": "error", "msg": "figcraft: 1번째 명령 text.weightUp 실패 — the script's document changes were rolled back"}
+{"id": "text.weightDown", "kind": "command", "label": "Decrease font weight", "menu": "Text/Adjust", "run": "error", "msg": "figcraft: 1번째 명령 text.weightDown 실패 — the script's document changes were rolled back"}
+{"id": "text.lineHeightUp", "kind": "command", "label": "Increase line height", "menu": "Text/Adjust", "run": "error", "msg": "figcraft: 1번째 명령 text.lineHeightUp 실패 — the script's document changes were rolled back"}
+{"id": "text.lineHeightDown", "kind": "command", "label": "Decrease line height", "menu": "Text/Adjust", "run": "error", "msg": "figcraft: 1번째 명령 text.lineHeightDown 실패 — the script's document changes were rolled back"}
+{"id": "text.trackingUp", "kind": "command", "label": "Increase letter spacing", "menu": "Text/Adjust", "run": "error", "msg": "figcraft: 1번째 명령 text.trackingUp 실패 — the script's document changes were rolled back"}
+{"id": "text.trackingDown", "kind": "command", "label": "Decrease letter spacing", "menu": "Text/Adjust", "run": "error", "msg": "figcraft: 1번째 명령 text.trackingDown 실패 — the script's document changes were rolled back"}
+{"id": "text.caseOriginal", "kind": "command", "label": "Original case", "menu": "Text/Case", "run": "error", "msg": "figcraft: 1번째 명령 text.caseOriginal 실패 — the script's document changes were rolled back"}
+{"id": "text.caseUpper", "kind": "command", "label": "Uppercase", "menu": "Text/Case", "run": "error", "msg": "figcraft: 1번째 명령 text.caseUpper 실패 — the script's document changes were rolled back"}
+{"id": "text.caseLower", "kind": "command", "label": "Lowercase", "menu": "Text/Case", "run": "error", "msg": "figcraft: 1번째 명령 text.caseLower 실패 — the script's document changes were rolled back"}
+{"id": "text.caseTitle", "kind": "command", "label": "Title case", "menu": "Text/Case", "run": "error", "msg": "figcraft: 1번째 명령 text.caseTitle 실패 — the script's document changes were rolled back"}
+{"id": "text.caseSmallCaps", "kind": "command", "label": "Small caps", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.caseSmallCaps 실패 — the script's document changes were rolled back"}
+{"id": "text.case", "kind": "command", "label": "Letter case", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.case 실패 — the script's document changes were rolled back"}
+{"id": "text.decoration", "kind": "command", "label": "Decoration", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.decoration 실패 — the script's document changes were rolled back"}
+{"id": "text.listStyle", "kind": "command", "label": "List style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.listStyle 실패 — the script's document changes were rolled back"}
+{"id": "text.paragraphIndent", "kind": "command", "label": "Paragraph indent", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.paragraphIndent 실패 — the script's document changes were rolled back"}
+{"id": "text.paragraphSpacing", "kind": "command", "label": "Paragraph spacing", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.paragraphSpacing 실패 — the script's document changes were rolled back"}
+{"id": "text.maxLines", "kind": "command", "label": "Max lines", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.maxLines 실패 — the script's document changes were rolled back"}
+{"id": "text.setFeatures", "kind": "command", "label": "OpenType features", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.setFeatures 실패 — the script's document changes were rolled back"}
+{"id": "text.setVariations", "kind": "command", "label": "Variable font axes", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.setVariations 실패 — the script's document changes were rolled back"}
+{"id": "text.preview", "kind": "command", "label": "Preview a change", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.preview 실패 — the script's document changes were rolled back"}
+{"id": "text.endPreview", "kind": "command", "label": "End text preview", "menu": "", "run": "ok", "visible": false}
+{"id": "text.set", "kind": "command", "label": "Set text", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.set 실패 — the script's document changes were rolled back"}
+{"id": "text.style", "kind": "command", "label": "Style text range", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.style 실패 — the script's document changes were rolled back"}
+{"id": "text.edit.begin", "kind": "command", "label": "Edit text", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.edit.begin 실패 — the script's document changes were rolled back"}
+{"id": "text.edit.insert", "kind": "command", "label": "Type text", "menu": "", "run": "ok", "visible": false}
+{"id": "text.edit.key", "kind": "command", "label": "Text key", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.edit.key 실패 — the script's document changes were rolled back"}
+{"id": "text.listIndent", "kind": "command", "label": "Indent list", "menu": "", "run": "ok", "visible": false}
+{"id": "text.listOutdent", "kind": "command", "label": "Outdent list", "menu": "", "run": "ok", "visible": false}
+{"id": "text.edit.caret", "kind": "command", "label": "Set caret", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.edit.caret 실패 — the script's document changes were rolled back"}
+{"id": "text.edit.selectWord", "kind": "command", "label": "Select word", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.edit.selectWord 실패 — the script's document changes were rolled back"}
+{"id": "text.edit.selectLine", "kind": "command", "label": "Select line", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.edit.selectLine 실패 — the script's document changes were rolled back"}
+{"id": "text.edit.preedit", "kind": "command", "label": "Compose text (IME)", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.edit.preedit 실패 — the script's document changes were rolled back"}
+{"id": "text.edit.selection", "kind": "command", "label": "Text selection", "menu": "", "run": "ok", "visible": false}
+{"id": "text.edit.end", "kind": "command", "label": "Stop editing text", "menu": "", "run": "ok", "visible": false}
+{"id": "text.openLink", "kind": "command", "label": "Open link", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.openLink 실패 — the script's document changes were rolled back"}
+{"id": "text.fonts", "kind": "command", "label": "List fonts", "menu": "", "run": "ok", "visible": false}
+{"id": "text.rescanFonts", "kind": "command", "label": "Rescan installed fonts", "menu": "", "run": "ok", "visible": false}
+{"id": "text.loadFont", "kind": "command", "label": "Load font file", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.loadFont 실패 — the script's document changes were rolled back"}
+{"id": "text.missingFonts", "kind": "command", "label": "Missing fonts", "menu": "Text", "run": "ok", "visible": false}
+{"id": "text.refit", "kind": "command", "label": "Fit text to fonts", "menu": "", "run": "ok", "visible": false}
+{"id": "font.download", "kind": "command", "label": "Download font", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 font.download 실패 — the script's document changes were rolled back"}
+{"id": "font.downloads", "kind": "command", "label": "Font downloads", "menu": "", "run": "ok", "visible": false}
+{"id": "paint.documentColors", "kind": "command", "label": "Document colours", "menu": "", "run": "ok", "visible": false}
+{"id": "style.create", "kind": "command", "label": "Create style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 style.create 실패 — the script's document changes were rolled back"}
+{"id": "style.apply", "kind": "command", "label": "Apply style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 style.apply 실패 — the script's document changes were rolled back"}
+{"id": "style.detach", "kind": "command", "label": "Detach style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 style.detach 실패 — the script's document changes were rolled back"}
+{"id": "style.update", "kind": "command", "label": "Edit style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 style.update 실패 — the script's document changes were rolled back"}
+{"id": "style.bind", "kind": "command", "label": "Bind variable in style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 style.bind 실패 — the script's document changes were rolled back"}
+{"id": "style.duplicate", "kind": "command", "label": "Duplicate style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 style.duplicate 실패 — the script's document changes were rolled back"}
+{"id": "style.move", "kind": "command", "label": "Move styles", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 style.move 실패 — the script's document changes were rolled back"}
+{"id": "style.renameFolder", "kind": "command", "label": "Rename style folder", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 style.renameFolder 실패 — the script's document changes were rolled back"}
+{"id": "style.delete", "kind": "command", "label": "Delete style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 style.delete 실패 — the script's document changes were rolled back"}
+{"id": "style.list", "kind": "command", "label": "List styles", "menu": "", "run": "ok", "visible": false}
+{"id": "variable.createCollection", "kind": "command", "label": "Create variable collection", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.createCollection 실패 — the script's document changes were rolled back"}
+{"id": "variable.addMode", "kind": "command", "label": "Add mode", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.addMode 실패 — the script's document changes were rolled back"}
+{"id": "variable.create", "kind": "command", "label": "Create variable", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.create 실패 — the script's document changes were rolled back"}
+{"id": "variable.set", "kind": "command", "label": "Set variable value", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.set 실패 — the script's document changes were rolled back"}
+{"id": "variable.delete", "kind": "command", "label": "Delete variable", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.delete 실패 — the script's document changes were rolled back"}
+{"id": "variable.bind", "kind": "command", "label": "Bind variable", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.bind 실패 — the script's document changes were rolled back"}
+{"id": "variable.setMode", "kind": "command", "label": "Set variable mode", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.setMode 실패 — the script's document changes were rolled back"}
+{"id": "variable.list", "kind": "command", "label": "List variables", "menu": "", "run": "ok", "visible": false}
+{"id": "image.adjust", "kind": "command", "label": "Adjust image", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 image.adjust 실패 — the script's document changes were rolled back"}
+{"id": "image.replace", "kind": "command", "label": "Replace image", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 image.replace 실패 — the script's document changes were rolled back"}
+{"id": "image.savePreset", "kind": "command", "label": "Save image preset", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 image.savePreset 실패 — the script's document changes were rolled back"}
+{"id": "image.deletePreset", "kind": "command", "label": "Delete image preset", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 image.deletePreset 실패 — the script's document changes were rolled back"}
+{"id": "image.crop", "kind": "command", "label": "Crop image", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 image.crop 실패 — the script's document changes were rolled back"}
+{"id": "image.presets", "kind": "command", "label": "Image presets", "menu": "", "run": "ok", "visible": false}
+{"id": "variable.update", "kind": "command", "label": "Edit variable", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.update 실패 — the script's document changes were rolled back"}
+{"id": "variable.duplicate", "kind": "command", "label": "Duplicate variable", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.duplicate 실패 — the script's document changes were rolled back"}
+{"id": "variable.renameMode", "kind": "command", "label": "Rename mode", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.renameMode 실패 — the script's document changes were rolled back"}
+{"id": "variable.removeMode", "kind": "command", "label": "Delete mode", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.removeMode 실패 — the script's document changes were rolled back"}
+{"id": "variable.moveMode", "kind": "command", "label": "Move mode", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.moveMode 실패 — the script's document changes were rolled back"}
+{"id": "variable.renameCollection", "kind": "command", "label": "Rename collection", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.renameCollection 실패 — the script's document changes were rolled back"}
+{"id": "variable.deleteCollection", "kind": "command", "label": "Delete collection", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.deleteCollection 실패 — the script's document changes were rolled back"}
+{"id": "variable.resetOverride", "kind": "command", "label": "Reset variable override", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.resetOverride 실패 — the script's document changes were rolled back"}
+{"id": "variable.extendCollection", "kind": "command", "label": "Extend collection", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.extendCollection 실패 — the script's document changes were rolled back"}
+{"id": "variable.export", "kind": "command", "label": "Export variables", "menu": "", "run": "ok", "visible": false}
+{"id": "variable.import", "kind": "command", "label": "Import variables", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 variable.import 실패 — the script's document changes were rolled back"}
+{"id": "component.create", "kind": "command", "label": "Create component", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 component.create 실패 — the script's document changes were rolled back"}
+{"id": "component.createMultiple", "kind": "command", "label": "Create multiple components", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 component.createMultiple 실패 — the script's document changes were rolled back"}
+{"id": "component.combineVariants", "kind": "command", "label": "Combine as variants", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 component.combineVariants 실패 — the script's document changes were rolled back"}
+{"id": "component.addVariant", "kind": "command", "label": "Add variant", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.addVariant 실패 — the script's document changes were rolled back"}
+{"id": "instance.create", "kind": "command", "label": "Create instance", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 instance.create 실패 — the script's document changes were rolled back"}
+{"id": "instance.place", "kind": "command", "label": "Place instance", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 instance.place 실패 — the script's document changes were rolled back"}
+{"id": "component.exposeInstance", "kind": "command", "label": "Expose nested instance", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.exposeInstance 실패 — the script's document changes were rolled back"}
+{"id": "instance.exposed", "kind": "command", "label": "Exposed nested instances", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 instance.exposed 실패 — the script's document changes were rolled back"}
+{"id": "component.makeSlot", "kind": "command", "label": "Make slot", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.makeSlot 실패 — the script's document changes were rolled back"}
+{"id": "component.removeSlot", "kind": "command", "label": "Remove slot", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.removeSlot 실패 — the script's document changes were rolled back"}
+{"id": "instance.slotInsert", "kind": "command", "label": "Insert into slot", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 instance.slotInsert 실패 — the script's document changes were rolled back"}
+{"id": "instance.resetSlot", "kind": "command", "label": "Reset slot", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 instance.resetSlot 실패 — the script's document changes were rolled back"}
+{"id": "component.hideWhenPublishing", "kind": "command", "label": "Hide when publishing", "menu": "Libraries", "run": "error", "msg": "figcraft: 1번째 명령 component.hideWhenPublishing 실패 — the script's document changes were rolled back"}
+{"id": "component.detach", "kind": "command", "label": "Detach instance", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 component.detach 실패 — the script's document changes were rolled back"}
+{"id": "component.resetInstance", "kind": "command", "label": "Reset all changes", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 component.resetInstance 실패 — the script's document changes were rolled back"}
+{"id": "component.resetOverride", "kind": "command", "label": "Reset override", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.resetOverride 실패 — the script's document changes were rolled back"}
+{"id": "component.goToMain", "kind": "command", "label": "Go to main component", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 component.goToMain 실패 — the script's document changes were rolled back"}
+{"id": "component.pushChanges", "kind": "command", "label": "Push changes to main component", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 component.pushChanges 실패 — the script's document changes were rolled back"}
+{"id": "component.restoreMain", "kind": "command", "label": "Restore main component", "menu": "Object", "run": "error", "msg": "figcraft: 1번째 명령 component.restoreMain 실패 — the script's document changes were rolled back"}
+{"id": "instance.swap", "kind": "command", "label": "Swap instance", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 instance.swap 실패 — the script's document changes were rolled back"}
+{"id": "instance.swapAt", "kind": "command", "label": "Swap instance at point", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 instance.swapAt 실패 — the script's document changes were rolled back"}
+{"id": "instance.setProperties", "kind": "command", "label": "Set instance properties", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 instance.setProperties 실패 — the script's document changes were rolled back"}
+{"id": "component.addProperty", "kind": "command", "label": "Add component property", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.addProperty 실패 — the script's document changes were rolled back"}
+{"id": "component.editProperty", "kind": "command", "label": "Edit component property", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.editProperty 실패 — the script's document changes were rolled back"}
+{"id": "component.deleteProperty", "kind": "command", "label": "Delete component property", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.deleteProperty 실패 — the script's document changes were rolled back"}
+{"id": "component.bindProperty", "kind": "command", "label": "Bind layer to property", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.bindProperty 실패 — the script's document changes were rolled back"}
+{"id": "component.properties", "kind": "command", "label": "Component properties", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.properties 실패 — the script's document changes were rolled back"}
+{"id": "component.list", "kind": "command", "label": "List components", "menu": "", "run": "ok", "visible": false}
+{"id": "libraries.publish", "kind": "command", "label": "Publish library…", "menu": "Libraries", "run": "ok", "visible": false}
+{"id": "library.publish", "kind": "command", "label": "Publish library", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.publish 실패 — the script's document changes were rolled back"}
+{"id": "library.list", "kind": "command", "label": "List libraries", "menu": "", "run": "ok", "visible": false}
+{"id": "library.publishToServer", "kind": "command", "label": "Publish library to server", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.publishToServer 실패 — the script's document changes were rolled back"}
+{"id": "library.add", "kind": "command", "label": "Add library", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.add 실패 — the script's document changes were rolled back"}
+{"id": "library.usage", "kind": "command", "label": "Library usage", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.usage 실패 — the script's document changes were rolled back"}
+{"id": "library.swap", "kind": "command", "label": "Swap library", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.swap 실패 — the script's document changes were rolled back"}
+{"id": "library.remove", "kind": "command", "label": "Remove library", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.remove 실패 — the script's document changes were rolled back"}
+{"id": "library.updates", "kind": "command", "label": "Library updates", "menu": "", "run": "ok", "visible": false}
+{"id": "library.check", "kind": "command", "label": "Check team libraries for updates", "menu": "", "run": "ok", "visible": false}
+{"id": "library.acceptUpdates", "kind": "command", "label": "Accept library updates", "menu": "", "run": "ok", "visible": false}
+{"id": "library.place", "kind": "command", "label": "Place library component", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.place 실패 — the script's document changes were rolled back"}
+{"id": "library.swapAt", "kind": "command", "label": "Swap instance to library component", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.swapAt 실패 — the script's document changes were rolled back"}
+{"id": "library.import", "kind": "command", "label": "Import library component", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.import 실패 — the script's document changes were rolled back"}
+{"id": "library.applyStyle", "kind": "command", "label": "Apply library style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.applyStyle 실패 — the script's document changes were rolled back"}
+{"id": "library.importVariable", "kind": "command", "label": "Import library variable", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.importVariable 실패 — the script's document changes were rolled back"}
+{"id": "library.bindVariable", "kind": "command", "label": "Bind library variable", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.bindVariable 실패 — the script's document changes were rolled back"}
+{"id": "library.aliasVariable", "kind": "command", "label": "Alias library variable", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.aliasVariable 실패 — the script's document changes were rolled back"}
+{"id": "library.setVariableMode", "kind": "command", "label": "Set library variable mode", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.setVariableMode 실패 — the script's document changes were rolled back"}
+{"id": "library.extendCollection", "kind": "command", "label": "Extend library collection", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 library.extendCollection 실패 — the script's document changes were rolled back"}
+{"id": "proto.interaction.add", "kind": "command", "label": "Add interaction", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.interaction.add 실패 — the script's document changes were rolled back"}
+{"id": "proto.interaction.clear", "kind": "command", "label": "Remove all interactions", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.interaction.clear 실패 — the script's document changes were rolled back"}
+{"id": "proto.interaction.remove", "kind": "command", "label": "Remove interaction", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.interaction.remove 실패 — the script's document changes were rolled back"}
+{"id": "proto.interaction.set", "kind": "command", "label": "Edit interaction", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.interaction.set 실패 — the script's document changes were rolled back"}
+{"id": "proto.flow.add", "kind": "command", "label": "Add flow starting point", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.flow.add 실패 — the script's document changes were rolled back"}
+{"id": "proto.flow.rename", "kind": "command", "label": "Rename flow", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.flow.rename 실패 — the script's document changes were rolled back"}
+{"id": "proto.flow.remove", "kind": "command", "label": "Remove flow", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.flow.remove 실패 — the script's document changes were rolled back"}
+{"id": "proto.settings", "kind": "command", "label": "Prototype settings", "menu": "", "run": "ok", "visible": false}
+{"id": "proto.present", "kind": "command", "label": "Present", "menu": "", "run": "ok", "visible": false}
+{"id": "proto.preview", "kind": "command", "label": "Open prototype preview", "menu": "", "run": "ok", "visible": false}
+{"id": "proto.closePreview", "kind": "command", "label": "Close prototype preview", "menu": "", "run": "ok", "visible": false}
+{"id": "proto.presentOptions", "kind": "command", "label": "Presentation options", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.presentOptions 실패 — the script's document changes were rolled back"}
+{"id": "proto.linkNotice", "kind": "command", "label": "Notice before leaving for a link", "menu": "", "run": "ok", "visible": false}
+{"id": "proto.action.add", "kind": "command", "label": "Add prototype action", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.action.add 실패 — the script's document changes were rolled back"}
+{"id": "proto.action.set", "kind": "command", "label": "Edit prototype action", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.action.set 실패 — the script's document changes were rolled back"}
+{"id": "proto.action.remove", "kind": "command", "label": "Remove prototype action", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.action.remove 실패 — the script's document changes were rolled back"}
+{"id": "proto.action.move", "kind": "command", "label": "Reorder prototype action", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.action.move 실패 — the script's document changes were rolled back"}
+{"id": "proto.conditional.addBlock", "kind": "command", "label": "Add else if / else", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.conditional.addBlock 실패 — the script's document changes were rolled back"}
+{"id": "proto.conditional.setCondition", "kind": "command", "label": "Edit condition", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.conditional.setCondition 실패 — the script's document changes were rolled back"}
+{"id": "proto.conditional.removeBlock", "kind": "command", "label": "Remove if / else if / else", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.conditional.removeBlock 실패 — the script's document changes were rolled back"}
+{"id": "proto.evaluate", "kind": "command", "label": "Evaluate prototype expression", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 proto.evaluate 실패 — the script's document changes were rolled back"}
+{"id": "comment.add", "kind": "command", "label": "Add comment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.add 실패 — the script's document changes were rolled back"}
+{"id": "comment.reply", "kind": "command", "label": "Reply to comment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.reply 실패 — the script's document changes were rolled back"}
+{"id": "comment.edit", "kind": "command", "label": "Edit comment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.edit 실패 — the script's document changes were rolled back"}
+{"id": "comment.react", "kind": "command", "label": "React to comment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.react 실패 — the script's document changes were rolled back"}
+{"id": "comment.resolve", "kind": "command", "label": "Resolve comment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.resolve 실패 — the script's document changes were rolled back"}
+{"id": "comment.move", "kind": "command", "label": "Move comment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.move 실패 — the script's document changes were rolled back"}
+{"id": "comment.delete", "kind": "command", "label": "Delete comment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.delete 실패 — the script's document changes were rolled back"}
+{"id": "comment.markRead", "kind": "command", "label": "Mark comment as read", "menu": "", "run": "ok", "visible": false}
+{"id": "comment.open", "kind": "command", "label": "Open comment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.open 실패 — the script's document changes were rolled back"}
+{"id": "comment.next", "kind": "command", "label": "Next comment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.next 실패 — the script's document changes were rolled back"}
+{"id": "comment.zoom", "kind": "command", "label": "Zoom to comments", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.zoom 실패 — the script's document changes were rolled back"}
+{"id": "comment.link", "kind": "command", "label": "Copy link to comment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 comment.link 실패 — the script's document changes were rolled back"}
+{"id": "comment.people", "kind": "command", "label": "People in comments", "menu": "", "run": "ok", "visible": false}
+{"id": "comment.list", "kind": "command", "label": "List comments", "menu": "", "run": "ok", "visible": false}
+{"id": "comment.prompt", "kind": "command", "label": "Copy comments for AI", "menu": "", "run": "ok", "visible": false}
+{"id": "vector.edit.begin", "kind": "command", "label": "Edit vector", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.begin 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.end", "kind": "command", "label": "Done editing", "menu": "", "run": "ok", "visible": false}
+{"id": "vector.edit.state", "kind": "command", "label": "Vector edit state", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.state 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.tool", "kind": "command", "label": "Vector edit tool", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.tool 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.select", "kind": "command", "label": "Select points", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.select 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.selectAll", "kind": "command", "label": "Select all points", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.selectAll 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.moveVertices", "kind": "command", "label": "Move points", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.moveVertices 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.nudge", "kind": "command", "label": "Nudge points", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.nudge 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.position", "kind": "command", "label": "Point position", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.position 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.setHandle", "kind": "command", "label": "Set handle", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.setHandle 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.moveHandles", "kind": "command", "label": "Move handles", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.moveHandles 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.mirroring", "kind": "command", "label": "Handle mirroring", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.mirroring 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.smooth", "kind": "command", "label": "Smooth or sharpen points", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.smooth 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.bend", "kind": "command", "label": "Bend segment", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.bend 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.addVertex", "kind": "command", "label": "Add point", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.addVertex 실패 — the script's document changes were rolled back"}
+{"id": "vector.deleteHeal", "kind": "command", "label": "Delete and heal selection", "menu": "Vector", "run": "error", "msg": "figcraft: 1번째 명령 vector.deleteHeal 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.delete", "kind": "command", "label": "Delete points", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.delete 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.cornerRadius", "kind": "command", "label": "Point corner radius", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.cornerRadius 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.strokeCap", "kind": "command", "label": "Point stroke cap", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.strokeCap 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.strokeJoin", "kind": "command", "label": "Point stroke join", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.strokeJoin 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.paint", "kind": "command", "label": "Paint bucket", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.paint 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.cut", "kind": "command", "label": "Cut path", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.cut 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.erase", "kind": "command", "label": "Erase", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.erase 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.connect", "kind": "command", "label": "Connect points", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.connect 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.lasso", "kind": "command", "label": "Lasso select", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.lasso 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.pen", "kind": "command", "label": "Pen point", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.pen 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.penEnd", "kind": "command", "label": "End pen path", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.penEnd 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.bounds", "kind": "command", "label": "Selected points' bounds", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.bounds 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.resize", "kind": "command", "label": "Resize points", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.resize 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.rotate", "kind": "command", "label": "Rotate points", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.rotate 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.transform", "kind": "command", "label": "Transform points", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.transform 실패 — the script's document changes were rolled back"}
+{"id": "vector.edit.widthPoint", "kind": "command", "label": "Width point", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 vector.edit.widthPoint 실패 — the script's document changes were rolled back"}
+{"id": "shapeBuilder.regions", "kind": "command", "label": "Shape builder regions", "menu": "", "run": "ok", "visible": false}
+{"id": "shapeBuilder.merge", "kind": "command", "label": "Merge regions", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 shapeBuilder.merge 실패 — the script's document changes were rolled back"}
+{"id": "shapeBuilder.remove", "kind": "command", "label": "Remove regions", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 shapeBuilder.remove 실패 — the script's document changes were rolled back"}
+{"id": "shapeBuilder.mode", "kind": "command", "label": "Shape builder mode", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 shapeBuilder.mode 실패 — the script's document changes were rolled back"}
+{"id": "inspect.code", "kind": "command", "label": "Code for layer", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 inspect.code 실패 — the script's document changes were rolled back"}
+{"id": "inspect.readyForDev", "kind": "command", "label": "Ready for dev", "menu": "", "run": "ok", "visible": false}
+{"id": "inspect.assets", "kind": "command", "label": "Inspect assets", "menu": "", "run": "ok", "visible": false}
+{"id": "inspect.properties", "kind": "command", "label": "Inspect properties", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 inspect.properties 실패 — the script's document changes were rolled back"}
+{"id": "inspect.componentCode", "kind": "command", "label": "Component code", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 inspect.componentCode 실패 — the script's document changes were rolled back"}
+{"id": "component.playground", "kind": "command", "label": "Component playground", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 component.playground 실패 — the script's document changes were rolled back"}
+{"id": "codeConnect.set", "kind": "command", "label": "Connect to code", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 codeConnect.set 실패 — the script's document changes were rolled back"}
+{"id": "codeConnect.remove", "kind": "command", "label": "Disconnect from code", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 codeConnect.remove 실패 — the script's document changes were rolled back"}
+{"id": "codeConnect.export", "kind": "command", "label": "Export code connections", "menu": "", "run": "ok", "visible": false}
+{"id": "codeConnect.import", "kind": "command", "label": "Import code connections", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 codeConnect.import 실패 — the script's document changes were rolled back"}
+{"id": "annotation.add", "kind": "command", "label": "Add annotation", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 annotation.add 실패 — the script's document changes were rolled back"}
+{"id": "annotation.edit", "kind": "command", "label": "Edit annotation", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 annotation.edit 실패 — the script's document changes were rolled back"}
+{"id": "annotation.remove", "kind": "command", "label": "Remove annotation", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 annotation.remove 실패 — the script's document changes were rolled back"}
+{"id": "annotation.list", "kind": "command", "label": "List annotations", "menu": "", "run": "ok", "visible": false}
+{"id": "annotation.categories", "kind": "command", "label": "Annotation categories", "menu": "", "run": "ok", "visible": false}
+{"id": "annotation.addCategory", "kind": "command", "label": "Add annotation category", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 annotation.addCategory 실패 — the script's document changes were rolled back"}
+{"id": "annotation.editCategory", "kind": "command", "label": "Edit annotation category", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 annotation.editCategory 실패 — the script's document changes were rolled back"}
+{"id": "annotation.removeCategory", "kind": "command", "label": "Delete annotation category", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 annotation.removeCategory 실패 — the script's document changes were rolled back"}
+{"id": "devResource.add", "kind": "command", "label": "Add dev resource", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 devResource.add 실패 — the script's document changes were rolled back"}
+{"id": "devResource.edit", "kind": "command", "label": "Edit dev resource", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 devResource.edit 실패 — the script's document changes were rolled back"}
+{"id": "devResource.remove", "kind": "command", "label": "Remove dev resource", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 devResource.remove 실패 — the script's document changes were rolled back"}
+{"id": "devResource.list", "kind": "command", "label": "List dev resources", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 devResource.list 실패 — the script's document changes were rolled back"}
+{"id": "devMode.addMeasurement", "kind": "command", "label": "Add measurement", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 devMode.addMeasurement 실패 — the script's document changes were rolled back"}
+{"id": "devMode.removeMeasurement", "kind": "command", "label": "Remove measurement", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 devMode.removeMeasurement 실패 — the script's document changes were rolled back"}
+{"id": "devMode.measurements", "kind": "command", "label": "List measurements", "menu": "", "run": "ok", "visible": false}
+{"id": "measure.distances", "kind": "command", "label": "Measure distances", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 measure.distances 실패 — the script's document changes were rolled back"}
+{"id": "measure.padding", "kind": "command", "label": "Measure auto layout padding", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 measure.padding 실패 — the script's document changes were rolled back"}
+{"id": "collab.diff", "kind": "command", "label": "Show sync changes", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.diff 실패 — the script's document changes were rolled back"}
+{"id": "branch.create", "kind": "command", "label": "Create branch", "menu": "File", "run": "ok", "visible": false}
+{"id": "branch.list", "kind": "command", "label": "List branches", "menu": "", "run": "ok", "visible": false}
+{"id": "branch.open", "kind": "command", "label": "Open branch", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 branch.open 실패 — the script's document changes were rolled back"}
+{"id": "branch.review", "kind": "command", "label": "Review branch", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 branch.review 실패 — the script's document changes were rolled back"}
+{"id": "branch.updateFromMain", "kind": "command", "label": "Update from main", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 branch.updateFromMain 실패 — the script's document changes were rolled back"}
+{"id": "branch.merge", "kind": "command", "label": "Merge branch", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 branch.merge 실패 — the script's document changes were rolled back"}
+{"id": "branch.archive", "kind": "command", "label": "Archive branch", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 branch.archive 실패 — the script's document changes were rolled back"}
+{"id": "plugin.list", "kind": "command", "label": "List plugins", "menu": "", "run": "ok", "visible": false}
+{"id": "plugin.import", "kind": "command", "label": "Import plugin from manifest…", "menu": "Plugins/Development", "run": "error", "msg": "figcraft: 1번째 명령 plugin.import 실패 — the script's document changes were rolled back"}
+{"id": "plugin.remove", "kind": "command", "label": "Remove plugin", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 plugin.remove 실패 — the script's document changes were rolled back"}
+{"id": "plugin.run", "kind": "command", "label": "Run plugin", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 plugin.run 실패 — the script's document changes were rolled back"}
+{"id": "plugin.ui", "kind": "command", "label": "Plugin panel", "menu": "", "run": "ok", "visible": false}
+{"id": "plugin.event", "kind": "command", "label": "Use plugin panel control", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 plugin.event 실패 — the script's document changes were rolled back"}
+{"id": "plugin.close", "kind": "command", "label": "Close plugin panel", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 plugin.close 실패 — the script's document changes were rolled back"}
+{"id": "plugins.runLast", "kind": "command", "label": "Run last plugin", "menu": "Plugins", "run": "error", "msg": "figcraft: 1번째 명령 plugins.runLast 실패 — the script's document changes were rolled back"}
+{"id": "plugins.manage", "kind": "command", "label": "Manage plugins…", "menu": "Plugins", "run": "ok", "visible": false}
+{"id": "plugin.directory.list", "kind": "command", "label": "Browse plugin directory", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 plugin.directory.list 실패 — the script's document changes were rolled back"}
+{"id": "plugin.directory.install", "kind": "command", "label": "Install plugin from directory", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 plugin.directory.install 실패 — the script's document changes were rolled back"}
+{"id": "plugin.directory.publish", "kind": "command", "label": "Publish plugin to directory", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 plugin.directory.publish 실패 — the script's document changes were rolled back"}
+{"id": "plugin.directory.unpublish", "kind": "command", "label": "Unpublish plugin from directory", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 plugin.directory.unpublish 실패 — the script's document changes were rolled back"}
+{"id": "widget.insert", "kind": "command", "label": "Insert widget", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 widget.insert 실패 — the script's document changes were rolled back"}
+{"id": "widget.click", "kind": "command", "label": "Click widget", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 widget.click 실패 — the script's document changes were rolled back"}
+{"id": "widget.setText", "kind": "command", "label": "Edit widget field", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 widget.setText 실패 — the script's document changes were rolled back"}
+{"id": "widget.menu", "kind": "command", "label": "Widget menu", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 widget.menu 실패 — the script's document changes were rolled back"}
+{"id": "widget.hover", "kind": "command", "label": "Hover widget", "menu": "", "run": "ok", "visible": false}
+{"id": "widget.list", "kind": "command", "label": "List widgets", "menu": "", "run": "ok", "visible": false}
+{"id": "collab.host", "kind": "command", "label": "Start live session", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.host 실패 — the script's document changes were rolled back"}
+{"id": "collab.share", "kind": "command", "label": "Share with a join code", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.share 실패 — the script's document changes were rolled back"}
+{"id": "collab.stop", "kind": "command", "label": "Stop live session", "menu": "", "run": "ok", "visible": false}
+{"id": "collab.join", "kind": "command", "label": "Join live session", "menu": "File", "run": "error", "msg": "figcraft: 1번째 명령 collab.join 실패 — the script's document changes were rolled back"}
+{"id": "collab.leave", "kind": "command", "label": "Leave live session", "menu": "", "run": "ok", "visible": false}
+{"id": "collab.publish", "kind": "command", "label": "Publish to server", "menu": "File", "run": "error", "msg": "figcraft: 1번째 명령 collab.publish 실패 — the script's document changes were rolled back"}
+{"id": "collab.serverInfo", "kind": "command", "label": "Server info", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.serverInfo 실패 — the script's document changes were rolled back"}
+{"id": "collab.manageFile", "kind": "command", "label": "Manage published file", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.manageFile 실패 — the script's document changes were rolled back"}
+{"id": "collab.report", "kind": "command", "label": "Report file to server operator", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.report 실패 — the script's document changes were rolled back"}
+{"id": "collab.peers", "kind": "command", "label": "People in this file", "menu": "", "run": "ok", "visible": false}
+{"id": "collab.follow", "kind": "command", "label": "Follow", "menu": "", "run": "ok", "visible": false}
+{"id": "collab.removePerson", "kind": "command", "label": "Remove from session", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.removePerson 실패 — the script's document changes were rolled back"}
+{"id": "collab.cursor", "kind": "command", "label": "Show cursor at", "menu": "", "run": "ok", "visible": false}
+{"id": "collab.cursorChat", "kind": "command", "label": "Cursor chat", "menu": "", "run": "ok", "visible": false}
+{"id": "collab.spotlight", "kind": "command", "label": "Spotlight me", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.spotlight 실패 — the script's document changes were rolled back"}
+{"id": "collab.files", "kind": "command", "label": "Your online files", "menu": "", "run": "ok", "visible": false}
+{"id": "collab.openFile", "kind": "command", "label": "Open online file", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.openFile 실패 — the script's document changes were rolled back"}
+{"id": "collab.forgetFile", "kind": "command", "label": "Forget online file", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.forgetFile 실패 — the script's document changes were rolled back"}
+{"id": "collab.recoverFile", "kind": "command", "label": "Recover online file", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.recoverFile 실패 — the script's document changes were rolled back"}
+{"id": "collab.registerLinks", "kind": "command", "label": "Open invite links in FigCraft", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 collab.registerLinks 실패 — the script's document changes were rolled back"}
+{"id": "template.list", "kind": "command", "label": "List templates", "menu": "", "run": "ok", "visible": false}
+{"id": "file.newFromTemplate", "kind": "command", "label": "New from template", "menu": "File", "run": "ok", "visible": false}
+{"id": "data.fill", "kind": "command", "label": "Fill copies with data", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 data.fill 실패 — the script's document changes were rolled back"}
+{"id": "text.fit", "kind": "command", "label": "Fit text to its box", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 text.fit 실패 — the script's document changes were rolled back"}
+{"id": "board.sticky", "kind": "command", "label": "Sticky note", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.sticky 실패 — the script's document changes were rolled back"}
+{"id": "board.nextSticky", "kind": "command", "label": "Next sticky note", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.nextSticky 실패 — the script's document changes were rolled back"}
+{"id": "board.addConnected", "kind": "command", "label": "Add connected shape", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.addConnected 실패 — the script's document changes were rolled back"}
+{"id": "board.shape", "kind": "command", "label": "Shape with text", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.shape 실패 — the script's document changes were rolled back"}
+{"id": "board.connector", "kind": "command", "label": "Connector", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.connector 실패 — the script's document changes were rolled back"}
+{"id": "board.reattach", "kind": "command", "label": "Reattach connector", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.reattach 실패 — the script's document changes were rolled back"}
+{"id": "board.reshape", "kind": "command", "label": "Reshape connector", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.reshape 실패 — the script's document changes were rolled back"}
+{"id": "board.label", "kind": "command", "label": "Connector label", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.label 실패 — the script's document changes were rolled back"}
+{"id": "board.stamp", "kind": "command", "label": "Stamp", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.stamp 실패 — the script's document changes were rolled back"}
+{"id": "board.ink", "kind": "command", "label": "Marker stroke", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.ink 실패 — the script's document changes were rolled back"}
+{"id": "board.setColor", "kind": "command", "label": "Board color", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.setColor 실패 — the script's document changes were rolled back"}
+{"id": "board.setStyle", "kind": "command", "label": "Board style", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.setStyle 실패 — the script's document changes were rolled back"}
+{"id": "tool.sticky", "kind": "command", "label": "Sticky note", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 tool.sticky 실패 — the script's document changes were rolled back"}
+{"id": "tool.shape", "kind": "command", "label": "Shapes", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 tool.shape 실패 — the script's document changes were rolled back"}
+{"id": "tool.connector", "kind": "command", "label": "Connector", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 tool.connector 실패 — the script's document changes were rolled back"}
+{"id": "tool.marker", "kind": "command", "label": "Marker", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 tool.marker 실패 — the script's document changes were rolled back"}
+{"id": "tool.highlighter", "kind": "command", "label": "Highlighter", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 tool.highlighter 실패 — the script's document changes were rolled back"}
+{"id": "tool.eraser", "kind": "command", "label": "Eraser", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 tool.eraser 실패 — the script's document changes were rolled back"}
+{"id": "tool.stamp", "kind": "command", "label": "Stamp", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 tool.stamp 실패 — the script's document changes were rolled back"}
+{"id": "board.timer", "kind": "command", "label": "Timer", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.timer 실패 — the script's document changes were rolled back"}
+{"id": "board.timerState", "kind": "command", "label": "Timer state", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.timerState 실패 — the script's document changes were rolled back"}
+{"id": "board.vote", "kind": "command", "label": "Voting session", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.vote 실패 — the script's document changes were rolled back"}
+{"id": "board.voteResults", "kind": "command", "label": "Voting results", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.voteResults 실패 — the script's document changes were rolled back"}
+{"id": "board.grid", "kind": "command", "label": "Board grid", "menu": "", "run": "ok", "visible": false}
+{"id": "board.table", "kind": "command", "label": "Table", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.table 실패 — the script's document changes were rolled back"}
+{"id": "board.tableEdit", "kind": "command", "label": "Edit table", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.tableEdit 실패 — the script's document changes were rolled back"}
+{"id": "board.template", "kind": "command", "label": "Board template", "menu": "", "run": "error", "msg": "figcraft: 1번째 명령 board.template 실패 — the script's document changes were rolled back"}
+{"id": "board.templates", "kind": "command", "label": "List board templates", "menu": "", "run": "ok", "visible": false}

@@ -1,0 +1,34 @@
+{
+ "id": "typo-tracking-settle",
+ "layer": "typo",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "자간이 넓었다가 제자리로 모임",
+ "when": "결론 · 브랜드 한 줄. 차분한 고급 톤",
+ "avoid": "한글 긴 문장(자간이 벌어지면 읽기 어려움) · 가로로 꽉 찬 제목(FROM 을 더 줄인다 — 첫 프레임이 화면 밖으로 넘친다)",
+ "vars": {
+  "TEXT": "글자 레이어"
+ },
+ "defaults": {
+  "T0": 0,
+  "DUR": 0.9,
+  "FROM": 25
+ },
+ "at": [
+  0.05,
+  0.4,
+  1.5
+ ],
+ "steps": [
+  {
+   "jsx": "var t=L(\"@TEXT@\");var an=t.property(\"Text\").property(\"Animators\").addProperty(\"ADBE Text Animator\");an.name=\"Tracking\";var pr=an.property(\"ADBE Text Animator Properties\");var tr=pr.addProperty(\"ADBE Text Tracking Amount\");K(tr,[[@T0@,@FROM@],[@T0@+@DUR@,0]]);EASE(tr,85);var op=pr.addProperty(\"ADBE Text Opacity\");K(op,[[@T0@,0],[@T0@+@DUR@*0.5,100]]);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 0.61,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/typo-tracking-settle/after.png",
+  "before": "data/workspace/probe/recipes/typo-tracking-settle/before.png"
+ }
+}

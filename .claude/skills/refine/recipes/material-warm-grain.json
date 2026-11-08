@@ -1,0 +1,73 @@
+{
+ "id": "material-warm-grain",
+ "layer": "color",
+ "target": "material",
+ "app": "photocraft",
+ "title": "사진 재료: 따뜻한 그레이드 + S 커브 + 그레인",
+ "when": "사진 · 카드 재료 하나만 톤을 바꿀 때(장면 전체는 color-warm-grade)",
+ "avoid": "실제 화면 캡처",
+ "vars": {
+  "PIXEL": "픽셀 레이어(show 의 Pixel)",
+  "TOP": "맨 위 레이어(조정 레이어가 그 아래 전체에 걸림)"
+ },
+ "defaults": {
+  "TOP": "Title"
+ },
+ "steps": [
+  {
+   "id": "layer.select",
+   "params": {
+    "name": "@PIXEL@"
+   }
+  },
+  {
+   "id": "filter.gallery.filmGrain",
+   "params": {
+    "grain": 3,
+    "intensity": 6
+   }
+  },
+  {
+   "id": "layer.select",
+   "params": {
+    "name": "@TOP@"
+   }
+  },
+  {
+   "id": "layer.newAdjustmentLayer.colorLookup",
+   "params": {
+    "lut": "warm"
+   }
+  },
+  {
+   "id": "layer.newAdjustmentLayer.curves",
+   "params": {
+    "points": [
+     [
+      0,
+      10
+     ],
+     [
+      64,
+      52
+     ],
+     [
+      192,
+      206
+     ],
+     [
+      255,
+      250
+     ]
+    ]
+   }
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 9.54,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/material-warm-grain/after.png",
+  "before": "data/workspace/probe/recipes/material-warm-grain/before.png"
+ }
+}

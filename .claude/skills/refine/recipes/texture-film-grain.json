@@ -1,0 +1,26 @@
+{
+ "id": "texture-film-grain",
+ "layer": "texture",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "장면 전체 필름 그레인(조정 레이어)",
+ "when": "감성 · 회상 · 디지털 그래픽이 너무 매끈할 때",
+ "avoid": "글자 위주 화면(가독성)",
+ "vars": {},
+ "defaults": {},
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var a=ADJ(\"Grain\");a.moveToBeginning();var g=FX(a,\"Add Grain\");P(g,\"Intensity\").setValue(0.6);P(g,\"Size\").setValue(1.3);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 5.56,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/texture-film-grain/after.png",
+  "before": "data/workspace/probe/recipes/texture-film-grain/before.png"
+ }
+}

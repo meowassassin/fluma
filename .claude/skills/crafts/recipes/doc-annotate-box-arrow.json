@@ -20,7 +20,7 @@
   {
    "at": "/new/paths/0",
    "kind": "file",
-   "example": "compositions/2026-11-03-s0g011z-01/web/psi.png"
+   "example": "data/compositions/2026-11-03-s0g011z-01/web/psi.png"
   }
  ],
  "tested": "2026-11-06",
@@ -30,7 +30,7 @@
   "new": {
    "from": "images",
    "paths": [
-    "compositions/2026-11-03-s0g011z-01/web/psi.png"
+    "data/compositions/2026-11-03-s0g011z-01/web/psi.png"
    ],
    "dpi": 72
   },

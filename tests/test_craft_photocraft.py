@@ -1,4 +1,4 @@
-"""PhotoCraft 어댑터(scripts/craft/adapters/photocraft.py) — 계산은 앱 없이, 실제 그리기는 앱이 설치됐을 때만."""
+"""PhotoCraft 어댑터(engine/craft/adapters/photocraft.py) — 계산은 앱 없이, 실제 그리기는 앱이 설치됐을 때만."""
 from __future__ import annotations
 
 import json
@@ -7,9 +7,8 @@ from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from craft import materials  # noqa: E402
 from craft.adapters import photocraft as pc  # noqa: E402
 
@@ -132,8 +131,8 @@ def test_build_uses_plugin_photo(tmp_path, monkeypatch):
     monkeypatch.setattr(materials, "read_text_boxes", lambda f: [])
     src = _capture(tmp_path / "cap.png")
     sb = {"id": "pc_test", "scenes": [{"materials": [{"id": "m1", "type": "photo", "src": str(src), "frame": "card", "title": "카드"}]}]}
-    (tmp_path / "storyboards").mkdir()
-    (tmp_path / "storyboards" / "pc_test.json").write_text(json.dumps(sb), "utf-8")
+    (tmp_path / "data" / "storyboards").mkdir(parents=True)
+    (tmp_path / "data" / "storyboards" / "pc_test.json").write_text(json.dumps(sb), "utf-8")
     recs = materials.build(sb)
     assert recs[0]["app"] == "photocraft" and recs[0]["frame"] == "card"
     assert (tmp_path / recs[0]["file"]).exists()

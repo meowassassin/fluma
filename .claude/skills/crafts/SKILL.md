@@ -6,20 +6,21 @@ description: 어떤 재료 · 장면에 어느 Craft 앱의 어떤 기능을 쓸
 # Craft 앱 지도
 
 Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표**다. 정확한 명령 · params · 시험 결과는 앱별 `reference/<이름>.md` 를 연다.
-부르는 법은 모두 같다: `python3 scripts/crafts.py run <앱> <인자…>` (실행 파일은 `tools/crafts/<앱>/app/…/bin/<앱>-cli`).
+부르는 법은 모두 같다: `python3 engine/craft/crafts.py run <앱> <인자…>` (실행 파일은 `tools/crafts/<앱>/app/…/bin/<앱>-cli`).
 
 기본 흐름: 재료(각 앱) → **EffectCraft**(움직임 · 합성) → **SoundCraft**(소리) → **FilmCraft**(조립 · 마감).
 
 ## 0. 먼저 — 기능을 넓게 쓰고, 영상마다 다르게 (편향 금지)
 앱 16개에 명령 · 효과 · 프리셋이 9,000개 넘게 있다. 아는 몇 가지만 되풀이하지 않는다.
-1. 장면마다 `python3 scripts/craft_variety.py suggest "<장면 용도>"` — 검증된 레시피(★ = 최근 5편에 안 씀)와 안 써 본 기능이 나온다. ★ 를 먼저 고른다.
-2. 고정 재료 종류(아래 표)로 안 되는 화면은 `python3 scripts/craft_catalog.py search "<하고 싶은 일>"` 로 명령을 찾아 `type: craft` 로 직접 짠다:
+1. 장면마다 `python3 engine/craft/craft_variety.py suggest "<장면 용도>"` — 검증된 레시피(★ = 최근 5편에 안 씀)와 안 써 본 기능이 나온다. ★ 를 먼저 고른다.
+2. 고정 재료 종류(아래 표)로 안 되는 화면은 `python3 engine/craft/craft_catalog.py search "<하고 싶은 일>"` 로 명령을 찾아 `type: craft` 로 직접 짠다:
    `{"type":"craft","id":"m2","app":"vectorcraft","steps":[{"id":"shape.rectangle","params":{…}}, …],"export":{"format":"png"}}`
    params 는 `craft_catalog.py show <앱> <id>` 와 reference/<앱>.md 의 시험된 예를 따른다. 앞 결과 참조 `"$N.키"`, 작업 폴더 `$WORK/…`, 프레임 `$FRAMES`.
 3. 레시피 쓰기: `{"recipe":"hook-title-arc","fill":{"/steps/3/params/text":"새 제목"}}` — 바꿀 칸은 recipes/<이름>.json 의 slots.
-4. 잘 나온 craft 재료는 레시피로 남긴다: `python3 scripts/craft_variety.py save <영상 id> <재료 id> --name <영어-이름> --purpose a,b --look x,y --desc "…"`
-5. 영상마다 최소 한 장면은 최근 영상들이 안 쓴 레시피 · 기능으로(V44). 이어지는 장면은 구성을 바꾸고(V42), 재료 종류는 3가지 이상(V41). produce.py 가 V 권고를 보여 준다 — `craft_variety.py check storyboards/<id>.json`.
+4. 잘 나온 craft 재료는 레시피로 남긴다: `python3 engine/craft/craft_variety.py save <영상 id> <재료 id> --name <영어-이름> --purpose a,b --look x,y --desc "…"`
+5. 영상마다 최소 한 장면은 최근 영상들이 안 쓴 레시피 · 기능으로(V44). 이어지는 장면은 구성을 바꾸고(V42), 재료 종류는 3가지 이상(V41). produce.py 가 V 권고를 보여 준다 — `craft_variety.py check data/storyboards/<id>.json`.
 6. 많이 쓰는 것과 효과 남발은 다르다 — 장면의 말을 더 잘 보여 주는 기능만. 결과는 정지 화면을 보고 판단(실제 화면 > 효과).
+7. **다양성은 사용자의 선택으로**: 모양 · 효과의 큰 방향은 시안(engine/story/directions.py)으로 보여 주고 사용자가 고른다. '안 써 본 것'을 이유로 사용자가 원하지 않는 효과를 넣지 않는다. 같은 재료를 다른 앱으로 만들 수 있으면(`method`) 그 차이도 시안에 쓴다.
 
 ## 1. 재료 · 작업 → 앱 → 핵심 기능
 
@@ -40,8 +41,18 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 | 도식 (`diagram`) | DeckCraft | 쓰는 중(adapters/deckcraft.py): 540×960pt 덱에 SmartArt(steps · compare · cycle · hierarchy · pyramid · timeline · list) + `setBounds`, 항목마다 투명 층(빌드 애니메이션 대신) + base. 안 쓰는 것: 표 스타일, `render-transition` |
 | 문서 화면 (`document`) | WordCraft | 쓰는 중(adapters/wordcraft.py): 9:16 쪽으로 다시 배치 · 글자 일괄 확대, 진짜 `format.highlight`, 변경 추적(`review.compare`), 메모 말풍선. 안 쓰는 것: 대본 md ↔ docx |
 | 웹 · 터미널 실제 화면 (후보 `web-screen` 등) | craft-anything | 연결 없음. `web-walkthrough-record`(360×640@3x), `web_site_capture`, 터미널 기록. `--deep --allow-run` 필요. 기존 `web`(webrec.py) 재료와 겹치는지 먼저 본다 |
-| 3D 제품 (`model3d`) | SolidCraft + TextureCraft | 쓰는 중(adapters/solidcraft.py · texturecraft.py): 내장 형태 5종(case · phone · bottle · tumbler · puck) · 명령 목록 · STEP/STL 불러오기 → fine OBJ → TextureCraft 재질(쉬운 이름 → PBR) · 로고 데칼 · MCP `viewport_render`(장당 0.3초) 정지 컷 · turntable mp4, 분해도는 SolidCraft `explode.create` + `motion.export_animation` |
+| 곡면 · 유기적 3D · 캐릭터 · 고품질 렌더 (`model3d` + `"method": "blender"`) | Blender | `script` = data/compositions/<id>/src/*.py 에 `def build(ctx)` · `import fluma3d as F`(engine/craft/blender/fluma3d.py). `F.ring` + `F.loft`(단면을 이어 곡면) · `F.melt`(겹친 조각을 하나로 녹임) · `F.mirror_pair`(좌우 한 쌍은 반드시 이것으로 — 메시 하나 · 값 하나, 따로 만들면 어긋난다) · `F.world_hdri` · `F.area_light` · `F.key` · Cycles(`F.use_cycles`, 잡티 제거 포함). 모양이 레퍼런스를 따르면 먼저 정지 화면으로: `python3 engine/craft/adapters/blender.py <스크립트> --still 0 --opaque` → `refmatch.py pair` 로 나란히 본다. 렌더 CPU 기준 720×1280 프레임당 10초 안팎 — 컷 전체는 모양 확정 뒤에 |
+| 정밀 부품 + 고품질 화면 — 세 앱 잇기 (`model3d` + `method: blender` + `"bridge": "…/asm.json"`) | SolidCraft → TextureCraft → Blender | engine/craft/bridge3d.py: SolidCraft 모양 · 관절 동작(`motion.study`) → TextureCraft 재질 · 로고 → GLB + 단계별 부품 위치. 스크립트에서 `asm = F.import_assembly(ctx.args["asm"])` · `F.play_assembly(asm, 0, 1, start, end)`. 곡면 부품은 Blender 로 만들어 `F.attach(obj, asm, "부품")` 로 CAD 동작에 붙인다. 부품은 SolidCraft 에서 component 로 나눈다. 스마트 재질을 쓰면 사양에 `"bake": true`(Intel GPU 는 끊길 수 있음) |
+| 실사 · 생성 영상 합성(`live`) | EffectCraft + Blender | 카메라를 풀어(시야각 자동 탐색, 독립 오차 `follow_px`) 3D 를 바닥에 놓고 그림자를 만든다. 인물 뒤로 지나가기(`behind`) · 물체 따라가기(`follow`) · 색 바꾸기(`recolor`) · 바닥에 선 정지 물체 지우기(`remove`). 카메라가 움직이는 영상만 풀린다 |
+| 3D 기본(`model3d`) | SolidCraft → Blender | 스크립트가 없으면 `shape` · `commands` · `src` 를 SolidCraft 가 모양으로 만들고 Blender 기본 제품 컷(재질 · 조명 · 받침 · 자동 구도 · turntable · 글자 logo)으로 렌더. 분해도(`exploded`)와 정밀 도면은 SolidCraft |
+| 3D — 예전 방식(`"method": "solidcraft"`) | SolidCraft + TextureCraft | 쓰는 중(adapters/solidcraft.py · texturecraft.py): 내장 형태 5종(case · phone · bottle · tumbler · puck) · 명령 목록 · STEP/STL 불러오기 → fine OBJ → TextureCraft 재질(쉬운 이름 → PBR) · 로고 데칼 · MCP `viewport_render`(장당 0.3초) 정지 컷 · turntable mp4, 분해도는 SolidCraft `explode.create` + `motion.export_animation` |
 | 도면 (`drawing`) | CADCraft (+ SolidCraft `file.export_view_dxf`) | 쓰는 중(adapters/cadcraft.py): DXF · 명령 · 3D 모형 → 3각법 투영도 + 치수 3개, MCP `render` 9:16 어두운 CAD 화면 또는 흰 종이(plot 단색 후처리), 빨간 구름 `revcloud` |
+
+## 앱 섞기 — 한 장면에서 함께 쓰기
+- **겹치기:** 재료 `"layer": "over"` 는 앞 재료 위에 얹는다(`cue` · `start` 로 나오는 때). 투명 배경 Blender 재료는 재료가 둘 이상이면 저절로 겹친다.
+- **다른 앱 → Blender:** `"uses": {"screen": "<앞 재료 id>"}` → 스크립트의 `ctx.args["uses"]["screen"]`(파일 경로) · `F.image_plane` · `F.mat_media`. 입력으로 쓴 재료는 화면에 따로 나오지 않는다(`"show": true` 로 켬).
+- **Blender → 소리:** `F.event("swoosh", 초)` 가 효과음을 맞춘다(pop · swoosh · tick · stamp).
+- **SolidCraft · TextureCraft → Blender:** `"bridge"`.
 
 ## 2. 장면 종류별로 고르기
 
@@ -98,5 +109,10 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 10. **경로는 절대 경로**. VectorCraft 는 `VECTORCRAFT_NO_PREFS=1` 을 붙인다.
 11. **verified=false 기능은 먼저 시험**: EffectCraft Magnify(원이 안 보임) · 트래킹, FilmCraft auto_reframe, WordCraft `review.compare`, PdfCraft `doc_compare`, DesignCraft flex · 변형본 등은 참고 문서의 "미확인" 표시를 보고 렌더로 확인한 뒤 쓴다.
 12. **가상 내용 주의**: FigCraft · DeckCraft 템플릿은 가상 브랜드다. 실제 서비스 설명에는 실제 캡처를 쓴다.
-13. **앱 어댑터 꽂기**: `scripts/craft/adapters/<앱>.py` 의 `ADAPTERS = {재료 종류: fn(m, out, work) -> info}` · `POST = {종류: fn(m, file, work, info)}`. 기록에 `as`(image · video) · `size` · `full_frame` · `highlight_box`(0~1)를 넣으면 움직임 단계 배치가 정확해진다. 층으로 나뉜 그림은 `layers[{file, box, cue}]`(+ `base`), 같은 장면의 다른 재료를 읽으면 `materials._depends` 에 더한다(열쇠에 대상 기록이 들어가게).
+13. **앱 어댑터 꽂기**: `engine/craft/adapters/<앱>.py` 의 `ADAPTERS = {재료 종류: fn(m, out, work) -> info}` · `POST = {종류: fn(m, file, work, info)}`. 기록에 `as`(image · video) · `size` · `full_frame` · `highlight_box`(0~1)를 넣으면 움직임 단계 배치가 정확해진다. 층으로 나뉜 그림은 `layers[{file, box, cue}]`(+ `base`), 같은 장면의 다른 재료를 읽으면 `materials._depends` 에 더한다(열쇠에 대상 기록이 들어가게).
 14. **글꼴이 섞인다**: 카드 · 주석 · 도식 · 썸네일 글자는 Noto Sans CJK KR(앱이 Pretendard woff2 를 못 읽음), 자막은 Pretendard.
+
+## 실제로 돌려 본 결과(engine/craft/probe.py)
+앱마다 기능 목록 전체를 견본 문서에서 실행해 기록했다 — `.claude/skills/crafts/probe/<앱>.jsonl`(명령마다 되는 상태 · 실행 결과 · 오류 문구 · 견본 그림), 요약 `<앱>.md`(분류별 수 · 견본 판).
+`craft_catalog.py search` 결과에 자동으로 붙는다. 기록이 낡았으면(앱 업데이트) `python3 engine/craft/probe.py <앱>` 로 다시 돌린다(앱 설정은 임시 HOME 이라 바뀌지 않음).
+

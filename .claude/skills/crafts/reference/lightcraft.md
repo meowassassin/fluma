@@ -7,7 +7,7 @@
 
 ## 지금 Fluma 에서 쓰는 곳
 
-- `scripts/craft/adapters/lightcraft.py` — 재료 `photo_grade`. LightCraft 세션 한 번: `preset.apply`(세기) → (선택) 자동 보정 → `develop.set` → `crop.set` → `develop.get` → `app.export`(dontEnlarge=false).
+- `engine/craft/adapters/lightcraft.py` — 재료 `photo_grade`. LightCraft 세션 한 번: `preset.apply`(세기) → (선택) 자동 보정 → `develop.set` → `crop.set` → `develop.get` → `app.export`(dontEnlarge=false).
 - Fluma 룩 4개: warm(lc.warm-glow + 색온도 · 밝은 곳 따뜻하게 · 비네트) · film(lc.warm-film + 그림자 청색 · 비네트) · clean(lc.clean-studio + 채도 조금) · mono(lc.bw-soft + 대비). JPEG 에서는 프리셋만으로는 차이가 작아 슬라이더를 더했다.
 - `develop.auto` 는 너무 세다(대비 +68) → 값만 읽어 40% 로 줄이고 상한을 둬 `develop.adjust`(clean 만 기본).
 - 자르기 비율은 사진 크기로 직접 계산(`crop.aspect` 안 씀), `focus` 로 가운데 이동, 1~3px 어긋나면 1080×1920 으로 맞춤. `credit` 은 오른쪽 위 한글 워터마크.
@@ -51,7 +51,7 @@ $L render in.png -o out.jpg --preset lc.cinematic --set effects.clarity=20 --set
 $L render in.png -o bw.jpg --preset lc.bw-high-contrast
 ```
 
-- 시험 결과: `out/cmp2.jpg` 왼쪽(흑백 고대비), `out/cmp1.jpg` 가운데(cinematic). 프리셋 위에 `--set` 을 덧붙일 수 있다.
+- 시험 결과: `data/out/cmp2.jpg` 왼쪽(흑백 고대비), `data/out/cmp1.jpg` 가운데(cinematic). 프리셋 위에 `--set` 을 덧붙일 수 있다.
 - 내장 프리셋 41개(`presets.list`):
   - Color: `lc.warm-glow` `lc.cool-morning` `lc.teal-orange` `lc.vivid-pop` `lc.soft-pastel`
   - Film: `lc.faded-matte` `lc.warm-film` `lc.muted-film` · Vintage: `lc.instant-70s` `lc.cross-process` `lc.bleach-bypass`
@@ -72,7 +72,7 @@ $L render in.png -o graded.jpg \
  --set grain.amount=35 --set vignette.amount=-50 --set effects.clarity=-20
 ```
 
-- 시험 결과: `out/cmp4.jpg` 왼쪽. 그림자는 푸르고 밝은 곳은 따뜻해졌다. 그레인과 비네트도 보인다.
+- 시험 결과: `data/out/cmp4.jpg` 왼쪽. 그림자는 푸르고 밝은 곳은 따뜻해졌다. 그레인과 비네트도 보인다.
 - 자주 쓸 슬라이더(`controls`, 전체 약 140개):
   - 빛: `light.exposure`(-5~5) `light.contrast` `light.highlights` `light.shadows` `light.whites` `light.blacks`(-100~100)
   - 색: `wb.temp`(2000~50000) `wb.tint` `color.vibrance` `color.saturation`, `mixer.<red|orange|yellow|green|aqua|blue|purple|magenta>.<hue|sat|lum>`
@@ -88,7 +88,7 @@ $L render in.png -o graded.jpg \
 $L run --import /abs/in.png develop.auto app.export path=/abs/out.jpg longEdge=1920
 ```
 
-- 결과(`develop.auto` 가 돌려준 값): `exposure -0.74, contrast 68, highlights -66, shadows 52, vibrance 30`. 밝은 실내 사진이 꽤 어두워졌다(`out/land_9x16.jpg`). 자동값을 그대로 믿지 말고 렌더를 보고 `develop.adjust` 로 다듬는다.
+- 결과(`develop.auto` 가 돌려준 값): `exposure -0.74, contrast 68, highlights -66, shadows 52, vibrance 30`. 밝은 실내 사진이 꽤 어두워졌다(`data/out/land_9x16.jpg`). 자동값을 그대로 믿지 말고 렌더를 보고 `develop.adjust` 로 다듬는다.
 - 흰색 맞추기: `develop.wb mode=auto`(또는 daylight · cloudy · tungsten …), 회색 점 찍기 `develop.wbPick x=.. y=..`.
 
 ### 4. 9:16 자르기 (확인)
@@ -116,7 +116,7 @@ $L run --import /abs/land.png \
  app.export path=/abs/radial.jpg longEdge=1200
 ```
 
-- 시험 결과: `out/land_radial.jpg`. 가운데 원 밖이 어두워졌다(효과는 은은한 편).
+- 시험 결과: `data/out/land_radial.jpg`. 가운데 원 밖이 어두워졌다(효과는 은은한 편).
 - `mask.adjust values`: exposure · contrast · highlights · shadows · whites · blacks · temp · tint · texture · clarity · dehaze · hue · saturation · sharpness · noise · amount.
 - 선형: `mask.add kind=linear start='[0.5,0]' end='[0.5,0.4]'`(위쪽 하늘 어둡게). 시험에서 `ok` 는 나왔지만 원래 검은 영역이라 눈으로 확인은 못 함(미확인).
 - 모델 없이 되는 종류: `brush` `linear` `radial` `luminanceRange` `colorRange`. 안 되는 종류: `sky` `subject` `background` `object` `prompt`.
@@ -129,7 +129,7 @@ $L run --import /abs/b.jpg spot.add mode=remove points='[[0.88,0.81],[0.97,0.81]
  app.export path=/abs/b_clean.jpg longEdge=1920
 ```
 
-- 시험 결과: `out/cmp3.jpg` 오른쪽. 워터마크 글자는 대부분 지워졌지만 `size` 가 작아 로고 일부가 남았다. `size` 는 긴 변 대비 비율.
+- 시험 결과: `data/out/cmp3.jpg` 오른쪽. 워터마크 글자는 대부분 지워졌지만 `size` 가 작아 로고 일부가 남았다. `size` 는 긴 변 대비 비율.
 - `mode`: remove · heal · clone · fill. 큰 영역은 PhotoCraft `paint.remove` 가 낫다(photocraft.md 3번).
 - 센서 먼지 자동: `spot.findDust`(모델 필요 없음, 미확인).
 
@@ -139,7 +139,7 @@ $L run --import /abs/b.jpg spot.add mode=remove points='[[0.88,0.81],[0.97,0.81]
 $L run --import /abs/photos library.selectAll preset.apply id=lc.warm-film app.export dir=/abs/out longEdge=1080
 ```
 
-- 시험 결과: 폴더의 2장 모두 프리셋이 걸려 `out/<이름>.jpg` 로 나왔다(평탄 렌더와 비교해 둘 다 달라짐).
+- 시험 결과: 폴더의 2장 모두 프리셋이 걸려 `data/out/<이름>.jpg` 로 나왔다(평탄 렌더와 비교해 둘 다 달라짐).
 - 한 장에서 만든 설정을 나머지에: `develop.copy` → `library.selectAll` → `develop.paste`, 또는 `develop.sync`(미확인).
 - 노출을 장끼리 맞추기: `develop.matchExposure`(EXIF 노출 정보가 있는 사진만, 미확인).
 - 감성 형식(켄번스 스틸 여러 장)에서 컷마다 색이 튀지 않게 하는 데 가장 효과가 크다.
@@ -150,7 +150,7 @@ $L run --import /abs/photos library.selectAll preset.apply id=lc.warm-film app.e
 $L render in.png -o out.jpg --opt 'watermark={"text":"출처: 朝日新聞","anchor":"bottomRight","size":0.04}'
 ```
 
-- 시험 결과: `out/wm_crop.jpg`. 한글 · 한자 모두 그림자 있는 흰 글자로 오른쪽 아래에 나왔다.
+- 시험 결과: `data/out/wm_crop.jpg`. 한글 · 한자 모두 그림자 있는 흰 글자로 오른쪽 아래에 나왔다.
 - 옵션: `size`(짧은 변 대비 0.005~0.5) `opacity` `anchor` `inset` `rotation` `color [r,g,b]` `shadow` `vertical`(세로쓰기) `image`(그림 로고).
 - 영상 자막과 겹치지 않게 9:16 에선 `anchor:"topRight"` 등으로 자막 · UI 영역을 피한다.
 
@@ -164,14 +164,14 @@ echo '{"method":"ui.set","params":{"view":"detail"}}
 $L snapshot /abs/land.png --script snap.jsonl -o /abs/ui.png --size 1080x1920
 ```
 
-- 시험 결과: `out/ui.png` 1080×1920. 사진 · 히스토그램 · Light 패널 슬라이더가 진짜 앱 그대로 그려졌다(0.17초, GPU 없이).
+- 시험 결과: `data/out/ui.png` 1080×1920. 사진 · 히스토그램 · Light 패널 슬라이더가 진짜 앱 그대로 그려졌다(0.17초, GPU 없이).
 - 스크립트에서 `{"method":"ui.screenshot"}` 를 여러 번 부르면 `OUT-2.png`, `OUT-3.png`… 연속 화면(보정 전후 단계별)이 된다(미확인). 쓸 수 있는 메서드는 docs/control-protocol.md 를 본다.
 
 ### 그 밖에 (미확인 — 명령 · params 만 확인)
 
 - `develop.targeted target=hue x=.. y=..` — 화면의 한 점을 찍어 그 색 띠만 조정.
 - `profile.import paths=[.cube]` — 3D LUT 를 프로필로. PhotoCraft 와 같은 LUT 를 공유할 수 있다.
-- 프로필 22개(`profiles.list`): `lc.cine.teal-amber` `lc.cine.night-blue` `lc.cine.neon-dusk` `lc.film.warm-print` `lc.muted.pastel-haze` `lc.bw.mono-rich` 등. `develop.profile id=.. amount=0~200` 은 시험에서 `ok` 였고 결과도 나왔다(`out/cmp4.jpg` 오른쪽, 차이는 작음).
+- 프로필 22개(`profiles.list`): `lc.cine.teal-amber` `lc.cine.night-blue` `lc.cine.neon-dusk` `lc.film.warm-print` `lc.muted.pastel-haze` `lc.bw.mono-rich` 등. `develop.profile id=.. amount=0~200` 은 시험에서 `ok` 였고 결과도 나왔다(`data/out/cmp4.jpg` 오른쪽, 차이는 작음).
 - `geometry.upright mode=auto` — 건물 · 간판 사진 기울기 자동 보정.
 - `beforeAfter.*` + snapshot — 보정 전후 나란히 화면.
 - `preset.create` / `preset.export path=x.lcpreset` — Fluma 전용 룩을 파일로 두고 `render --settings x.lcpreset` 로 재사용.

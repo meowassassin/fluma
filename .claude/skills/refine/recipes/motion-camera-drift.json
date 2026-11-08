@@ -1,0 +1,30 @@
+{
+ "id": "motion-camera-drift",
+ "layer": "motion",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "아주 느린 카메라 흐름(2D 밀기 대신 3D 카메라)",
+ "when": "정지 화면이 2.5초 넘게 머물 때 — 멈춘 느낌을 없앤다",
+ "avoid": "디자인 방향이 '담백하게'일 때",
+ "vars": {},
+ "defaults": {
+  "SEC": 4,
+  "PUSH": 0.06
+ },
+ "at": [
+  0.1,
+  3.8
+ ],
+ "steps": [
+  {
+   "jsx": "var cam=C.layers.addCamera(\"Drift Cam\",[C.width/2,C.height/2]);var z=cam.property(\"Camera Options\").property(\"Zoom\").value;for(var i=1;i<=C.numLayers;i++){var l=C.layer(i);if(l!==cam&&!(l instanceof CameraLayer)&&!(l instanceof LightLayer))l.threeDLayer=true;}var cp=cam.property(\"Transform\").property(\"Position\");K(cp,[[0,[C.width/2,C.height/2,-z]],[@SEC@,[C.width/2,C.height/2,-z*(1-@PUSH@)]]]);EASE(cp,30);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 10.08,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/motion-camera-drift/after.png",
+  "before": "data/workspace/probe/recipes/motion-camera-drift/before.png"
+ }
+}

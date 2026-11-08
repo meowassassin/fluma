@@ -7,13 +7,13 @@
 
 ## 지금 Fluma 가 쓰는 범위
 
-`scripts/craft/edit.py`(`assemble` · `ensure`):
+`engine/craft/edit.py`(`assemble` · `ensure`):
 - `file.newSequence`(출력 크기) → `import` → `timeline.place`(V1 영상, A1 믹스) → 장면 경계마다 `markers.add`('1. 훅' · 대사 앞 28자 · 훅 rose / 끝 green / 나머지 blue).
 - 내보내기는 **'YouTube Shorts 1080×1920' 프리셋**(-14 LUFS · -1 dBTP). `export --settings` 로 프리셋 위에 겹친다(시험함): `effects.loudness.enabled: false`(SoundCraft 가 이미 -14 근처이거나 일부러 안 키운 소리), 1080×1920 이 아니면 `frameSize` · 비트레이트.
 - 저장하지 않는 `run` 으로 `markers.exportCsv` → `edit/<id>.markers.csv`, `file.exportFrame` → `edit/<id>.thumb.png`(훅 장면, primary 낱말 0.7초 뒤).
 - 자막은 EffectCraft 가 그리고, SRT 는 업로드용으로 파이썬이 따로 쓴다.
 
-`scripts/craft/adapters/filmcraft.py` POST(`screen` · `video` · `web`): `zoom`(scale · position 키프레임, 프레임 경계 ticks, bezier, 0.3초 들고 나기), `blur`(gaussian_blur + 사각 `masks.add`, 원본 픽셀 좌표라 줌을 따라감), `speed`(`timeline.razor` → `clip.speedDuration` ripple). 'Match Source – Adaptive High Bitrate' 프리셋 `--no-audio` → `<id>.fc.mp4`, 편집 파일 `<id>.fcproj`.
+`engine/craft/adapters/filmcraft.py` POST(`screen` · `video` · `web`): `zoom`(scale · position 키프레임, 프레임 경계 ticks, bezier, 0.3초 들고 나기), `blur`(gaussian_blur + 사각 `masks.add`, 원본 픽셀 좌표라 줌을 따라감), `speed`(`timeline.razor` → `clip.speedDuration` ripple). 'Match Source – Adaptive High Bitrate' 프리셋 `--no-audio` → `<id>.fc.mp4`, 편집 파일 `<id>.fcproj`.
 
 실측 주의:
 - **loudness 는 gain 만**(리미터 없음, -1 dBTP 에 막힘). -35.7 LUFS 믹스는 -19.2 까지만 오른다 → -14 는 SoundCraft 가 맞춘다.
@@ -124,7 +124,7 @@ $FC --compact --project p.fcproj exec file.exportMedia '{"path":"/abs/out.mp4","
 - 기본 엔진에서는 EffectCraft 가 이미 자막을 그리므로 번인하면 두 번 겹친다. 번인은 자막 없는 재료(실제 녹화)를 쓸 때나, 사람이 SRT 를 고쳐 다시 내보낼 때만 쓴다.
 
 ### 7. 트랜스크립트로 편집: 우리 단어 시각을 넣고 자막 · 군말 · 쉼 정리 (verified)
-Whisper 없이도 된다. Fluma 의 `public/audio/<id>.captions.json` 단어 시각을 그대로 넣는다(media ticks).
+Whisper 없이도 된다. Fluma 의 `data/public/audio/<id>.captions.json` 단어 시각을 그대로 넣는다(media ticks).
 ```jsonl
 {"id":"transcript.set","params":{"item":10,"transcript":{"language":"ko","speakers":[{"name":"나레이터"}],"words":[{"text":"이거","start":50803200000,"end":152409600000,"speaker":0}]}}}
 {"id":"transcript.removeFillers","params":{"fillers":["음","어"]}}

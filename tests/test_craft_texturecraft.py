@@ -1,4 +1,4 @@
-"""TextureCraft 어댑터(scripts/craft/adapters/texturecraft.py) — OBJ 세우기 · 카메라 맞추기 · 재질 규칙은 앱 없이,
+"""TextureCraft 어댑터(engine/craft/adapters/texturecraft.py) — OBJ 세우기 · 카메라 맞추기 · 재질 규칙은 앱 없이,
 재질 · 렌더는 TextureCraft 가 설치됐을 때만."""
 from __future__ import annotations
 
@@ -8,9 +8,8 @@ import sys
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts"))
-
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from craft import materials  # noqa: E402
 from craft.adapters import texturecraft as tc  # noqa: E402
 

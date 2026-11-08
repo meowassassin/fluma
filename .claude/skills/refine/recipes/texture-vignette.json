@@ -1,0 +1,26 @@
+{
+ "id": "texture-vignette",
+ "layer": "texture",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "가장자리를 살짝 어둡게(시선 가운데로)",
+ "when": "가운데 재료에 시선을 모을 때",
+ "avoid": "밝은 흰 배경 디자인",
+ "vars": {},
+ "defaults": {},
+ "at": [
+  1.0
+ ],
+ "steps": [
+  {
+   "jsx": "var a=ADJ(\"Vignette\");a.moveToBeginning();var v=FX(a,\"CC Vignette\");P(v,\"Amount\").setValue(35);"
+  }
+ ],
+ "verified": {
+  "ok": true,
+  "diff": 5.4,
+  "msg": null,
+  "thumb": "data/workspace/probe/recipes/texture-vignette/after.png",
+  "before": "data/workspace/probe/recipes/texture-vignette/before.png"
+ }
+}

@@ -11,4 +11,4 @@ order: 13
 - 항목 장면마다 **같은 기준**의 값(무료 한도, 상업 이용 여부 등)과 그 툴의 실제 화면(`screenshot`, `capture.py`로 캡처).
 - TTS·음성 툴이면 나레이션을 그 툴의 목소리로 (`audio_demo`) — 제품이 스스로 증명.
 - verdict 는 "누구에게 무엇" 한 줄. outro 는 훅의 숫자로 돌아간다.
-- 참고: `storyboards/example.json`, `research/무료-TTS-사이트-3개-비교.json`
+- 참고: `data/storyboards/example.json`, `data/research/무료-TTS-사이트-3개-비교.json`
