@@ -4,49 +4,84 @@
 
 # Fluma
 
-**An agent that makes YouTube Shorts the way an editor would — studying real Shorts first, then building every scene in real creative tools, and learning from how the video actually performed.**
+**YouTube Shorts without paying for generative models — Fluma re-edits 2D graphics, images and footage that already exist, the way an editor would.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-5b5bd6)](LICENSE)
 [![Quick start](https://img.shields.io/badge/quick%20start-10%20min-2fb67c)](QUICKSTART.md)
-![Tested on](https://img.shields.io/badge/tested-Linux-555)
-![UI](https://img.shields.io/badge/UI-English%20%C2%B7%20%ED%95%9C%EA%B5%AD%EC%96%B4%20%C2%B7%20%E4%B8%AD%E6%96%87-555)
-![Pipeline](https://img.shields.io/badge/pipeline-Craft%20apps-555)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff69b4)](CONTRIBUTING.md)
+![Tested on](https://img.shields.io/badge/tested-Linux%20·%20macOS%20·%20Windows%20·%20ARM-555)
+![Generation cost](https://img.shields.io/badge/generation%20cost-%240-2fb67c)
 
-[Quick start](QUICKSTART.md) · [How it works](#how-it-works) · [Contributing — all welcome](CONTRIBUTING.md)
+[Quick start](QUICKSTART.md) · [Why Fluma](#why-fluma) · [How it works](#how-it-works) · [Contributing](CONTRIBUTING.md)
 
 **English** · [한국어](README.ko.md)
 
 </div>
 
-<p align="center"><img src="docs/assets/screens/home.webp" alt="Fluma home: give a topic and plan the video together" width="880" /></p>
+<p align="center"><img src="docs/assets/screens/home.webp" alt="Fluma home" width="880" /></p>
 
 ## What is Fluma
 
-Fluma is a local-first agent workspace for vertical short-form video (YouTube Shorts · Reels · TikTok).
-You chat with an agent (your own Claude Code / Codex CLI, or an API key). It:
-
-1. **studies real Shorts first** — finds Shorts on the same topic, breaks them down (cuts, camera moves, colors, speech, on-screen text, screen types) and takes their rhythm and tone, never their content;
-2. **writes a storyboard** with sourced facts, in that channel's spoken style;
-3. **builds every scene in real creative tools** — 16 open-source [Craft apps](#the-craft-apps) and their 9,000+ commands, effects and presets: real screen recordings, annotated documents, diagrams, app mock-ups, info cards, 3D products, drawings — then motion graphics, a sound mix and a cut edit, each as an editable project file;
-4. **keeps every video different** — searches the apps' full feature list per scene, picks verified recipes the recent videos did not use, and warns when a video repeats itself;
-5. **uses real footage for live action** — sourced short clips (the most-replayed moment, reframed to vertical), free stock video and archive photos; the background song is the one Shorts in the same niche actually attach, added in the Shorts editor at upload;
-6. **checks the render** like a reviewer — the first second, freezes, gaps in speech, cut density;
-7. **publishes and learns** — uploads to your channel and maps the retention curve back onto the storyboard's scenes.
-
-Fluma itself does not generate live-action video. Facts need a source URL or they are dropped.
+A local agent workspace for vertical short-form video (YouTube Shorts, Reels, TikTok).
+You talk to the **Claude Code or Codex** you already use. The agent studies Shorts that work, then turns **real material** — web screens, documents, data, photos, sourced clips, stock footage — into a video with open-source creative apps.
+It never calls a video-generation model, so there is no per-video generation bill, and everything it makes stays an editable project file.
 
 ## Why Fluma
 
-- 🔎 **Reference first, enforced** — a storyboard fails the check (`L30`) until real reference Shorts have been analyzed and linked; narration that ends on a bare noun or mixes polite and casual speech fails too (`L31`).
-- 🧰 **Real tools, all of them** — every stage is a project file in a Craft app (`.ecproj` motion, `.scraft` audio, `.fcproj` cut, `.vectorcraft` art, `.psd`, `.deckcraft` …). Open any of them and keep editing; Fluma notices hand edits by hash and never overwrites them. When a fixed material type is not enough, the agent writes the app's commands directly (`type: craft`).
-- 🎨 **You pick the look, effects need a reason** — before the full draft Fluma renders 2–3 design drafts of the first scenes (as measured from the reference · plain · a little motion) side by side and you choose; background motion, transitions, text animation, shadows and push-ins stay off unless the reference or you ask for them (`engine/craft/design.py`, `engine/story/directions.py`). The same material can be made by a different app (`method`, e.g. charts by GridCraft or DeckCraft).
-- 🎲 **No two videos alike** — a searchable catalog of every command, effect and preset (`craft_catalog.py`), verified recipes, and variety checks (`V41–V45`) against your recent videos; actual feature usage is recorded per video.
-- 🎬 **Better than "write me a video prompt"** — prompts are compiled per model from what Fluma measured in the reference (shot length, camera moves, real colors, light), with edit handles, caption-safe zones, character locks and last-frame continuity; uploaded clips are checked against the shot plan.
-- ⏱️ **Built for the Shorts feed** — every render is measured for an empty first frame, no change in the first second, long freezes and pauses (`L32`, `T32–T34`).
-- 📈 **Closes the loop with real numbers** — connect your channel (official OAuth), upload, and see views, engaged views, average % viewed, traffic sources and the retention curve **per storyboard scene**.
-- 🌐 **Korean-first, multilingual** — Korean tone analysis and caption grammar; UI in English, 한국어 and 中文.
-- 🔐 **Local-first** — keys and YouTube tokens live in `~/.shortsforge/` (0600); the agent cannot read them.
+Generative video models are great at scenes that don't exist. But a lot of Shorts are about **re-editing what already exists** — a real app screen, an original document, an exact number, a clip that went viral.
+That is the niche Fluma is built for.
+
+| | Generative video models | Fluma |
+|---|---|---|
+| Cost | Billed per second or per clip, more with every re-roll | **$0 generation** — your agent login, free voices, free stock |
+| Text, numbers, logos | Often garbled or invented | Real documents, real screens, the actual data |
+| Facts | No sources | A source URL for every fact; unsourced facts are dropped |
+| Fixing | Change the prompt and regenerate | Edit one scene, layer or word (project files) |
+| Consistency | Depends on the roll | Rhythm measured from references, gated by checks |
+| Hardware | Cloud GPUs | An ordinary laptop (no GPU needed) |
+
+**Good fit**
+
+- **Tips and explainers** — tool comparisons, real screen recordings with zoom and highlights (`format-compare`)
+- **Rankings and compilations** — the most-replayed moment of each sourced clip, reframed to 9:16, with reaction captions (`format-ranking`, `format-clip`)
+- **Prices, news, daily videos** — data cards filled into a template every day (`format-daily`)
+- **Evidence and documents** — highlights and zooms on the original PDF (PDFCraft)
+- **Mood pieces and ads** — real photos or store footage with short lines (`format-emotional`, `format-ad`)
+- **2D graphics and illustration** — drawings, diagrams and charts the agent draws itself in VectorCraft
+
+**Not a fit** — videos that must show photoreal scenes that never happened (fictional actors, imagined places). Use a generative model for those.
+
+## What it costs
+
+| You need | Cost |
+|---|---|
+| Agent | The Claude Code or Codex login you already have (or an API key) |
+| Voice | Free engines by default (Edge TTS, six local TTS engines); paid ones (ElevenLabs, Typecast, Gemini) are optional |
+| Footage | Sourced clips (credited automatically), free Pexels and Pixabay keys, reference photos |
+| Music | Finds the trending song Shorts in the same niche actually use, to attach from the Shorts editor's library at upload (licensed by YouTube) |
+| Creative apps | 16 open-source [Craft apps](#the-craft-apps) plus Blender — free |
+
+## What it does
+
+1. **Studies real Shorts first** — finds Shorts on the topic and breaks them down (cuts, camera motion, color, speech, on-screen text, screen types). It borrows rhythm and tone, never content.
+2. **Writes a storyboard from sourced facts** — in that channel's voice.
+3. **Builds every scene in real tools** — 16 Craft apps and their 9,000+ commands, effects and presets: real screen recordings, annotated documents, diagrams, app mockups, info cards, 3D products, drawings. Then motion, sound and the cut.
+4. **Reuses existing footage** — picks the most-replayed section of a sourced clip, reframes it to 9:16 following the subject, and keeps the original audio. Credits go into the description automatically.
+5. **Makes each video different** — searches each app's full feature set per scene, prefers proven recipes recent videos haven't used, and flags repetition.
+6. **Checks like a reviewer** — first second, stalls, speech gaps, cut density, with format-specific rules (rankings and clips differ).
+7. **Uploads and learns** — posts to your channel and overlays the retention curve on the storyboard's scenes.
+
+## Features
+
+- 🔎 **References first, enforced** — a storyboard can't pass lint (`L30`) until real reference Shorts are analyzed and linked. Noun-ending lines and mixed politeness fail too (`L31`).
+- 🧰 **The whole real toolset** — every stage leaves a Craft project file (`.ecproj` motion, `.scraft` sound, `.fcproj` cut, `.vectorcraft` drawing, `.psd`, `.deckcraft` …). Keep editing them; hand-edited files are detected by hash and never overwritten. When no material type fits, the agent writes app commands directly (`type: craft`).
+- ♻️ **Reuse editing** — automatic clip-moment picking (`clip.py --best`), subject-tracking vertical reframing (`reframe.py`), trending-song finder (`trend_music.py`), upload guide (`upload_guide.py`).
+- 🎨 **You pick the look; effects need a reason** — the first scenes render as 2–3 design options side by side. Background motion, transitions and text animation stay off unless a reference or you ask for them.
+- 🎲 **No two videos alike** — search every command, effect and preset (`craft_catalog.py`), proven recipes, overlap checks against recent videos (`V41–V45`).
+- ⏱️ **Built for the Shorts feed** — every render is measured for a blank first frame, no change in the first second, long stalls and speech gaps (`L32`, `T32–T34`).
+- 📈 **Real numbers feed the next video** — connect your channel with official OAuth to see views, average percentage viewed, traffic sources and **per-scene** retention.
+- 💻 **Any computer** — Linux, macOS, Windows; Intel, AMD and ARM (Apple Silicon). Docker attaches a GPU when there is one and falls back to the CPU.
+- 🌐 **Korean first, multilingual** — Korean tone analysis and caption grammar; UI in English, 한국어, 中文.
+- 🔐 **Local first** — keys and YouTube tokens live in `~/.shortsforge/` (0600), out of the agent's reach.
 
 ## How it works
 
@@ -142,7 +177,7 @@ npm --prefix studio run dev                     # → http://localhost:4311
 
 - Which way to install (Docker · direct · development), what your computer needs, where your videos are: [QUICKSTART.md](QUICKSTART.md#pick-a-path)
 - Minimal install: `python3 engine/doctor.py --fix --profile lite --core` (the rest installs itself on first use)
-- Docker (everything included): `cd docker && docker compose pull && docker compose up -d`
+- Docker (everything included, adapts to OS and GPU): `sh docker/start.sh` (Linux, macOS) or `docker\start.ps1` (Windows)
 - Or let your own agent install it: give Claude Code / Codex this skill — https://raw.githubusercontent.com/meowassassin/fluma/main/docs/skill/SKILL.md
 
 ## Skills
@@ -157,7 +192,8 @@ npm --prefix studio run dev                     # → http://localhost:4311
 | `research` | collects facts with source URLs; fewer than five sources → the topic is dropped |
 | `trends` | finds Shorts by topic or hashtag for the Trends screen |
 | `voice` · `scene-edit` · `character` | narration fitting, one-scene edits, lip-synced mascot |
-| `format-*` | ready formats: compare, daily price, ad, emotional |
+| `refine` | polish each scene after the draft (try → compare before/after → keep) |
+| `format-*` | ready formats: compare, daily price, ad, emotional, ranking, clip reaction |
 
 ## Project layout
 
@@ -172,7 +208,7 @@ fluma/
 │  │  └─ craft_catalog.py · craft_variety.py · crafts.py
 │  ├─ voice/               TTS · audio assembly · voice matching · engines/<voice> · sfx
 │  ├─ research/            trends · Shorts X-ray · reference style & channel cards
-│  ├─ capture/             web / terminal recording · demo runs · memes · stock footage · icons
+│  ├─ capture/             web / terminal recording · demo runs · sourced clips · vertical reframing · memes · stock · icons
 │  ├─ story/               storyboard helpers — direction · design drafts (directions.py) · variants · tone edit
 │  ├─ checks/              lint · tempo · edit density · gates
 │  ├─ publish/             YouTube upload
@@ -181,7 +217,7 @@ fluma/
 ├─ studio/                 web app — React UI (src/), API server, agent harness (agent/system.md)
 ├─ .claude/skills/         agent skills (plan · storyboard · produce · crafts · …)
 ├─ data/                   everything made while working (git-ignored) — see data/README.md
-├─ docker/                 Dockerfile · docker-compose.yml
+├─ docker/                 Dockerfile · docker-compose.yml · start.sh · start.ps1 (adapts to OS and GPU)
 ├─ docs/  tests/
 └─ tools/                  installed Craft apps (git-ignored)
 ```
@@ -203,7 +239,8 @@ fluma/
 - [ ] Use past videos' per-scene drop-off automatically when planning hooks
 - [ ] Layout polish: pinned topic title, circle highlight on photos, keyword-colored captions
 - [ ] One complete public demo with its hand-work and performance numbers
-- [ ] macOS / Windows CI
+- [x] Linux, macOS, Windows and ARM CI; amd64 and arm64 Docker images
+- [x] Clip reuse: most-replayed moments, vertical reframing, trending-song guide
 
 ## Contributing
 
@@ -211,7 +248,7 @@ fluma/
 
 ## Status
 
-Early and opinionated. Tested on Linux only. Reference videos are analyzed for *structure*; their footage, voices, drawings and scripts are never copied — rights to memes, music, logos or footage you add yourself are your responsibility.
+Early and opinionated. CI covers Linux (x86, ARM), macOS, Windows and Docker. Reference videos are analyzed for *structure*; their footage, voices, drawings and scripts are never copied — rights to sourced clips, memes, music and logos stay with their owners and using them is your call (credits are added to the description automatically).
 
 ## License
 

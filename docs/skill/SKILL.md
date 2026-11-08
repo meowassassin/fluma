@@ -1,6 +1,6 @@
 ---
 name: fluma-video
-description: Use when the user wants to install or run Fluma, or wants a short-form explainer video made with Fluma from a topic (especially developer / IT topics shown with real screens — real command output, real code and official docs). Installs Fluma, starts the Studio and kicks off the first video's planning chat. Also use when the user gives this skill URL.
+description: Use when the user wants to install or run Fluma, or wants a short-form video made with Fluma from a topic without paying for generative models — built from real material (real screens and command output, documents, data, photos, sourced clips, stock footage, 2D drawings). Installs Fluma, starts the Studio and kicks off the first video's planning chat. Also use when the user gives this skill URL.
 compatibility: Needs a terminal, git, network and either Docker or Python 3.10+ / Node.js 20+ / ffmpeg. Linux, macOS, Windows (Docker Desktop / WSL 2).
 metadata:
   upstream: "https://github.com/meowassassin/fluma"
