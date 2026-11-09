@@ -83,13 +83,13 @@ def specs(sb: dict) -> list[dict]:
                      {"t": f"{HEAD:g}-{HEAD + need:.1f}s", "what": f'{speaker} says: "{line}"' if line else (m.get("prompt") or sc.get("beat") or "")},
                      {"t": f"{HEAD + need:.1f}-{HEAD + need + TAIL:.1f}s", "what": "settle, no new action (cut handle)"}]
         key = keyframe_file(sb["id"], m["id"])
-        first = str(key.relative_to(ROOT)) if key else None
+        first = key.relative_to(ROOT).as_posix() if key else None
         cont = m.get("continue")
         if cont is None and prev and set(prev.get("cast") or []) & set(m.get("cast") or []) and prev["scene"] == i - 1:
             cont = prev["id"]                      # 바로 앞 장면에 같은 인물 → 그 클립 끝에서 이어 시작
         if cont and not key:
             f = gen_dir(sb["id"]) / f"{cont}.last.png"
-            first = str(f.relative_to(ROOT)) if f.exists() else f"(클립 {cont} 을 올리면 shotplan.py frames 가 만든다)"
+            first = f.relative_to(ROOT).as_posix() if f.exists() else f"(클립 {cont} 을 올리면 shotplan.py frames 가 만든다)"
         out.append({
             "id": m["id"], "scene": i, "gen": m.get("gen"), "image_model": m.get("image_model"),
             "subject": [f"{c['name']}: {c.get('look', '')}" for c in who],
@@ -137,7 +137,7 @@ def frames(sb: dict) -> list[str]:
         out = d / f"{m['id']}.last.png"
         r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{max(a, b - 0.05):.3f}", "-i", str(f), "-frames:v", "1", str(out)], capture_output=True)
         if r.returncode == 0 and out.exists():
-            made.append(str(out.relative_to(ROOT)))
+            made.append(out.relative_to(ROOT).as_posix())
     return made
 
 
@@ -186,7 +186,7 @@ def check_key(sb: dict, spec: dict) -> dict:
     elif isinstance(want, int) and want >= 2 and 0 <= faces < want - 1:
         issues.append(f"얼굴 {faces}개 — {want}명이 보여야 함")
         fixes.append(f"exactly {want} people visible, faces toward camera")
-    return {"id": spec["id"], "kind": "keyframe", "file": str(f.relative_to(ROOT)), "size": [w, h], "issues": issues, "fixes": fixes}
+    return {"id": spec["id"], "kind": "keyframe", "file": f.relative_to(ROOT).as_posix(), "size": [w, h], "issues": issues, "fixes": fixes}
 
 
 def check_clip(sb: dict, spec: dict) -> dict:
@@ -244,7 +244,7 @@ def check_clip(sb: dict, spec: dict) -> dict:
             if want and len(miss) > len(want) / 2:
                 issues.append(f"대사가 다름(들린 말: '{said[:60]}')")
                 fixes.append(f'quote the exact line once: {spec["dialogue"]["speaker"]} says: "{spec["dialogue"]["line"]}"; no other speech')
-    return {"id": spec["id"], "kind": "clip", "file": str(f.relative_to(ROOT)), "dur": round(p["dur"], 2), "size": [p["w"], p["h"]],
+    return {"id": spec["id"], "kind": "clip", "file": f.relative_to(ROOT).as_posix(), "dur": round(p["dur"], 2), "size": [p["w"], p["h"]],
             "issues": issues, "fixes": fixes}
 
 

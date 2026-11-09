@@ -291,7 +291,7 @@ def main() -> int:
             out = preview(a.id, d, a.approve)
         except catalog.NeedApproval as e:
             fail("feel", stage="feel", error=f"승인 필요: {e}", notes=["승인 없이 무료 시안(색 · 질감만)을 보려면 설정 → 모델 → 그리기를 '무료 · 로컬'로"])
-        ok("feel", sheet=str(out.relative_to(ROOT)), options=[o["name"] for o in d["options"]], route=d["route"])
+        ok("feel", sheet=out.relative_to(ROOT).as_posix(), options=[o["name"] for o in d["options"]], route=d["route"])
         return 0
     ops = d["options"]
     o = ops[int(a.which) - 1] if a.which.isdigit() and 1 <= int(a.which) <= len(ops) else next((x for x in ops if x.get("name") == a.which), None)
@@ -317,7 +317,7 @@ def main() -> int:
                 old.unlink()
         dst = up / f"{d['for_mid']}{drawn.suffix}"
         dst.write_bytes(drawn.read_bytes())
-        key = str(dst.relative_to(ROOT))
+        key = dst.relative_to(ROOT).as_posix()
     ok("feel", picked=o["name"], route=d["route"], keyframe=key)
     return 0
 

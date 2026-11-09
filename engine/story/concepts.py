@@ -231,7 +231,7 @@ def main() -> int:
         ok("concepts", concepts=len(d["concepts"]), notes=note)
         return 0
     v, png = sketch(a.id, d)
-    ok("concepts", video=str(v.relative_to(ROOT)), sheet=str(png.relative_to(ROOT)), notes=note)
+    ok("concepts", video=v.relative_to(ROOT).as_posix(), sheet=png.relative_to(ROOT).as_posix(), notes=note)
     return 0
 
 

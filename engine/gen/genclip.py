@@ -201,7 +201,7 @@ def make_keys(sb: dict, mid: str | None = None, n: int = 3, approve: bool = Fals
             r = shotplan.compile_image(sp, None, k % 3, lk)
             got = OR.make_image(model, r["prompt"], g / f"{sp['id']}-k{k + 1}", aspect=sp["aspect"])
             catalog.record(sb["id"], "make.image", model, got["cost"], f"{sp['id']} 키프레임 시안 {k + 1}", est=each)
-            made.append(str(got["file"].relative_to(ROOT)))
+            made.append(got["file"].relative_to(ROOT).as_posix())
     return made
 
 
@@ -215,7 +215,7 @@ def pick_key(sb: dict, mid: str, n: int) -> str:
             old.unlink()
     dst = up / f"{mid}{src.suffix}"
     dst.write_bytes(src.read_bytes())
-    return str(dst.relative_to(ROOT))
+    return dst.relative_to(ROOT).as_posix()
 
 
 def run(sb: dict, mid: str | None = None, approve: bool = False) -> list[str]:
@@ -264,7 +264,7 @@ def run(sb: dict, mid: str | None = None, approve: bool = False) -> list[str]:
         catalog.record(sb["id"], "make.video", model, cost, f"{sp['id']} 영상 {dur}초", est=j.get("est"), extra={"job": j["job"]})
         j["status"] = "downloaded"
         jobs_f.write_text(json.dumps(jobs, ensure_ascii=False, indent=1), "utf-8")
-        done.append(str(out.relative_to(ROOT)))
+        done.append(out.relative_to(ROOT).as_posix())
     return done
 
 

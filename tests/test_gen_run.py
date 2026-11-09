@@ -81,7 +81,7 @@ def test_feel_drawn_preview_becomes_keyframe(world):
 import sys; sys.path.insert(0, 'engine'); import paths, feel, json
 from pathlib import Path
 feel.STORE = Path({str(feel.STORE)!r})
-sys.argv = ['feel', 'pick', '{SID}', '2', '{sbp}']
+sys.argv = ['feel', 'pick', '{SID}', '2', {str(sbp)!r}]
 feel.main()"""], cwd=ROOT, capture_output=True, text=True)
     assert r.returncode == 0, r.stderr
     assert (ROOT / "data" / "public" / "uploads" / SID / "walk.png").exists()          # 고른 그린 시안 = 영상의 첫 프레임
