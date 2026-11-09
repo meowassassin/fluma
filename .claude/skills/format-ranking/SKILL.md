@@ -12,6 +12,7 @@ order: 15
 1. **후보 찾기** — `python3 engine/capture/clip.py search "<주제 영어로도>" --shorts --max-sec 60 --n 40`(조회 1만 미만 · AI 생성 영상은 자동 제외). 목록을 사용자에게 보이고 쓸 것을 고른다. 한국어 · 영어 둘 다. 실존 인물(특히 아이)이 나오는 클립은 확인받는다.
 2. **구간 받기 + 세로로** — 클립마다 `clip.py fetch <콘티 id> r1 <주소> --best 3.5 --vertical`
    - `--best`: 유튜브 '가장 많이 다시 본 구간'에서 3.5초를 고른다(손으로 in · out 을 찍지 않는다)
+   - `--moment "고양이가 놀라 뛰어오르는 순간"`: 보기(VL) 모델이 영상을 보고 그 순간을 찾는다(다시 본 구간보다 우선, 길이는 --best). 콘셉트의 한 방에 맞는 순간이 따로 있을 때
    - `--vertical`: 주인공(동물 · 사람)을 찾아 카메라가 따라가는 9:16. 둘이 세로 화면에 안 들어가면 가운데 띠 + 뒤는 같은 영상을 흐리게(가로 원본 순위 쇼츠의 표준 배치). 가로판은 clip_h.mp4 로 남는다
 3. **콘티** — 장면 = 클립 하나, 5위 → 1위(마지막이 가장 센 것). 첫 장면 3초 이하(L05). 역할 hook · item … · reveal, `visual.kind: "footage"`, `screen: "실사 영상"`, `reference: ["<X-ray 한 영상 id>"]`, id 는 `YYYY-MM-DD-이름-01`.
 4. **화면 요소(refine, 장면 0 = 영상 전체 · COMP=Main)** — `typo-headline`(L1 강조색 · L2 "랭킹 TOP5", T1 = 영상 끝) · `typo-rank`(ITEMS 1위부터 · TIMES 각 클립 시작 초).

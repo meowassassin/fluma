@@ -166,6 +166,8 @@ def models(cap: str, refresh: bool = False) -> list[dict]:
             r = _chat_row(m, "tokens")
         else:
             r = _chat_row(m, "unit")
+        if cap == "embed" and "image" in mods:
+            r["supports"] = [*r["supports"], "그림도(화면 종류 판별)"]
         free = m["id"].endswith(":free") or (bool(r["price"]) and all((v or 0) == 0 for v in r["price"].values()))
         rows.append({"id": m["id"], "name": m.get("name") or m["id"], "free": free, **r})
     rows.sort(key=lambda r: (not r["ok"], r["id"]))

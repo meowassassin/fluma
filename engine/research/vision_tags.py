@@ -71,16 +71,29 @@ def _pixels(img: Image.Image) -> np.ndarray:
 
 
 def classify(image, ocr_lines: list[dict] | None = None) -> dict:
-    """→ {kind, score, top:[(kind, p), …3]}. ocr_lines(ocr.read 결과)가 있으면 기사 표지로 한 번 더 가른다"""
-    S = _load()
-    img = Image.open(image) if not isinstance(image, Image.Image) else image
-    # 세로 쇼츠는 위아래 띠(검정 · 제목)가 많아 가운데 정사각을 본다 — 내용이 가운데 띠에 있다
-    e = S["vis"].run(None, {"pixel_values": _pixels(img)})[0][0]
-    e = e / np.linalg.norm(e)
-    logits = 100.0 * S["text"] @ e
-    p = np.exp(logits - logits.max()); p /= p.sum()
-    order = np.argsort(-p)
-    kind = KINDS[order[0]][0]
+    """→ {kind, score, top:[(kind, p), …3]}. ocr_lines(ocr.read 결과)가 있으면 기사 표지로 한 번 더 가른다
+    설정에서 그림도 받는 '찾기 · 임베딩' 모델(멀티모달)을 골랐으면 그 모델로, 아니면 로컬 CLIP"""
+    top = None
+    if not isinstance(image, Image.Image):
+        try:
+            import embed
+            top = embed.zero_shot(image, KINDS)
+        except Exception as e:  # noqa: BLE001 — 키 없음 · 네트워크 → 로컬 CLIP
+            print(f"[vision_tags] 임베딩 모델 실패 — 로컬 CLIP: {e}", file=sys.stderr)
+    if top:
+        kind, score = top[0]
+        top3 = [(n, round(p, 3)) for n, p in top[:3]]
+    else:
+        S = _load()
+        img = Image.open(image) if not isinstance(image, Image.Image) else image
+        # 세로 쇼츠는 위아래 띠(검정 · 제목)가 많아 가운데 정사각을 본다 — 내용이 가운데 띠에 있다
+        e = S["vis"].run(None, {"pixel_values": _pixels(img)})[0][0]
+        e = e / np.linalg.norm(e)
+        logits = 100.0 * S["text"] @ e
+        p = np.exp(logits - logits.max()); p /= p.sum()
+        order = np.argsort(-p)
+        kind, score = KINDS[order[0]][0], float(p[order[0]])
+        top3 = [(KINDS[i][0], round(float(p[i]), 3)) for i in order[:3]]
     if ocr_lines is not None:
         import ref_channel
         txt = " ".join(o["text"] for o in ocr_lines)
@@ -88,7 +101,7 @@ def classify(image, ocr_lines: list[dict] | None = None) -> dict:
             kind = "기사"
         elif kind == "기사" and not ref_channel.NEWS.search(txt):
             kind = "실제 화면"
-    return {"kind": kind, "score": round(float(p[order[0]]), 3), "top": [(KINDS[i][0], round(float(p[i]), 3)) for i in order[:3]]}
+    return {"kind": kind, "score": round(float(score), 3), "top": top3}
 
 
 if __name__ == "__main__":

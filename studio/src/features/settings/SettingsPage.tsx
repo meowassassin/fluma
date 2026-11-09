@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Icon } from "../../ui/Icon";
 import { EngineIcon, modelIconSrc } from "../../ui/EngineIcon";
-import { Button, EmptyState, Field, Segmented, Select, Skeleton, Spinner, Switch, Tag, confirmDialog, cx } from "../../ui/kit";
+import { Button, EmptyState, Field, Popover, Segmented, Select, Skeleton, Spinner, Switch, Tag, confirmDialog, cx } from "../../ui/kit";
 import { api, errMsg } from "../../lib/api";
 import { qc, qk, useEngines, useSettings } from "../../lib/queries";
 import type { EngineMeta, Settings } from "../../lib/types";
@@ -403,20 +403,46 @@ const ModelsSec: React.FC<{ keys?: GenKey[] }> = ({ keys }) => {
   </>;
 };
 
+/** 모델 고르기 — 아이콘(만든 회사 마크, 없으면 머리글자) · 가격 · 지원 칸이 보이는 목록. 찾기 칸으로 이름을 거른다 */
+const ModelIcon: React.FC<{ id: string; size?: number }> = ({ id, size = 22 }) => {
+  const vendor = id.split("/")[0] || id;
+  return <EngineIcon id={vendor} src={id === "local" ? null : modelIconSrc(id)} title={vendor} size={size} />;
+};
+
 const CapPick: React.FC<{ c: CapRow; disabled: boolean; onPick: (v: string) => void }> = ({ c, disabled, onPick }) => {
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
   const { data: rows, isFetching } = useQuery({ queryKey: ["cap-models", c.cap], queryFn: ({ signal }) => sapi.capModels(c.cap, false, signal), enabled: open && !disabled, staleTime: 3600e3 });
   const cur = c.set || "";
-  const opts: { value: string; label: string; disabled?: boolean }[] = [
-    { value: "", label: c.default_on ? t("기본(추천 모델 자동){m}", { m: c.chosen ? ` — ${c.chosen}` : "" }) : t("무료 · 로컬 — {l}", { l: t(c.local) }) },
-    { value: "local", label: t("무료 · 로컬 — {l}", { l: t(c.local) }) },
-    ...((rows as ModelRow[] | undefined) ?? []).filter((r) => r.ok).map((r) => ({ value: r.id, label: `${r.free ? "🆓 " : ""}${r.id}${r.price_label ? " · " + t(r.price_label) : ""}${r.supports.length ? " · " + r.supports.join(" · ") : ""}` })),
-  ];
-  if (cur && cur !== "local" && !opts.some((o) => o.value === cur)) opts.push({ value: cur, label: cur });
+  const list = ((rows as ModelRow[] | undefined) ?? []).filter((r) => r.ok && (!q || r.id.toLowerCase().includes(q.toLowerCase()) || r.name.toLowerCase().includes(q.toLowerCase())));
+  const pick = (v: string) => { setOpen(false); setQ(""); if (v !== cur) onPick(v); };
+  const shown = cur && cur !== "local" ? cur : c.chosen;
+  const label = cur === "local" ? t("무료 · 로컬") : shown ?? t("무료 · 로컬");
   return <Row t={t(c.title)} d={c.chosen ? t("지금: {m}", { m: c.chosen }) : t("지금: 무료 · 로컬 — {l}", { l: t(c.local) })}>
-    <span onFocus={() => setOpen(true)} onMouseEnter={() => setOpen(true)}>
-      {disabled ? <Tag>{t("키 필요")}</Tag> : <Select size="sm" value={cur} onChange={onPick} aria-label={t(c.title)} options={isFetching && !rows ? [...opts, { value: "_", label: t("목록 받는 중"), disabled: true }] : opts} />}
-    </span>
+    {disabled ? <Tag>{t("키 필요")}</Tag> :
+      <Popover open={open} onOpenChange={setOpen} align="end" width={460} trigger={
+        <button className="mp-trigger" aria-label={t(c.title)}>
+          {shown && cur !== "local" ? <ModelIcon id={shown} size={20} /> : <Icon n="engine" s={16} />}
+          <span className="mp-trigger-t">{label}</span><Icon n="down" s={12} />
+        </button>}>
+        <div className="mp">
+          <input className="in mp-q" autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("모델 찾기")} aria-label={t("모델 찾기")} />
+          <div className="mp-list" role="listbox" aria-label={t(c.title)}>
+            {c.default_on && <button role="option" aria-selected={!cur} className={cx("mp-row", !cur && "on")} onClick={() => pick("")}>
+              <Icon n="sparkle" s={18} /><span className="mp-main"><b>{t("기본(추천 모델 자동){m}", { m: "" })}</b><small>{c.chosen ?? ""}</small></span></button>}
+            <button role="option" aria-selected={cur === "local" || (!cur && !c.default_on)} className={cx("mp-row", (cur === "local" || (!cur && !c.default_on)) && "on")} onClick={() => pick("local")}>
+              <Icon n="engine" s={18} /><span className="mp-main"><b>{t("무료 · 로컬")}</b><small>{t(c.local)}</small></span></button>
+            {isFetching && !rows && <div className="mp-empty"><Spinner /> {t("목록 받는 중")}</div>}
+            {list.map((r) => (
+              <button key={r.id} role="option" aria-selected={r.id === cur} className={cx("mp-row", r.id === cur && "on")} onClick={() => pick(r.id)} title={r.name}>
+                <ModelIcon id={r.id} />
+                <span className="mp-main"><b>{r.id}</b><small>{[r.price_label && t(r.price_label), ...r.supports].filter(Boolean).join(" · ")}</small></span>
+                {r.free && <Tag tone="ok">{t("무료")}</Tag>}
+              </button>))}
+            {rows && !list.length && <div className="mp-empty">{t("맞는 모델이 없어요")}</div>}
+          </div>
+        </div>
+      </Popover>}
   </Row>;
 };
 

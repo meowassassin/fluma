@@ -27,6 +27,7 @@ python3 engine/craft/session.py coverage <콘티>                 # 앱 × 층 �
    **효과 · 필터 · 프리셋을 고를 때는 견본 판부터 본다** — `.claude/skills/crafts/probe/<앱>.md` 의 판 목록(EffectCraft 효과 분류별 · 프리셋 세 시점 띠 · PhotoCraft 필터 메뉴별).
    문법은 `.claude/skills/crafts/reference/<앱>.md`.
 4. **시도 → 보기 → 고치기** — `try` 가 전 · 후 PNG(소리는 WAV)를 준다. **반드시 열어서 본다.** 기본값 그대로의 효과는 대개 거칠다 — 세기 · 위치 · 타이밍(키프레임)을 고쳐 다시 `try`. 두세 번은 기본.
+   움직임 · 타이밍은 정지 그림으로 안 보인다 — 보기(VL) 모델이 있으면 장면을 짧게 렌더해 `python3 engine/providers/see.py ask <장면 mp4> --q "등장 타이밍이 말과 맞나 · 거칠게 튀는 곳은?"` 로 움직임까지 본다. 어디를 다듬을지 모르겠으면 `see.py critique <콘티>` 의 issues 부터.
 5. **남기기** — `keep`(layer · why 필수). 다음 장면으로. 끝나면 `coverage` 로 앱 · 층이 한쪽에 몰리지 않았는지 본다.
 6. 전체 초안 다시(produce) → 이어 보기에서 장면 사이가 튀지 않는지.
 

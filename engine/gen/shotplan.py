@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -114,6 +115,8 @@ def specs(sb: dict) -> list[dict]:
             "first_frame": first,
             "references": [c["ref"] for c in who if c.get("ref")],
             "people": m.get("people"),
+            "physics": m.get("physics"), "invariants": m.get("invariants") or [], "end_state": m.get("end_state"),
+            "must": m.get("must") or [], "avoid": m.get("avoid") or [], "ref_roles": m.get("ref_roles"),
             "pace": lk.get("pace"),
             "feel": fe.get("name"),
             "from_reference": {"refs": lk.get("refs"), "shot": rs} if rs else None,
@@ -321,8 +324,57 @@ def _dedupe(line: str) -> str:
     return ", ".join(out)
 
 
+# ---------------------------------------------------------------- 프롬프트 문법(오픈소스 · 커뮤니티 · 공식 가이드 조사 2026-11-09 — engine/gen/models/PROMPTING.md)
+# 움직임 물리: 모델은 실제 영상으로 배웠다 — '어떻게' 움직이는지(무게 · 끌림 · 접촉 · 가라앉음)를 한 문장 주면 미끄러짐 · 떠다님 · 녹아내림이 크게 준다
+PHYSICS = [
+    (r"\b(cat|dog|animal|kitten|puppy|bird|horse|fox)\b|고양이|강아지|동물|새", "the animal's weight shifts before it moves, paws plant firmly, fur ripples and settles"),
+    (r"\b(walk|walks|walking|stroll)\b|걷", "natural gait, weight shifts from foot to foot, feet plant firmly on each step"),
+    (r"\b(run|runs|running|sprint)\b|달리|뛰", "leaning forward, feet leave the ground, clothing trails behind"),
+    (r"\b(jump|jumps|leap)\b|점프|뛰어오", "a crouch before the jump, an arc through the air, a landing that absorbs the weight"),
+    (r"\b(hand|hands|holds|grab|picks up|cup|phone)\b|손|잡", "fingers wrap around the object, grip visible, the object tilts with the wrist"),
+    (r"\b(hair)\b|머리카락", "hair moves with the head and settles a moment later"),
+    (r"\b(dress|coat|cloth|fabric|scarf|skirt)\b|옷|천", "fabric folds and swings with the body, then settles"),
+    (r"\b(pour|pours|liquid|coffee|water|drink)\b|붓|물|커피", "liquid falls in a steady column, splashes on contact, ripples spread and fade"),
+    (r"\b(rain|rainy)\b|비 ", "rain falls in straight lines, droplets bounce off hard surfaces"),
+    (r"\b(steam|smoke)\b|김|연기", "steam rises, curls and thins out"),
+    (r"\b(car|bike|motorbike|vehicle)\b|자동차|차량|오토바이", "the vehicle leans into turns, suspension absorbs bumps, wheels spin with motion blur"),
+    (r"\b(fall|falls|drop|drops|toss|throw)\b|떨어|던지", "it falls with gravity, bounces once and settles"),
+    (r"\b(crowd|people|street)\b|사람들|거리", "people move at slightly different speeds"),
+    (r"\b(fire|flame|candle)\b|불|촛불", "flames flicker upward, light flickers on nearby surfaces"),
+]
+NEG_DEFAULT = ["morphing", "extra limbs", "warped hands", "flicker", "text", "watermark", "logo", "jump cuts", "frame jitter"]
+LIMITS = {"wan": (800, 500), "runway": (1000, 0), "kling": (2500, 2500)}      # 프롬프트 · 부정 칸 글자 한도(모델 문서)
+
+
+def physics_of(v: dict) -> str:
+    if v.get("physics"):
+        return str(v["physics"]).rstrip(".")
+    blob = " ".join(str(v.get(k) or "") for k in ("action", "setting", "subject")).lower()
+    got = [ph for pat, ph in PHYSICS if re.search(pat, blob)]
+    return "; ".join(dict.fromkeys(got[:2]))
+
+
+def negatives(v: dict, m: str) -> list[str]:
+    """부정어는 '명사 목록'으로(문장 속 'no X' 는 X 로 읽힌다) — 기본 + 장면 위험 + 사용자가 적은 avoid. 6~10개로"""
+    n = list(NEG_DEFAULT)
+    if v.get("dialogue"):
+        n += ["subtitles", "captions"]                           # 대사가 있으면 자막을 박아 넣는 버릇(특히 Veo)
+    if "no music" in (v.get("audio") or ""):
+        n += ["background music"]
+    if (v.get("people") or 0) == 1:
+        n += ["duplicate person", "bystanders"]
+    n += [str(x) for x in v.get("avoid") or []]
+    return list(dict.fromkeys(n))[:12]
+
+
+def _sentence(*xs) -> str:
+    return " ".join(x.strip().rstrip(".") + "." for x in xs if x and str(x).strip())
+
+
 def compile_image(spec: dict, model: str | None = None, k: int = 0, lk: dict | None = None) -> dict:
-    """샷 설계 → 키프레임 그림 프롬프트(이미지 모델 문법). 영상의 첫 프레임이 되므로 '시작 순간'의 정지 장면을 그린다"""
+    """샷 설계 → 키프레임 그림 프롬프트. 영상의 첫 프레임이 되므로 '시작 순간'의 정지 장면.
+    조사 반영: 용도 · 매체 · 비율을 먼저 말한다 · 피사체를 구체 명사와 2~3개 디테일로 · 빛의 출처 · 지킬 것(invariants) · 참조 그림은 번호와 역할로 ·
+    Gemini(Nano Banana)는 '없을 것'보다 '있을 것'으로(positive framing), Midjourney 는 --no 칸, Seedream · GPT 는 짧은 금지 문장"""
     mdl = IMAGE_ALIAS.get((model or spec.get("image_model") or PAIR.get(ALIAS.get(str(spec.get("gen") or "").lower(), ""), "nanobanana")).lower(), "nanobanana")
     c = image_card(mdl)
     cp = c.get("compile") or {}
@@ -331,8 +383,11 @@ def compile_image(spec: dict, model: str | None = None, k: int = 0, lk: dict | N
         v["framing"] = f"low-angle {v['framing']}" if "close" not in (v.get("framing") or "") else f"three-quarter view {v['framing']}"
     who = _subject(v)
     action = (v.get("action") or "").rstrip(".")
+    refs = list(v.get("references") or [])
+    roles = [f"Image {i + 1}: keep this {r}" for i, r in enumerate(v.get("ref_roles") or ["person's face and identity"] * len(refs))][:len(refs)]
+    keep = "; ".join(str(x) for x in v.get("invariants") or [])
     parts = {
-        "subject": who, "action": f"{action}, frozen at the opening moment of the motion" if action else "",
+        "subject": who, "action": f"{action}, captured at the opening moment of the motion" if action else "",
         "setting": v.get("setting") or "", "framing": f"{v['framing']}, {v['lens']}",
         "lighting": v.get("lighting") or "", "color": f"color palette: {v['color']}" if v.get("color") else "",
         "mood": f"mood: {v['mood']}" if v.get("mood") else "", "style": v.get("style") or DEFAULT_STYLE,
@@ -340,26 +395,35 @@ def compile_image(spec: dict, model: str | None = None, k: int = 0, lk: dict | N
     order = [parts[x] for x in cp.get("order") or parts if parts.get(x)]
     notes = [c["note"]] if c.get("note") else []
     style = cp.get("style")
-    no_text = "No text, no captions, no logos, no watermark."
-    space = "Leave the lower third calm (captions go there)."
-    if style == "phrases":
-        prompt = _dedupe(", ".join(order)) + f" {cp.get('aspect', '--ar 9:16')} --no text, watermark, logo"
-    elif style == "labeled":
-        prompt = "\n".join(f"{x.capitalize()}: {parts[x]}" for x in (cp.get("order") or parts) if parts.get(x)) + f"\nComposition: vertical 9:16. {space}\n{no_text}"
-    elif style == "narrative":
-        prompt = f"A {parts['style']} image. {parts['framing'].capitalize()} of {who or 'the subject'}{', ' + parts['action'] if action else ''}" \
-                 f"{'. ' + parts['setting'] if parts['setting'] else ''}. {parts['lighting']}. {parts['color']}. {parts['mood']}. " \
-                 f"Vertical 9:16 aspect ratio. {space} {no_text}"
-    else:                                                  # sentences(Seedream 등)
-        prompt = _dedupe(", ".join(order)) + f". Vertical 9:16. {space} {no_text}"
+    purpose = "The first frame of a vertical 9:16 short video"
+    space = "Keep the lower third visually calm for captions."
+    if style == "phrases":                                       # Midjourney: 쉼표 구 + 매개변수
+        prompt = _dedupe(", ".join(order)) + f", {'; '.join(roles) + ', ' if roles else ''}{cp.get('aspect', '--ar 9:16')} --style raw --no text, watermark, logo, extra fingers"
+    elif style == "labeled":                                     # GPT Image: 칸마다
+        rows = [f"Purpose: {purpose}."] + [f"{x.capitalize()}: {parts[x]}" for x in (cp.get("order") or parts) if parts.get(x)]
+        rows += [f"References: {'; '.join(roles)}"] if roles else []
+        rows += [f"Keep unchanged: {keep}"] if keep else []
+        prompt = "\n".join(rows + [f"Composition: vertical 9:16. {space}", "Do not include any text, captions, logos or watermarks."])
+    elif style == "narrative":                                   # Nano Banana: 장면을 문장으로, 있을 것으로 말하기
+        prompt = _sentence(f"{purpose}: a {parts['style']} image", f"{parts['framing'].capitalize()} of {who or 'the subject'}{', ' + parts['action'] if action else ''}",
+                           parts["setting"], parts["lighting"], parts["color"], parts["mood"], "; ".join(roles), f"Keep unchanged: {keep}" if keep else "",
+                           space, "Clean surfaces; any signs or labels face away or stay out of focus")
+    else:                                                        # Seedream 등: 짧은 문장, 참조 번호 · 역할, 짧은 금지
+        prompt = _dedupe(", ".join(order)) + ". " + _sentence(purpose, "; ".join(roles), f"Keep unchanged: {keep}" if keep else "", space,
+                                                              "No text, no captions, no logos, no watermark")
     prompt = " ".join(prompt.replace(" . ", " ").split(" ")).replace("..", ".")
     return {"model": mdl, "title": c.get("title") or mdl, "variant": ["설계대로", "더 가까운 구도", "다른 각도"][k], "prompt": prompt.strip(),
-            "settings": {"aspect": v["aspect"], "how": cp.get("aspect")}, "references": list(v.get("references") or []), "notes": notes}
+            "settings": {"aspect": v["aspect"], "how": cp.get("aspect")}, "references": refs, "notes": notes}
 
 
 def compile_prompt(spec: dict, model: str, k: int = 0, lk: dict | None = None) -> dict:
-    """샷 설계 → 그 모델 문법의 영상 프롬프트 + 설정. 카드의 compile 규칙만 쓴다(지어내지 않음).
-    키프레임 그림이 올라와 있으면 이미지→영상: 겉모습은 그림이 정하니 움직임 · 카메라 위주로 쓴다"""
+    """샷 설계 → 그 모델 문법의 영상 프롬프트 + 설정 + 부정 칸.
+    조사 반영(오픈소스 video-director · Seedance shot-memo · Wan 공식 다듬기 지침 · 공식 가이드):
+      - 한 박자에 한 사건, 마지막 박자는 멈춤 · 끝 상태(모델이 프레임이 모자라 얼거나 지어낸다)
+      - 카메라 움직임은 하나, 끝점까지 말하기 · 움직임 물리 한 문장
+      - 부정어는 명사 목록을 따로(문장 속 'no X' 는 X 로 읽힌다) — 칸이 없는 모델은 'Avoid:' 한 줄, Runway 는 긍정 문장만
+      - 이미지 → 영상은 '바뀌는 것'만(겉모습을 다시 말하면 첫 프레임에서 벗어난다) + 지킬 것
+      - 꼭 지킬 사실은 두 곳 이상에(Seedance shot-memo: 중복이 장점) · 모델별 글자 한도"""
     c = card(model)
     cp = c.get("compile") or {}
     if cp.get("available") is False:
@@ -375,9 +439,14 @@ def compile_prompt(spec: dict, model: str, k: int = 0, lk: dict | None = None) -
     style = "" if i2v else v["style"]
     shot = f"{v['framing']}, {v['lens']}, {v['camera']}" if not i2v else v["camera"]
     beats = [(a, z, w) for a, z, w in _beats(v) if "cut handle" not in w]
+    phys = physics_of(v)
+    end = v.get("end_state") or "the motion settles and the frame holds for a moment"
+    keep_fixed = "; ".join(str(x) for x in v.get("invariants") or [])
+    keep = (f"Keep the composition, lighting, colors and appearance of the input image{'; ' + keep_fixed if keep_fixed else ''}." if i2v
+            else (f"Keep unchanged throughout: {keep_fixed}." if keep_fixed else ""))
     hold = "Hold still for the first and last half second (edit handles)."
-    keep = "Keep the composition, lighting, colors and appearance of the input image." if i2v else ""
-    neg_items = ["on-screen text", "subtitles", "captions", "watermark", "logos"] + (["background music"] if "no music" in (v.get("audio") or "") else [])
+    must = [str(x) for x in v.get("must") or []]
+    neg = negatives(v, m)
     refs = list(v.get("references") or []) + ([v["first_frame"]] if v.get("first_frame") and not str(v["first_frame"]).startswith("(") else [])
     lines, negative, notes = [], None, []
     if i2v:
@@ -398,66 +467,84 @@ def compile_prompt(spec: dict, model: str, k: int = 0, lk: dict | None = None) -
 
     act = v["action"]
     set_ = "" if i2v else (v.get("setting") or "")
-    if m == "seedance":
+    if m == "seedance":                                          # shot memo: 칸마다 한 질문, 시각 있는 박자, 지킬 것 목록
         lines.append(", ".join(x for x in (who, act, set_, style, shot) if x) + ".")
         for n, _ref in enumerate(v.get("references") or [], 1):
             lines.append(f"The character in [Image {n}]: keep the appearance strictly from [Image {n}], no face changes.")
         if v.get("first_frame") and not str(v["first_frame"]).startswith("("):
             lines.append(f"Start from [Image {len(v.get('references') or []) + 1}] as the first frame.")
+        lines.append(f"PACING: {v.get('pace') or 'steady'}. CAMERA: {v['camera']} only, one continuous shot. No opening freeze shot.")
         for n, (a, z, w) in enumerate(beats, 1):
             say = line_of(dlg) if dlg and dlg["line"] in w else w
             lines.append(f"Shot {n} | {int(a)}-{max(int(a) + 1, round(z))}s: {say}")
+        lines.append(f"End: {end}.")
+        if phys:
+            lines.append(f"PHYSICS: {phys}; mass has real weight, correct contact shadows.")
         lines.append(keep or f"Keep the same {v.get('setting') or 'setting'}, {look_ or 'lighting'}" + (" and outfits" if who else "") + " throughout.")
-        lines.append(hold + " No subtitles." + (" No BGM." if "no music" in (v.get("audio") or "") else ""))
+        if must:
+            lines.append("MUST: " + " ".join(f"{x.rstrip('.')}." for x in must))
+        lines.append(hold + " Avoid: " + ", ".join(neg) + ".")
         notes.append("실사 얼굴 그림은 직접 올릴 수 없다 — 인물 기준 그림은 Seedream(같은 계정)으로 만든 원본을 쓴다")
         notes.append("2.0 모델이면 타임스탬프를 지우고 Shot N 만 남긴다")
-    elif m == "kling":
+    elif m == "kling":                                           # 순서: 피사체 · 움직임 · 장소 · 카메라 · 빛 · 분위기
         lines.append(f"{who + '. ' if who else ''}{act}.")
+        if phys:
+            lines.append(phys[0].upper() + phys[1:] + ".")
         if set_:
             lines.append(set_ + ".")
-        lines.append(f"{shot}. {look_}. {v.get('mood') or ''}".strip(" ."))
+        lines.append(_sentence(shot, look_, v.get("mood") or ""))
         if dlg:
             lines.append(line_of(dlg))
-        lines.append(cp.get("single_shot") or "")
-        lines.append(f"{(style + '. ') if style else ''}{keep} {hold} Keep the frame free of text.".strip())
-    elif m == "veo":
+        lines.append(_sentence(cp.get("single_shot") or "", f"End: {end}", style, keep, hold, *must))
+        negative = ", ".join(neg)
+    elif m == "veo":                                             # 촬영 → 피사체 → 동작 → 맥락 → 스타일, 한 테이크, 소리는 따로 한 문장
         lines.append(f"A {shot} shot. {who + '. ' if who else ''}{act}{'. ' + set_ if set_ else ''}.")
-        lines.append(" ".join(x for x in (f"{look_}." if look_ else "", f"{style}." if style else "", keep, cp.get("single_shot") or "") if x))
+        mids = [w for _a, _z, w in beats if w and w != act]
+        if mids:
+            lines.append("Then " + ". Then ".join(x.rstrip(".") for x in mids) + ".")
+        lines.append(_sentence(phys, f"It ends as {end}", look_, style, keep, cp.get("single_shot") or "", *must))
         if dlg:
             lines.append(line_of(dlg).rstrip(".!?") + ".")
         lines.append(f"Audio: {v.get('audio')}.")
-        negative = ", ".join(["text", "subtitles", "captions", "watermark", "logo"] + (["music"] if "no music" in (v.get("audio") or "") else []))
+        negative = ", ".join(neg)                                # Google: 'no' 없이 명사만, negativePrompt 칸
     elif m == "omni":
         lines.append(cp.get("single_shot") or "")
-        lines.append(" ".join(x for x in (f"{who}." if who else "", f"{act}.", f"{set_}." if set_ else "", f"{shot}.", f"{look_}." if look_ else "", f"{style}." if style else "", keep) if x))
+        lines.append(_sentence(who, act, set_, shot, phys, look_, style, keep))
         for a, z, w in beats:
             lines.append(f"[{a:g}-{z:g}s] {line_of(dlg) if dlg and dlg['line'] in w else w}")
-        lines.append(f"Sound design: {v.get('audio')}. " + " ".join(f"No {x}." for x in neg_items[:3]))
-    elif m == "wan":
+        lines.append(_sentence(f"End: {end}", *must, f"Sound design: {v.get('audio')}", "Avoid: " + ", ".join(neg)))
+    elif m == "wan":                                             # 간결(800자) · 스타일 먼저 · 움직임 위주 · 하늘은 이름을 · 부정 칸 따로(500자)
+        sky = " Deep blue sky." if re.search(r"\bsky\b", f"{set_} {act}") else ""
         lines.append(cp.get("single_shot") or "")
-        lines.append(" ".join(x for x in (f"{style}, {look_}." if style else "", f"{who}." if who else "", f"{act}.", f"{set_}." if set_ else "", f"{dur:g} seconds.", keep) if x))
+        lines.append(_sentence(f"{style}, {look_}" if style else "", who, act, set_, phys, f"{dur:g} seconds", keep) + sky)
         for n, (a, z, w) in enumerate(beats, 1):
             lines.append(f"Shot {n} [{a:g}-{z:g}s] {shot}. {line_of(dlg) if dlg and dlg['line'] in w else w}")
-        if not dlg:
-            lines.append("No dialogue.")
-        lines.append("Negative prompt list: " + ", ".join(["no subtitles or watermarks", "no complex text", "no extra characters", "avoid facial distortion"]))
-    elif m == "runway":
+        lines.append(_sentence(f"End: {end}", *must) + ("" if dlg else " No dialogue."))
+        negative = ", ".join(neg)
+    elif m == "runway":                                          # 카메라 먼저 · 긍정 문장만(부정 무시) · 소리 없음
         lines.append(f"{v['camera'].capitalize()}, {v['framing']}: {who + ', ' if who else ''}{act}{', ' + set_ if set_ else ''}. "
-                     f"{(look_ + ', ' + style + '. ') if style else ''}{keep} {cp.get('single_shot') or ''} Clean frame with plain surfaces.")
-        notes.append("Runway API 는 소리가 없다 — 대사 장면은 다른 모델(Kling · Seedance · Veo · Hailuo)")
+                     + _sentence(phys, look_ and style and f"{look_}, {style}", keep, cp.get("single_shot") or "", f"It ends as {end}",
+                                 "Clean frame with plain surfaces", "the subject keeps the same appearance throughout", *must))
+        notes.append("Runway 는 부정어를 무시하고 소리가 없다 — 대사 장면은 다른 모델(Kling · Seedance · Veo · Hailuo)")
     elif m == "hailuo":
-        first = f"[Shot 1] Live-action, cinematic, a {shot} frames {who or 'the subject'}. {act}{'. ' + set_ if set_ else ''}. {look_}. {keep}"
+        first = f"[Shot 1] Live-action, cinematic, a {shot} frames {who or 'the subject'}. {_sentence(act, set_, phys, look_, keep)}"
         if dlg:
             first += " " + line_of(dlg)
         lines.append(cp.get("header", "") + first)
+        lines.append(_sentence(f"End: {end}", *must))
         lines.append(f"overall_soundscape: {v.get('audio')}.")
-    else:
-        lines.append(f"{shot}. {who + '. ' if who else ''}{act}. {look_}. {style}. {keep} {hold}")
+        negative = ", ".join(neg)
+    else:                                                        # 카드가 없는 모델: 구조 그대로 + 부정 칸 따로
+        lines.append(_sentence(shot, who, act, set_, phys, look_, style, keep, f"End: {end}", hold, *must))
         if dlg:
             lines.append(line_of(dlg))
+        negative = ", ".join(neg)
     prompt = "\n".join(_dedupe(" ".join(x.split())) for x in lines if x and x.strip())
-    if cp.get("max_chars") and len(prompt) > cp["max_chars"]:
-        notes.append(f"프롬프트 {len(prompt)}자 > 한도 {cp['max_chars']}자 — 줄일 것")
+    pl, nl = LIMITS.get(m, (cp.get("max_chars") or 0, 0))
+    if pl and len(prompt) > pl:
+        notes.append(f"프롬프트 {len(prompt)}자 > 이 모델 한도 {pl}자 — 꾸밈말부터 줄일 것(피사체 · 움직임 · 카메라는 남김)")
+    if nl and negative and len(negative) > nl:
+        notes.append(f"부정 칸 {len(negative)}자 > 한도 {nl}자")
     if warn:
         notes.append(warn)
     aspect_ok = cp.get("aspect_9_16")
@@ -497,6 +584,17 @@ def main() -> int:
         rs = [r for r in (check_key(sb, s), check_clip(sb, s)) if not r.get("missing")]
         if not rs:
             print(f"· {s['id']}: 아직 아무것도 올라오지 않음 — genclip.py prompts 의 1단계(그림)부터")
+        if any(r["kind"] == "clip" for r in rs):          # 보기(VL)가 있으면 실제로 보고 설계와 대조 — 숫자 검사가 못 보는 동작 · 손 · 물리 · 어색함
+            try:
+                import see
+                v = see.check_clip(sb, s["id"])
+                if v:
+                    print(f"  [VL] {s['id']}: 설계와 맞음 {v.get('match')}" + (f" · 쓸 구간 {v.get('usable')}" if v.get("usable") else ""))
+                    for it in v.get("issues") or []:
+                        bad += 1
+                        print(f"    - {it.get('t', '')}초 {it.get('what', '')}\n      → 프롬프트에: {it.get('fix', '')}")
+            except Exception as e:  # noqa: BLE001
+                print(f"  [VL] 건너뜀: {e}")
         for r in rs:
             what = "그림" if r["kind"] == "keyframe" else "클립"
             print(f"{'✓' if not r['issues'] else '✗'} {s['id']} {what}: {r['file']} · {r['size'][0]}×{r['size'][1]}" + (f" · {r['dur']}초" if r.get("dur") else ""))

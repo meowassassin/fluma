@@ -444,6 +444,9 @@ export const en: Record<string, string> = {
   "글자 겹침 비교": "Text-overlap comparison",
   "키 하나로 보기(영상 이해) · 그리기 · 영상 생성 · 음성 · 받아쓰기 — 모델은 아래에서 능력마다 고른다. 쓴 만큼 크레딧에서 나간다": "One key for seeing (video understanding), drawing, video generation, voice and transcription — pick a model per capability below. Pay as you go from credits.",
   "sk-or-…": "sk-or-…",
+  "무료 · 로컬": "Free · local",
+  "모델 찾기": "Find a model",
+  "맞는 모델이 없어요": "No matching models",
 };
 
 export const zh: Record<string, string> = {
@@ -891,4 +894,7 @@ export const zh: Record<string, string> = {
   "글자 겹침 비교": "文字重合比较",
   "키 하나로 보기(영상 이해) · 그리기 · 영상 생성 · 음성 · 받아쓰기 — 모델은 아래에서 능력마다 고른다. 쓴 만큼 크레딧에서 나간다": "一个密钥即可看（视频理解）、画、生成视频、配音和转写 — 在下方为每种能力选择模型。按用量从余额扣费。",
   "sk-or-…": "sk-or-…",
+  "무료 · 로컬": "免费 · 本地",
+  "모델 찾기": "查找模型",
+  "맞는 모델이 없어요": "没有匹配的模型",
 };

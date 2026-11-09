@@ -31,3 +31,7 @@ Optional engines (installed from Settings → Media)
 Paid models (video understanding, image and video generation, voice, transcription) are reached
 only through OpenRouter with a key the user supplies, under OpenRouter's and each model provider's
 terms. Free stock footage (Pexels, Pixabay) uses the user's own free keys.
+
+Prompt-writing rules in engine/gen (beat structure, camera, motion-physics phrases, negative-term handling,
+per-model prompt shapes and limits) are adapted from uniqaiapp/video-director (MIT) and other public guides
+listed in engine/gen/models/PROMPTING.md.

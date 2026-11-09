@@ -117,6 +117,10 @@ B. **키가 없거나 모델을 안 골랐으면 — 프롬프트만**(생성 �
 
 공통: 올라오기 전 초안은 그 컷 없이 렌더(L36). `genclip.py status` 로 샷마다 단계. 업로드 때 '변경 · 합성 콘텐츠' 표시는 자동, 워터마크는 지우지 않는다.
 
+## 초안 비평(VL) — 렌더 검사가 못 보는 것
+- 초안 렌더 뒤 `python3 engine/providers/see.py critique <id>` → 보기 모델이 초안 전체를 보고 의도 · 콘셉트 · 레퍼런스 문법과 대조해 "몇 초에 무엇이 왜 어색한지 · 어떻게 고칠지"(`data/workspace/critique/<id>.json`). high 부터 고치고 다시 렌더 → 다시 비평. 템포 · 편집 밀도 검사(숫자)는 그대로 같이.
+- 특정 장면만 궁금하면 `see.py ask data/out/<id>-craft-Scenes.mp4 --q "8~11초 자막이 말보다 늦나?"` 처럼 직접.
+
 ## 디테일 다듬기(초안 뒤 — refine 스킬)
 초안은 어댑터 초벌이다(앱 기능 몇 개). 장면 정지 화면을 본 뒤 **refine 스킬**로 장면마다 층별 계획 → 앱의 전체 명령에서 골라 시도 → 전 · 후를 보고 고침 → 남김:
 `python3 engine/craft/session.py show data/storyboards/<id>.json <장면>` · `plan` · `try` · `keep` · `coverage`. 남긴 다듬기는 콘티 기록이라 다시 제작해도 적용된다.

@@ -205,6 +205,13 @@ def synth(text: str, out_wav, voice: str | None = None, engine: str | None = Non
         ad = _adapter(eng)
         if eng == "openrouter":
             ad.synth(said, raw, voice, speed, style)
+            try:                              # 단어 시각을 주지 않는 엔진 — '듣기' 모델이 있으면 실제로 받아써서 맞춘다(없으면 글자 수 추정)
+                import listen
+                segs = listen.remote(raw)
+                if segs:
+                    write_words(out_wav, [{"text": w["w"], "startMs": int(w["s"] * 1000), "endMs": int(w["e"] * 1000)} for s in segs for w in s["words"] if w["w"]])
+            except Exception as e:  # noqa: BLE001
+                print(f"[tts] 단어 시각 받아쓰기 건너뜀: {e}", file=sys.stderr)
         else:
             ad.synth(said, raw, voice, speed)
         to_wav(raw, out_wav); raw.unlink(missing_ok=True)

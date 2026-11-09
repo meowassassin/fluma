@@ -411,7 +411,15 @@ SPEECH_PROMPT = "오늘은 이걸 해 봤는데요, 생각보다 잘 되더라�
 
 def speech(src: Path, model_name: str, lang_from: Path | None = None, prompt: str | None = None) -> list[dict]:
     """lang_from: 언어는 이 소리(원본 섞인 소리)로 판정 — 목소리만 떼어 낸 트랙은 음색이 바뀌어 언어를 잘못 짐작하기도 한다
-    prompt: 앞 문장(제목 · 화면 글자 같은 고유 낱말을 넣으면 '확장 프로그램'을 '확정 프로그램'으로 잘못 듣지 않는다)"""
+    prompt: 앞 문장(제목 · 화면 글자 같은 고유 낱말을 넣으면 '확장 프로그램'을 '확정 프로그램'으로 잘못 듣지 않는다)
+    설정에서 '듣기 · 받아쓰기' 모델을 골랐으면 오픈라우터로(engine/providers/listen.py), 아니면 · 실패하면 로컬 faster-whisper"""
+    try:
+        import listen
+        r = listen.remote(src)
+        if r is not None:
+            return r
+    except Exception as e:  # noqa: BLE001
+        print(f"[받아쓰기] 오픈라우터 실패 — 로컬로: {e}", file=sys.stderr)
     try:
         from faster_whisper import WhisperModel
     except ImportError:

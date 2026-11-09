@@ -372,6 +372,10 @@ app.post("/api/trends/xray/:vid", ah(async (req, res) => {
       if (r.timedOut || r.canceled) return r;
       if (r.code !== 0) return { error: "분해 분석에 실패했습니다", detail: tail(r.err || r.out) };
     }
+    // 이어서 VL 이해(보기 모델이 있으면 — 장면 · 훅 · 반전 · 편집 문법 · 자막 말투 · 붙잡는 장치). 키가 없거나 실패해도 측정 결과는 남는다
+    h.progress(0.7, "VL 로 보기");
+    const u = await h.run(PY, ["engine/providers/see.py", "ref", vid, ...(force ? ["--force"] : [])], { cwd: ROOT, timeout: 10 * 60e3 });
+    if (u.code !== 0 && u.code !== 10) h.log?.(`VL 이해 건너뜀: ${tail(u.out || u.err)}`);
     // 이어서 스타일 카드(형식 · 박자 · 말투 — 내 주제로 옮길 때 콘티 · 화면 · 음성이 따른다). 실패해도 분해 결과는 남긴다
     const s = !force && existsSync(path.join(dir, "style", "style.json")) ? { code: 0 } : await h.run(PY, ["engine/research/ref_style.py", vid], { cwd: ROOT, timeout: 20 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.7 + Number(m[1]) * 0.1, `스타일 카드 · ${m[2]}`); } });
     // 이어서 채널 말투 카드(같은 채널 쇼츠 여러 편 — 말투 · 구성 · 농담 · 목소리). 실패해도 스타일 카드는 남는다

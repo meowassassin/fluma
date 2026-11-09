@@ -207,10 +207,16 @@ def speech(model: str, text: str, out: Path, voice: str | None = None, speed: fl
 def transcribe(model: str, audio: Path, language: str | None = None) -> dict:
     """→ {"text", "segments"[{start,end,text}], "words"?, "cost"}"""
     body = {"model": model, "input_audio": {"data": base64.b64encode(audio.read_bytes()).decode(), "format": audio.suffix.lstrip(".") or "wav"},
-            "response_format": "verbose_json"}
+            "response_format": "verbose_json", "timestamp_granularities": ["word", "segment"]}
     if language:
         body["language"] = language
-    js = post("audio/transcriptions", body, timeout=600).json()
+    try:
+        js = post("audio/transcriptions", body, timeout=600).json()
+    except ProviderError as e:                 # 단어 시각을 못 주는 모델 — 구간 시각만 다시
+        if e.status != 400:
+            raise
+        body.pop("timestamp_granularities", None)
+        js = post("audio/transcriptions", body, timeout=600).json()
     return {**js, "cost": _cost(js)}
 
 

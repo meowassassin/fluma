@@ -423,7 +423,12 @@ def lint(sb: dict, recent_titles=None) -> list:
 
     # L10 최근 제목과 중복
     for t in recent_titles or []:
-        if difflib.SequenceMatcher(None, sb.get("title", ""), t).ratio() >= 0.8:
+        try:                                   # '찾기 · 임베딩' 모델이 있으면 뜻으로도(낱말만 바꾼 같은 제목)
+            import embed
+            emb = embed.similar(sb.get("title", ""), t)
+        except Exception:  # noqa: BLE001
+            emb = None
+        if difflib.SequenceMatcher(None, sb.get("title", ""), t).ratio() >= 0.8 or (emb is not None and emb >= 0.92):
             fails.append(("L10", None, f"최근 제목과 유사: '{t}'"))
             break
 

@@ -5,6 +5,7 @@
   python3 engine/capture/clip.py search "고양이 vs 동물" [--n 20] [--max-sec 90]        # 받기 전 후보 목록만(주소 · 길이 · 조회수 · 채널)
   python3 engine/capture/clip.py fetch <영상 id> <이름> <주소> [--in 3.5] [--out 9] [--subs] [--best 3.5] [--vertical]
       --best 초: in/out 을 안 줬으면 유튜브 '가장 많이 다시 본 구간'(heatmap)에서 그 길이의 가장 센 구간을 고른다(첫 1.5초 제외)
+      --moment "설명": 보기(VL) 모델이 영상을 보고 그 설명에 맞는 순간을 찾는다(예: "고양이가 놀라 뛰어오르는 순간") — --best 와 같이 주면 길이는 --best
       --vertical: 받은 뒤 세로 9:16 으로 리프레이밍(engine/capture/reframe.py — 주인공 따라가기 · 둘이 안 들어가면 띠 배치) → clip.mp4 가 세로판
   python3 engine/capture/clip.py credits <영상 id>                                       # 설명란 '출처' 목록(meme.py credits 와 같은 형식)
 
@@ -71,6 +72,20 @@ def cmd_fetch(a):
         raise SystemExit("[clip] 잘못된 영상 id · 이름")
     info = json.loads(_run(["-J", "--skip-download", a.url], 120))
     dur = float(info.get("duration") or 0)
+    if a.moment and a.in_ is None and a.out is None:             # VL 이 본 '원하는 순간'
+        try:
+            import see
+            ms = see.moments(a.url, a.moment, a.best, sid=a.id)
+            if ms:
+                m0 = ms[0]
+                st, en = float(m0["start"]), float(m0["end"])
+                if a.best:
+                    mid = (st + en) / 2
+                    st, en = max(0.0, mid - a.best / 2), mid + a.best / 2
+                a.in_, a.out = st, en
+                print(f"[clip] VL 이 고른 순간 {st:.1f}~{en:.1f}초 — {m0.get('why', '')}")
+        except Exception as e:  # noqa: BLE001 — VL 이 없거나(키 · 모델) 승인이 필요하면 다시 본 구간으로
+            print(f"[clip] VL 순간 찾기 건너뜀: {e}")
     if a.best and a.in_ is None and a.out is None:               # 가장 많이 다시 본 구간
         h = info.get("heatmap") or []
         W = float(a.best)
@@ -115,7 +130,14 @@ def cmd_fetch(a):
 
 
 def transcribe(f: Path) -> list[dict]:
-    """클립 속 말 → 단어 시각(faster-whisper, CPU). 원본 말 자막에 쓴다"""
+    """클립 속 말 → 단어 시각. 원본 말 자막에 쓴다 — '듣기' 모델을 골랐으면 오픈라우터, 아니면 faster-whisper(CPU)"""
+    try:
+        import listen
+        r = listen.remote(f)
+        if r is not None:
+            return [{"text": s["text"], "s": s["start"], "e": s["end"], "words": s["words"]} for s in r]
+    except Exception as e:  # noqa: BLE001
+        print(f"[clip] 오픈라우터 받아쓰기 실패 — 로컬로: {e}")
     try:
         from faster_whisper import WhisperModel
     except ImportError:
@@ -139,7 +161,7 @@ def main() -> int:
     sp = ap.add_subparsers(dest="cmd", required=True)
     s = sp.add_parser("search"); s.add_argument("query"); s.add_argument("--n", type=int, default=20); s.add_argument("--max-sec", type=float, default=0); s.add_argument("--shorts", action="store_true"); s.add_argument("--min-views", type=int, default=10000)
     f = sp.add_parser("fetch"); f.add_argument("id"); f.add_argument("name"); f.add_argument("url")
-    f.add_argument("--in", dest="in_", type=float, default=None); f.add_argument("--out", type=float); f.add_argument("--max", type=float, default=15); f.add_argument("--subs", action="store_true"); f.add_argument("--best", type=float); f.add_argument("--vertical", action="store_true")
+    f.add_argument("--in", dest="in_", type=float, default=None); f.add_argument("--out", type=float); f.add_argument("--max", type=float, default=15); f.add_argument("--subs", action="store_true"); f.add_argument("--best", type=float); f.add_argument("--vertical", action="store_true"); f.add_argument("--moment")
     c = sp.add_parser("credits"); c.add_argument("id")
     a = ap.parse_args()
     {"search": cmd_search, "fetch": cmd_fetch, "credits": cmd_credits}[a.cmd](a)

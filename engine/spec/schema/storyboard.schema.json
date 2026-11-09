@@ -1579,6 +1579,42 @@
               "people": {
                 "type": "integer",
                 "description": "화면에 보일 사람 수(만든 뒤 확인용)"
+              },
+              "physics": {
+                "type": "string",
+                "description": "실사 생성 컷: 움직임 물리 한 문장(영어) — 무게 · 접촉 · 끌림 · 가라앉음. 비우면 코드가 고른다(engine/gen/models/PROMPTING.md)"
+              },
+              "invariants": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "실사 생성 컷: 바뀌면 안 되는 것(영어) — 얼굴 · 옷 · 무늬 · 소품"
+              },
+              "end_state": {
+                "type": "string",
+                "description": "실사 생성 컷: 마지막 박자의 멈춘 상태(영어) — 새 동작으로 끝내지 않는다"
+              },
+              "must": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "실사 생성 컷: 꼭 지킬 사실(영어, 한 번 보고 확인할 수 있는 문장)"
+              },
+              "avoid": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "실사 생성 컷: 이 장면 특유의 실패(영어 명사) — 부정 칸에 들어간다"
+              },
+              "ref_roles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "참조 그림마다 역할(영어) — 예: person's face and identity · outfit"
               }
             }
           }

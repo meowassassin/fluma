@@ -55,6 +55,21 @@ def sim(a: str, b: str) -> float:
     return len(x & y) / len(x | y) if x and y else 0.0
 
 
+SIM_EMB = 0.9      # 뜻 비슷함(임베딩 코사인) — 이 이상이면 낱말이 달라도 사실상 같은 말
+
+
+def same(a: str, b: str) -> bool:
+    """사실상 같은 말인가 — 글자가 많이 겹치거나, '찾기 · 임베딩' 모델이 있으면 뜻이 같거나(낱말을 바꿔 쓴 뻔한 구조도 잡는다)"""
+    if sim(a, b) >= SIM_FAIL:
+        return True
+    try:
+        import embed
+        v = embed.similar(a, b)
+    except Exception:  # noqa: BLE001 — 키 없음 · 네트워크
+        v = None
+    return v is not None and v >= SIM_EMB
+
+
 def past() -> list:
     """이미 만든 영상의 제목 · 첫 말 · 첫 화면 글자 — 같은 말을 되풀이하지 않게"""
     out = []
@@ -112,10 +127,10 @@ def check(d: dict, history: list | None = None, analyzed=None) -> tuple[list, li
         if "조사 필요" in str(c.get("evidence") or ""):
             note.append(f"{n}: 근거를 아직 확인하지 않음 — 고르면 콘티 전에 조사")
         for sid, t in history if history is not None else past():
-            if sim(c.get("hook"), t) >= SIM_FAIL:
+            if same(c.get("hook"), t):
                 bad.append(f"{n}: 훅이 {sid} 의 '{str(t)[:24]}' 와 겹침")
         for w in whats:
-            if sim(c.get("hook"), w) >= SIM_FAIL or sim(c.get("structure"), w) >= SIM_FAIL:
+            if same(c.get("hook"), w) or same(c.get("structure"), w):
                 bad.append(f"{n}: 깨겠다는 뻔함 '{w[:20]}' 를 그대로 닮음")
     if cs and whats and len(broken) < min(3, len(whats)):
         bad.append(f"안들이 깨는 뻔함이 {len(broken)}가지뿐 — 서로 다른 것을 깨야 안이 벌어진다")
@@ -126,7 +141,7 @@ def check(d: dict, history: list | None = None, analyzed=None) -> tuple[list, li
             bad.append(f"각도 '{a}' 가 {k}개 — 2개까지")
     for i, x in enumerate(cs):
         for y in cs[i + 1:]:
-            if sim(x.get("hook"), y.get("hook")) >= SIM_FAIL or sim(x.get("one_shot"), y.get("one_shot")) >= SIM_FAIL:
+            if same(x.get("hook"), y.get("hook")) or same(x.get("one_shot"), y.get("one_shot")):
                 bad.append(f"{x.get('name')} · {y.get('name')}: 사실상 같은 안")
     return bad, note
 
