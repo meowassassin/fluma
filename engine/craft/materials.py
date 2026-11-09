@@ -74,6 +74,9 @@ def _run(args: list, cwd: Path, timeout: int = 300, env: dict | None = None) -> 
     return r.stdout
 
 
+# 재료 파일을 바꾸지 않는 칸(화면에 놓는 방법뿐) — 바꿔도 재료를 다시 만들지 않는다
+PLACEMENT_ONLY = ("adjust", "cue", "enter", "note", "why")
+
 def _hash(p: Path) -> str:
     return hashlib.sha1(p.read_bytes()).hexdigest() if p.exists() else ""
 
@@ -631,7 +634,15 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             if t == "stock":                   # 스톡 영상은 화면 비율대로 잘라 만든다 → 비율이 바뀌면 다시
                 from engines import aspect_of
                 srcs.append(aspect_of(sb))
-            key = hashlib.sha1(json.dumps([m, srcs, MAT_VERSION], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
+            # 열쇠에서 뺀다: adjust(배치 조정 — 움직임 단계가 레이어에 얹음) · cue · enter · place(재료 파일 자체는 같다)
+            # 2026-11-10: 크기만 바꿔도 EffectCraft 원테이크 재료를 9초 동안 다시 렌더했다
+            mk = {k: v for k, v in m.items() if k not in PLACEMENT_ONLY}
+            key = hashlib.sha1(json.dumps([mk, srcs, MAT_VERSION], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
+            # 예전 열쇠(2026-11-10 전: 모든 칸 포함, adjust 는 없었음)로 만든 재료도 그대로 쓰고 새 열쇠로 옮긴다
+            legacy = hashlib.sha1(json.dumps([{k: v for k, v in m.items() if k != "adjust"}, srcs, MAT_VERSION], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
+            if old.get("key") == legacy and legacy != key and (not old.get("file") or (ROOT / old["file"]).exists()):
+                old["key"] = key
+                meta_p.write_text(json.dumps(old, ensure_ascii=False, indent=1), "utf-8")
             if old.get("key") == key and (not old.get("file") or (ROOT / old["file"]).exists()):
                 # 예전 기록(글자 인식 전)에는 글자 위치가 없다 → 채워 둔다(짚기 · 재료 검사가 쓴다)
                 if "ocr" not in old and old.get("file") and t in ("image", "photo", "screen") and Path(old["file"]).suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):

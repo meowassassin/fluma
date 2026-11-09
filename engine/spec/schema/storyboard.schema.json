@@ -1617,6 +1617,45 @@
               },
               "stride": {
                 "type": "number"
+              },
+              "adjust": {
+                "type": "object",
+                "additionalProperties": false,
+                "description": "조정 값 — 원래 배치 · 움직임 위에 얹는다(engine/story/knob.py). 재료를 다시 만들지 않는다",
+                "properties": {
+                  "dx": {
+                    "type": "number",
+                    "description": "가로 이동(화면 폭 비율)"
+                  },
+                  "dy": {
+                    "type": "number",
+                    "description": "세로 이동(화면 높이 비율)"
+                  },
+                  "scale": {
+                    "type": "number",
+                    "minimum": 0.05,
+                    "maximum": 10
+                  },
+                  "rot": {
+                    "type": "number"
+                  },
+                  "opacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "delay": {
+                    "type": "number",
+                    "description": "등장을 늦춤(초, 음수면 당김)"
+                  },
+                  "hide": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "args": {
+                "type": "object",
+                "description": "스크립트 재료(Blender · EffectCraft)가 읽는 바꿀 값 — 숫자를 코드에 박지 않고 여기에(knob.py 로 조정)"
               }
             }
           }

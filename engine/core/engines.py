@@ -233,7 +233,8 @@ def sub_job(job: Job, indices: list[int]) -> Job:
     if idx != list(range(idx[0], idx[-1] + 1)):
         raise SystemExit(f"장면은 연속이어야 합니다: {idx}")
     t0 = job.scenes[idx[0]]["start"]
-    sb = {**job.sb, "scenes": [job.sb["scenes"][i] for i in idx]}
+    # 이웃 장면(전환 · 마지막 장면 처리)은 원래 영상 기준으로 — 움직임 단계가 _all_scenes 를 본다(2026-11-10: 장면 일부 렌더가 IndexError 로 멈춤)
+    sb = {**job.sb, "scenes": [job.sb["scenes"][i] for i in idx], "_all_scenes": job.sb.get("_all_scenes") or job.sb["scenes"]}
     scenes = [{**job.scenes[i], "start": round(job.scenes[i]["start"] - t0, 3), "end": round(job.scenes[i]["end"] - t0, 3)} for i in idx]
     ms = t0 * 1000
     caps = [{**c, "startMs": c["startMs"] - ms, "endMs": c["endMs"] - ms, "timestampMs": (c.get("timestampMs") or c["startMs"]) - ms}

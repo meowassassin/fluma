@@ -25,6 +25,19 @@ order: 2
 - 장면 몇 개만 볼 때 `--scenes 1-3`, 대사를 안 바꿨으면 `--no-audio`
 아래 단계는 produce.py 가 하는 일의 설명이자, 막혔을 때 한 단계씩 볼 때 쓴다.
 
+## 대화로 고치기 — 값으로, 바로 보여 주기 (knob.py)
+초안 뒤 사용자의 지적은 **값을 바꿔** 고친다. 코드 · 좌표를 다시 짜지 않고, 영상 전체를 다시 렌더하지 않는다(2026-11-09 영상: 한 번 고치는 데 4~17분 · 전체 렌더 32번).
+- 지금 값 보기: `python3 engine/story/knob.py list <id>` — 장면 · 요소(id) · 조정 값 · 스크립트 값(args)
+- 바꾸기(여러 개 한 번에): `knob.py set <id> route2d.adjust.scale=*1.2 route2d.adjust.dy=-0.03 s4.sec=+1.5 voice.speed=0.95`
+  - **모든 요소 공통 조정 값 `adjust`**: dx · dy(화면 비율) · scale(배수) · rot(도) · opacity(0~1) · delay(초) · hide — 원래 배치 · 움직임 위에 얹힌다(재료를 다시 만들지 않음)
+  - 장면 칸: `s4.sec` · `s4.caption` · `s4.transition` · 대본은 `script` · 목소리 `voice.*` · 음악 `music.*`
+  - 상대값 `*0.7` · `+0.5`, 지우기 `=null`. 기록은 data/workspace/render/<id>/knobs.jsonl
+- 보여 주기: `knob.py preview <id> --scene <n>`(정지 화면 약 2초, 결과 media 줄을 그대로) · 움직임 · 속도는 `--clip`(그 장면만 약 8초)
+- 어디를 말하는지 애매하면 바꾸기 전에 "s4 route2d 를 1.2배로" 처럼 **고칠 요소 id 를 한 줄로 밝히고** 바로 진행(기다리지 않음)
+- **새로 만드는 요소는 바꿀 값을 args 로 밝혀 둔다** — Blender 스크립트는 `ctx.args["gap"]` 처럼 읽고 콘티 `args` 에 기본값을 적는다.
+  경로 간격 · 속도 · 크기 · 색 같은 숫자를 코드 안에 박지 않는다(박으면 다음 조정이 다시 코드 수정이 된다). 그러면 다음 조정은 `knob.py set <id> <요소>.args.gap=*1.5`.
+- 사용자가 '좋아 · 완성' → 최종 렌더 한 번(위 6).
+
 ## 소리 — 음악 · 효과음 · 목소리(produce.py 가 음성 전에 자동으로)
 - **음악**: `engine/craft/music_pick.py auto` 가 넣을지 정하고(레퍼런스 음악 비율 · 붙인 곡 · 나레이션 · 형식) 요즘 쓰이는 곡 중 맞는 **무료 곡**을 받아 콘티 `music` 에 적는다(가장 힘 있는 구간 `start` · 페이드 · 말할 때 내림).
   상업 유행곡은 `music.upload_sound` — 결과의 sound 줄을 사용자에게 그대로 알린다("업로드 때 쇼츠 편집기 '사운드 추가'로 붙일 곡"). 분위기를 바꾸려면 `music_pick.py pick <콘티> --mood "..." [--bpm 90]`, 빼려면 콘티 `music: {"use": false}`.
@@ -92,7 +105,7 @@ order: 2
    제작 파일: `data/compositions/<id>/craft/` (`motion/*.ecproj` · `audio/*.scraft` · `edit/*.fcproj` · `materials/`). 사람이 Craft 에서 고친 파일은 해시로 알아채 덮어쓰지 않는다(재료: .vectorcraft · 카드 .psd · .fcproj · .sc · .dxf).
    조립 결과: `edit/<id>.thumb.png`(훅 장면 썸네일 후보) · `edit/<id>.markers.csv`(장면 마커) — produce 결과 media 에 같이 나온다. 소리는 SoundCraft 가 -14 LUFS 로 맞추고(craft.json audio.lufs) FilmCraft 는 다시 정규화하지 않는다.
 5. **확인**: `python3 engine/core/still.py data/storyboards/<id>.json <초> …` → PNG 를 Read 로 직접 본다. 글자 겹침 · 잘림 · 빈 화면 · 재료가 말과 맞는지. 고칠 게 있으면 재료 · 콘티를 고치고 4로.
-6. **최종 렌더는 하지 않는다** — 사용자가 편집기의 '렌더'를 눌러 의도 · 시안을 확인한다(관문).
+6. **최종 렌더는 사용자가 '좋아 · 완성'이라고 할 때 에이전트가 바로** — `python3 engine/render.py data/storyboards/<id>.json`. 버튼을 누르라고 안내하지 않고, 관문(gate.py) 기록 · 시안 다시 만들기도 없다.
 
 ## 디자인 방향(기다리지 않는다)
 1. `python3 engine/story/direct.py data/storyboards/<id>.json --write` — 레퍼런스 X-ray 에서 잰 값만 방향에 채운다(근거가 없으면 효과 없음).

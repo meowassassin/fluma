@@ -14,5 +14,5 @@ order: 3
 - 화면이 바뀌는 수정(자막 길이, 큰 값)은 `python3 engine/core/still.py data/storyboards/<id>.json <그 장면 중간 초>` 로 한 장 찍어 확인한다.
 - **말투 · 어미 · 톤만 고쳐 달라는 요청**: 문장을 새로 쓰지 않는다. `python3 engine/story/tone_edit.py data/storyboards/<id>.json <바꿀 글 json>` 으로 확인 → 통과하면 `--apply`, 전 · 후 표를 그대로 보여 준다. 내용 낱말이 바뀌면 도구가 거절한다. 사용자가 문장을 직접 불러 줬으면 `--user-text`.
 - 사용자 지적은 이 영상의 규칙으로 콘티 `intent.must` / `must_not` 에 한 줄 더한다(기억 말고) — 다음 장면 · 다음 수정에서 같은 지적이 다시 나오지 않게.
-- 장면 1~3 의 화면(visual · elements · screen · beat)을 바꾸면 시안 승인이 풀린다 — 시안을 다시 보여 주고 `gate.py draft` 를 사용자 확인 뒤에.
+- 위치 · 크기 · 타이밍 · 속도 · 색 · 스크립트 값은 `knob.py set` 으로 바꾸고 `knob.py preview <id> --scene <n>` 로 바로 보여 준다(produce 스킬 '대화로 고치기'). 승인 · 관문 기록은 없다.
 

@@ -448,6 +448,33 @@ def palette_list(sid: str) -> list[list[float]]:
     return [rgb(c) for c in order if isinstance(c, str) and c.startswith("#")]
 
 
+def adjust_jsx(mid: str, adj: dict, W: int, H: int) -> str:
+    """재료 하나의 조정 값을 그 재료의 맨 위 레이어(부모 없는 것)에 얹는다 — 원래 배치 · 움직임(키프레임)은 그대로 두고 표현식으로 더한다.
+    dx · dy: 화면 비율(0.1 = 폭 · 높이의 10%) · scale: 배수 · rot: 도 · opacity: 0~1 배수 · delay: 초(등장을 늦춤, 음수면 당김) · hide: 숨김
+    (2026-11-10: 위치 · 크기 · 타이밍 조정마다 에이전트가 SVG 좌표 · 스크립트를 고치며 한 번에 수 분씩 들었다)"""
+    dx, dy = float(adj.get("dx", 0)) * W, float(adj.get("dy", 0)) * H
+    sc, rot, op = float(adj.get("scale", 1)), float(adj.get("rot", 0)), float(adj.get("opacity", 1))
+    delay, hide = float(adj.get("delay", 0)), bool(adj.get("hide"))
+    body = []
+    if dx or dy:
+        body.append(f"var P = T.property('Position'); if (!P.expression) P.expression = 'value + [{dx:.1f}, {dy:.1f}]';")
+    if sc != 1:
+        body.append(f"var S = T.property('Scale'); if (!S.expression) S.expression = '[value[0] * {sc:.4f}, value[1] * {sc:.4f}]';")
+    if rot:
+        body.append(f"var R = T.property('Rotation'); if (!R.expression) R.expression = 'value + {rot:.2f}';")
+    if op != 1:
+        body.append(f"var O = T.property('Opacity'); if (!O.expression) O.expression = 'value * {max(0.0, min(1.0, op)):.3f}';")
+    if delay:
+        body.append(f"L.startTime = L.startTime + {delay:.3f};")
+    if hide:
+        body.append("L.enabled = false;")
+    if not body:
+        return ""
+    return (f"(function () {{ for (var i = 1; i <= c.numLayers; i++) {{ var L = c.layer(i); "
+            f"if ((' ' + L.name + ' ').indexOf(' ' + {js(mid)} + ' ') < 0 || L.parent) continue; var T = L.property('Transform'); "
+            + " ".join(body) + " } })();")
+
+
 def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec: float, W: int, H: int, font: str, colors: list,
                  top: float = 0.0, bottom: float = 0.74, t_in: float | None = None, t_out: float | None = None, layout: str = "card",
                  direction: dict | None = None) -> None:
@@ -1070,6 +1097,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
     bgp = bg_preset(sb)
     title_preset = DZ["title_preset"]
     sub_preset = DZ["sub_preset"]
+    allsc = sb.get("_all_scenes") or sb["scenes"]          # 원래 영상의 장면 전체(장면 일부만 렌더할 때도 이웃 장면을 알게)
     for k, (sc, tm) in enumerate(zip(sb["scenes"], scenes)):
         oi = int(tm.get("index", k))          # 원래 장면 번호(장면 일부만 렌더해도 재료 · 자막이 맞게)
         n = oi + 1
@@ -1305,20 +1333,23 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 J(f"if (!textPreset(c, s, {js(sub_preset)}, {a_:.3f}, {min(0.45, 0.6 * (b_ - a_)):.3f})) {{ {pop} }}")
             elif DZ["text_pop"]:
                 J(pop)
+        for m in sc.get("materials") or []:           # 조정 값(adjust) — 대화로 고칠 때 에이전트가 바꾸는 손잡이(knob.py). 배치가 끝난 뒤 위에 얹는다
+            if isinstance(m, dict) and isinstance(m.get("adjust"), dict) and m.get("id"):
+                J(adjust_jsx(str(m["id"]), m["adjust"], W, H))
         J(f"var sl = main.layers.add(c); sl.startTime = {start:.3f};")
         # 끝 장면이 영상 없이 그림 · 로고 · 글자만이면 멈춘 화면이 된다(2026-11-09: 로고 4초 정지) → 천천히 다가오며 나타남
-        if oi == len(sb["scenes"]) - 1 and not any((m or {}).get("type") in ("video", "web", "screen", "stock") for m in sc.get("materials") or [] if isinstance(m, dict)):
+        if oi == len(allsc) - 1 and not any((m or {}).get("type") in ("video", "web", "screen", "stock") for m in sc.get("materials") or [] if isinstance(m, dict)):
             J(f"var eS = sl.property('Transform').property('Scale'); eS.setValueAtTime({start:.3f}, [93, 93]); eS.setValueAtTime({start + sec:.3f}, [100, 100]); ease(eS, 50);"
               f" var eO = sl.property('Transform').property('Opacity'); eO.setValueAtTime({start:.3f}, 0); eO.setValueAtTime({start + 0.6:.3f}, 100);")
         # 장면 사이 '들어가기' 전환(direction.transition: zoom · 장면 transition: zoom) — 앞 장면은 끝 0.35초에 화면 속으로 빨려 들고, 다음 장면은 크게 시작해 자리를 잡는다
         # 2026-11-09: 기획은 '화면 속으로 끊김 없이' 였는데 조립은 컷만 있어 클립이 툭툭 붙었다
         tr = str(sc.get("transition") or d.get("transition") or "")
-        nxt = sb["scenes"][oi + 1] if oi + 1 < len(sb["scenes"]) else None
+        nxt = allsc[oi + 1] if oi + 1 < len(allsc) else None
         zp = sc.get("zoom_to") or [0.5, 0.5]
         if nxt is not None and "zoom" in tr and sec > 0.8:
             J(f"var zA = sl.property('Transform').property('Anchor Point'), zP = sl.property('Transform').property('Position'); zA.setValue([{W * float(zp[0]):.0f}, {H * float(zp[1]):.0f}]); zP.setValue([{W * float(zp[0]):.0f}, {H * float(zp[1]):.0f}]);")
             J(f"var zS = sl.property('Transform').property('Scale'); zS.setValueAtTime({start + sec - 0.35:.3f}, [100, 100]); zS.setValueAtTime({start + sec:.3f}, [240, 240]); ease(zS, 85);")
-        prev = sb["scenes"][oi - 1] if oi > 0 else None
+        prev = allsc[oi - 1] if 0 < oi <= len(allsc) else None
         if prev is not None and "zoom" in str(prev.get("transition") or d.get("transition") or "") and sec > 0.8:
             J(f"var zI = sl.property('Transform').property('Scale'); zI.setValueAtTime({start:.3f}, [135, 135]); zI.setValueAtTime({start + 0.4:.3f}, [100, 100]); ease(zI, 70);")
     # 위쪽 고정 주제 제목(레퍼런스: '컴퓨터 버그의 유래'처럼 영상 내내 위에 떠 있음) — 콘티 direction.pin_title > pin_title > 짧은 제목

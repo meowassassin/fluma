@@ -236,6 +236,15 @@ def main() -> int:
     media = [f"{b['file'][0]} | 초안"] + (stills(video, sb, sid) if not a.scenes else []) + (extras(sid) if not a.scenes else [])
     TIMES["stills"] = round(time.time() - t0, 1)
     save_times(sid)
+    if not a.scenes:                              # 화풍 거리 — 최근 영상과 너무 닮았으면 알린다(막지 않음, 로컬 CLIP · 1초 안쪽)
+        try:
+            sys.path.insert(0, str(ROOT / "engine" / "checks"))
+            import style_distance
+            sd = style_distance.check(sid)
+            if sd.get("too_close"):
+                warns.append(f"화풍: 최근 영상 {sd['nearest']} 과 {sd['similarity']} 로 거의 같은 모습 — 그림체 · 색 · 구도 · 카메라 문법 중 하나를 레퍼런스 쪽으로 바꿀 것")
+        except Exception as e:  # noqa: BLE001
+            print(f"[제작] 화풍 거리를 재지 못함: {str(e)[:120]}", flush=True)
     mu, vo = sb.get("music") or {}, sb.get("voice") or {}
     sound = [f"음악: {mu.get('title')} — {mu.get('by')} ({mu.get('license')}) · {mu.get('why')}" if mu.get("use") and mu.get("src") else f"음악: 안 넣음 — {mu.get('why') or '정하지 않음'}",
              f"목소리: {vo.get('engine')} · {vo.get('id') or '기본'} · ×{vo.get('speed', 1)}" + (f" — {vo['why']}" if vo.get("why") else "")]

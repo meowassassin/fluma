@@ -102,7 +102,7 @@ order: 0
   `channel.md` 의 형식 줄(말 주도인지 음악 · 화면 주도인지) · 구성 뼈대 · 화면 종류 비율 · 컷 길이 · 음악 박자 · (말이 있으면) 문장 끝 비율 · 농담 줄과 시트를 보고,
   **"이 채널은 이렇게 만든다"를 표 하나로**(장면 순서 · 역할 · 화면 · 말투 예시) 보여 준 뒤 주제를 묻는다.
 - **의도 카드**: 주제가 정해지면 콘티 `intent`(summary · reference_use · must · must_not)를 채워 보여 주고 바로 진행한다(확인을 기다리지 않음) —
-  콘티를 쓴 뒤 `python3 engine/checks/gate.py intent <id>` 도 에이전트가. 이후 사용자 지적은 must / must_not 에 한 줄씩 더한다(기억 말고). 의도가 흐린 채로 만들지 않는다:
+  이후 사용자 지적은 must / must_not 에 한 줄씩 더한다(기억 말고). 의도가 흐린 채로 만들지 않는다:
 - **트렌드 레시피 빌리기**(Fluma 만의 방법): `data/workspace/trend-picks.json` 에서 `pick: "keep"`(찜) 인 쇼츠 중 `data/public/trends/xray/<id>/xray.json` 이 있는 것의 `recipe` · 샷 길이 · 자막 높이 · BPM 을 읽어 리듬을 맞춘다. 내용 · 그림은 가져오지 않는다. 없으면 이 줄은 생략.
 - 장면 뼈대를 표로 보여 준다: | # | 역할 | 초 | 화면에 보이는 것 | 나레이션 |
 

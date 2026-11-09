@@ -5,7 +5,7 @@
 //   - 세션 id 는 서버가 만든다. 첫 턴 `--session-id`, 이후 `--resume`.
 //   - 산출 파일은 도구 이벤트가 아니라 턴 전후 파일 diff 로 정한다.
 // 다른 점: 권한을 bypass 하지 않고 허용 목록으로 제한한다 (쓰기는 콘텐츠 폴더만).
-import { spawn, execFile } from "node:child_process";
+import { spawn, execFile, execFileSync } from "node:child_process";
 import { randomUUID, createHash } from "node:crypto";
 import { promises as fs, existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
@@ -373,6 +373,35 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     return { text: lines.join("\n"), memories: mem.map((m) => ({ id: m.id, title: m.title, scope: m.scope, type: m.type })), tmp };
   }
 
+  // 새 대화로 갈아탈 때 넘기는 상태 — 대화 기록 대신 파일(콘티)에서 코드가 만든다. 사용자의 지시는 요약하지 않고 그대로
+  const ROTATE = Math.max(1, Number(process.env.FLUMA_AGENT_ROTATE || 3));
+  function stateBrief(project, s) {
+    const out = ["<FLUMA_STATE>", "이전 대화는 새로 시작했다 — 지금 상태는 아래와 파일(콘티 · 재료)이 기준이다. 앞 대화를 다시 묻지 말고 이어서 한다."];
+    const users = (s.messages || []).filter((m) => m.role === "user").slice(-8);
+    if (users.length) {
+      out.push("사용자가 지금까지 한 말(최근 8개, 그대로):");
+      for (const m of users) out.push(`- ${String(m.text || "").replace(/\s+/g, " ").slice(0, 300)}`);
+    }
+    const last = [...(s.messages || [])].reverse().find((m) => m.role === "assistant" && m.text);
+    if (last) out.push(`직전 답(요약): ${String(last.text).replace(/\s+/g, " ").slice(0, 500)}`);
+    const sbp = path.join(ROOT, "data", "storyboards", `${project}.json`);
+    if (existsSync(sbp)) {
+      try {
+        const sb = JSON.parse(readFileSync(sbp, "utf8"));
+        const it = sb.intent || {};
+        if (it.must?.length) out.push(`꼭: ${it.must.join(" / ").slice(0, 600)}`);
+        if (it.must_not?.length) out.push(`하지 말 것: ${it.must_not.join(" / ").slice(0, 600)}`);
+        const r = spawnSyncSafe(PY, ["engine/story/knob.py", "list", project]);
+        if (r) out.push("영상의 지금 값(knob.py list):", r.slice(0, 2500));
+      } catch { /* 콘티를 못 읽으면 생략 */ }
+    }
+    out.push("</FLUMA_STATE>");
+    return out.join("\n");
+  }
+  function spawnSyncSafe(cmd, args) {
+    try { return execFileSync(cmd, args, { cwd: ROOT, encoding: "utf8", timeout: 8000, windowsHide: true }); } catch { return ""; }
+  }
+
   const userFrame = (text) => JSON.stringify({ type: "user", message: { role: "user", content: [{ type: "text", text }] } }) + "\n";
 
   let shuttingDown = false;
@@ -393,12 +422,18 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     // 장면 코멘트는 따로 고른 스킬이 없으면 scene-edit 를 쓴다
     if (scene != null && !skill && existsSync(path.join(ROOT, ".claude", "skills", "scene-edit", "SKILL.md"))) skill = "scene-edit";
     // Claude 세션을 실제로 연 적이 있어야 --resume (같은 대화를 Codex 로만 하다가 Claude 로 바꾸면 새 세션으로 시작)
-    let first = false, ctx = null;
+    let first = false, ctx = null, rotated = false;
     const sess = await mutate(project, async (s) => {
       const claudeUsed = s.claudeUsed ?? (!!s.sessionId && !s.codexThread);
       first = !s.sessionId || !claudeUsed;
+      // 대화 갈아타기: 한 Claude 대화에 턴이 쌓이면 매 턴 앞 대화 전체(정지 화면 · 도구 출력 포함)를 다시 읽어 턴 비용이 계속 커졌다
+      // (2026-11-09 영상: 턴 비용 0.8 → 36.7, 전체의 3/4 이 쌓인 대화 다시 읽기). ROTATE 턴마다 새 대화로 시작하고, 상태는 코드가 요약해 넘긴다
+      if (claudeUsed && s.sessionId && (s.claudeTurns ?? 0) >= ROTATE && !project.startsWith("_")) {
+        s.sessionId = randomUUID(); first = true; rotated = true; s.claudeTurns = 0;
+      }
       if (!s.sessionId) s.sessionId = randomUUID();
       ctx = await buildContext(project, message, context, s.sessionId);
+      if (rotated) ctx.text = ctx.text.replace("</FLUMA_CONTEXT>", stateBrief(project, s) + "\n</FLUMA_CONTEXT>");
       s.messages.push({ role: "user", text: message, skill: skill || null, scene: scene ?? null, ts: Date.now(), memories: ctx.memories });
     });
     await fs.mkdir(path.join(ROOT, ctx.tmp), { recursive: true });
@@ -438,7 +473,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       if (rt.effort) args.push("--effort", rt.effort);
       args.push("--settings", JSON.stringify({ language: cfg.language || "korean" }));
       stdio = ["pipe", "pipe", "pipe"];
-      await mutate(project, (s) => { s.claudeUsed = true; });
+      await mutate(project, (s) => { s.claudeUsed = true; s.claudeTurns = (s.claudeTurns ?? 0) + 1; });
     }
 
     const before = await snapshot();

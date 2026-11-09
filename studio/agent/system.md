@@ -27,8 +27,8 @@
    안을 고른 뒤에는 **느낌(룩)** 을 시안과 선택지로 묻는다(plan 0.5턴 · `feel.py`). 화면은 완전 로컬 — 그림 · 영상 생성 모델은 쓰지 않는다. 판단은 늘 에이전트(Claude Code), 보기 · 말하기 모델은 사용자가 설정에서 고른다.
 3. **지난 영상 성과를 반영**: YouTube 에 올린 영상은 `data/compositions/<id>/youtube.stats.json`(장면별 이탈 · 평균 시청 비율 · 유입 경로)이 있다. 새 기획 전에 이탈이 큰 장면 유형을 확인하고 같은 실수를 피한다.
 4. 수치 · 이름은 출처가 있는 것만 쓴다. 조사가 필요하면 WebSearch 로 찾고 `data/research/<주제>.json` 에 출처 URL 과 함께 남긴다. 출처 있는 사실이 5개 미만이면 만들지 말고 사용자에게 알린다.
-5. 제작은 한 줄: `python3 engine/produce.py data/storyboards/<id>.json` — 음성 → 검사 → 재료 · 초안 → 장면별 정지 화면. 정지 화면을 Read 로 직접 보고 고칠 곳만 고친다. 최종 렌더는 사용자가 '렌더'를 눌러 의도 · 시안을 확인한 뒤.
-6. **모양은 사용자가 고른다**: 전체 초안 전에 `python3 engine/story/directions.py propose data/storyboards/<id>.json` 로 디자인 시안 2~3개를 보여 주고 고르게 한다(produce 스킬 '디자인 시안 고르기'). 효과(배경 움직임 · 전환 · 글자 애니메이션 · 그림자 · 밀기)는 레퍼런스나 사용자 요청이 있을 때만. 장면마다 `craft_variety.py suggest` 로 재료를 고르되, 다양성 때문에 원하지 않는 효과를 넣지 않는다.
+5. 제작은 한 줄: `python3 engine/produce.py data/storyboards/<id>.json` — 음성 → 검사 → 재료 · 초안 → 장면별 정지 화면. 정지 화면을 Read 로 직접 보고 고칠 곳만 고친다. **고칠 때는 값으로**: `python3 engine/story/knob.py set <id> <경로>=<값> …` → `knob.py preview <id> --scene <n>`(정지 화면 약 2초, 움직임은 `--clip` 약 8초) — 좌표 · SVG · 스크립트를 손으로 고치거나 영상 전체를 다시 렌더하지 않는다. 사용자가 '좋아 · 완성'이라고 하면 그때 한 번 `python3 engine/render.py data/storyboards/<id>.json`(최종). 승인 · 관문 기록은 없다.
+6. **모양은 추천안으로 바로**: 레퍼런스대로(없으면 담백하게) 정해 진행하고 한 줄로 알린다 — 시안 비교(`directions.py propose`)는 사용자가 보고 싶다고 할 때만. 효과(배경 움직임 · 전환 · 글자 애니메이션 · 그림자 · 밀기)는 레퍼런스나 사용자 요청이 있을 때만. 장면마다 `craft_variety.py suggest` 로 재료를 고르되, 다양성 때문에 원하지 않는 효과를 넣지 않는다.
 6-1. **초안은 초벌이다 — 장면마다 다듬는다**: 초안을 본 뒤 refine 스킬(`engine/craft/session.py`)로 장면마다 디테일 층(구도 · 타이포 · 색 · 빛 · 질감 · 움직임 · 전환 · 소리)을 계획하고, 여러 Craft 앱의 전체 명령에서 골라 시도 → 전 · 후 그림을 직접 보고 고친 뒤 남긴다. 한 앱 · 한 층에 몰리지 않게 `coverage` 로 확인한다. 근거 없는 효과는 넣지 않는다.
 6-2. **레퍼런스를 따른 재료는 나란히 본다**: 썸네일로 짐작해 만들지 않는다. 원본 프레임을 크게 뽑아 재고, 고칠 때마다 `engine/checks/refmatch.py pair` 로 레퍼런스와 한 장에 놓고 본다. 곡면 · 유기적 모양은 기본 도형으로 시작하지 않고 Blender(`F.loft` · `F.melt`)로 만든다.
 7. 요청 범위만 고친다. 사용자가 장면 하나를 말하면 그 장면만. `data/compositions/<id>/overrides.json`(사용자 손 수정)은 지우거나 덮어쓰지 않는다.

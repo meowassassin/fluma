@@ -40,7 +40,7 @@ order: 1
    화면을 말로 비트는 농담 줄을 골라 `python3 engine/research/ref_channel.py note <채널> --jokes <json>` 으로 카드에 확정한다
    (`[{"video": "<id>", "n": 12, "line": "…", "why": "화면의 컨테이너선을 말로 비틂"}]`).
 3. **의도 카드부터**(콘티 `intent`): summary(누구에게 무엇을 어떤 느낌으로) · reference_use(레퍼런스에서 가져올 것 / 안 가져올 것) ·
-   must · must_not · locked. 사용자에게 표로 보여 주고 '좋다'를 받으면 `python3 engine/checks/gate.py intent <id>`.
+   must · must_not · locked. 사용자에게 표로 보여 주고 바로 진행한다(확인을 기다리지 않음).
    **사용자 지적이 나올 때마다 must / must_not 에 한 줄씩 더한다**(기억이 아니라 이 영상의 규칙). 예: "직접 그린 2D · 이모지 금지(AI 티)", "강조는 빨간 네모 말고 스포트라이트".
 4. 콘티 `reference: ["<id>"]`. 장면은 채널 뼈대의 **역할 순서**로 짜고 장면마다 `beat`(역할) · `screen`(화면 종류)을 적는다.
    - `screen` 은 채널 카드와 같은 갈래(실제 화면 · 기사 · 사람 · 실사 영상 · 제품 · 음식 · 짤 · 애니메이션 · 일러스트 · 카드(글자) · 도표 · 게임 화면 · 3D 그래픽)로 적고, 채널의 화면 비율에 가깝게(T21). 이야기하는 **대상 자체**가 먼저, 기사 캡처는 근거 한두 곳(L21).
@@ -50,9 +50,7 @@ order: 1
    - 나레이션은 채널의 문장 끝 **비율대로 섞어**(한 어미로 몰지 않는다, T19) 이어 말하듯. 장면 = 문장이 아니어도 된다.
 5. `python3 engine/story/direct.py data/storyboards/<id>.json --write` — 카드의 방향 · 목소리(엔진 · 채널 말 속도 · 이어 말하기)를 적는다.
 6. 검사: L21(기사 캡처 위주) · L18(움직임 minimal 인데 튀는 연출)은 실패, T19 · T21 · T22 는 권고 — 고칠지 판단해 알린다.
-7. **시안 먼저(관문)**: 장면 1~3 만 짜서 `python3 engine/render.py data/storyboards/<id>.json --draft --scenes 1-3` → 보여 주고
-   '좋다'를 받으면 `python3 engine/checks/gate.py draft <id>`. 의도 · 시안 확인 없이는 최종 렌더 이 막힌다(gate.py check).
-   사용자가 확인하지 않았는데 gate.py intent · draft 를 스스로 부르지 않는다.
+7. **바로 제작**: 검사를 통과하면 produce 스킬로 초안까지 이어서 만든다. 그 뒤 고치는 것은 값으로(`knob.py`) — 승인 · 관문 기록은 없다.
 
 ## 화면 글(고정 제목 · 자막 · 말풍선 · 카드 글) — 사람이 실제로 쓰는 말로
 2026-11-04: "내 API가 느린 이유, 반복문 안에 있다" · "해결은 셋" · "주문 1번 + 회원 100번 = 쿼리 101번" 이 어색하다는 지적.

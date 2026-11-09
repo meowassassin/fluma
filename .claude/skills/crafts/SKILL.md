@@ -116,3 +116,8 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 앱마다 기능 목록 전체를 견본 문서에서 실행해 기록했다 — `.claude/skills/crafts/probe/<앱>.jsonl`(명령마다 되는 상태 · 실행 결과 · 오류 문구 · 견본 그림), 요약 `<앱>.md`(분류별 수 · 견본 판).
 `craft_catalog.py search` 결과에 자동으로 붙는다. 기록이 낡았으면(앱 업데이트) `python3 engine/craft/probe.py <앱>` 로 다시 돌린다(앱 설정은 임시 HOME 이라 바뀌지 않음).
 
+## 제품 · 툴 소개 영상(쇼케이스) — 에이전트 · MCP 도구 소개 페이지 데모처럼
+`python3 engine/capture/showcase.py make <계획.json> <출력 폴더> [--aspect 16:9|9:16] [--music auto]` — 실제 앱을 대본(클릭 · 입력 · 짚기 · 이동)대로 2배 해상도로 녹화하고,
+동작 대상 상자로 카메라가 줌 인 · 아웃(멀면 빠졌다 들어감), 짚는 곳만 선명 · 나머지 흐림, 입력은 실제 한 자씩, 글자 줄은 한 자씩, 기다림은 빨리 감기, 맞는 무료 곡까지.
+계획 형식은 파일 맨 위 설명. 예: data/public/showcase/fluma-demo.json(Fluma 자체 소개). 보내기(Enter) 같은 실제 동작은 대본에 넣지 않으면 일어나지 않는다.
+

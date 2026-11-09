@@ -247,6 +247,8 @@ def critique(sb: dict, out: Path) -> None:
         import catalog
         import see
         if not catalog.chosen("see.video", sb):
+            # 조용히 건너뛰지 않는다 — 2026-11-09 영상은 보기 모델이 꺼져 있어 초안 32번 동안 비평이 한 번도 안 돌았는데 아무도 몰랐다
+            print("[VL 비평] 꺼짐 — 설정 → 보기 · 말하기 에서 '영상 이해' 모델을 고르면 초안마다 움직임 · 호흡을 봅니다(지금은 정지 화면만 확인)", flush=True)
             return
         print("[VL 비평] 보기 모델이 초안을 봅니다…", flush=True)
         d = see.critique(sb["id"], str(out))

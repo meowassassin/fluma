@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+- 대화로 고치기 — 값으로: 에이전트가 코드 · 좌표 · 전체 렌더 대신 요소의 값(조정 adjust · 스크립트 args · 장면 칸)을 바꾸고 바뀐 부분만 다시 지어 바로 보여 줌(`engine/story/knob.py`). 실측(카톡 영상): 값 바꾸기 + 정지 화면 1.6초 · 장면 하나 영상 7.5초(예전 한 번 고치는 데 4~17분) / Edit by values: change knobs, rebuild only what changed, preview in ~2 s (scene clip ~8 s)
+- 에이전트 대화 갈아타기: 몇 턴마다 새 대화로 시작하고 상태(콘티 값 · 사용자 지시 그대로 · 직전 답)는 코드가 넘김 — 턴 비용이 쌓여 커지지 않게 / Agent conversations rotate with a code-built state brief so per-turn cost stays flat
+- 남은 승인 · 관문 · '렌더 버튼' 안내 삭제 — '좋아'면 에이전트가 바로 최종 렌더 · 보기 모델이 꺼져 있으면 비평을 건너뛰었다고 알림 · 화풍 거리(최근 영상과 너무 닮으면 알림, 로컬 CLIP) / Removed leftover approvals, auto final render, VL-off notice, style-distance warning
+- 장면 일부 렌더(`--scenes`)가 이웃 장면을 몰라 멈추던 문제 · 배치만 바꿔도 재료를 다시 만들던 문제(adjust 등은 재료 열쇠에서 뺌) / Fixed partial-scene render crash; placement-only fields no longer rebuild materials
+- 제품 소개 · 데모 영상(`engine/capture/showcase.py`): 실제 앱을 대본대로 녹화 → 소개 영상(오려 띄우기 · 3D 기울기 · 글자 카드) 또는 데모 GIF(자동 줌 · 빨리 감기) / Showcase & demo GIF capture
 - 제작 자동: '제작 시작' 버튼을 없애고 콘티가 검사를 통과하면 같은 턴에 초안까지, 고르기를 기다리던 단계는 추천안으로 진행 · 에이전트 쓰기 권한이 막히던 문제 / Auto production: no "start" button, recommended options without waiting, fixed blocked agent writes
 - 배경 음악 자동: 넣을지 정하고(레퍼런스 음악 · 나레이션 · 형식) 요즘 쓰이는 곡 중 맞는 무료 곡을 박자 · 힘 있는 구간으로 고름, 상업 유행곡은 업로드 때 붙일 곡으로 안내(설정에서 직접 넣기 가능) · YouTube Data API 키 선택 / Automatic background music from free libraries, trending commercial songs suggested for upload
 - 효과음: 음악이 깔리면 기본으로 빼고, 고음질 CC0 녹음(48kHz 스테레오)으로 교체 / Sound effects: off under music by default, high-quality CC0 recordings
