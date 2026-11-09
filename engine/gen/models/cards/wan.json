@@ -1,0 +1,137 @@
+{
+ "model": "wan",
+ "title": "Alibaba Wan 3.0 (Model Studio API) · Wan 2.2/2.5 오픈 · Lightricks LTX-Video(오픈)",
+ "vendor": "Alibaba Cloud / Lightricks",
+ "status": "active",
+ "versions": [
+  "wan3.0 (Model Studio): 글 · 그림 · 시작/끝 프레임 · 참조(인물 · 동작 · 스타일 · 소리 · 점토 렌더 · 스토리보드 · 키프레임 · 문서/웹) · 편집 · 연장, 입력+출력 30초 이하",
+  "Wan 2.5/2.6/2.7: 소리 공식(sound formula) 지원 버전",
+  "Wan 2.2 오픈 가중치(공식 카메라 용어 목록 없음 — 커뮤니티 용어)",
+  "LTX-Video(오픈 가중치 — 이 카드에서 상세 조사 안 함)"
+ ],
+ "updated": "2026-11-06",
+ "sources": [
+  "https://help.aliyun.com/en/model-studio/wan3-video-generation-prompt-guide",
+  "https://www.alibabacloud.com/help/en/model-studio/text-to-video-prompt",
+  "https://www.instasd.com/post/wan2-2-whats-new-and-how-to-write-killer-prompts (비공식 · 2.2 카메라 용어)"
+ ],
+ "inputs": {
+  "t2v": true,
+  "i2v_first": true,
+  "i2v_last": true,
+  "ref_images": 7,
+  "v2v": true
+ },
+ "inputs_note": "소재는 종류별로 올린 순서대로 Image N · Video N · Audio N. 공식 예시는 그림 7장을 'Subject locking: little girl Image 6, …' 처럼 묶음(상한은 미확인). Voice timbre reference Audio N 을 한 번 쓰면 그 인물 대사 전체에 적용.",
+ "durations": "wan3.0: 공식 예시 5 · 14 · 15 · 22초, 연장은 입력+출력 30초 이하(duration -1 권장) — 정확한 선택지 미확인",
+ "aspects": [
+  "16:9(공식 예)",
+  "9:16 미확인"
+ ],
+ "resolutions": null,
+ "fps": null,
+ "prompt": {
+  "structure": [
+   "overall description(장르 · 스타일 · 길이)",
+   "Shot N (start-end seconds): subject + scene + motion + aesthetic control",
+   "Dialogue: xx says: \"…\"",
+   "sound effects as standalone sentences",
+   "Negative prompt list"
+  ],
+  "style": "sentence",
+  "max_chars": null,
+  "languages": [
+   "en",
+   "zh"
+  ],
+  "negative": "list_sentence",
+  "negative_note": "마지막에 'Negative prompt list: No modern elements, no subtitles or watermarks, no extra characters, …'",
+  "timing_syntax": "Shot 1 [0-3s] … · Shot 1 (00:00-00:03): … · [00:00-00:03] … (하나로 통일) — 샷마다 2~5초, 빈틈 · 겹침 없이",
+  "multishot_syntax": "Shot 01, wide shot establishing tracking. 24mm … / 한 샷: 첫 줄에 'One continuous shot'"
+ },
+ "camera_terms": [
+  "push in",
+  "pull out",
+  "orbit",
+  "handheld follow",
+  "camera static",
+  "fixed camera",
+  "24mm wide-angle",
+  "85mm telephoto, shallow depth of field",
+  "extreme low angle",
+  "slight Dutch angle",
+  "whip pan",
+  "frame-within-frame composition",
+  "camera pushes in very slowly",
+  "camera orbits 120 degrees"
+ ],
+ "lighting_terms": [
+  "high-saturation warm yellow lantern light",
+  "red and green neon",
+  "high contrast",
+  "slight film grain"
+ ],
+ "style_terms": [
+  "35mm cinematic film",
+  "Hong Kong realism",
+  "line illustration",
+  "wasteland style",
+  "Miyazaki animation",
+  "clay animation",
+  "motion graphics",
+  "Apple Keynote minimalist business style"
+ ],
+ "audio": {
+  "native": true,
+  "dialogue_syntax": "xx says: \"content\" · she whispers: \"content\" · 여러 명: Image 1 says: \"…\"; Image 2 replies: \"…\"",
+  "lipsync": true,
+  "sfx": true,
+  "note": "대사가 없으면 'No dialogue' 를 꼭 — 안 쓰면 모델이 정함"
+ },
+ "consistency": {
+  "Subject locking": "인물마다 Image N 을 묶는 줄",
+  "Lock appearance only": "The child in Image 1 stands in … Image 2",
+  "Borrow motion/style only": "Only reference the color tone and lighting of Image 2, not the characters"
+ },
+ "text_in_frame": "unknown — 부정 목록에 'No complex text' 를 권장. Fluma 는 글자를 편집 단계에서",
+ "avoid": [
+  "고빈도 동작 지시(초당 3번 고개 젓기)",
+  "샷 구간 사이 빈틈 · 겹침",
+  "타임스탬프 형식 섞어 쓰기",
+  "2.2: 정지 카메라를 말하지 않기 — 저절로 흘러감(비공식)"
+ ],
+ "tips": [
+  "공식 프롬프트 최적화 스킬 wan3-pe 배포",
+  "한 샷 영상은 첫 줄에 'One continuous shot'",
+  "'Hard cut' 으로 컷 명시"
+ ],
+ "example": {
+  "input": "text",
+  "prompt": "Shot 1 [0-3s] A boy sits alone in a corner of the playground, looking down at the letter in his hand, then sighs softly, eyes lost. Shot 2 [4-6s] Hard cut, fixed camera, focused on the boy's eyes, tears glistening … (공식 예시)"
+ },
+ "pricing": "Model Studio 요금(미확인) · 오픈 가중치는 무료(GPU 필요)",
+ "license": "Wan 2.2 Apache-2.0(오픈) · wan3.0 은 클라우드 약관",
+ "policy": "Alibaba Cloud 콘텐츠 정책",
+ "compile": {
+  "order": [
+   "single_shot",
+   "overall",
+   "timeline",
+   "dialogue_inline",
+   "sound_sentences",
+   "negative_list"
+  ],
+  "dialogue": "{speaker} says: \"{line}\"",
+  "timing": "Shot {n} [{a}-{b}s] {what}",
+  "single_shot": "One continuous shot.",
+  "negative": {
+   "mode": "list",
+   "prefix": "Negative prompt list: "
+  },
+  "ref": "Image {n}",
+  "durations": null,
+  "aspect_9_16": null,
+  "max_chars": null,
+  "text_policy": "no subtitles or watermarks, no complex text"
+ }
+}

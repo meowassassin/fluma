@@ -132,7 +132,10 @@ def material_checks(sb: dict) -> list:
     out = []
     # L36 사용자 녹화 대기: 자동으로 못 찍는 화면 — 사용자에게 부탁하고(무엇을 · 몇 초 · 어디에 올리는지) 받은 뒤 다시 렌더
     for r in recs:
-        if r.get("missing"):
+        if r.get("missing") and (r.get("spec") or {}).get("gen"):
+            out.append(("L36", r.get("scene"), f"실사 생성 컷 '{r.get('id')}' 을 기다림: `python3 engine/gen/genclip.py prompts data/storyboards/{sb['id']}.json` 의 그림 → 영상 프롬프트를 사용자에게 주고, "
+                                               f"그림('{r.get('id')}.png') · 클립('{r.get('id')}.mp4')을 올려 달라고 부탁. 받기 전 초안은 이 컷 없이 렌더됨"))
+        elif r.get("missing"):
             out.append(("L36", r.get("scene"), f"사용자 녹화가 필요: {r.get('ask')} → 편집기에 파일을 올려 달라고 부탁(이름에 '{r.get('id')}' 포함). 받기 전 초안은 이 재료 없이 렌더됨"))
     # 주석 오버레이는 대상 화면 위에 얹힐 뿐 새 화면이 아니다 — 종류 · 개수 · 전환 수에 세지 않는다
     notes = [r for r in recs if not r.get("missing") and r.get("type") == "overlay"]

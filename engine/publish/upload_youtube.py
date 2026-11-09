@@ -107,7 +107,8 @@ def main():
 
     category = args.category or "28"
     status = {"privacyStatus": args.privacy, "selfDeclaredMadeForKids": False}
-    if sb.get("synthetic"):                     # 사실적인 합성 장면이 있으면 '변경 · 합성 콘텐츠' 표시 — YouTube 정책
+    from genclip import has_generated            # 실사 생성 컷(engine/gen)이 있으면 자동으로
+    if sb.get("synthetic") or has_generated(sb):  # 사실적인 합성 장면이 있으면 '변경 · 합성 콘텐츠' 표시 — YouTube 정책
         status["containsSyntheticMedia"] = True
     if args.publish_at:
         status["privacyStatus"] = "private"

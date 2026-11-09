@@ -13,9 +13,9 @@ import type { EngineMeta, Settings } from "../../lib/types";
 import { McpSec } from "./McpSec";
 import { YoutubeSec } from "./YoutubeSec";
 import { LANGS, agentLang, t, useLang, type Lang } from "../../lib/i18n";
-import { sapi, type AgentInfo, type GenKey, type Mem, type Provider, type Voice } from "./api";
+import { sapi, type AgentInfo, type CapRow, type GenKey, type Mem, type ModelRow, type Provider, type Voice } from "./api";
 
-type Sec = "agent" | "media" | "youtube" | "memory" | "mcp" | "about";
+type Sec = "agent" | "models" | "media" | "youtube" | "memory" | "mcp" | "about";
 type MediaTab = "voice" | "stock" | "render";
 interface AgentCfg { mode: "cli" | "api"; cli: string; claudeModel: string; codexModel: string; effort: string; provider: string; apiModel: string; baseUrl: string; protocol: "anthropic" | "responses" }
 type Save = "idle" | "saving" | "saved" | "failed";
@@ -59,6 +59,7 @@ export const SettingsPage: React.FC = () => {
   // open-design 처럼 두 덩어리: 글을 쓰는 모델(에이전트) · 소리와 화면 재료(음성 · 스톡 영상 · 렌더 엔진)
   const NAV: [Sec, string, string, string][] = [
     ["agent", "agent", t("모델 · 공급자"), t("로컬 CLI · API 키 · 모델")],
+    ["models", "sparkle", t("보기 · 만들기 · 말하기"), t("오픈라우터 키 하나 · 능력마다 모델")],
     ["media", "image", t("미디어"), t("음성 · 스톡 영상 · 렌더")],
     ["youtube", "video", t("YouTube"), t("채널 연결 · 업로드 · 통계")],
     ["memory", "memory", t("기억"), t("{n}개", { n: activeMem.length })],
@@ -86,6 +87,7 @@ export const SettingsPage: React.FC = () => {
           {isLoading || !s ? (error ? <EmptyState icon="warn" title={t("설정을 불러오지 못했어요")} body={errMsg(error)} action={<Button onClick={() => qc.invalidateQueries({ queryKey: qk.settings })}>{t("다시 시도")}</Button>} />
             : <div className="col"><Skeleton w={240} h={22} /><Skeleton h={64} /><Skeleton h={64} /></div>) : <>
             {sec === "agent" && <AgentSec s={s} set={set} />}
+            {sec === "models" && <ModelsSec keys={keys} />}
             {sec === "media" && <MediaSec s={s} set={set} engines={engines} voices={voices} keys={keys} />}
             {sec === "youtube" && <YoutubeSec />}
             {sec === "memory" && <MemorySec mem={activeMem} />}
@@ -362,7 +364,6 @@ const GenKeys: React.FC<{ keys?: GenKey[]; title: string; desc: string }> = ({ k
 const MediaSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; engines: EngineMeta[]; voices: Voice[]; keys?: GenKey[] }> = ({ s, set, engines, voices, keys }) => {
   const raw = useParams().section ?? "media";
   const [tab, setTab] = useState<MediaTab>(() => (["voice", "stock", "render"].includes(raw) ? raw : "voice") as MediaTab);
-  const vk = keys?.filter((k) => k.caps.includes("음성"));
   const sk = keys?.filter((k) => k.caps.includes("스톡 영상"));
   return <>
     <div className="media-tabs">
@@ -371,10 +372,52 @@ const MediaSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; eng
         { value: "stock", label: t("스톡 영상 · {n}개 연결", { n: (sk ?? []).filter((k) => k.hasKey).length }) },
         { value: "render", label: t("렌더 엔진 · {n}개", { n: engines.filter((e) => e.available).length }) }]} />
     </div>
-    {tab === "voice" && <><VoiceSec s={s} set={set} voices={voices} /><GenKeys keys={vk} title={t("음성 API 키")} desc={t("유료 · 클라우드 음성 공급자를 연결하면 위 목록에서 '사용 가능'이 됩니다. 어떤 목소리를 쓸지는 에이전트가 레퍼런스 목소리에 맞춰 고릅니다(voice_match).")} /></>}
+    {tab === "voice" && <VoiceSec s={s} set={set} voices={voices} />}
     {tab === "stock" && <GenKeys keys={sk} title={t("스톡 영상 API 키")} desc={t("무료 스톡 영상(Pexels · Pixabay) — 일상 · 감성 · 광고 장면의 바탕(B-roll). 출처는 설명란에 자동으로 붙습니다.")} />}
     {tab === "render" && <RenderSec engines={engines} />}
   </>;
+};
+
+/* ---------- 보기 · 만들기 · 말하기(오픈라우터) ---------- */
+/** 판단은 내 Claude Code, 보기 · 만들기 · 말하기 모델은 여기서 능력마다 고른다. 목록 · 가격은 오픈라우터 공개 목록(하루 한 번).
+ *  '무료 · 로컬'을 고르면 키가 있어도 그 능력은 로컬 경로. 돈이 드는 호출은 영상당 상한 안에서만 묻지 않고, 넘으면 에이전트가 물어본다 */
+const ModelsSec: React.FC<{ keys?: GenKey[] }> = ({ keys }) => {
+  const ok = keys?.filter((k) => k.caps.includes("모델"));
+  const { data, refetch, isLoading } = useQuery({ queryKey: ["model-caps"], queryFn: ({ signal }) => sapi.caps(signal) });
+  const save = async (body: Parameters<typeof sapi.saveChoice>[0]) => {
+    try { await sapi.saveChoice(body); await refetch(); qc.invalidateQueries({ queryKey: qk.voices }); toast.success(t("저장했어요")); }
+    catch (e) { toast.error(t("저장하지 못했어요"), { description: errMsg(e) }); }
+  };
+  return <>
+    <GenKeys keys={ok} title={t("오픈라우터 키")} desc={t("키 하나로 영상 이해 · 그림 · 영상 생성 · 음성 · 받아쓰기를 씁니다. 판단(기획 · 콘티 · 비평)은 내 Claude Code 가 하고, 키는 에이전트가 읽지 못합니다. 에이전트 설정에 넣은 오픈라우터 키가 있으면 그것을 같이 씁니다.")} />
+    <Head t={t("능력마다 모델")} d={t("목록과 가격은 오픈라우터에서 받아 옵니다. '무료 · 로컬'은 돈이 들지 않는 지금 경로입니다. 영상 이해는 키가 있으면 기본으로 켜집니다.")}
+      right={<Button size="sm" variant="ghost" icon="history" onClick={() => refetch()}>{t("새로 고침")}</Button>} />
+    {isLoading || !data ? <Skeleton h={240} /> : <>
+      {!data.key && <p className="faint">{t("키가 없어서 모든 능력이 무료 · 로컬 경로로 돕니다.")}</p>}
+      {data.caps.map((c) => <CapPick key={c.cap} c={c} disabled={!data.key} onPick={(v) => save({ models: { [c.cap]: v } })} />)}
+      <Row t={t("영상 한 편 상한")} d={t("이 금액 안에서는 묻지 않고 쓰고, 넘거나 값을 미리 알 수 없으면 에이전트가 금액을 보여 주고 묻습니다. 이번 달 쓴 돈: ${n}", { n: data.month.toFixed(2) })}>
+        <Select size="sm" value={String(data.cap_usd)} onChange={(v) => save({ budget: { per_video: Number(v) } })} aria-label={t("영상 한 편 상한")}
+          options={["0", "1", "3", "5", "10", "20"].concat([String(data.cap_usd)]).filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => Number(a) - Number(b)).map((v) => ({ value: v, label: Number(v) === 0 ? t("매번 묻기") : `$${Number(v)}` }))} />
+      </Row>
+    </>}
+  </>;
+};
+
+const CapPick: React.FC<{ c: CapRow; disabled: boolean; onPick: (v: string) => void }> = ({ c, disabled, onPick }) => {
+  const [open, setOpen] = useState(false);
+  const { data: rows, isFetching } = useQuery({ queryKey: ["cap-models", c.cap], queryFn: ({ signal }) => sapi.capModels(c.cap, false, signal), enabled: open && !disabled, staleTime: 3600e3 });
+  const cur = c.set || "";
+  const opts: { value: string; label: string; disabled?: boolean }[] = [
+    { value: "", label: c.default_on ? t("기본(추천 모델 자동){m}", { m: c.chosen ? ` — ${c.chosen}` : "" }) : t("무료 · 로컬 — {l}", { l: t(c.local) }) },
+    { value: "local", label: t("무료 · 로컬 — {l}", { l: t(c.local) }) },
+    ...((rows as ModelRow[] | undefined) ?? []).filter((r) => r.ok).map((r) => ({ value: r.id, label: `${r.free ? "🆓 " : ""}${r.id}${r.price_label ? " · " + t(r.price_label) : ""}${r.supports.length ? " · " + r.supports.join(" · ") : ""}` })),
+  ];
+  if (cur && cur !== "local" && !opts.some((o) => o.value === cur)) opts.push({ value: cur, label: cur });
+  return <Row t={t(c.title)} d={c.chosen ? t("지금: {m}", { m: c.chosen }) : t("지금: 무료 · 로컬 — {l}", { l: t(c.local) })}>
+    <span onFocus={() => setOpen(true)} onMouseEnter={() => setOpen(true)}>
+      {disabled ? <Tag>{t("키 필요")}</Tag> : <Select size="sm" value={cur} onChange={onPick} aria-label={t(c.title)} options={isFetching && !rows ? [...opts, { value: "_", label: t("목록 받는 중"), disabled: true }] : opts} />}
+    </span>
+  </Row>;
 };
 
 /* ---------- 음성 ---------- */

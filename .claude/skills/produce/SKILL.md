@@ -96,6 +96,27 @@ order: 2
 - **효과는 근거가 있을 때만**: 배경 움직임 · 등장 전환 · 글자 애니메이션 · 그림자 · 밀기는 기본으로 꺼져 있다. 레퍼런스 · 사용자 요청 없이 켜지 않는다. produce 결과의 D01 은 '사용자가 아직 고르지 않음'.
 - **같은 재료, 다른 앱**: 재료에 `"method": "<앱>"`(또는 direction.methods) — 예: 차트를 DeckCraft 차트 엔진으로 `{"type": "chart", "method": "deckcraft", "kind": "pie", …}`. 가능한 앱은 `materials.methods()` · lint L39 가 알려 준다. DeckCraft 막대 차트는 세로축이 0 부터가 아닐 수 있어 기준선이 중요한 비교는 기본 방법.
 
+## 느낌(룩) — 실사 재료에 같은 색 · 질감
+- 콘티 `direction.feel`(plan 0.5턴에서 사용자가 시안을 보고 고른 것)이 있으면 실사 재료(영상 · 스톡 · 사진 · 생성 클립)에 같은 grade 가 자동으로 입혀진다(materials.py → engine/story/feel.py). 글자 · 그래픽에는 입히지 않는다.
+- 아직 안 골랐으면 제작 전에 `feel.py preview` 시안을 보여 주고 고르게 한다(에이전트가 정하지 않는다).
+
+## 실사 생성 컷(사용자가 고른 경우만) — 그림 시안 → 사용자가 고름 → 그 그림으로 영상
+돈을 아끼고 원하는 스타일을 먼저 확인하려고 **그림부터** 만든다(그림은 장당 몇 센트, 영상은 초당 몇십 센트). 영상은 사용자가 고른 그림에서만.
+
+A. **오픈라우터 키가 있고 설정 → 보기 · 만들기 · 말하기 에서 '그리기' · '찍기' 모델을 골랐으면 — Fluma 가 직접 만든다**
+1. `python3 engine/gen/genclip.py key data/storyboards/<id>.json [--mid <재료 id>]` → 샷마다 키프레임 시안 3장(설계대로 · 더 가까이 · 다른 각도, 고른 느낌 · 레퍼런스 구도 반영) → `data/compositions/<id>/gen/<재료 id>-k1..3.png`. **그림을 직접 열어 보고** 설계와 맞는지 한 줄씩 말한 뒤 사용자에게 보여 준다.
+2. **사용자가 고른다** → `genclip.py pick-key data/storyboards/<id>.json <재료 id> <번호>` (사용자가 고를 때만). 마음에 안 들면 고칠 점을 받아 재료 칸(prompt · framing · setting)을 고치고 1 을 다시.
+3. `genclip.py run data/storyboards/<id>.json [--mid <재료 id>]` → 고른 그림을 첫 프레임으로 영상(고른 '찍기' 모델 문법의 움직임 · 카메라 위주 프롬프트). 작업은 몇 분 — 끊겨도 같은 명령이면 이어 받는다(`gen/jobs.json`). 결과는 `data/public/uploads/<id>/<재료 id>.mp4`.
+4. `shotplan.py check` → 다르면 고칠 문구로 다시 run.
+- **비용 관문**: 영상 한 편 상한(설정, 기본 $3) 안이면 묻지 않고 진행한다. 넘거나 값을 미리 알 수 없으면(예: 토큰 단위 모델) 명령이 `[승인 필요] …` 로 멈춘다 → 그 금액을 사용자에게 그대로 보여 주고 '예'를 받은 뒤에만 같은 명령에 `--approve`. 쓴 돈은 `data/workspace/spend.jsonl`.
+- 느낌 단계(plan 0.5턴)에서 `for_mid` 를 적었으면 사용자가 고른 느낌 시안 그림이 이미 그 컷의 키프레임이다 — 1 · 2 를 건너뛰고 3 으로.
+
+B. **키가 없거나 모델을 안 골랐으면 — 프롬프트만**(생성 비용 0)
+1. `genclip.py prompts data/storyboards/<id>.json` → `data/compositions/<id>/gen/prompts.md`(1단계 그림 · 2단계 영상 프롬프트, 모델마다 문법) — 사용자에게 그대로 준다.
+2. 사용자가 그림(`<재료 id>.png`) → 확인 → 영상(`<재료 id>.mp4`)을 올린다. 그림이 올라오면 `prompts` 를 다시 — 2단계가 그 그림 기준으로 바뀐다.
+
+공통: 올라오기 전 초안은 그 컷 없이 렌더(L36). `genclip.py status` 로 샷마다 단계. 업로드 때 '변경 · 합성 콘텐츠' 표시는 자동, 워터마크는 지우지 않는다.
+
 ## 디테일 다듬기(초안 뒤 — refine 스킬)
 초안은 어댑터 초벌이다(앱 기능 몇 개). 장면 정지 화면을 본 뒤 **refine 스킬**로 장면마다 층별 계획 → 앱의 전체 명령에서 골라 시도 → 전 · 후를 보고 고침 → 남김:
 `python3 engine/craft/session.py show data/storyboards/<id>.json <장면>` · `plan` · `try` · `keep` · `coverage`. 남긴 다듬기는 콘티 기록이라 다시 제작해도 적용된다.

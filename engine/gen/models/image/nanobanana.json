@@ -1,0 +1,35 @@
+{
+ "model": "nanobanana",
+ "title": "Google Gemini 이미지(Nano Banana)",
+ "pairs_with": [
+  "veo",
+  "omni"
+ ],
+ "sources": [
+  "https://ai.google.dev/gemini-api/docs/image-generation"
+ ],
+ "compile": {
+  "style": "narrative",
+  "order": [
+   "style",
+   "framing",
+   "subject",
+   "action",
+   "setting",
+   "lighting",
+   "color",
+   "mood"
+  ],
+  "aspect": "프롬프트 끝에 'Vertical 9:16 aspect ratio.' 또는 설정의 화면 비율",
+  "negative": "sentence",
+  "lang": "en"
+ },
+ "tips": [
+  "낱말 나열보다 장면을 문장으로 묘사",
+  "사진처럼이면 렌즈 · 빛 용어를 쓴다"
+ ],
+ "kind": "image",
+ "verified": false,
+ "note": "프롬프트 문법은 일반 지침(2026-11-09 작성) — 공식 문서로 다시 확인하지 않았다. 쓰기 전에 sources 를 열어 확인",
+ "updated": "2026-11-09"
+}

@@ -265,21 +265,17 @@ app.use("/api/engine-icons", express.static(path.join(ROOT, "studio", "public", 
 // ---------- 생성 · 음성 API 키 (에이전트의 OpenRouter 처럼 키만 넣으면 그 공급자의 모델 · 목소리를 쓴다) ----------
 // 저장: ~/.shortsforge/api-keys.json (0600, 에이전트는 못 읽음). 스크립트는 engine/core/apikeys.py 로 환경 변수 → 이 파일 → .env.local 순서로 읽는다
 const API_KEY_FILE = path.join(os.homedir(), ".shortsforge", "api-keys.json");
-// 공식 API 가 있는 공급자만 — 음성 · 무료 스톡 영상. 영상 · 이미지 생성 모델은 쓰지 않는다(실제 자료 · Craft 앱으로 만든다)
+// 오픈라우터 하나(보기 · 만들기 · 말하기) + 무료 스톡 영상. 업체별 키(Typecast · ElevenLabs · Gemini)는 2026-11-09 에 없앴다
 const GEN_KEYS = [
+  { id: "openrouter", ready: true, env: "OPENROUTER_API_KEY", title: "OpenRouter", what: "키 하나로 보기(영상 이해) · 그리기 · 영상 생성 · 음성 · 받아쓰기 — 모델은 아래에서 능력마다 고른다. 쓴 만큼 크레딧에서 나간다", caps: ["모델"], keyHint: "sk-or-…", console: "https://openrouter.ai/settings/keys", docs: "https://openrouter.ai/docs", paid: true,
+    test: { url: "https://openrouter.ai/api/v1/key", auth: "bearer" } },
   { id: "pexels", ready: true, env: "PEXELS_API_KEY", title: "Pexels", what: "무료 스톡 영상 · 사진 — 일상 · 감성 · 광고 장면의 바탕(B-roll). 출처 표기 권장", caps: ["스톡 영상"], keyHint: "Pexels API 키", console: "https://www.pexels.com/api/new/", docs: "https://www.pexels.com/api/documentation/",
     test: { url: "https://api.pexels.com/videos/search?query=city&per_page=1", auth: "Authorization" } },
   { id: "pixabay", ready: true, env: "PIXABAY_API_KEY", title: "Pixabay", what: "무료 스톡 영상 — Pexels 에 없을 때 두 번째로 찾는 곳", caps: ["스톡 영상"], keyHint: "Pixabay API 키", console: "https://pixabay.com/accounts/register/", docs: "https://pixabay.com/api/docs/",
     test: { url: "https://pixabay.com/api/videos/?q=city&per_page=3", auth: "query:key" } },
-  { id: "typecast", ready: true, env: "TYPECAST_API_KEY", title: "Typecast", what: "한국어 성우 음성 — 감정 · 단어 시각", caps: ["음성"], keyHint: "Typecast API 키", console: "https://typecast.ai/developers/api", docs: "https://typecast.ai/docs", paid: true,
-    test: { url: "https://api.typecast.ai/v3/voices?model=ssfm-v31", auth: "x-api-key" } },
-  { id: "gemini", ready: true, env: "GEMINI_API_KEY", title: "Google Gemini", what: "Gemini TTS 음성 — 말투 지시를 받는 다국어 음성", caps: ["음성"], keyHint: "AIza…", console: "https://aistudio.google.com/apikey", docs: "https://ai.google.dev/gemini-api/docs/speech-generation",
-    test: { url: "https://generativelanguage.googleapis.com/v1beta/models", auth: "x-goog-api-key" } },
-  { id: "elevenlabs", ready: true, env: "ELEVENLABS_API_KEY", title: "ElevenLabs", what: "다국어 음성 · 목소리 복제", caps: ["음성"], keyHint: "sk_…", console: "https://elevenlabs.io/app/settings/api-keys", docs: "https://elevenlabs.io/docs", paid: true,
-    test: { url: "https://api.elevenlabs.io/v1/user", auth: "xi-api-key" } },
 ];
 
-const genKeyValue = (k) => process.env[k.env] || readApiKeys()[k.env] || envLocalKeys()[k.env] || "";
+const genKeyValue = (k) => process.env[k.env] || readApiKeys()[k.env] || (k.id === "openrouter" ? readKeys().openrouter : "") || envLocalKeys()[k.env] || "";   // 오픈라우터는 에이전트 설정의 키도 같은 키로
 const readApiKeys = () => { try { return JSON.parse(readFileSync(API_KEY_FILE, "utf8")); } catch { return {}; } };
 /** .env.local 에 있는 키 이름만(값은 가리기만) — 예전 방식으로 넣은 키도 '있음'으로 보인다 */
 const envLocalKeys = () => {
@@ -301,9 +297,12 @@ app.post("/api/gen-keys/:id/test", ah(async (req, res) => {
 }));
 app.get("/api/gen-keys", ah(async (_req, res) => {
   const saved = readApiKeys(), local = envLocalKeys();
-  const ICON = { pexels: "pexels", pixabay: "pixabay", typecast: "typecast", gemini: "prov-google-gemini", elevenlabs: "elevenlabs" };
-  res.json(GEN_KEYS.map(({ test, ...k }) => { const v = process.env[k.env] || saved[k.env] || local[k.env] || "";
-    return { ...k, icon: iconUrl(ICON[k.id] || k.id), testable: !!test, hasKey: !!v, keyMasked: mask(v), source: process.env[k.env] ? "env" : saved[k.env] ? "saved" : local[k.env] ? "env.local" : null }; }));
+  const ICON = { pexels: "pexels", pixabay: "pixabay", openrouter: "prov-openrouter" };
+  const byok = readKeys();
+  res.json(GEN_KEYS.map(({ test, ...k }) => { const agentKey = k.id === "openrouter" ? byok.openrouter || "" : "";
+    const v = process.env[k.env] || saved[k.env] || agentKey || local[k.env] || "";
+    return { ...k, icon: iconUrl(ICON[k.id] || k.id), testable: !!test, hasKey: !!v, keyMasked: mask(v),
+      source: process.env[k.env] ? "env" : saved[k.env] ? "saved" : agentKey ? "agent" : local[k.env] ? "env.local" : null }; }));
 }));
 app.put("/api/gen-keys/:id", ah(async (req, res) => {
   const k = GEN_KEYS.find((x) => x.id === req.params.id); if (!k) throw notFound("공급자가 없습니다");
@@ -321,7 +320,7 @@ app.put("/api/gen-keys/:id", ah(async (req, res) => {
 // ---------- 음성 엔진 (engine/voice/engines/<이름>/voice.json) ----------
 const VOICES = path.join(ROOT, "engine", "voice", "engines");
 const loadVoiceAvail = async () => {
-  const r = await py(["-c", "import sys,json;sys.path.insert(0,'engine');import paths;import tts;a={n:tts.engine_available(n) for n in tts.list_voice_engines()}\nif a.get('typecast'):\n  try: tts.typecast_voices()\n  except Exception as e: print('[typecast]',e,file=sys.stderr)\nprint(json.dumps(a))"], { timeout: 60e3 });
+  const r = await py(["-c", "import sys,json;sys.path.insert(0,'engine');import paths;import tts;a={n:tts.engine_available(n) for n in tts.list_voice_engines()}\nprint(json.dumps(a))"], { timeout: 60e3 });
   const v = lastJson(r); if (!v) throw new Error(tail(r.err)); return v;
 };
 app.get("/api/voices", ah(async (_req, res) => {
@@ -331,7 +330,7 @@ app.get("/api/voices", ah(async (_req, res) => {
     const v = await readJson(path.join(VOICES, n, "voice.json")); if (!v) continue;
     // 목록을 API 로 받는 엔진(dynamic_voices): tts.py 가 받아 둔 data/workspace/cache/<이름>-voices.json
     if (v.dynamic_voices && avail?.[n]) v.voices = (await readJson(path.join(ROOT, "data", "workspace", "cache", `${n}-voices.json`))) || [];
-    list.push({ ...v, name: v.name || n, available: avail ? !!avail[n] : null, icon: iconUrl(n) });
+    list.push({ ...v, name: v.name || n, available: avail ? !!avail[n] : null, icon: iconUrl(n === "openrouter" ? "prov-openrouter" : n) });
   }
   const order = { builtin: 0, adapter: 1, planned: 2 };
   // 사용 가능 → 무료(내 컴퓨터 · 온라인) → 유료 API → 준비 중, 시험용 무음은 맨 끝
@@ -1307,6 +1306,36 @@ app.post("/api/agent-test/:id", ah(async (req, res) => {
   } catch (e) { res.json({ ok: false, error: e?.name === "TimeoutError" ? "응답이 없습니다 (12초)" : "연결하지 못했습니다" }); }
 }));
 
+// ---------- 능력별 모델(보기 · 만들기 · 말하기 — 오픈라우터) · 비용 상한 ----------
+// 목록 · 가격은 engine/providers/catalog.py 가 오픈라우터 공개 목록에서(하루 한 번 캐시). 모델은 사용자가 고른다 — 코드에 박지 않는다
+const CAPS = ["see.video", "make.image", "edit.image", "make.video", "voice.tts", "voice.stt", "make.sound", "embed"];
+function sanitizeModels(m = {}) {
+  const o = {};
+  for (const c of CAPS) { const v = typeof m?.[c] === "string" ? m[c].trim() : ""; if (v === "local" || /^[a-z0-9._-]+\/[a-z0-9._:-]+$/i.test(v)) o[c] = v; }
+  return o;
+}
+function sanitizeBudget(b = {}) {
+  const n = Number(b?.per_video);
+  return { per_video: Number.isFinite(n) && n >= 0 && n <= 500 ? Math.round(n * 100) / 100 : 3 };
+}
+app.get("/api/models/caps", ah(async (_req, res) => {
+  const r = await py(["engine/providers/catalog.py", "caps", "--json"], { timeout: 90e3 });
+  const v = lastJson(r); if (!v) throw new Error(tail(r.err)); res.json(v);
+}));
+app.get("/api/models/list/:cap", ah(async (req, res) => {
+  if (!CAPS.includes(req.params.cap)) throw notFound("그런 능력이 없습니다");
+  const r = await py(["engine/providers/catalog.py", "list", req.params.cap, "--json", ...(req.query.refresh ? ["--refresh"] : [])], { timeout: 120e3 });
+  const v = lastJson(r); if (!v) throw new Error(tail(r.err) || "모델 목록을 받지 못했습니다"); res.json(v);
+}));
+app.put("/api/models/choice", ah(async (req, res) => {
+  const prev = (await readJson(SETTINGS, {})) || {};
+  const s = { ...prev, models: sanitizeModels({ ...(prev.models || {}), ...(req.body?.models || {}) }), budget: sanitizeBudget(req.body?.budget ?? prev.budget) };
+  markEcho(SETTINGS, clientOf(req));
+  await atomicWrite(SETTINGS, JSON.stringify(s, null, 1));
+  invalidate("voices:avail");
+  res.json({ ok: true, models: s.models, budget: s.budget });
+}));
+
 app.get("/api/settings", ah(async (_req, res) => {
   const s = (await readJson(SETTINGS, {})) || {};
   res.json({ settings: { model: "", effort: "", language: "korean", voice_engine: "edge", voice_id: "", ...s }, models: MODELS, efforts: EFFORTS });
@@ -1317,11 +1346,17 @@ app.put("/api/settings", ah(async (req, res) => {
   if (model && !MODELS.includes(model) && !/^claude-[a-z0-9.-]+$/.test(model)) throw bad("모델 이름이 올바르지 않습니다");
   if (b.effort && !EFFORTS.includes(b.effort)) throw bad("생각 깊이가 올바르지 않습니다");
   const prev = (await readJson(SETTINGS, {})) || {};
-  const ve = String(b.voice_engine ?? prev.voice_engine ?? "edge");
-  if (!/^[a-z0-9_-]+$/.test(ve) || !existsSync(path.join(ROOT, "engine", "voice", "engines", ve, "voice.json"))) throw bad("음성 엔진이 올바르지 않습니다");
+  const okVoice = (v) => /^[a-z0-9_-]+$/.test(v) && existsSync(path.join(ROOT, "engine", "voice", "engines", v, "voice.json"));
+  let ve = String(b.voice_engine ?? prev.voice_engine ?? "edge");
+  if (!okVoice(ve)) {
+    // 없어진 엔진(2026-11-09 업체별 음성 Typecast · ElevenLabs · Gemini 삭제)이 예전 설정에 남아 있으면 Edge 로 — 다른 설정 저장을 막지 않게
+    if (b.voice_engine !== undefined && b.voice_engine !== prev.voice_engine) throw bad("음성 엔진이 올바르지 않습니다");
+    ve = "edge";
+  }
   const s = { model, effort: b.effort || "", language: ["english", "chinese"].includes(b.language) ? b.language : "korean",
     voice_engine: ve, voice_id: String(b.voice_id ?? prev.voice_id ?? "").slice(0, 80),
-    agent: sanitizeAgent(b.agent ?? prev.agent ?? {}) };
+    agent: sanitizeAgent(b.agent ?? prev.agent ?? {}),
+    models: sanitizeModels(b.models ?? prev.models), budget: sanitizeBudget(b.budget ?? prev.budget) };
   markEcho(SETTINGS, clientOf(req));
   await atomicWrite(SETTINGS, JSON.stringify(s, null, 1));
   res.json({ ok: true, settings: s });

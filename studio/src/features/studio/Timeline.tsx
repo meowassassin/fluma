@@ -153,7 +153,7 @@ const VoiceLane: React.FC<{ projectId: string; total: number; width: number }> =
   const silent = !!peaks && peaks.peaks.every((x) => x < 0.004);
   return (
     <div className="lane voice">
-      {silent && <span className="voice-silent">{t("시험용 무음 목소리예요 — 에이전트에게 \"타입캐스트로 목소리 넣어 줘\"처럼 말하세요")}</span>}
+      {silent && <span className="voice-silent">{t("시험용 무음 목소리예요 — 에이전트에게 \"목소리 넣어 줘\"처럼 말하세요")}</span>}
       <canvas ref={cv} className="wave" aria-hidden />
       <div className="words">
         {words.map((w, k) => {

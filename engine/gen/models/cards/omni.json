@@ -1,0 +1,142 @@
+{
+ "model": "omni",
+ "title": "Google Gemini Omni Flash (gemini-omni-1.2-flash, Gemini API — Veo 3.1 Preview 대체)",
+ "vendor": "Google",
+ "status": "active",
+ "versions": [
+  "gemini-omni-1.2-flash: 3~15초 · 네이티브 오디오 · 참조 그림 6장 · 대화식 편집 · 연장(합계 30초)"
+ ],
+ "updated": "2026-11-06",
+ "sources": [
+  "https://ai.google.dev/gemini-api/docs/omni",
+  "https://ai.google.dev/gemini-api/docs/video"
+ ],
+ "inputs": {
+  "t2v": true,
+  "i2v_first": true,
+  "i2v_last": true,
+  "ref_images": 6,
+  "v2v": true
+ },
+ "inputs_note": "참조 영상: 3~10초 영상은 3개(각 3초까지), 11~15초는 1개. 시작+끝 프레임은 10초 이하. 제어 태그(<FIRST_FRAME> 등)는 쓰지 말고 자연어로 각 그림의 쓰임을 설명. 알아볼 수 있는 특정 인물 그림 업로드 불가. 오디오 입력 · 참조 미지원.",
+ "durations": [
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15
+ ],
+ "aspects": [
+  "9:16",
+  "16:9"
+ ],
+ "resolutions": [
+  "360p",
+  "720p(기본)",
+  "1080p"
+ ],
+ "fps": null,
+ "prompt": {
+  "structure": [
+   "shot form(single continuous shot 여부)",
+   "subject · scene 자세히",
+   "camera movement",
+   "lighting · mood",
+   "timed events",
+   "Sound design: …",
+   "negatives as sentences"
+  ],
+  "style": "sentence",
+  "max_chars": null,
+  "languages": [
+   "en(완전 지원, 다른 언어는 평가 안 됨)"
+  ],
+  "negative": "sentence",
+  "negative_note": "negative prompt 파라미터 없음 — 'No dialogue.' 'No extra sound effects.' 처럼 본문에",
+  "timing_syntax": "자연어(After 3 seconds, …) 또는 [0-5s] … [5-10s] … 타임코드",
+  "multishot_syntax": "기본이 여러 샷 — 한 샷만 원하면 반드시 'In a single continuous shot' / 'No scene cuts'"
+ },
+ "camera_terms": [
+  "continuous, unbroken handheld shot"
+ ],
+ "lighting_terms": [],
+ "style_terms": [],
+ "audio": {
+  "native": true,
+  "dialogue_syntax": null,
+  "dialogue_note": "전용 문법 문서 없음 — Veo 식 '화자 says: 대사' 로(추정, 시험 필요)",
+  "lipsync": null,
+  "sfx": true,
+  "note": "음악은 따로 적어야: 'Include calm background music'"
+ },
+ "consistency": {
+  "참조 그림 6장": "인물 · 물건 유지",
+  "연장": "마지막 10초를 맥락으로 3~10초씩 이어 붙이기(대사 있는 업로드 영상은 대사 추가 연장 불가)"
+ },
+ "text_in_frame": "good(공식) — 화면 글자를 정확히 그림. 그래도 Fluma 는 자막을 편집 단계에서 — 'No on-screen text.'",
+ "avoid": [
+  "한 샷인데 single continuous shot 을 안 쓰기 — 여러 샷으로 쪼갠다",
+  "편집 프롬프트를 길게 — 짧게 + 'Keep everything else the same'",
+  "제어 태그(<FIRST_FRAME> 등)",
+  "YouTube 영상을 소스로"
+ ],
+ "tips": [
+  "meta prompting: 'Consider micro-detail, expression and timing …'",
+  "배경 글자가 생길 장면이면 무엇이라고 쓰였는지 정해 줄 것",
+  "SynthID 워터마크(보이지 않음) 포함"
+ ],
+ "example": {
+  "input": "text",
+  "prompt": "Continuous, unbroken handheld shot of a fluffy tabby cat sitting on a sunny windowsill, looking out into a leafy garden. The cat's tail twitches slowly, and its ears rotate slightly toward ambient noises. Sunbeams illuminate dust motes in the air. Sound design: Gentle breeze, distant bird chirps. No dialogue. (공식 예시)"
+ },
+ "pricing": "Gemini API 요금표(gemini-omni-1.2-flash) — 미확인",
+ "license": "Gemini API 약관 · SynthID",
+ "policy": "입력 · 출력 안전 필터(지역별), EEA · 스위스 · 영국은 업로드 영상 편집 · 연장 불가",
+ "compile": {
+  "order": [
+   "single_shot",
+   "subject",
+   "scene",
+   "camera",
+   "lighting",
+   "timeline",
+   "dialogue_sentence",
+   "sound_design",
+   "negatives"
+  ],
+  "dialogue": "{speaker} says: \"{line}\"",
+  "timing": "[{a}-{b}s] {what}",
+  "single_shot": "In a single continuous shot, no scene cuts.",
+  "negative": {
+   "mode": "sentence",
+   "template": "No {x}."
+  },
+  "ref": "the person shown in reference image {n}",
+  "durations": [
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11,
+   12,
+   13,
+   14,
+   15
+  ],
+  "aspect_9_16": true,
+  "max_chars": null,
+  "text_policy": "No on-screen text."
+ }
+}

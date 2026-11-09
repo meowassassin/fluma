@@ -341,6 +341,48 @@
         },
         "color_bg": {
           "type": "string"
+        },
+        "feel": {
+          "type": "object",
+          "description": "고른 느낌(engine/story/feel.py pick — 사용자가 고를 때만): 실사 재료에 입힐 색 · 질감(grade)과 실사 생성 프롬프트의 style · mood · color · lighting",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "why": {
+              "type": "string"
+            },
+            "style_en": {
+              "type": "string"
+            },
+            "mood_en": {
+              "type": "string"
+            },
+            "color_en": {
+              "type": "string"
+            },
+            "lighting_en": {
+              "type": "string"
+            },
+            "grade": {
+              "type": "object"
+            }
+          }
+        },
+        "route": {
+          "enum": [
+            "local",
+            "mixed",
+            "gen"
+          ],
+          "description": "실사 생성 여부: local = 실제 자료만 · mixed = 일부 컷만 생성(프롬프트) · gen = 대부분 생성"
+        },
+        "gen_scenes": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          },
+          "description": "mixed 일 때 생성할 장면 번호(1부터)"
         }
       },
       "additionalProperties": {
@@ -375,7 +417,7 @@
         "style": {
           "type": "string",
           "maxLength": 400,
-          "description": "말투 지시(글). Gemini TTS 처럼 연기 지시를 받는 엔진에 넘긴다 — 예: 친구한테 소식 전하듯 빠르고 가볍게"
+          "description": "말투 지시(글). 오픈라우터 음성 중 연기 지시(instructions)를 받는 모델에 넘긴다 — 예: 친구한테 소식 전하듯 빠르고 가볍게"
         },
         "continuous": {
           "type": "boolean",
@@ -393,13 +435,13 @@
           "type": "number",
           "minimum": 0,
           "maximum": 2,
-          "description": "감정 강도(typecast 감정 프리셋, 기본 1) — 작을수록 평평"
+          "description": "감정 강도(예전 Typecast 전용 — 지금 엔진은 쓰지 않음)"
         },
         "pitch": {
           "type": "integer",
           "minimum": -12,
           "maximum": 12,
-          "description": "음높이(반음, typecast) — 레퍼런스 화자 높이에 맞출 때 voice_match.py 가 정한다"
+          "description": "음높이(반음, 예전 Typecast 전용 — 지금 엔진은 쓰지 않음)"
         }
       }
     },
@@ -575,6 +617,29 @@
         },
         "why": {
           "type": "string"
+        }
+      }
+    },
+    "cast": {
+      "type": "array",
+      "description": "실사 생성 컷의 등장인물 — 모든 그림 · 클립에 같은 외모 설명 · 기준 그림(engine/gen/genclip.py)",
+      "items": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "look": {
+            "type": "string",
+            "description": "외모 · 옷 — 영어로"
+          },
+          "ref": {
+            "type": "string",
+            "description": "기준 그림 경로"
+          }
         }
       }
     }
@@ -1487,6 +1552,33 @@
               },
               "stride": {
                 "type": "number"
+              },
+              "gen": {
+                "type": "string",
+                "description": "실사 생성 컷(type video): 영상 모델 — seedance · kling · veo · omni · hailuo · runway · wan. Fluma 는 프롬프트만 쓰고 사용자가 만들어 올린다(engine/gen/genclip.py)"
+              },
+              "image_model": {
+                "type": "string",
+                "description": "실사 생성 컷의 키프레임 그림 모델 — seedream · nanobanana · gptimage · midjourney(생략하면 영상 모델과 짝)"
+              },
+              "prompt": {
+                "type": "string",
+                "description": "실사 생성 컷: 무엇이 일어나는가(영어)"
+              },
+              "cast": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "실사 생성 컷에 나오는 cast 이름"
+              },
+              "line": {
+                "type": "string",
+                "description": "실사 생성 컷 속 대사(원음으로 살린다)"
+              },
+              "people": {
+                "type": "integer",
+                "description": "화면에 보일 사람 수(만든 뒤 확인용)"
               }
             }
           }

@@ -28,5 +28,6 @@ Optional engines (installed from Settings → Media)
 - Manim (MIT), Blender (GPL — run as a separate program), voice engines listed under
   engine/voice/engines/*/voice.json, each with its own license and commercial-use note shown in the app.
 
-Paid APIs (Typecast, ElevenLabs, Google Gemini, Higgsfield, BytePlus, Alibaba Model
-Studio) are used only with keys the user supplies, under each provider's terms.
+Paid models (video understanding, image and video generation, voice, transcription) are reached
+only through OpenRouter with a key the user supplies, under OpenRouter's and each model provider's
+terms. Free stock footage (Pexels, Pixabay) uses the user's own free keys.

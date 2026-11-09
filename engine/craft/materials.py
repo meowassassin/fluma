@@ -369,10 +369,11 @@ def stock(m: dict, out: Path, work: Path, sid: str) -> dict:
     return {"app": None, "mobile": True, "credit": c, "source": [c["page"]]}
 
 
-MAT_VERSION = "7"     # 재료를 만드는 방식이 바뀌면 올린다(열쇠에 들어가 예전 결과를 다시 만든다) — 2: 아이콘 고해상도 · 영상 마지막 프레임 유지 · 요소 폴더 · 3: 차트 항목 아이콘 · 4: 앱별 어댑터 · 5: craft 재료 · 레시피 · 6: 생성 클립 · 7: 재료마다 방법(앱) 고르기
+MAT_VERSION = "8"     # 재료를 만드는 방식이 바뀌면 올린다(열쇠에 들어가 예전 결과를 다시 만든다) — 2: 아이콘 고해상도 · 영상 마지막 프레임 유지 · 요소 폴더 · 3: 차트 항목 아이콘 · 4: 앱별 어댑터 · 5: craft 재료 · 레시피 · 6: 생성 클립 · 7: 재료마다 방법(앱) 고르기 · 8: 느낌(feel) 입히기
 #                       4: 앱별 어댑터(PhotoCraft 카드 · PdfCraft 진짜 형광펜 · FilmCraft 다듬기 · 새 재료 종류) · 사람이 고친 편집 파일 열쇠 일반화
 ADAPTERS = {"chart": chart, "doc_quote": doc_quote, "illustration": illustration, "photo": photo, "icon": illustration}   # icon: icons.py 로 받은 SVG
 PASSTHROUGH = {"screen", "video", "image", "meme", "web"}    # meme: meme.py fetch 폴더 · web: webrec.py 폴더
+FEEL_TYPES = {"video", "stock", "photo", "image", "photo_grade"}   # 영상 느낌(direction.feel)을 입히는 실사 재료 — feel.py 와 같게
 
 
 def _editable(old: dict, d: Path) -> Path | None:
@@ -528,6 +529,8 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             dm = ((sb.get("direction") or {}).get("methods") or {}).get(t)
             if dm and not m.get("method"):           # 방향이 정한 방법(앱)도 재료 칸에 — 바뀌면 열쇠가 달라져 다시 만든다
                 m = {**m, "method": dm}
+            if t == "video" and m.get("gen") and not m.get("ask"):     # 실사 생성 컷: 사용자가 자기 도구로 만들어 올린다(engine/gen/genclip.py prompts)
+                m = {**m, "ask": f"실사 생성 컷 — data/compositions/{sid}/gen/prompts.md 의 그림 → 영상 순서로 만들어 '{m['id']}.mp4' 로 올려 주세요", "fit": m.get("fit") or "cover"}
             if t == "video" and any(k in m for k in ("in", "out", "fit", "end")):
                 from engines import aspect_size        # 구간 영상: 화면 크기 · 장면 길이에 맞춰 만든다
                 _W, _H = aspect_size(sb)
@@ -568,6 +571,9 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             if m.get("ask"):                   # 사용자가 올린 파일(이름으로 찾은 것)도 열쇠에 — 새로 올리면 다시 만든다
                 up_f = find_upload(sid, m)
                 srcs.append(f"{up_f.name}:{_hash(up_f)}" if up_f else "missing")
+            feel = ((sb.get("direction") or {}).get("feel") or {}) if t in FEEL_TYPES else {}
+            if feel.get("grade"):              # 고른 느낌(engine/story/feel.py)이 바뀌면 실사 재료를 다시 입힌다
+                srcs.append(json.dumps(feel["grade"], sort_keys=True))
             if t == "stock":                   # 스톡 영상은 화면 비율대로 잘라 만든다 → 비율이 바뀌면 다시
                 from engines import aspect_of
                 srcs.append(aspect_of(sb))
@@ -622,6 +628,10 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
                 info, file = {"app": None}, None
             else:
                 raise RuntimeError(f"모르는 재료 종류: {t} ({' · '.join(sorted({*adapters, *PASSTHROUGH, 'stock', 'text', 'stat'}))})")
+            if file and feel.get("grade") and file.exists():      # 영상 전체 느낌을 실사 재료에 같은 색 · 질감으로
+                from feel import apply as feel_apply
+                file = feel_apply(file, feel["grade"], file.with_name(f"{file.stem}.feel{file.suffix}"))
+                info["feel"] = feel.get("name")
             rec = {"scene": n, "id": m["id"], "type": t, "key": key, "spec": m, "file": str(file.relative_to(ROOT)) if file else None, **info}
             if m.get("refine") and file:           # 다듬기: 초벌 위에 앱의 전체 명령으로 디테일(engine/craft/refine.py) — 기록은 콘티의 재료 칸
                 from .refine import apply_material

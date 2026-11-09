@@ -85,6 +85,13 @@ python3 engine/doctor.py --fix                   # direct install: new packages 
 (cd docker && docker compose pull && docker compose up -d)   # Docker: your work stays in the volumes
 ```
 
+## 3-1. OpenRouter key (optional)
+
+You don't need it — a video comes out end to end on the free local path. With a key, pick a model per capability in **Settings → See · Make · Speak**:
+reference video understanding (on by default once a key is set), image drafts, video generation, paid voices and transcription. Lists and prices come from OpenRouter.
+Within the per-video cap (default $3) nothing asks; above it, or when a price can't be estimated, the agent shows the amount and asks. Spending shows on the same screen.
+An OpenRouter key saved in the agent settings (Models · Providers) is reused.
+
 ## 4. Connect YouTube (optional)
 
 Upload and per-scene analytics need your own Google OAuth client — about 10 minutes, once:

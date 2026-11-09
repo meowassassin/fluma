@@ -9,7 +9,7 @@
 
 순서: pick → tune → apply → assemble_audio.py → verify. 결과는 data/workspace/render/<id>/voice-match.json · voice-check.json.
 샘플은 늘 같은 문장(SAMPLE)이라 목소리 · 조합마다 한 번만 합성하고 data/workspace/cache/voice-samples/ 에 남긴다(다음 영상은 공짜).
-유료 엔진(typecast)은 --max-chars 안에서만 새로 합성한다(글자 수만큼 크레딧).
+유료 엔진(openrouter)은 --max-chars 안에서만 새로 합성한다(글자 수만큼 크레딧).
 """
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def sample(engine: str, voice: str, speed=1.0, style=None, opts=None, budget: di
     wav, meta = d / f"{key}.wav", d / f"{key}.json"
     if meta.exists():
         return json.loads(meta.read_text(encoding="utf-8"))
-    if budget is not None and engine in ("typecast", "elevenlabs", "gemini"):
+    if budget is not None and engine in ("openrouter",):
         if budget["left"] < len(SAMPLE):
             return None
         budget["left"] -= len(SAMPLE); budget["spent"] = budget.get("spent", 0) + len(SAMPLE)
@@ -87,13 +87,6 @@ def write_match(sb: dict, m: dict):
 
 
 def candidates(engine: str, ref: dict) -> list[dict]:
-    if engine == "typecast":
-        vs = tts.typecast_voices()
-        g = "M" if ref["f0_median"] < 165 else "F"
-        vs = [v for v in vs if v["gender"] == g and v["id"].startswith("tc_") and any(m in v["models"] for m in ("ssfm-v31", "ssfm-v30"))]
-        # 청년 · 중년 먼저(설명 쇼츠 화자), 어린이 · 노년은 뒤로
-        order = lambda v: (0 if ("청년" in v["title"] or "중년" in v["title"]) else 1)
-        return sorted(vs, key=order)
     meta = tts.voice_meta(engine)
     return [{"id": v["id"], "title": v.get("title", v["id"])} for v in meta.get("voices") or []] or [{"id": None, "title": "기본"}]
 
@@ -148,11 +141,8 @@ def cmd_tune(sb, a):
     shift = int(max(-4, min(4, round(12 * math.log2(ref["f0_median"] / bp["f0_median"]))))) if bp.get("f0_median") else 0
     speed = round(max(0.8, min(1.6, ref["cps"] / bp["cps"])), 2) if ref.get("cps") and bp.get("cps") else 1.0
     combos = []
-    styles = ["normal", "tonedown"] if eng == "typecast" else [None]
-    for st in styles:
-        for inten in ([1.0, 0.6] if eng == "typecast" else [None]):
-            for end in ("keep", "period"):
-                combos.append({"style": st, "opts": {"intensity": inten if inten != 1.0 else None, "ending": end, "pitch": shift if eng == "typecast" and shift else None}})
+    for end in ("keep", "period"):
+        combos.append({"style": None, "opts": {"ending": end}})
     budget = {"left": a.max_chars}
     rows = []
     for c in combos:

@@ -1,0 +1,36 @@
+{
+ "model": "midjourney",
+ "title": "Midjourney",
+ "pairs_with": [
+  "kling",
+  "runway",
+  "seedance"
+ ],
+ "sources": [
+  "https://docs.midjourney.com"
+ ],
+ "compile": {
+  "style": "phrases",
+  "order": [
+   "subject",
+   "action",
+   "setting",
+   "framing",
+   "lighting",
+   "color",
+   "mood",
+   "style"
+  ],
+  "aspect": "--ar 9:16",
+  "negative": "--no text, watermark, logo",
+  "lang": "en"
+ },
+ "tips": [
+  "사진 느낌이면 --style raw",
+  "같은 인물은 캐릭터 참조(--cref) 기능"
+ ],
+ "kind": "image",
+ "verified": false,
+ "note": "프롬프트 문법은 일반 지침(2026-11-09 작성) — 공식 문서로 다시 확인하지 않았다. 쓰기 전에 sources 를 열어 확인",
+ "updated": "2026-11-09"
+}

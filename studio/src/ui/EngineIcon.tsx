@@ -4,15 +4,16 @@ import { ENG_COLOR } from "./engines";
 /** 엔진 · 모델 아이콘. 공식 마크(studio/public/engine-icons/)가 있으면 그것, 없으면 엔진 색 타일에 머리글자.
  *  open-design 의 AgentIcon 처럼 같은 크기 · 같은 테두리로 맞춘다. */
 const ICONS: Record<string, string> = {
-  chatterbox: "png", claude: "png", cosyvoice: "png", edge: "svg", elevenlabs: "png",
-  melotts: "png", typecast: "png", xtts: "png", supertonic: "png",
+  chatterbox: "png", claude: "png", cosyvoice: "png", edge: "svg",
+  melotts: "png", xtts: "png", supertonic: "png",
 };
+const FILE: Record<string, string> = { openrouter: "prov-openrouter.png" };   // 공급자 마크를 그대로 쓰는 엔진
 const TINT: Record<string, string> = { ...ENG_COLOR, supertonic: "#7c5cff", espeak: "#8a8a8a", silent: "#555" };
 const initials = (t: string) => (t.match(/[A-Z가-힣]/g) || [t[0]]).slice(0, 2).join("").toUpperCase();
 
 /** 그림 아이콘은 밝은 타일 위에 — 검은 로고(OpenCode · Gemini 등)가 어두운 바탕에 묻히지 않게. 그림을 못 불러오면 머리글자 */
 export const EngineIcon: React.FC<{ id: string; src?: string | null; title: string; size?: number }> = ({ id, src, title, size = 34 }) => {
-  const url = src ?? (ICONS[id] ? `/api/engine-icons/${id}.${ICONS[id]}` : null);
+  const url = src ?? (FILE[id] ? `/api/engine-icons/${FILE[id]}` : ICONS[id] ? `/api/engine-icons/${id}.${ICONS[id]}` : null);
   const [broken, setBroken] = useState(false);
   const img = !!url && !broken;
   return (

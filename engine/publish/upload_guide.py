@@ -32,6 +32,10 @@ def guide(sb: dict, video: str | None) -> str:
               "4. 음량: 원음이 들리게 배경음 50~60% 정도",
               f"- 같은 곡을 쓴 쇼츠(조회수 높은 순): " + ", ".join(f"https://www.youtube.com/shorts/{x}" for x in ml.get("examples") or []),
               f"- 고른 이유: {ml.get('why', '')}", ""]
+    from genclip import has_generated
+    if sb.get("synthetic") or has_generated(sb):
+        L += ["## AI 합성 표시(꼭)",
+              "- 업로드 설정의 '변경되었거나 합성된 콘텐츠' → **예** (실사 생성 컷이 들어 있음 — YouTube 정책). upload_youtube.py 로 올리면 자동으로 켜진다", ""]
     return "\n".join(L)
 
 

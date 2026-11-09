@@ -292,7 +292,7 @@ def main():
     prov, vid = resolve(sb)
     # 말 속도(콘티 voice.speed, 0.8~1.6): 엔진이 직접 빠르게 말한다(합성 뒤 빨리 감기보다 자연스럽다)
     speed = max(0.8, min(1.6, float((sb.get("voice") or {}).get("speed") or 1.0)))
-    style = ((sb.get("voice") or {}).get("style") or "").strip() or None   # 말투 지시(Gemini 처럼 글로 연기를 받는 엔진)
+    style = ((sb.get("voice") or {}).get("style") or "").strip() or None   # 말투 지시(글로 연기를 받는 엔진 — openrouter 의 일부 모델)
     vopts = voice_opts(sb)
     print(f"[음성] 엔진 {prov} · 목소리 {vid or '기본'}{' · ' + json.dumps(vopts, ensure_ascii=False) if vopts else ''}")
     scenes = sb["scenes"]
@@ -304,10 +304,7 @@ def main():
         parts = continuous_parts(scenes, work, prov, vid, speed, style, vopts)
         print("[음성] 이어 말하기: 대본 전체를 한 번에 합성하고 단어 사이 쉼에서 장면을 자릅니다")
     for i, sc in enumerate(scenes if not cont else []):
-        # 장면마다 합성할 때는 앞뒤 장면 글을 문맥으로 넘긴다(문맥으로 감정을 고르는 엔진 — typecast smart)
-        ctx = {"prev_text": (scenes[i - 1].get("narration") or "").strip() if i else None,
-               "next_text": (scenes[i + 1].get("narration") or "").strip() if i + 1 < len(scenes) else None} if prov == "typecast" and not (sb.get("voice") or {}).get("style") else {}
-        wav, nar_text = scene_wav(sc, i, work, prov, vid, speed, style, {**vopts, **{k: v for k, v in ctx.items() if v}})
+        wav, nar_text = scene_wav(sc, i, work, prov, vid, speed, style, vopts)
         if nar_text:
             clip, words, speech_s = speech(wav)
         else:
