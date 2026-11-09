@@ -459,9 +459,13 @@ def lint(sb: dict, recent_titles=None) -> list:
     #     조사 없이 '그냥 만들면' 대사 · 리듬 · 화면이 어색하다(2026-11-03 사용자 평가). 사용자가 레퍼런스 없이 만들라고 했을 때만 reference_skip 에 그 말을 적는다
     refs = [r for r in (sb.get("reference") or []) if isinstance(r, str)]
     analyzed = [r for r in refs if (ROOT / "data" / "public" / "trends" / "xray" / r / "xray.json").exists()]
-    if not analyzed and not str(sb.get("reference_skip") or "").strip():
-        fails.append(("L30", None, "레퍼런스 쇼츠 분석 없음: trends 스킬로 같은 주제 · 형식 쇼츠 3~5편을 찾고 shorts_xray.py · ref_channel.py 로 분해한 뒤 콘티 reference 에 영상 id 를 건다(말투 · 컷 길이 · 화면 종류를 거기서 가져온다)"
-                      + (f" — reference {refs} 는 아직 X-ray 안 됨" if refs else "")))
+    #     한두 편만 보면 그 영상의 버릇을 따라 한다 → 최소 MIN_REFS 편(2026-11-09 사용자: "분석 개수가 너무 적다"). 그 분야에 쇼츠가 정말 적으면 reference_skip 에 이유
+    MIN_REFS = 3
+    if len(analyzed) < MIN_REFS and not str(sb.get("reference_skip") or "").strip():
+        missing = [r for r in refs if r not in analyzed]
+        fails.append(("L30", None, f"레퍼런스 분석 {len(analyzed)}편 — 최소 {MIN_REFS}편(3~5편 권장): trends 스킬로 같은 주제 · 형식 쇼츠를 찾고(브랜드면 trends.py channels 로 공식 채널을 골라 --channel 로) "
+                      "shorts_xray.py · ref_channel.py 로 분해한 뒤 콘티 reference 에 영상 id 를 건다(말투 · 컷 길이 · 화면 종류를 거기서 가져온다)"
+                      + (f" — {missing} 는 아직 X-ray 안 됨" if missing else "")))
 
     # L31 대사 자연스러움: 나레이션은 말이다 — 명사로 뚝 끊긴 문장(…쓴 말. / …의 별명.)과 존댓말 · 반말 섞임을 막는다
     ENDS = set("다요죠까네지야어아게고래군세요니데걸가나")

@@ -67,6 +67,8 @@ class Decision:
     duration_sec: int
     n_items: int
     scenes: list = field(default_factory=list)   # [{"role","sec","visual_kind","caption_max","narration_range"}]
+    # 위 scenes 는 이 형식의 '흔한 구조'다 — 콘티 뼈대로 그대로 쓰지 말고 plan 0턴 뻔함 지도(cliches)의 후보로. 실제 장면 흐름은 고른 콘셉트의 structure
+    scenes_are: str = "흔한 구조(뻔함 지도 후보) — 정답 순서 아님"
     hook_style: str = "question"
     rule_hit: str = ""
     weights_used: bool = False

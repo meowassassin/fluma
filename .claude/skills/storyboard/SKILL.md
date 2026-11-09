@@ -7,7 +7,7 @@ order: 1
 # 콘티 작성
 
 ## 순서
-1. **형식 결정**: `python3 engine/story/decide.py "<주제>" [형식] [목표 초]` 로 형식·길이·장면 뼈대(JSON)를 받는다. 형식(광고|감성|시세|compare …)과 길이를 사용자가 말했으면 넘긴다 (주제 문장 규칙보다 우선). 해당 형식 스킬(`format-*`)이 있으면 그 규칙도 따른다.
+1. **형식 결정**: `python3 engine/story/decide.py "<주제>" [형식] [목표 초]` 로 형식 · 길이와 그 형식의 **흔한 구조**(JSON `scenes`)를 받는다. 흔한 구조는 뼈대가 아니라 뻔함 지도 후보다 — 장면 흐름은 고른 콘셉트(`concept.structure`)를 따른다. 형식(광고|감성|시세|compare …)과 길이를 사용자가 말했으면 넘긴다 (주제 문장 규칙보다 우선). 해당 형식 스킬(`format-*`)이 있으면 그 규칙도 따른다.
 2. **조사 확인**: `data/research/` 에 이 주제의 사실이 있는지 본다. 없으면 `research` 스킬 순서대로 먼저 조사한다. 출처 있는 사실 5개 미만이면 멈추고 사용자에게 알린다.
 3. **작성**: `data/storyboards/<프로젝트 id>.json` 을 쓴다. 스키마 `engine/spec/schema/storyboard.schema.json`, 예시 `data/storyboards/example.json`.
    - `id` 는 프로젝트 id 그대로, `version: 1`, `sources` 에 쓴 사실의 URL. 대상 시청자를 알면 `audience`, 하단에 보일 이름이 있으면 `brand`.
@@ -82,7 +82,7 @@ order: 1
 
 ## 마무리 — 유튜브 제목 · 설명 후보
 콘티를 다 쓰고 검사를 통과하면, 답 끝에 화면이 버튼으로 바꿔 주는 두 블록을 붙인다(사용자가 눌러 콘티의 title · caption · hashtags 에 적용):
-```titles 안에 제목 3안(서로 다른 훅 유형, 40자 이하, 해시태그 없이, 과장 금지) · ```desc 안에 설명(300자 이하, 첫 줄 한 줄 요약, 끝 줄 해시태그 3~5개).
+```titles 안에 제목 3안(서로 다른 아이디어 — `concept.cliches` 의 제목 패턴을 피하고 이 영상의 한 방이 보이게, 40자 이하, 해시태그 없이, 과장 금지) · ```desc 안에 설명(300자 이하, 첫 줄 한 줄 요약, 끝 줄 해시태그 3~5개).
 
 ## 장면 재료(materials) — Craft 엔진
 장면에 '무엇이 필요한가'만 적는다. 툴 이름 · 좌표는 쓰지 않는다. 어느 Craft 앱이 만들지는 `engine/craft/apps/*/craft.json` 의 provides 로 엔진이 정한다(`engine/craft/materials.py`).

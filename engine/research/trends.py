@@ -151,6 +151,58 @@ def search(query: str, limit: int) -> list[dict]:
     return out[:limit]
 
 
+# ---------- 채널 — 코드는 후보만 모으고, 어느 채널이 공식인지는 에이전트가 고른다(이름 규칙으로 판정하면 '쏜애플' · '삼성증권' 같은 오답이 난다) ----------
+def channels(query: str) -> list[dict]:
+    """YouTube 채널 검색(채널 필터) — 이름 · 핸들 · 인증 배지 · 구독자"""
+    url = "https://www.youtube.com/results?" + urllib.parse.urlencode({"search_query": query, "sp": "EgIQAg==", "hl": "ko", "gl": "KR"})
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8"})
+    html = urllib.request.urlopen(req, timeout=25).read().decode("utf-8", "replace")
+    m = re.search(r"var ytInitialData = (\{.*?\});</script>", html)
+    if not m:
+        return []
+    out = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            c = o.get("channelRenderer")
+            if c:
+                texts = [(c.get(k) or {}).get("simpleText") or "" for k in ("subscriberCountText", "videoCountText")]
+                subs = next((views_num(t) for t in texts if "구독자" in t or "subscriber" in t.lower()), None)
+                out.append({"id": c.get("channelId"), "title": (c.get("title") or {}).get("simpleText") or "",
+                            "handle": ((c.get("navigationEndpoint") or {}).get("browseEndpoint") or {}).get("canonicalBaseUrl", "").lstrip("/"),
+                            "verified": any("VERIFIED" in ((b.get("metadataBadgeRenderer") or {}).get("style") or "") for b in c.get("ownerBadges") or []),
+                            "subs": subs or 0})
+            for x in o.values():
+                walk(x)
+        elif isinstance(o, list):
+            for x in o:
+                walk(x)
+
+    walk(json.loads(m.group(1)))
+    return out
+
+
+def channel_items(handle: str, limit: int, max_sec: int = 60) -> list[dict]:
+    """채널의 쇼츠 탭 + 일반 영상 중 max_sec 이하(광고는 쇼츠가 아니라 일반 영상으로 올라오는 일이 많다)"""
+    out, seen = [], set()
+    for tab in ("shorts", "videos"):
+        r = subprocess.run(["yt-dlp", "--flat-playlist", "--dump-json", "--playlist-end", str(limit * (1 if tab == "shorts" else 3)), "--no-warnings",
+                            f"https://www.youtube.com/{handle}/{tab}"], capture_output=True, text=True, timeout=120)
+        for line in r.stdout.splitlines():
+            try:
+                d = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not d.get("id") or d["id"] in seen:
+                continue
+            if tab == "videos" and not (d.get("duration") and d["duration"] <= max_sec):
+                continue
+            seen.add(d["id"])
+            out.append({"id": d["id"], "title": d.get("title") or "", "views": d.get("view_count"), "channel": handle, "short": tab == "shorts"})
+    out.sort(key=lambda x: -(x.get("views") or 0))
+    return out[:limit]
+
+
 # ---------- 화풍 판별 (썸네일을 CLIP 으로 봄) — 해시태그만으로는 2D 요청에 실사가 섞인다 ----------
 # 예전에는 tools/vision(torch + open_clip, 약 1GB 가상환경)을 따로 돌렸다 → engine/research/vision_tags.py(ONNX CLIP, torch 없음)로 바꿈(2026-11-02)
 VIS_KO = {"2d": "2D", "pixel": "픽셀", "3d": "3D", "live": "실사", "screen": "화면 녹화 · 게임"}
@@ -199,10 +251,10 @@ def cmd_search(a):
     rid = dt.datetime.now().strftime("r%Y%m%d-%H%M%S")
     tags = [t.strip().lstrip("#") for t in (a.tags or "").split(",") if t.strip()]
     queries = [q.strip() for q in (a.queries or "").split(",") if q.strip()]
-    if not tags and not queries:
-        sys.exit("--queries 또는 --tags 가 필요합니다")
+    if not tags and not queries and not a.channel:
+        sys.exit("--queries · --tags · --channel 중 하나가 필요합니다")
     req = {"id": rid, "text": a.request or a.label, "label": a.label, "category": a.category, "tags": tags, "queries": queries,
-           "at": dt.datetime.now().isoformat(timespec="seconds"), "count": 0, "status": "running", "pid": os.getpid()}
+           "channel": a.channel, "at": dt.datetime.now().isoformat(timespec="seconds"), "count": 0, "status": "running", "pid": os.getpid()}
     d["requests"].insert(0, req)
     save(d)
     # 어떤 이유로 끝나든(오류 · 멈춤 신호) 요청이 '찾는 중'으로 남지 않게
@@ -240,11 +292,15 @@ def _search_into(a, d, req, queries, tags):
         print(f"[화풍] {' · '.join(VIS_KO[w] for w in sorted(want))} 만 남김 (썸네일을 보고 판별)")
     req["want"] = sorted(want) if want else None
     req["rejected"] = 0
-    sources = [("search", q) for q in queries] + [("hashtag", t) for t in tags]
+    handles = [h.strip() for h in (getattr(a, "channel", None) or "").split(",") if h.strip()]
+    sources = [("channel", h if h.startswith("@") else "@" + h) for h in handles] + [("search", q) for q in queries] + [("hashtag", t) for t in tags]
     for via, tag in sources:
-        name = f"\"{tag}\"" if via == "search" else f"#{tag}"
+        name = {"search": f"\"{tag}\"", "hashtag": f"#{tag}", "channel": tag}[via]
         try:
-            found = search(tag, a.limit * (2 if want else 1) + 4) if via == "search" else hashtag(tag, a.limit * (2 if want else 1))
+            if via == "channel":
+                found = channel_items(tag, a.limit)
+            else:
+                found = search(tag, a.limit * (2 if want else 1) + 4) if via == "search" else hashtag(tag, a.limit * (2 if want else 1))
         except (subprocess.TimeoutExpired, OSError) as e:
             print(f"{name}: 실패 ({e})", file=sys.stderr)
             continue
@@ -255,7 +311,7 @@ def _search_into(a, d, req, queries, tags):
             seen.add(f["id"])
             fresh.append({**f, "tag": tag, "via": via, "category": a.category, "label": a.label, "request": rid,
                           "hook": hook_guess(f["title"]), "thumb": thumb(f["id"]),
-                          "url": f"https://www.youtube.com/shorts/{f['id']}"})
+                          "url": f"https://www.youtube.com/{'shorts/' if f.get('short', True) else 'watch?v='}{f['id']}"})
         vis = classify([str(PUBLIC / x["thumb"]) for x in fresh if x.get("thumb")])
         rej = 0
         for x in fresh:
@@ -273,6 +329,16 @@ def _search_into(a, d, req, queries, tags):
         req["count"] += new
         save(d)  # 해시태그마다 저장 → 화면 즉시 갱신
         print(f"{name}: {len(found)}편 중 새로 {new}편" + (f" (화풍이 달라 뺀 것 {rej}편)" if rej else ""))
+
+
+def cmd_channels(a):
+    seen = set()
+    for q in a.names:
+        for c in channels(q):
+            if c["id"] in seen:
+                continue
+            seen.add(c["id"])
+            print(json.dumps({"query": q, "title": c["title"], "handle": c["handle"], "verified": c["verified"], "subs": c["subs"]}, ensure_ascii=False))
 
 
 def cmd_list(_a):
@@ -349,8 +415,12 @@ def main():
     s.add_argument("--category", default="기타")
     s.add_argument("--limit", type=int, default=8)
     s.add_argument("--request", help="사용자가 한 말 원문")
+    s.add_argument("--channel", help="쉼표로 구분한 채널 핸들(예: @Apple,@AppleKorea) — 그 채널의 쇼츠 · 60초 이하 영상. 핸들은 channels 명령 후보에서 에이전트가 고른다")
     s.add_argument("--want", default="auto", help="남길 화풍: auto(요청 말로 판단 — 기본은 거르지 않음, 2D · 3D · 픽셀은 한 묶음) · any · 2d,pixel,3d,live,screen")
     s.set_defaults(fn=cmd_search)
+    ch = sp.add_parser("channels", help="채널 후보(이름 · 핸들 · 인증 · 구독자) — 공식 채널은 에이전트가 판단")
+    ch.add_argument("names", nargs="+", help="브랜드 · 회사 이름(한 · 영 둘 다 주면 좋다)")
+    ch.set_defaults(fn=cmd_channels)
     sp.add_parser("list").set_defaults(fn=cmd_list)
     r = sp.add_parser("remove")
     r.add_argument("--request", required=True)

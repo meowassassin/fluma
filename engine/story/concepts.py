@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
-"""콘셉트 단계 — 콘티를 쓰기 전에 서로 멀리 떨어진 안을 벌려 보고, 뻔한 안을 일찍 걸러 사람이 고르게 한다.
+"""콘셉트 단계 — 콘티를 쓰기 전에 '이 분야에서 다들 하는 것'을 먼저 적고, 그것을 일부러 깨는 안을 벌려 사람이 고르게 한다.
 레퍼런스는 리듬 · 훅 구조만 빌린다. 소재와 아이디어는 여기서 일부러 다르게 간다.
+뻔한지 아닌지는 코드가 낱말 목록으로 재지 않는다 — 에이전트(Claude)가 레퍼런스 X-ray 를 보고 판단해 적고, 코드는 칸이 채워졌는지 · 레퍼런스가 실제로 분석됐는지 · 지난 영상과 겹치는지만 본다.
 
-  python3 engine/story/concepts.py check <id>            # 안 검사(각도 · 한 방 · 근거 · 겹침 · 뻔한 말)
+  python3 engine/story/concepts.py check <id>            # 안 검사(뻔함 지도 · 깨는 것 · 각도 · 한 방 · 근거 · 겹침)
   python3 engine/story/concepts.py sketch <id>           # 안마다 5초 시안 → data/out/concepts-<id>.mp4 · .png (몇 초)
   python3 engine/story/concepts.py pick <id> <번호|이름> <콘티.json>   # 사용자가 고른 안을 콘티 concept 에 넣는다 — 사용자가 고를 때만
 
 안 파일: data/workspace/concepts/<id>.json
-  {"topic": "…", "concepts": [{
+  {"topic": "…",
+   "cliches": [{                                   # 뻔함 지도 — 레퍼런스 3~5편에서 다들 하는 것(3개 이상, 구조 · 제목 각 1개 이상)
+     "kind": "구조|첫장면|제목|화면|말투|소리", "what": "고민 → 이점 나열 → 할인 CTA", "seen_in": ["<X-ray 한 영상 id>", …]}],
+   "concepts": [{
      "name": "짧은 이름", "angle": ANGLES 중 하나,
      "promise": "시청자가 얻는 것 한 문장",
      "one_shot": "이 영상에만 있는 한 방 — 다른 영상이 못 하는 것",
      "hook": "첫 3초 말 또는 글자",
+     "breaks": "cliches 의 what 그대로(또는 번호 1~) — 이 안이 일부러 깨는 것",
+     "why_fresh": "왜 뻔하지 않은가 — 스스로 반박해 보고 남은 이유",
+     "structure": "장면 흐름 한 줄(형식 기본 뼈대를 그대로 쓰지 않는다)",
      "evidence": "출처 URL · 직접 실험 계획 · 조사 필요",
      "trick": "화면 장치(어떤 앱 조합인가)",
      "beats": [{"big": "화면 글자", "note": "실제로 무엇이 보일지"}]   # 시안 2~4칸
@@ -33,7 +40,7 @@ from result import fail, ok  # noqa: E402
 
 STORE = ROOT / "data" / "workspace" / "concepts"
 ANGLES = {"실험", "데이터", "반전", "역할극", "비유", "대결", "역사", "해부", "시점", "형식파괴"}
-TIRED = ("알고 계셨나요", "이것만 알면", "충격", "꿀팁", "몰랐던", "의 비밀", "TOP", "톱", "반드시", "역대급", "소름", "모르면 손해", "놀라운")
+XRAY = ROOT / "data" / "public" / "trends" / "xray"
 SIM_FAIL = 0.34     # 글자 세 묶음 겹침(자카드) — 이 이상이면 사실상 같은 말
 NEED, MAX = 6, 8
 
@@ -61,32 +68,57 @@ def past() -> list:
     return out
 
 
-def check(d: dict, history: list | None = None) -> tuple[list, list]:
-    """(막는 문제, 알림)"""
+def check(d: dict, history: list | None = None, analyzed=None) -> tuple[list, list]:
+    """(막는 문제, 알림). analyzed(id) → 그 영상이 X-ray 됐는가(기본: 파일 확인)"""
+    analyzed = analyzed or (lambda r: (XRAY / str(r) / "xray.json").exists())
     bad, note = [], []
+    cl = d.get("cliches") or []
+    kinds = {c.get("kind") for c in cl}
+    if len(cl) < 3:
+        bad.append(f"뻔함 지도(cliches)가 {len(cl)}개 — 레퍼런스 X-ray 를 보고 이 분야에서 다들 하는 것 3개 이상(구조 · 제목 각 1개 이상)")
+    for k in ("구조", "제목"):
+        if cl and k not in kinds:
+            bad.append(f"뻔함 지도에 '{k}' 가 없음")
+    for c in cl:
+        refs = c.get("seen_in") or []
+        if not str(c.get("what") or "").strip():
+            bad.append("뻔함 지도 한 칸의 what 이 비었음")
+        elif not any(analyzed(r) for r in refs):
+            bad.append(f"뻔함 '{str(c.get('what'))[:20]}': seen_in 에 X-ray 한 레퍼런스가 없음(짐작이 아니라 실제로 본 것)")
+    whats = [str(c.get("what") or "").strip() for c in cl]
     cs = d.get("concepts") or []
     if not NEED <= len(cs) <= MAX:
         bad.append(f"안은 {NEED}~{MAX}개 — 지금 {len(cs)}개")
     seen: dict = {}
+    broken = set()
     for c in cs:
         n = c.get("name") or "?"
         a = c.get("angle")
         if a not in ANGLES:
             bad.append(f"{n}: 각도 '{a}' 는 목록에 없음({' · '.join(sorted(ANGLES))})")
         seen[a] = seen.get(a, 0) + 1
-        for k in ("promise", "one_shot", "hook", "evidence", "trick"):
+        for k in ("promise", "one_shot", "hook", "breaks", "why_fresh", "structure", "evidence", "trick"):
             if not str(c.get(k) or "").strip():
                 bad.append(f"{n}: {k} 가 비었음")
+        b = str(c.get("breaks") or "").strip()
+        if b:
+            idx = int(b) - 1 if b.isdigit() else (whats.index(b) if b in whats else -1)
+            if not 0 <= idx < len(whats):
+                bad.append(f"{n}: breaks '{b[:20]}' 가 뻔함 지도에 없음(what 그대로 또는 번호)")
+            else:
+                broken.add(idx)
         if not 2 <= len(c.get("beats") or []) <= 4:
             bad.append(f"{n}: beats 는 2~4칸")
-        for w in TIRED:
-            if w.lower() in str(c.get("hook") or "").lower():
-                bad.append(f"{n}: 훅에 닳은 말 '{w}'")
         if "조사 필요" in str(c.get("evidence") or ""):
             note.append(f"{n}: 근거를 아직 확인하지 않음 — 고르면 콘티 전에 조사")
         for sid, t in history if history is not None else past():
             if sim(c.get("hook"), t) >= SIM_FAIL:
                 bad.append(f"{n}: 훅이 {sid} 의 '{str(t)[:24]}' 와 겹침")
+        for w in whats:
+            if sim(c.get("hook"), w) >= SIM_FAIL or sim(c.get("structure"), w) >= SIM_FAIL:
+                bad.append(f"{n}: 깨겠다는 뻔함 '{w[:20]}' 를 그대로 닮음")
+    if cs and whats and len(broken) < min(3, len(whats)):
+        bad.append(f"안들이 깨는 뻔함이 {len(broken)}가지뿐 — 서로 다른 것을 깨야 안이 벌어진다")
     if len([a for a in seen if a]) < 4:
         bad.append(f"각도가 {len(seen)}가지뿐 — 4가지 이상 벌려야 함")
     for a, k in seen.items():
@@ -187,7 +219,8 @@ def main() -> int:
             fail("concepts", stage="concepts", error=f"그런 안이 없습니다: {a.which}")
         sp = Path(a.storyboard)
         sb = json.loads(sp.read_text("utf-8"))
-        sb["concept"] = {k: c.get(k) for k in ("name", "angle", "promise", "one_shot", "trick", "evidence")}
+        sb["concept"] = {k: c.get(k) for k in ("name", "angle", "promise", "one_shot", "breaks", "why_fresh", "structure", "trick", "evidence")}
+        sb["concept"]["cliches"] = [c_.get("what") for c_ in d.get("cliches") or []]   # 제목 · 콘티를 쓸 때 피할 것
         sp.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", "utf-8")
         ok("concepts", picked=c["name"])
         return 0
