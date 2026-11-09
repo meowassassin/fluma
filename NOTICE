@@ -41,3 +41,11 @@ one motivated camera move, rhythm ladder, Murch's rule of six) adapts smixs/visu
 licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Changes: translated to Korean, condensed,
 and mapped onto Fluma's storyboard fields and lint checks.
 
+
+The humanizer-ko skill (.claude/skills/humanizer-ko) is DaleSeo/korean-skills `humanizer` (MIT, Copyright (c) 2026 Dale Seo,
+https://github.com/daleseo/korean-skills, commit ae12ba2), renamed only; its license is in that folder. The writer skill
+summarizes its Korean AI-style patterns (KatFishNet, arXiv 2503.00032).
+
+Sound effects in engine/assets/sfx are CC0 (public domain): Kenney "Interface Sounds" (kenney.nl), rubberduck "100 CC0 SFX"
+and pyranostudios "Air Whoosh" (opengameart.org) — see engine/assets/sfx/CREDITS.txt. Background music is chosen per video
+from free-library uploads on YouTube; commercial songs are only suggested for attaching in the Shorts editor at upload.

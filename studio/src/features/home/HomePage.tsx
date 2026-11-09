@@ -23,7 +23,7 @@ const FORMAT_KO: Record<string, string> = { compare: "비교", concept: "개념"
 /* ---------- 홈 = 기획 대화 ----------
    처음: 로고 + 입력. 보내면 이 자리에서 대화가 열린다(편집기로 바로 가지 않음).
    대화: 왼쪽 대화 목록 · 가운데 기획 대화(plan 스킬: 선택지 · 기획 카드 · 훅 채점) · 오른쪽 콘티 보드(단계 · 기획 카드 · 장면).
-   '제작 시작'을 누르면 음성 · 화면을 만들기 시작하고, 왼쪽 레일 '영상'에 제작 중인 수가 뜬다. */
+   콘티가 검사를 통과하면 에이전트가 그대로 음성 · 화면을 만들고, 왼쪽 레일 '영상'에 제작 중인 수가 뜬다. */
 export const HomePage: React.FC = () => {
   const [params] = useSearchParams();
   const c = params.get("c");
@@ -151,7 +151,7 @@ const HomeChat: React.FC<{ id: string }> = ({ id }) => {
     <>
       <div className="home-chat">
         <AgentDock layout="page" sessionId={id} defaultSkill={produced ? null : "plan"}
-          context={{ menu: produced ? "studio" : "plan", note: produced ? undefined : "홈 기획 대화 — plan 스킬. 콘티 초안까지만, 음성 · 화면은 사용자가 '제작 시작'을 누른 뒤" }}
+          context={{ menu: produced ? "studio" : "plan", note: produced ? undefined : "홈 기획 대화 — plan 스킬. 묻지 않고 추천안으로 진행해 콘티를 쓰고, 검사를 통과하면 같은 턴에 produce 로 초안까지(버튼 없음)" }}
           autoSend={autoSend} onAutoSent={() => { setAutoSend(null); nav(`/?c=${id}`, { replace: true, state: null }); }}
           placeholder={produced ? t("영상에 대해 더 말해 주세요 — 편집기에서 장면별로 고칠 수도 있어요") : t("답하거나 선택지를 누르세요. 예: 훅은 B안, 20초로")} />
       </div>
@@ -225,7 +225,6 @@ const StoryBoard: React.FC<{ id: string; produced: boolean; producing: boolean }
       )}
       </div>
       <div className="sb-acts">
-        {sb && !produced && <Button variant="primary" icon="render" disabled={!!s.live || hard > 0} onClick={start} title={hard ? t("검사에 걸린 것을 먼저 고쳐요") : undefined}>{t("제작 시작")}</Button>}
         {sb && <Button variant="secondary" icon="external" onClick={() => { useUi.getState().set({ lastProject: id }); nav(`/p/${id}`); }}>{t("편집기에서 열기")}</Button>}
       </div>
     </aside>

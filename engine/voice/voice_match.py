@@ -6,6 +6,7 @@
   python3 engine/voice/voice_match.py tune   data/storyboards/<id>.json [--voice tc_…] [--max-chars 500]  # 2) 1위 목소리로 감정 · 강도 · 말끝 · 음높이 조합 비교
   python3 engine/voice/voice_match.py apply  data/storyboards/<id>.json                 # 3) 조율 1위를 콘티 voice 에 적는다(속도 포함)
   python3 engine/voice/voice_match.py verify data/storyboards/<id>.json                 # 4) 합성된 '전체' 나레이션을 재서 레퍼런스와 견준다
+  python3 engine/voice/voice_match.py auto   data/storyboards/<id>.json [--max-chars 400]  # 한 번에: 쓸 수 있는 모든 엔진에서 목소리 · 말 속도를 골라 콘티에(produce 가 부른다)
 
 순서: pick → tune → apply → assemble_audio.py → verify. 결과는 data/workspace/render/<id>/voice-match.json · voice-check.json.
 샘플은 늘 같은 문장(SAMPLE)이라 목소리 · 조합마다 한 번만 합성하고 data/workspace/cache/voice-samples/ 에 남긴다(다음 영상은 공짜).
@@ -219,9 +220,76 @@ def cmd_verify(sb, a):
     print(json.dumps({"distance": res["distance"], "off": [r["item"] for r in rows if r["verdict"] != "비슷"]}, ensure_ascii=False))
 
 
+
+# ---------- 자동(엔진을 가로질러) ----------
+# 한국어 품질 순 — 쓸 수 있는(키 · 설치) 엔진만 후보. silent · espeak 은 나레이션 후보가 아니다
+ENGINE_ORDER = ["typecast", "elevenlabs", "openrouter", "supertonic", "cosyvoice", "melotts", "xtts", "chatterbox", "edge"]
+TARGET_CPS = {"emotional": 5.6, "ad": 6.6, "daily": 7.0}            # 레퍼런스가 없을 때 말 속도(초당 글자) — 쇼츠 설명형 7.0
+
+
+def _voices_of(eng: str, gender: str | None) -> list[dict]:
+    if eng == "typecast":
+        vs = candidates(eng, {"f0_median": 120 if gender == "M" else 220})
+    else:
+        vs = [{"id": v["id"], "title": v.get("title", v["id"]), "gender": v.get("gender")} for v in tts.voice_meta(eng).get("voices") or []] or [{"id": None, "title": "기본"}]
+        if gender:
+            vs = [v for v in vs if v.get("gender") in (gender, None, "-")] or vs
+    return vs
+
+
+def cmd_auto(sb_path: Path, sb: dict, a):
+    v = sb.get("voice") or {}
+    st = tts._settings()
+    if v.get("source") == "user":
+        print("[음성] 사용자가 정한 목소리 — 그대로"); return
+    if st.get("voice_auto") is False:
+        print(f"[음성] 설정에서 고정한 목소리({st.get('voice_engine')}) — 자동 선택 안 함"); return
+    ref, src = ref_profile(sb)
+    engines = [e for e in ENGINE_ORDER if e in tts.list_voice_engines() and tts.engine_available(e) and tts.voice_meta(e).get("korean", True)]
+    if not engines:
+        engines = ["edge"]
+    gender = None
+    if ref and ref.get("f0_median"):
+        gender = "M" if ref["f0_median"] < 165 else "F"
+    budget = {"left": a.max_chars}
+    rows = []
+    for eng in engines[:4] if ref else engines[:1]:      # 레퍼런스가 없으면 비교할 기준이 없다 — 가장 좋은 엔진의 첫 목소리
+        fresh = 0
+        for c in _voices_of(eng, gender)[: (5 if ref else 1)]:
+            cached = _cached(eng, c["id"])
+            if not cached and fresh >= 3:
+                continue
+            try:
+                m = sample(eng, c["id"], budget=budget)
+            except Exception as e:  # noqa: BLE001  엔진 하나가 실패해도 다른 엔진으로
+                print(f"[음성] {eng} {c['id']} 샘플 실패: {str(e)[:80]}", file=sys.stderr); break
+            if m is None:
+                break
+            fresh += 0 if cached else 1
+            d = vp.distance(ref, m["profile"]) if ref else 0.0
+            rows.append({"engine": eng, "voice": c["id"], "title": c["title"], "distance": round(d, 2), "profile": m["profile"],
+                         "rank": ENGINE_ORDER.index(eng)})
+    if not rows:
+        print("[음성] 후보를 재지 못함 — 설정의 기본 목소리로"); return
+    # 거리(레퍼런스와 닮음)가 비슷하면(0.3 안) 품질 좋은 엔진 쪽
+    rows.sort(key=lambda r: (round(r["distance"] / 0.3), r["rank"], r["distance"]))
+    best = rows[0]
+    cps = (best["profile"] or {}).get("cps") or 0
+    fmt = str(sb.get("format") or "").replace("format-", "")
+    want = (ref or {}).get("cps") or TARGET_CPS.get(fmt, 7.0)
+    speed = round(min(1.3, max(0.85, want / cps)), 2) if cps else 1.0
+    nv = {k: val for k, val in v.items() if k in ("intensity", "pitch", "ending") and v.get("engine") == best["engine"]}
+    nv.update({"engine": best["engine"], "id": best["voice"], "speed": speed, "source": "auto",
+               "why": (f"레퍼런스({src}) 화자와 가장 닮음(거리 {best['distance']})" if ref else "레퍼런스 없음 — 쓸 수 있는 엔진 중 한국어 품질 1순위") +
+                      f" · 말 속도 {want:.1f}자/초에 맞춰 ×{speed}"})
+    sb["voice"] = nv
+    sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    m = read_match(sb); m.update({"auto": rows[:8], "ref": ref, "ref_source": src}); write_match(sb, m)
+    print(f"[음성] {best['engine']} · {best['title']} ({best['voice']}) · ×{speed} — {nv['why']}" + (f" · 새로 합성 {budget.get('spent', 0)}자" if budget.get("spent") else ""))
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("cmd", choices=["ref", "pick", "tune", "apply", "verify"])
+    ap.add_argument("cmd", choices=["ref", "pick", "tune", "apply", "verify", "auto"])
     ap.add_argument("storyboard")
     ap.add_argument("--engine")
     ap.add_argument("--voice")
@@ -229,7 +297,7 @@ def main():
     ap.add_argument("--max-chars", type=int, default=None, help="새로 합성할 글자 수 한도(유료 엔진 크레딧). 기본 pick 400 · tune 500")
     a = ap.parse_args()
     if a.max_chars is None:
-        a.max_chars = 400 if a.cmd == "pick" else 500
+        a.max_chars = 400 if a.cmd in ("pick", "auto") else 500
     sp, sb = load_sb(a.storyboard)
     if a.cmd == "ref":
         r, src = ref_profile(sb); print(json.dumps({"source": src, "ref": r}, ensure_ascii=False))
@@ -239,6 +307,8 @@ def main():
         cmd_tune(sb, a)
     elif a.cmd == "apply":
         cmd_apply(sp, sb, a)
+    elif a.cmd == "auto":
+        cmd_auto(sp, sb, a)
     else:
         cmd_verify(sb, a)
 

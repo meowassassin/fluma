@@ -16,7 +16,7 @@ def good():
                {"kind": "제목", "what": "숫자 넣은 리스트 제목", "seen_in": ["r2"]},
                {"kind": "첫장면", "what": "가게 간판 정면샷으로 시작", "seen_in": ["r3"]}]
     return {"cliches": cliches, "concepts": [{"name": f"안{i}", "angle": angles[i], "promise": "p", "one_shot": f"한 방 {i} {'가나다라마바사'[i]}{'아자차카타파하'[i]}", "hook": hooks[i],
-            "breaks": str(i % 3 + 1), "why_fresh": "w", "structure": f"흐름 {i}", "evidence": "https://x", "trick": "t", "beats": [{"big": "a"}, {"big": "b"}]} for i in range(6)]}
+            "breaks": str(i % 3 + 1), "why_fresh": "w", "structure": f"흐름 {i}", "evidence": "https://x", "trick": "t", "beats": [{"big": "a"}, {"big": "b"}]} for i in range(4)]}   # 3~5안(2026-11-09: 6~8 → 3~5)
 
 
 SEEN = lambda r: r in ("r1", "r2", "r3")  # noqa: E731

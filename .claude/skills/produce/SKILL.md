@@ -1,6 +1,6 @@
 ---
 name: produce
-description: 콘티를 영상으로 만든다(Craft 파이프라인 — 기본 엔진). 음성 → 장면 재료(차트 · 문서 인용 · 그림 · 사진 · 화면) → 검사 → 초안 렌더(EffectCraft → SoundCraft → FilmCraft) → 결과 확인. 홈의 '제작 시작', "만들어 줘", "초안 렌더" 요청에 쓴다.
+description: 콘티를 영상으로 만든다(Craft 파이프라인 — 기본 엔진). 음성 → 장면 재료(차트 · 문서 인용 · 그림 · 사진 · 화면) → 검사 → 초안 렌더(EffectCraft → SoundCraft → FilmCraft) → 결과 확인. 기획에서 콘티가 검사를 통과하면 바로 이어서, 또는 "만들어 줘" · "초안 렌더" 요청에 쓴다.
 order: 2
 ---
 
@@ -24,6 +24,12 @@ order: 2
 - 종료 10 → 사용자 녹화(L36) · 스톡 키(L38) 같은 것을 한 번에 부탁
 - 장면 몇 개만 볼 때 `--scenes 1-3`, 대사를 안 바꿨으면 `--no-audio`
 아래 단계는 produce.py 가 하는 일의 설명이자, 막혔을 때 한 단계씩 볼 때 쓴다.
+
+## 소리 — 음악 · 효과음 · 목소리(produce.py 가 음성 전에 자동으로)
+- **음악**: `engine/craft/music_pick.py auto` 가 넣을지 정하고(레퍼런스 음악 비율 · 붙인 곡 · 나레이션 · 형식) 요즘 쓰이는 곡 중 맞는 **무료 곡**을 받아 콘티 `music` 에 적는다(가장 힘 있는 구간 `start` · 페이드 · 말할 때 내림).
+  상업 유행곡은 `music.upload_sound` — 결과의 sound 줄을 사용자에게 그대로 알린다("업로드 때 쇼츠 편집기 '사운드 추가'로 붙일 곡"). 분위기를 바꾸려면 `music_pick.py pick <콘티> --mood "..." [--bpm 90]`, 빼려면 콘티 `music: {"use": false}`.
+- **효과음**: 음악이 깔리면 기본으로 뺀다. 꼭 필요한 사건 소리(꺾임의 쿵 하나)만 `{"name": "stamp", "at": 2.1, "keep": true}`. 음악이 없을 때도 장면당 하나, 화면에서 실제로 일어난 일에만.
+- **목소리**: 설정이 '자동'(기본)이면 `voice_match.py auto` 가 쓸 수 있는 모든 엔진에서 레퍼런스 화자와 가장 닮은 목소리 · 레퍼런스 말 속도를 골라 콘티 `voice` 에(source: auto). 사용자가 채팅으로 목소리를 정하면 `"source": "user"`.
 
 ## 순서
 0. **레퍼런스 먼저(건너뛰지 않는다 — 검사 L30)**: 콘티에 `reference` 가 없으면 만들기 전에
@@ -88,10 +94,10 @@ order: 2
 5. **확인**: `python3 engine/core/still.py data/storyboards/<id>.json <초> …` → PNG 를 Read 로 직접 본다. 글자 겹침 · 잘림 · 빈 화면 · 재료가 말과 맞는지. 고칠 게 있으면 재료 · 콘티를 고치고 4로.
 6. **최종 렌더는 하지 않는다** — 사용자가 편집기의 '렌더'를 눌러 의도 · 시안을 확인한다(관문).
 
-## 디자인 시안 고르기(전체 초안 전에 — 에이전트가 혼자 정하지 않는다)
+## 디자인 방향(기다리지 않는다)
 1. `python3 engine/story/direct.py data/storyboards/<id>.json --write` — 레퍼런스 X-ray 에서 잰 값만 방향에 채운다(근거가 없으면 효과 없음).
-2. `python3 engine/story/directions.py propose data/storyboards/<id>.json --scenes 1-3` — 시안 2~3개(레퍼런스대로 · 담백하게 · 움직임 조금)를 장면 1~3 으로 나란히 렌더 → media 줄(나란히 비교 + 시안별)을 채팅에 띄우고 **사용자에게 고르게 한다**(선택지 질문).
-3. 고르면 `python3 engine/story/directions.py pick data/storyboards/<id>.json <번호>` → 그다음 전체 produce. 사용자가 "알아서"라면 1번(레퍼런스대로, 없으면 담백하게).
+2. 시안 비교(`directions.py propose`)는 사용자가 보고 싶다고 할 때만 — 기본은 바로 1번(레퍼런스대로, 없으면 담백하게)으로 `directions.py pick data/storyboards/<id>.json 1` 하고 전체 produce.
+3. 사용자가 나중에 다른 방향을 말하면 그때 바꾼다.
 4. 사용자가 말로 바꾸면("자막에 노란 상자", "효과 빼 줘") direction 칸을 직접 고치고 `locked: true` — 칸 설명은 engine/craft/design.py 맨 위. 지금 값 보기: `directions.py show`.
 - **효과는 근거가 있을 때만**: 배경 움직임 · 등장 전환 · 글자 애니메이션 · 그림자 · 밀기는 기본으로 꺼져 있다. 레퍼런스 · 사용자 요청 없이 켜지 않는다. produce 결과의 D01 은 '사용자가 아직 고르지 않음'.
 - **같은 재료, 다른 앱**: 재료에 `"method": "<앱>"`(또는 direction.methods) — 예: 차트를 DeckCraft 차트 엔진으로 `{"type": "chart", "method": "deckcraft", "kind": "pie", …}`. 가능한 앱은 `materials.methods()` · lint L39 가 알려 준다. DeckCraft 막대 차트는 세로축이 0 부터가 아닐 수 있어 기준선이 중요한 비교는 기본 방법.

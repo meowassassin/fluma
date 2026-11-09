@@ -24,7 +24,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PUBLIC = ROOT / "data" / "public"
+from .music_pick import sfx_allowed  # noqa: E402  음악이 깔리면 효과음은 빼는 게 기본
 SFX_DIR = ROOT / "assets" / "sfx"
+SFX_HQ = ROOT / "engine" / "assets" / "sfx"           # 고음질 CC0 녹음(저장소에 포함, CREDITS.txt)
 RATE = 48000   # SoundCraft 새 세션의 샘플레이트
 
 TARGET_LUFS = -14.0     # 쇼츠 라우드니스 목표
@@ -89,6 +91,15 @@ def sfx_gain_db() -> float:
     return round(20 * math.log10(g), 2) if g > 0 else -60.0
 
 
+def sfx_file(name) -> Path:
+    """효과음 파일 — 고음질 묶음(engine/assets/sfx/<이름>.wav, CC0 녹음 · 48kHz 스테레오)이 있으면 그것, 없으면 기본 합성음"""
+    for ext in ("wav", "flac", "ogg"):
+        f = SFX_HQ / f"{name}.{ext}"
+        if f.exists():
+            return f
+    return SFX_DIR / f"{name}.wav"
+
+
 def sfx_clips(sid: str) -> list[tuple[Path, float]] | None:
     """효과음 표(<id>.sfx.json) → [(파일, 영상 시각 초)]. 표가 없거나 파일이 빠졌으면 None(덩어리 sfx.wav 로 대신)"""
     marks_p = PUBLIC / "audio" / f"{sid}.sfx.json"
@@ -100,7 +111,7 @@ def sfx_clips(sid: str) -> list[tuple[Path, float]] | None:
         return None
     out = []
     for mk in marks:
-        f = SFX_DIR / f"{mk.get('name')}.wav"
+        f = sfx_file(mk.get("name"))
         if not f.exists():
             return None
         out.append((f, float(mk.get("at", 0.0))))
@@ -112,9 +123,9 @@ def material_events(sb: dict) -> list[tuple[Path, float]]:
     out, t = [], 0.0
     base = ROOT / "data" / "compositions" / sb["id"] / "craft" / "materials"
     for n, sc in enumerate(sb.get("scenes") or [], 1):
-        for ev in sc.get("sfx") or []:          # 콘티에 장면 기준으로 적은 효과음 — {"name": "stamp", "at": 3.3}
-            w = SFX_DIR / f"{ev.get('name')}.wav"
-            if w.exists():
+        for ev in sc.get("sfx") if isinstance(sc.get("sfx"), list) else []:   # 콘티에 장면 기준으로 적은 효과음 — {"name": "stamp", "at": 3.3}
+            w = sfx_file(ev.get("name"))
+            if w.exists() and sfx_allowed(sb, ev):
                 out.append((w, t + float(ev.get("at", 0))))
         for m in sc.get("materials") or []:
             f = base / f"s{n:02d}" / f"{m.get('id')}.json"
@@ -123,8 +134,8 @@ def material_events(sb: dict) -> list[tuple[Path, float]]:
             except (OSError, ValueError):
                 rec = {}
             for ev in rec.get("events") or []:
-                w = SFX_DIR / f"{ev.get('name')}.wav"
-                if w.exists():
+                w = sfx_file(ev.get("name"))
+                if w.exists() and sfx_allowed(sb, ev):          # 음악이 깔리면 재료가 남긴 순간 소리도 빼는 게 기본
                     out.append((w, t + float(ev.get("at", 0))))
         t += float(sc.get("sec") or 0)
     return out
@@ -234,7 +245,11 @@ def commands(sb: dict, voice: Path, words: list[dict], dur: float, threshold: fl
     if music:                                               # 곡마다 크기가 달라(작곡 결과는 −37 dB 처럼 작다) 먼저 −16 LUFS 로 맞춘다 — gain_db 는 그 위에서의 상대값
         mn = ROOT / "data" / "compositions" / sid / "craft" / "audio" / "music.norm.wav"
         mn.parent.mkdir(parents=True, exist_ok=True)
-        if subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(music), "-af", "loudnorm=I=-16:TP=-2:LRA=11", "-ar", str(RATE), "-ac", "2", str(mn)], capture_output=True).returncode == 0:
+        mm = sb.get("music") or {}
+        st = max(0.0, float(mm.get("start") or 0))          # 곡의 가장 힘 있는 구간부터(music_pick 이 박에 맞춰 고름) · 앞뒤 페이드
+        fade = f"afade=t=in:d=0.4,afade=t=out:st={max(0.0, dur - 1.2):.2f}:d=1.2,"
+        if subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{st:.2f}", "-i", str(music), "-t", f"{dur + 0.5:.2f}", "-af", fade + "loudnorm=I=-16:TP=-2:LRA=11",
+                           "-ar", str(RATE), "-ac", "2", str(mn)], capture_output=True).returncode == 0:
             music = mn
     if music:
         m = sb.get("music") or {}

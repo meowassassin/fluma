@@ -16,7 +16,7 @@ import { LANGS, agentLang, t, useLang, type Lang } from "../../lib/i18n";
 import { sapi, type AgentInfo, type CapRow, type GenKey, type Mem, type ModelRow, type Provider, type Voice } from "./api";
 
 type Sec = "agent" | "models" | "media" | "youtube" | "memory" | "mcp" | "about";
-type MediaTab = "voice" | "stock" | "render";
+type MediaTab = "voice" | "music" | "stock" | "render";
 interface AgentCfg { mode: "cli" | "api"; cli: string; claudeModel: string; codexModel: string; effort: string; provider: string; apiModel: string; baseUrl: string; protocol: "anthropic" | "responses" }
 type Save = "idle" | "saving" | "saved" | "failed";
 
@@ -363,17 +363,20 @@ const GenKeys: React.FC<{ keys?: GenKey[]; title: string; desc: string }> = ({ k
 /** 미디어: 음성 · 렌더 엔진을 한 칸에서 — 위 전환으로 고른다(open-design 의 Local CLI / API providers 전환처럼) */
 const MediaSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; engines: EngineMeta[]; voices: Voice[]; keys?: GenKey[] }> = ({ s, set, engines, voices, keys }) => {
   const raw = useParams().section ?? "media";
-  const [tab, setTab] = useState<MediaTab>(() => (["voice", "stock", "render"].includes(raw) ? raw : "voice") as MediaTab);
+  const [tab, setTab] = useState<MediaTab>(() => (["voice", "music", "stock", "render"].includes(raw) ? raw : "voice") as MediaTab);
   const sk = keys?.filter((k) => k.caps.includes("스톡 영상"));
   const vk = keys?.filter((k) => k.caps.includes("음성"));
+  const mk = keys?.filter((k) => k.caps.includes("음악"));
   return <>
     <div className="media-tabs">
       <Segmented aria-label={t("미디어 종류")} value={tab} onChange={(v) => setTab(v as MediaTab)} options={[
         { value: "voice", label: t("음성 · {n}개 사용 가능", { n: voices.filter((v) => v.available).length }) },
+        { value: "music", label: t("음악") },
         { value: "stock", label: t("스톡 영상 · {n}개 연결", { n: (sk ?? []).filter((k) => k.hasKey).length }) },
         { value: "render", label: t("렌더 엔진 · {n}개", { n: engines.filter((e) => e.available).length }) }]} />
     </div>
-    {tab === "voice" && <><VoiceSec s={s} set={set} voices={voices} /><GenKeys keys={vk} title={t("음성 API 키")} desc={t("유료 · 클라우드 음성(Typecast · ElevenLabs)을 연결하면 위 목록에서 '사용 가능'이 됩니다. 오픈라우터 음성은 설정 → 보기 · 말하기 에서 모델을 고릅니다.")} /></>}
+    {tab === "voice" && <><VoiceSec s={s} set={set} voices={voices} /><GenKeys keys={vk} title={t("음성 API 키")} desc={t("유료 · 클라우드 음성(Typecast · ElevenLabs)을 연결하면 위 목록에서 '사용 가능'이 됩니다. 오픈라우터 음성은 오픈라우터 키 하나로 쓰고, 모델은 위 오픈라우터 칸에서 고릅니다.")} /></>}
+    {tab === "music" && <MusicSec s={s} set={set} keys={mk} />}
     {tab === "stock" && <GenKeys keys={sk} title={t("스톡 영상 API 키")} desc={t("무료 스톡 영상(Pexels · Pixabay) — 일상 · 감성 · 광고 장면의 바탕(B-roll). 출처는 설명란에 자동으로 붙습니다.")} />}
     {tab === "render" && <RenderSec engines={engines} />}
   </>;
@@ -395,7 +398,8 @@ const ModelsSec: React.FC<{ keys?: GenKey[] }> = ({ keys }) => {
       right={<Button size="sm" variant="ghost" icon="history" onClick={() => refetch()}>{t("새로 고침")}</Button>} />
     {isLoading || !data ? <Skeleton h={240} /> : <>
       {!data.key && <p className="faint">{t("키가 없어서 모든 능력이 무료 · 로컬 경로로 돕니다.")}</p>}
-      {data.caps.map((c) => <CapPick key={c.cap} c={c} disabled={!data.key} onPick={(v) => save({ models: { [c.cap]: v } })} />)}
+      {data.caps.filter((c) => c.cap !== "voice.tts").map((c) => <CapPick key={c.cap} c={c} disabled={!data.key} onPick={(v) => save({ models: { [c.cap]: v } })} />)}
+      <p className="faint small"><Icon n="info" s={12} /> {t("말하기(음성) 모델은 미디어 → 음성 → 오픈라우터 칸에서 고릅니다 — 음성 설정을 한곳에.")}</p>
       <Row t={t("영상 한 편 상한")} d={t("이 금액 안에서는 묻지 않고 쓰고, 넘거나 값을 미리 알 수 없으면 에이전트가 금액을 보여 주고 묻습니다. 이번 달 쓴 돈: ${n}", { n: data.month.toFixed(2) })}>
         <Select size="sm" value={String(data.cap_usd)} onChange={(v) => save({ budget: { per_video: Number(v) } })} aria-label={t("영상 한 편 상한")}
           options={["0", "1", "3", "5", "10", "20"].concat([String(data.cap_usd)]).filter((v, i, a) => a.indexOf(v) === i).sort((a, b) => Number(a) - Number(b)).map((v) => ({ value: v, label: Number(v) === 0 ? t("매번 묻기") : `$${Number(v)}` }))} />
@@ -467,8 +471,16 @@ const VoiceSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; voi
     finally { setBusy(""); }
   };
   const [sel, setSel] = useState<string | null>(null);
+  const auto = s.voice_auto !== false;
+  const { data: caps, refetch: refetchCaps } = useQuery({ queryKey: ["model-caps"], queryFn: ({ signal }) => sapi.caps(signal) });
+  const ttsCap = caps?.caps.find((c) => c.cap === "voice.tts");
+  const saveTts = async (v: string) => {
+    try { await sapi.saveChoice({ models: { "voice.tts": v } }); await refetchCaps(); qc.invalidateQueries({ queryKey: qk.voices }); toast.success(t("저장했어요")); }
+    catch (e) { toast.error(t("저장하지 못했어요"), { description: errMsg(e) }); }
+  };
   if (!voices.length) return <><Head t={t("음성")} d={t("불러오는 중")} /><Skeleton h={120} /></>;
-  const cur = voices.find((v) => v.name === (sel ?? s.voice_engine)) ?? voices[0];
+  const showAuto = sel === "auto" || (sel === null && auto);
+  const cur = voices.find((v) => v.name === (sel && sel !== "auto" ? sel : s.voice_engine)) ?? voices[0];
   const def = voices.find((v) => v.name === s.voice_engine);
   const on = s.voice_engine === cur.name;
   const voiceId = vid[cur.name] ?? (on ? s.voice_id : "") ?? "";
@@ -477,12 +489,21 @@ const VoiceSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; voi
   return <>
     <Head t={t("음성")} d={rich(t("나레이션 목소리입니다. 지금 기본: {voice}. 레퍼런스가 있으면 에이전트가 그 화자에 맞춰 고릅니다."), { voice: <><b>{def ? t(def.title) : s.voice_engine}</b>{s.voice_id ? ` · ${s.voice_id}` : ""}</> })} />
     <div className="gk-chips" role="tablist" aria-label={t("음성 엔진")}>
+      <button role="tab" aria-selected={showAuto} className={cx("gk-chip", showAuto && "on")} onClick={() => setSel("auto")} title={t("영상마다 알맞은 목소리를 고름")}>
+        <Icon n="sparkle" s={14} />{t("자동")}{auto ? <Icon n="check" s={13} /> : <i className="gk-dot ok" />}
+      </button>
       {voices.map((v) => (
         <button key={v.name} role="tab" aria-selected={v.name === cur.name} className={cx("gk-chip", v.name === cur.name && "on")} onClick={() => setSel(v.name)} title={t(v.summary)}>
           {v.icon ? <img className="gk-ic" src={v.icon} alt="" /> : <Icon n="mic" s={14} />}{t(v.title).replace(/\s*[(（].*[)）]$/, "")}
-          {s.voice_engine === v.name ? <Icon n="check" s={13} /> : <i className={cx("gk-dot", v.available && "ok")} aria-label={v.available ? t("사용 가능") : t("준비 안 됨")} />}
+          {!auto && s.voice_engine === v.name ? <Icon n="check" s={13} /> : <i className={cx("gk-dot", v.available && "ok")} aria-label={v.available ? t("사용 가능") : t("준비 안 됨")} />}
         </button>))}
     </div>
+    {showAuto ? <div className="gk-card" role="tabpanel" aria-label={t("자동")}>
+      <div className="gk-card-h"><Icon n="sparkle" s={28} /><div className="gk-t"><b>{t("자동 — 영상마다 알맞은 목소리")}</b>
+        <small>{t("쓸 수 있는 엔진(키 · 설치된 것) 전체에서 고릅니다")}</small></div>{auto && <span className="gk-caps">{t("기본 음성")}</span>}</div>
+      <p className="gk-facts">{t("레퍼런스가 있으면 그 화자의 높이 · 억양 · 말끝 · 세기에 가장 닮은 목소리와, 레퍼런스 말 속도(초당 글자)에 맞춘 배속. 레퍼런스가 없으면 한국어 품질이 가장 좋은 엔진과 형식에 맞는 속도(설명형 초당 7자 · 감성 5.6자). 유료 엔진은 짧은 샘플(영상당 400자 안)만 새로 합성하고, 한 번 잰 목소리는 다음부터 공짜입니다.")}</p>
+      <div className="row"><span className="grow" />{!auto && <Button size="sm" variant="primary" onClick={() => set({ voice_auto: true })}>{t("자동으로 쓰기")}</Button>}</div>
+    </div> :
     <div className="gk-card" role="tabpanel" aria-label={curTitle}>
       <div className="gk-card-h">
         <EngineIcon id={cur.name} src={cur.icon} title={curTitle} size={40} />
@@ -497,15 +518,26 @@ const VoiceSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; voi
         <Button size="sm" variant="ghost" icon="volume" loading={busy === cur.name} disabled={!!busy && busy !== cur.name} onClick={() => play(cur)}>{t("들어 보기")}</Button>
         {last?.name === cur.name && <audio key={last.url} src={last.url} controls preload="auto" style={{ height: 30, maxWidth: 220 }} />}
         <span className="grow" />
-        {!on && <Button size="sm" variant="primary" onClick={() => set({ voice_engine: cur.name, voice_id: voiceId })}>{t("기본으로 쓰기")}</Button>}
+        {(!on || auto) && <Button size="sm" variant="primary" onClick={() => set({ voice_engine: cur.name, voice_id: voiceId, voice_auto: false })}>{t("이 목소리로 고정")}</Button>}
       </div> : cur.kind === "api"
         ? <p className="faint small"><Icon n="info" s={12} /> {t("아래 '음성 API 키'에 {name} 키를 넣으면 쓸 수 있어요.", { name: cur.title.split(" ")[0] })}</p>
         : cur.available === false ? <InstallButton kind="voices" name={cur.name} title={curTitle} size={cur.size} note={cur.license.commercial === "불가" ? t("상업 이용 불가: {note}", { note: t(cur.license.note) }) : cur.license.note} onDone={() => qc.invalidateQueries({ queryKey: qk.voices })} />
         : <Skeleton h={32} />}
+      {cur.name === "openrouter" && ttsCap && <CapPick c={ttsCap} disabled={!caps?.key} onPick={saveTts} />}
       <p className="lic-note">{t(cur.license.note)}{cur.license.url && <> · <a className="link" href={cur.license.url} target="_blank" rel="noreferrer">{t("출처")}</a></>}</p>
-    </div>
+    </div>}
   </>;
 };
+
+/* ---------- 음악 ---------- */
+/** 배경 음악: 영상마다 넣을지 정하고 요즘 쓰이는 곡 중 맞는 무료 곡을 고른다(engine/craft/music_pick.py). 여기서는 찾는 키와 상업 곡 정책만 */
+const MusicSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; keys?: GenKey[] }> = ({ s, set, keys }) => <>
+  <Head t={t("배경 음악")} d={t("영상마다 에이전트가 음악을 넣을지 정합니다 — 레퍼런스에 음악이 깔렸는지 · 나레이션이 있는지 · 형식을 보고. 넣으면 레퍼런스가 붙인 곡 · 비슷한 쇼츠들이 요즘 붙이는 곡 · 인기 차트를 찾아, 같은 곡의 무료 판이나 박자 · 분위기가 비슷한 무료 곡을 넣습니다. 음악이 깔리면 효과음은 빼는 게 기본입니다.")} />
+  <Row t={t("상업 유행곡도 영상에 직접 넣기")} d={t("끄면(기본) 상업 곡은 '업로드 때 쇼츠 편집기에서 붙일 곡'으로만 알려 줍니다 — 유튜브가 라이선스를 가진 방법. 켜면 상업 곡을 영상에 바로 넣습니다: Content ID 로 수익이 권리자에게 가거나 소리가 꺼질 수 있어요.")}>
+    <Switch on={!!s.music_any_license} onChange={(v) => set({ music_any_license: v })} label={t("상업 유행곡도 영상에 직접 넣기")} />
+  </Row>
+  <GenKeys keys={keys} title={t("음악 찾기 키")} desc={t("YouTube Data API 키가 있으면 음악 인기 차트(KR) · 최근 1년 조회수 순으로 더 정확히 찾습니다. 없어도 웹 검색으로 찾습니다.")} />
+</>;
 
 /* ---------- 기억 ---------- */
 const MemorySec: React.FC<{ mem: Mem[] }> = ({ mem }) => {

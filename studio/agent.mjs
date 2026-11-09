@@ -29,7 +29,12 @@ export const TOOLS = [
   "Bash(ffmpeg *)", "Bash(ffprobe *)", "Bash(ls *)", "Bash(mkdir -p data/*)", "Bash(cp data/*)", "Bash(mv data/*)",
 ];
 // 키·인증 파일은 읽지도 못하게
-const DENY = ["Read(./.env)", "Read(./.env.*)", "Read(~/.shortsforge/**)", "Edit(~/.claude/**)", "Write(~/.claude/**)", "Read(~/.claude/**)",
+// 저장소 코드 · 설정은 고치지 못하게 — 쓰기는 acceptEdits(저장소 안 파일 편집 자동 허용)로 열고 여기서 막는다.
+// 2026-11-09: Claude Code 2.1 에서 경로 허용 규칙(Write(./data/…/**))만으로는 쓰기가 자주 막혀, 기획 대화마다 '쓰기 승인해 달라'고 멈췄다
+const PROTECT = ["./engine/**/*.py", "./engine/**/*.json", "./engine/**/*.mjs", "./engine/**/*.sh", "./engine/**/*.txt", "./studio/**", "./.claude/**", "./docker/**", "./tests/**",
+  "./.git/**", "./*.md", "./*.conf", "./.gitignore", "./data/workspace/settings.json", "./data/workspace/sessions/**", "./data/workspace/spend.jsonl"];
+const DENY = [...PROTECT.flatMap((p) => [`Edit(${p})`, `Write(${p})`]),
+  "Read(./.env)", "Read(./.env.*)", "Read(~/.shortsforge/**)", "Edit(~/.claude/**)", "Write(~/.claude/**)", "Read(~/.claude/**)",
   // 홈의 비밀 · 인증 파일 (조사 중 웹 내용에 섞인 지시로 읽어 내보내는 일 방지)
   "Read(~/.ssh/**)", "Read(~/.cache/huggingface/**)", "Read(~/.codex/**)", "Read(~/.config/**)", "Read(~/.aws/**)", "Read(~/.gnupg/**)", "Read(~/.netrc)", "Read(~/.git-credentials)"];
 // 턴 전후 비교·되돌리기 대상 (WRITABLE 과 같은 범위)
@@ -176,15 +181,23 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     // 새 영상(콘티 스킬 · 형식 스킬 · 작업 공간)에서는 제작 스킬도 함께 — 콘티만 쓰고 끝내지 않게.
     // 엔진은 Craft 하나 → produce 스킬(HyperFrames · compose 는 2026-11-06 제거)
     const companion = "produce";
-    if (skill !== companion && skill !== "plan" && (!skill || skill === "storyboard" || skill.startsWith("format-") || project.startsWith("_"))) {
+    // 기획(plan)도 함께 — 콘티가 검사를 통과하면 같은 턴에 제작까지(2026-11-09: '제작 시작' 버튼 없앰)
+    if (skill !== companion && (!skill || skill === "plan" || skill === "storyboard" || skill.startsWith("format-") || project.startsWith("_"))) {
       const body = readIf(path.join(ROOT, ".claude", "skills", companion, "SKILL.md"));
       if (body) parts.push(`## 함께 쓰는 스킬: ${companion} (.claude/skills/${companion}/SKILL.md)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
     }
     // 이미 콘티가 있는 영상: 부분 수정(시각 · 장면 · 요소 단위) 규칙도 함께 — "12초 서버 키워 줘"를 그 요소만 고치게
-    // 기획 대화(홈): 콘티 작성 규칙만 함께 — 화면 구성 · 부분 수정 스킬은 '제작 시작' 뒤에
+    // 기획 대화(홈): 콘티 작성 규칙도 함께
     if (skill === "plan") {
       const body = readIf(path.join(ROOT, ".claude", "skills", "storyboard", "SKILL.md"));
-      if (body) parts.push(`## 함께 쓰는 스킬: storyboard (작성 규칙만 — 음성 · 화면 단계는 하지 않는다)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
+      if (body) parts.push(`## 함께 쓰는 스킬: storyboard (콘티 작성 규칙)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
+    }
+    // 감독 · 작가 스킬은 기획 · 콘티 · 제작 · 장면 고치기에 늘 함께 — '먼저 읽어라'로만 적어 두면 에이전트가 읽지 않았다(2026-11-09: 한 대화 도구 89번 중 0번)
+    if (!project.startsWith("_") && ["plan", "storyboard", "produce", "refine", "scene-edit", undefined, null, ""].includes(skill) || (skill || "").startsWith("format-")) {
+      for (const n of ["director", "writer"]) {
+        const body = readIf(path.join(ROOT, ".claude", "skills", n, "SKILL.md"));
+        if (body) parts.push(`## 함께 쓰는 스킬: ${n} (.claude/skills/${n}/SKILL.md — 늘 적용)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
+      }
     }
     if (!project.startsWith("_") && skill !== "scene-edit" && skill !== "plan" && existsSync(path.join(ROOT, "data", "storyboards", `${project}.json`))) {
       const body = readIf(path.join(ROOT, ".claude", "skills", "scene-edit", "SKILL.md"));
@@ -415,7 +428,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       bin = process.env.SF_CLAUDE_BIN || "claude";
       args = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
         first ? "--session-id" : "--resume", sess.sessionId,
-        "--allowedTools", ...TOOLS, "--disallowedTools", ...DENY,
+        "--permission-mode", "acceptEdits", "--allowedTools", ...TOOLS, "--disallowedTools", ...DENY,
         "--append-system-prompt", sys];
       // 사용자가 설정에서 켠 MCP 서버: 그 서버의 도구를 모두 허용(mcp__<이름>)
       const mcp = mcpRunConfig(createCrafts(ROOT).mcpServers());   // 사용자 MCP + 설치된 Craft 앱(벡터 · 모션 · 이미지 …)

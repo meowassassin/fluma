@@ -449,6 +449,17 @@
           "minimum": -12,
           "maximum": 12,
           "description": "음높이(반음, 예전 Typecast 전용 — 지금 엔진은 쓰지 않음)"
+        },
+        "source": {
+          "enum": [
+            "auto",
+            "user"
+          ],
+          "description": "user = 사용자가 정함(설정보다 앞섬), auto = voice_match auto"
+        },
+        "why": {
+          "type": "string",
+          "description": "고른 이유"
         }
       }
     },
@@ -531,10 +542,7 @@
     "music": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "src"
-      ],
-      "description": "배경음악(engine/core/finish.py 가 마무리 때 섞는다). 권리는 사용자 판단 — 엔진은 사용자가 지정한 파일만 섞는다",
+      "description": "배경음악. 사용자가 준 파일, 또는 music_pick.py 가 고른 무료 곡(source: auto). use: false 면 넣지 않는다",
       "properties": {
         "src": {
           "type": "string",
@@ -571,6 +579,70 @@
           "minimum": -30,
           "maximum": 0,
           "description": "말하는 동안 더 내릴 dB(Craft 엔진 SoundCraft, 기본 -5)"
+        },
+        "use": {
+          "type": "boolean",
+          "description": "넣을지(music_pick decide)"
+        },
+        "source": {
+          "enum": [
+            "auto",
+            "user"
+          ],
+          "description": "auto = music_pick 이 고름"
+        },
+        "title": {
+          "type": "string",
+          "description": "곡 이름"
+        },
+        "by": {
+          "type": "string",
+          "description": "만든 이 · 채널"
+        },
+        "url": {
+          "type": "string",
+          "description": "원본 주소"
+        },
+        "free": {
+          "type": "boolean",
+          "description": "무료 라이브러리 곡인가"
+        },
+        "license": {
+          "type": "string",
+          "description": "권리 한 줄(설명란 표기)"
+        },
+        "bpm": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "target_bpm": {
+          "type": "number",
+          "description": "목표 박자"
+        },
+        "why": {
+          "type": "string",
+          "description": "고른 이유"
+        },
+        "decide": {
+          "type": "string",
+          "description": "넣기로 한 이유"
+        },
+        "mood": {
+          "type": "string",
+          "description": "찾은 분위기"
+        },
+        "upload_sound": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "업로드 때 쇼츠 편집기에서 붙일 수 있는 상업 유행곡"
+        },
+        "allow_any": {
+          "type": "boolean",
+          "description": "이 영상은 상업 곡도 직접 넣기"
         }
       }
     },
@@ -626,6 +698,10 @@
           "type": "string"
         }
       }
+    },
+    "script": {
+      "type": "string",
+      "description": "대본 한 덩어리 — 장면이 바뀌는 곳에만 ' / '. 엔진이 말하는 장면 narration 에 차례로 나눠 넣는다(engine/story/script.py). 문장이 장면을 넘어가도 된다"
     }
   },
   "$defs": {
@@ -759,6 +835,10 @@
                 "pop",
                 "tick",
                 "swoosh",
+                "ding",
+                "hit",
+                "error",
+                "glitch",
                 "none"
               ]
             },
@@ -776,12 +856,20 @@
                       "stamp",
                       "pop",
                       "tick",
-                      "swoosh"
+                      "swoosh",
+                      "ding",
+                      "hit",
+                      "error",
+                      "glitch"
                     ]
                   },
                   "at": {
                     "type": "number",
                     "minimum": 0
+                  },
+                  "keep": {
+                    "type": "boolean",
+                    "description": "음악이 깔려도 남길 사건 소리"
                   }
                 }
               }
@@ -1581,6 +1669,10 @@
         "shot_fn": {
           "type": "string",
           "description": "샷 기능(director 스킬): 자리 잡기 · 힘 · 압박 · 디테일 · 반응 · 변화 · 충격 · 여운 · 끝"
+        },
+        "say": {
+          "type": "boolean",
+          "description": "false = 말 없는 장면(대본 조각을 받지 않음)"
         }
       }
     },

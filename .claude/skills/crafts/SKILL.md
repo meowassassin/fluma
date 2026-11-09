@@ -51,7 +51,7 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 ## 앱 섞기 — 한 장면에서 함께 쓰기
 - **겹치기:** 재료 `"layer": "over"` 는 앞 재료 위에 얹는다(`cue` · `start` 로 나오는 때). 투명 배경 Blender 재료는 재료가 둘 이상이면 저절로 겹친다.
 - **다른 앱 → Blender:** `"uses": {"screen": "<앞 재료 id>"}` → 스크립트의 `ctx.args["uses"]["screen"]`(파일 경로) · `F.image_plane` · `F.mat_media`. 입력으로 쓴 재료는 화면에 따로 나오지 않는다(`"show": true` 로 켬).
-- **Blender → 소리:** `F.event("swoosh", 초)` 가 효과음을 맞춘다(pop · swoosh · tick · stamp).
+- **Blender → 소리:** `F.event("swoosh", 초)` 가 효과음을 맞춘다(pop · swoosh · tick · stamp · ding · hit · error · glitch — CC0 녹음, engine/assets/sfx).
 - **SolidCraft · TextureCraft → Blender:** `"bridge"`.
 
 ## 2. 장면 종류별로 고르기

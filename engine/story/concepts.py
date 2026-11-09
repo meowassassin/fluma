@@ -42,7 +42,7 @@ STORE = ROOT / "data" / "workspace" / "concepts"
 ANGLES = {"실험", "데이터", "반전", "역할극", "비유", "대결", "역사", "해부", "시점", "형식파괴"}
 XRAY = ROOT / "data" / "public" / "trends" / "xray"
 SIM_FAIL = 0.34     # 글자 세 묶음 겹침(자카드) — 이 이상이면 사실상 같은 말
-NEED, MAX = 6, 8
+NEED, MAX = 3, 5      # 2026-11-09: 6~8안은 기획을 늦췄다 — 서로 멀리 떨어진 3~4안이면 충분
 
 
 def grams(t: str) -> set:
@@ -134,8 +134,8 @@ def check(d: dict, history: list | None = None, analyzed=None) -> tuple[list, li
                 bad.append(f"{n}: 깨겠다는 뻔함 '{w[:20]}' 를 그대로 닮음")
     if cs and whats and len(broken) < min(3, len(whats)):
         bad.append(f"안들이 깨는 뻔함이 {len(broken)}가지뿐 — 서로 다른 것을 깨야 안이 벌어진다")
-    if len([a for a in seen if a]) < 4:
-        bad.append(f"각도가 {len(seen)}가지뿐 — 4가지 이상 벌려야 함")
+    if len([a for a in seen if a]) < min(3, len(cs)):          # 안마다 다른 각도(3안이면 3가지) — 비슷한 안 여럿보다 멀리 떨어진 3안
+        bad.append(f"각도가 {len(seen)}가지뿐 — 안마다 다른 각도로(최소 {min(3, len(cs))}가지)")
     for a, k in seen.items():
         if k > 2:
             bad.append(f"각도 '{a}' 가 {k}개 — 2개까지")

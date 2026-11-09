@@ -1,0 +1,6 @@
+고음질 효과음 — 모두 CC0(퍼블릭 도메인, 출처 표기 없이 상업 이용 가능). 잘라 다듬고 48kHz 스테레오 · 최고 −3 dBFS 로 맞춤.
+High-quality sound effects — all CC0 (public domain). Trimmed, 48 kHz stereo, peak −3 dBFS.
+
+tick · pop · ding · glitch · error  Kenney "Interface Sounds" (kenney.nl, CC0) — https://opengameart.org/content/interface-sounds
+stamp · hit                          "100 CC0 SFX" (rubberduck, CC0) — https://opengameart.org/content/100-cc0-sfx
+swoosh                               "Air Whoosh" (pyranostudios, CC0) — https://opengameart.org/content/air-whoosh

@@ -127,6 +127,31 @@ def main() -> int:
     sid = sb["id"]
     rel = str(sp.relative_to(ROOT))
 
+    # 0) 대본 한 덩어리(sb.script) → 장면 나레이션 — 문장이 장면을 넘어 이어지게(이어 말하기로 한 번에 합성)
+    r = step("script", [PY, "engine/story/script.py", rel], timeout=60)
+    if r.returncode != 0:
+        fail("produce", stage="script", error=(r.stderr or r.stdout).strip().splitlines()[-1])
+    sb = json.loads(sp.read_text("utf-8"))
+
+    # 0) 레퍼런스 스타일 카드 — 기획 분석(빠른 분석)은 만들지 않는다. 제작에서 쓰는 레퍼런스만 여기서 한 번(배경색 · 자막 자리 · 목소리 맞추기)
+    xr = ROOT / "data" / "public" / "trends" / "xray"
+    for rid in sb.get("reference") or []:
+        if (xr / str(rid) / "xray.json").exists() and (xr / str(rid) / "src.mp4").exists() and not (xr / str(rid) / "style" / "style.json").exists():
+            step(f"style:{rid}", [PY, "engine/research/ref_style.py", str(rid)], timeout=1200)
+
+    # 0.5) 배경 음악 — 넣을지 정하고 요즘 쓰이는 곡 중 맞는 것(무료 판)을 고른다 · 목소리 — 레퍼런스 화자와 닮은 목소리 · 말 속도(설정 '자동'일 때)
+    #      음악 결정이 음성보다 먼저다: 음악이 깔리면 효과음을 빼는 규칙이 음성 단계에서 쓰인다
+    if not a.no_audio:
+        r = step("music", [PY, "engine/craft/music_pick.py", "auto", rel], timeout=600)
+        if r.returncode != 0:
+            print(f"[제작] 음악 고르기 실패(음악 없이 진행): {(r.stderr or r.stdout).strip()[-200:]}", flush=True)
+        print("\n".join(ln for ln in (r.stdout or "").splitlines() if ln.startswith("[음")), flush=True)
+        r = step("voice", [PY, "engine/voice/voice_match.py", "auto", rel], timeout=900)
+        if r.returncode != 0:
+            print(f"[제작] 목소리 자동 선택 실패(설정 기본 목소리로): {(r.stderr or r.stdout).strip()[-200:]}", flush=True)
+        print("\n".join(ln for ln in (r.stdout or "").splitlines() if ln.startswith("[음")), flush=True)
+        sb = json.loads(sp.read_text("utf-8"))
+
     # 1) 음성 — 장면 길이가 여기서 정해진다
     if not a.no_audio or not (ROOT / "data" / "audio" / f"{sid}.wav").exists():
         r = step("audio", [PY, "engine/voice/assemble_audio.py", rel])
@@ -211,7 +236,12 @@ def main() -> int:
     media = [f"{b['file'][0]} | 초안"] + (stills(video, sb, sid) if not a.scenes else []) + (extras(sid) if not a.scenes else [])
     TIMES["stills"] = round(time.time() - t0, 1)
     save_times(sid)
-    ok("produce", file=b["file"][0], media=media, warn=warns[:16], lint_soft=len(soft), depth=depth,
+    mu, vo = sb.get("music") or {}, sb.get("voice") or {}
+    sound = [f"음악: {mu.get('title')} — {mu.get('by')} ({mu.get('license')}) · {mu.get('why')}" if mu.get("use") and mu.get("src") else f"음악: 안 넣음 — {mu.get('why') or '정하지 않음'}",
+             f"목소리: {vo.get('engine')} · {vo.get('id') or '기본'} · ×{vo.get('speed', 1)}" + (f" — {vo['why']}" if vo.get("why") else "")]
+    if mu.get("upload_sound"):
+        sound.append("업로드 때 붙일 수 있는 유행곡(쇼츠 편집기 '사운드 추가'): " + " / ".join(mu["upload_sound"][:3]))
+    ok("produce", file=b["file"][0], media=media, warn=warns[:16], lint_soft=len(soft), depth=depth, sound=sound,
        time=[f"{k}:{v}" for k, v in TIMES.items()], next="정지 화면을 보고(Read) 글자 겹침 · 잘림 · 빈 화면 · 말과 안 맞는 재료를 고친 뒤 다시 produce")
 
 

@@ -31,6 +31,7 @@ ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "path
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from tts import synth, duration, write_silence, resolve, read_words, restore_punct, DEFAULT_VOICE, FFMPEG, SR  # noqa: E402
 TOKENS = json.loads((ROOT / "engine" / "spec" / "tokens" / "default.json").read_text(encoding="utf-8"))
+from craft.music_pick import music_on  # noqa: E402
 SFX_DIR = ROOT / "assets" / "sfx"
 MAX_TEMPO = 1.25
 LEAD = 0.15          # 장면 시작 → 첫 단어
@@ -41,7 +42,7 @@ SFX_GAIN = float(TOKENS["audio"].get("sfx_volume", 0.5))
 
 # 효과음 — 사인파(삑 소리)가 아니라 노이즈 기반으로 실제 효과음처럼 합성한다(예전 사인파는 '기계음'으로 들렸다).
 # 모양을 바꾸면 SFX_VERSION 을 올린다 → 다음 실행 때 engine/voice/sfx/*.wav 를 다시 만든다
-SFX_VERSION = "2"
+SFX_VERSION = "3"   # 3: 고음질 CC0 녹음(engine/assets/sfx)에서 만든다
 SFX_NAMES = ("stamp", "pop", "tick", "swoosh")
 
 
@@ -92,10 +93,19 @@ def _sfx(name: str):
 
 
 def ensure_sfx():
+    """음성 단계에서 섞는 효과음(24kHz 모노). 고음질 묶음(engine/assets/sfx, CC0 녹음)이 있으면 그것을 내려 만들고 —
+    최종 소리(SoundCraft SFX 트랙)는 hq 원본(48kHz 스테레오)을 그대로 쓴다. 없을 때만 노이즈로 합성한다"""
     SFX_DIR.mkdir(parents=True, exist_ok=True)
     ver = SFX_DIR / ".version"
     fresh = not ver.exists() or ver.read_text().strip() != SFX_VERSION
+    hq = ROOT / "engine" / "assets" / "sfx"
+    for f in sorted(hq.glob("*.wav")) if hq.exists() else []:
+        p = SFX_DIR / f.name
+        if fresh or not p.exists() or p.stat().st_mtime < f.stat().st_mtime:
+            subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-i", str(f), "-ar", str(SR), "-ac", "1", "-sample_fmt", "s16", str(p)], check=True)
     for name in SFX_NAMES:
+        if (hq / f"{name}.wav").exists():
+            continue
         p = SFX_DIR / f"{name}.wav"
         if p.exists() and not fresh:
             continue
@@ -215,11 +225,9 @@ def continuous_mode(sb: dict) -> bool:
     v = (sb.get("voice") or {}).get("continuous")
     if v is not None:
         return bool(v)
-    for rid in sb.get("reference") or []:
-        p = ROOT / "data" / "public" / "trends" / "xray" / str(rid) / "style" / "style.json"
-        if p.exists():
-            return bool(json.loads(p.read_text(encoding="utf-8")).get("voice", {}).get("continuous"))
-    return False
+    # 2026-11-09: 기본으로 켬 — 장면마다 따로 합성하면 컷마다 억양이 처음부터 다시 시작해 문장이 이어지지 않았다(대사가 AI 같다).
+    # 끄려면 콘티 voice.continuous: false (장면 사이에 일부러 쉼 · 다른 화자가 필요할 때)
+    return True
 
 
 def continuous_parts(scenes: list, work: Path, prov: str, vid, speed: float, style, opts: dict | None = None) -> list:
@@ -285,6 +293,9 @@ def main():
         sys.exit("사용: python engine/voice/assemble_audio.py data/storyboards/<id>.json [--keep-sec]")
     sb_path = Path(args[0])
     sb = json.loads(sb_path.read_text(encoding="utf-8"))
+    import script as _script                      # 대본 한 덩어리(sb.script) → 장면 나레이션
+    if _script.apply(sb)[0]:
+        sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     sid = sb["id"]
     work = ROOT / "data" / "audio" / sid
     work.mkdir(parents=True, exist_ok=True)
@@ -351,6 +362,10 @@ def main():
             nar, sped, words = p["speech"], p["tempo"], p["words"]
         # 효과음은 장면당 하나 · '딸깍(tick)'은 빼기 — 많으면 거슬린다(2026-11-03 사용자 평가). 콘티 direction.sfx_dense 면 그대로
         fx = sfx_list(sc.get("sfx"))
+        if music_on(sb) and not (sb.get("direction") or {}).get("sfx_with_music"):   # 음악이 깔리면 효과음은 빼는 게 기본 — keep: true 만 남긴다
+            raw = sc.get("sfx") if isinstance(sc.get("sfx"), list) else []
+            keep = {(x.get("name"), float(x.get("at", 0))) for x in raw if isinstance(x, dict) and x.get("keep")}
+            fx = [x for x in fx if x in keep]
         if not (sb.get("direction") or {}).get("sfx_dense"):
             fx = [x for x in fx if x[0] != "tick"][:1]
         voice_all += pcm                                   # 나레이션만(효과음 전) — SoundCraft Voice 트랙

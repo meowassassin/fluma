@@ -254,6 +254,8 @@ const GEN_KEYS = [
     test: { url: "https://api.elevenlabs.io/v1/user", auth: "xi-api-key" } },
   { id: "pexels", ready: true, env: "PEXELS_API_KEY", title: "Pexels", what: "무료 스톡 영상 · 사진 — 일상 · 감성 · 광고 장면의 바탕(B-roll). 출처 표기 권장", caps: ["스톡 영상"], keyHint: "Pexels API 키", console: "https://www.pexels.com/api/new/", docs: "https://www.pexels.com/api/documentation/",
     test: { url: "https://api.pexels.com/videos/search?query=city&per_page=1", auth: "Authorization" } },
+  { id: "youtube", ready: true, env: "YOUTUBE_API_KEY", title: "YouTube Data API", what: "요즘 인기 · 최신 곡 찾기(음악 인기 차트 KR · 최근 1년 조회수 순). 곡 정보만 받는다 — 영상에는 무료 곡만 넣고 상업 유행곡은 업로드 때 붙일 곡으로 알려 준다. 없으면 웹 검색으로 찾는다", caps: ["음악"], keyHint: "AIza…", console: "https://console.cloud.google.com/apis/library/youtube.googleapis.com", docs: "https://developers.google.com/youtube/v3/docs",
+    test: { url: "https://www.googleapis.com/youtube/v3/videos?part=id&chart=mostPopular&maxResults=1", auth: "query:key" } },
   { id: "pixabay", ready: true, env: "PIXABAY_API_KEY", title: "Pixabay", what: "무료 스톡 영상 — Pexels 에 없을 때 두 번째로 찾는 곳", caps: ["스톡 영상"], keyHint: "Pixabay API 키", console: "https://pixabay.com/accounts/register/", docs: "https://pixabay.com/api/docs/",
     test: { url: "https://pixabay.com/api/videos/?q=city&per_page=3", auth: "query:key" } },
 ];
@@ -280,7 +282,7 @@ app.post("/api/gen-keys/:id/test", ah(async (req, res) => {
 }));
 app.get("/api/gen-keys", ah(async (_req, res) => {
   const saved = readApiKeys(), local = envLocalKeys();
-  const ICON = { pexels: "pexels", pixabay: "pixabay", openrouter: "prov-openrouter", typecast: "typecast", elevenlabs: "elevenlabs" };
+  const ICON = { pexels: "pexels", pixabay: "pixabay", youtube: "youtube", openrouter: "prov-openrouter", typecast: "typecast", elevenlabs: "elevenlabs" };
   const byok = readKeys();
   res.json(GEN_KEYS.map(({ test, ...k }) => { const agentKey = k.id === "openrouter" ? byok.openrouter || "" : "";
     const v = process.env[k.env] || saved[k.env] || agentKey || local[k.env] || "";
@@ -364,13 +366,14 @@ app.post("/api/trends/xray/:vid", ah(async (req, res) => {
     h.progress(0.7, "VL 로 보기 · 스타일 카드");
     const [u, s] = await Promise.all([
       h.run(PY, ["engine/providers/see.py", "ref", vid, ...(force ? ["--force"] : [])], { cwd: ROOT, timeout: 4 * 60e3 }),
-      !force && existsSync(path.join(dir, "style", "style.json")) ? Promise.resolve({ code: 0 }) : h.run(PY, ["engine/research/ref_style.py", vid], { cwd: ROOT, timeout: 20 * 60e3 }),
+      // 스타일 카드(매초 글자 인식 — 편당 2분)는 분해도 화면(deep)에서만. 에이전트의 빠른 분석은 건너뛰고 제작(produce.py)이 필요한 레퍼런스만 만든다(2026-11-09)
+      (!force && existsSync(path.join(dir, "style", "style.json"))) || !deep ? Promise.resolve({ code: 0 }) : h.run(PY, ["engine/research/ref_style.py", vid], { cwd: ROOT, timeout: 20 * 60e3 }),
     ]);
     if (u.code !== 0 && u.code !== 10) h.log?.(`VL 이해 건너뜀: ${tail(u.out || u.err)}`);
     // 이어서 채널 말투 카드(같은 채널 쇼츠 여러 편 — 말투 · 구성 · 농담 · 목소리). 실패해도 스타일 카드는 남는다
     const c = req.body?.channel === false ? null : await h.run(PY, ["engine/research/ref_channel.py", vid, "--n", String(fast ? 2 : Math.max(2, Math.min(10, Number(req.body?.n) || 5))), ...(fast ? ["--whisper", "base"] : []), ...(force ? ["--fresh"] : [])], { cwd: ROOT, timeout: 40 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.8 + Number(m[1]) * 0.2, `채널 말투 · ${m[2]}`); } });
     const ch = c && c.code === 0 ? lastJson(c) : null;
-    return { result: { url: `/api/public/trends/xray/${vid}/xray.json`, style: s.code === 0 ? `/api/public/trends/xray/${vid}/style/style.json` : null,
+    return { result: { url: `/api/public/trends/xray/${vid}/xray.json`, style: existsSync(path.join(dir, "style", "style.json")) ? `/api/public/trends/xray/${vid}/style/style.json` : null,
       channel: ch?.channel ? `/api/public/trends/channels/${ch.channel}/channel.json` : null } };
   } });
   res.status(202).json({ jobId: j.id });
@@ -643,7 +646,8 @@ app.get("/api/projects/:id/studio-file", ah(async (req, res) => {
   const rel = path.relative(path.join(ROOT, "data"), abs).split(path.sep);
   const mine = (n) => typeof n === "string" && (n === id || n.startsWith(id) || n.includes(`-${id}`) || n.includes(`${id}.`));
   // 이 영상의 파일만(제작 파일 · 작업 폴더 · 공개 재료 · 렌더 결과 · 음성 · 시안) — 채팅 안 결과 보기도 이것을 쓴다
-  const ok = !rel[0]?.startsWith("..") && ((rel[0] === "compositions" && rel[1] === id) || (rel[0] === "workspace" && mine(rel[2])) || rel[0] === "public"
+  // workspace/asset-cache: 여러 영상이 같이 쓰는 무료 자료 저장(스톡 · 짤 · 레퍼런스 받기) — 개인 파일이 아니라 열어 준다(2026-11-09: 대화창 스톡 영상이 404 → 'No video with supported format')
+  const ok = !rel[0]?.startsWith("..") && ((rel[0] === "compositions" && rel[1] === id) || (rel[0] === "workspace" && (mine(rel[2]) || rel[1] === "asset-cache")) || rel[0] === "public"
     || ((rel[0] === "out" || rel[0] === "audio") && rel.length === 2 && mine(rel[1])));
   if (!ok || !existsSync(abs)) throw notFound("파일이 없습니다");
   res.sendFile(abs, { headers: { "Cache-Control": "no-cache" } });   // 같은 이름으로 다시 그린 시안 — 늘 새로 확인(바뀌지 않았으면 304)
@@ -1283,7 +1287,7 @@ app.put("/api/models/choice", ah(async (req, res) => {
 
 app.get("/api/settings", ah(async (_req, res) => {
   const s = (await readJson(SETTINGS, {})) || {};
-  res.json({ settings: { model: "", effort: "", language: "korean", voice_engine: "edge", voice_id: "", ...s }, models: MODELS, efforts: EFFORTS });
+  res.json({ settings: { model: "", effort: "", language: "korean", voice_engine: "edge", voice_id: "", voice_auto: true, music_any_license: false, ...s }, models: MODELS, efforts: EFFORTS });
 }));
 app.put("/api/settings", ah(async (req, res) => {
   const b = req.body || {};
@@ -1300,6 +1304,8 @@ app.put("/api/settings", ah(async (req, res) => {
   }
   const s = { model, effort: b.effort || "", language: ["english", "chinese"].includes(b.language) ? b.language : "korean",
     voice_engine: ve, voice_id: String(b.voice_id ?? prev.voice_id ?? "").slice(0, 80),
+    voice_auto: (b.voice_auto ?? prev.voice_auto ?? true) !== false,                 // 자동: 영상마다 레퍼런스에 맞춰 목소리 · 말 속도를 고름(voice_match auto)
+    music_any_license: (b.music_any_license ?? prev.music_any_license ?? false) === true, // 상업 유행곡도 영상에 직접 넣기(권리 위험을 사용자가 알고 켬)
     agent: sanitizeAgent(b.agent ?? prev.agent ?? {}),
     models: sanitizeModels(b.models ?? prev.models), budget: sanitizeBudget(b.budget ?? prev.budget) };
   markEcho(SETTINGS, clientOf(req));

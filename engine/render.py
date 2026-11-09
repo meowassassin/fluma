@@ -68,8 +68,11 @@ def design_gate(a, sb: dict, sb_path: Path) -> None:
         if len(empty) * 2 > n:
             bad.append(f"빈 화면 · 작은 주인공이 {len(empty)}건(장면 {n}개)")
         bad += [x["msg"] for x in f if x["code"] in ("D14",)]
-    if bad:
-        sys.exit("최종본 관문에서 멈췄습니다 — " + " / ".join(bad[:6]) + " (초안 뒤 refine 스킬로 다듬거나, 알고도 내보내려면 --force)")
+    if bad:   # 2026-11-09: 승인 · 다듬기를 강제하지 않는다(영상 한 편 10분) — 알리기만 하고 최종본을 낸다. 막으려면 FLUMA_STRICT_GATE=1
+        msg = "최종본 관문 권고 — " + " / ".join(bad[:6]) + " (refine 스킬로 다듬으면 더 좋아진다)"
+        if os.environ.get("FLUMA_STRICT_GATE"):
+            sys.exit(msg)
+        print(f"[관문] {msg}")
 
 
 def gate_check(a, sid: str):
@@ -77,8 +80,11 @@ def gate_check(a, sid: str):
     if a.build or a.draft or a.scenes:
         return
     g = subprocess.run([sys.executable, str(ROOT / "engine" / "checks" / "gate.py"), "check", sid, "--for", "render"], capture_output=True, text=True)
-    if g.returncode != 0:
-        sys.exit(g.stderr.strip() or f"제작 관문에서 막혔습니다 — python3 engine/checks/gate.py status {sid}")
+    if g.returncode != 0:   # 의도 카드 · 시안 승인을 기다리지 않는다(알리기만) — 막으려면 FLUMA_STRICT_GATE=1
+        msg = g.stderr.strip() or f"제작 관문 — python3 engine/checks/gate.py status {sid}"
+        if os.environ.get("FLUMA_STRICT_GATE"):
+            sys.exit(msg)
+        print(f"[관문] {msg.splitlines()[-1] if msg else ''} — 승인 없이 진행")
 
 
 def density(sb: dict, sb_path: Path, video: Path):

@@ -261,7 +261,8 @@ def resolve(sb: dict | None = None) -> tuple[str, str | None]:
     쓸 수 없는 엔진이면(미설치 · 키 없음) edge 로 바꾸고 알린다."""
     v = (sb or {}).get("voice") or {}
     st = _settings()
-    if st.get("voice_engine") and v.get("source") != "user":
+    # 설정 '자동'(voice_auto, 기본 켬)이면 voice_match auto 가 콘티에 적은 목소리를 쓴다 — 설정 엔진은 콘티에 목소리가 없을 때의 기본
+    if st.get("voice_engine") and v.get("source") != "user" and (st.get("voice_auto") is False or not v.get("engine")):
         eng, vid = str(st["voice_engine"]).lower(), st.get("voice_id")
     else:
         eng = (v.get("engine") or st.get("voice_engine") or os.environ.get("TTS_PROVIDER") or "edge").lower()

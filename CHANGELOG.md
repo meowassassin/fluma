@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+- 제작 자동: '제작 시작' 버튼을 없애고 콘티가 검사를 통과하면 같은 턴에 초안까지, 고르기를 기다리던 단계는 추천안으로 진행 · 에이전트 쓰기 권한이 막히던 문제 / Auto production: no "start" button, recommended options without waiting, fixed blocked agent writes
+- 배경 음악 자동: 넣을지 정하고(레퍼런스 음악 · 나레이션 · 형식) 요즘 쓰이는 곡 중 맞는 무료 곡을 박자 · 힘 있는 구간으로 고름, 상업 유행곡은 업로드 때 붙일 곡으로 안내(설정에서 직접 넣기 가능) · YouTube Data API 키 선택 / Automatic background music from free libraries, trending commercial songs suggested for upload
+- 효과음: 음악이 깔리면 기본으로 빼고, 고음질 CC0 녹음(48kHz 스테레오)으로 교체 / Sound effects: off under music by default, high-quality CC0 recordings
+- 음성: 설정을 한곳(미디어 → 음성)으로 합치고 '자동'(기본) — 엔진을 가로질러 레퍼런스 화자와 닮은 목소리 · 말 속도 / Voice: one settings place, Auto picks the closest voice and pace across engines
+- 대사: 대본을 한 덩어리(`script`, 장면 경계 ` / `)로 쓰고 엔진이 장면에 나눔 · 이어 말하기 기본 · 한국어 AI 문체 규칙(humanizer-ko) / Narration written as one script and synthesized in one pass; Korean AI-style rules
 - 완전 로컬: 그림 · 영상 생성 경로(실사 생성 컷 · 그림 시안 · 세로 확장)를 없앴습니다 — 화면은 퍼온 클립 · 스톡 · 사진 · 화면 녹화 · Craft 그림으로 / Fully local: removed the image and video generation route (generated shots, image drafts, vertical extend)
 - 감독 스킬(다섯 기둥 · 리듬 계단 · 시선 한 곳 · 세 가지 구체)과 작가 스킬(훅 세 칸 · 대사 · AI 티 금지) / Director and writer skills
 - 나레이션 없는 영상의 화면 글자(caption) 표시 · 초 단위 확대 · 감독 없음 검사(L41) / Captions without narration, timed zoom, no-direction lint

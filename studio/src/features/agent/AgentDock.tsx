@@ -399,6 +399,13 @@ function mediaUrl(sid: string | null, p: string, ver = ""): string | null {
   if (!sid) return null;
   return `/api/projects/${encodeURIComponent(sid)}/studio-file?p=${encodeURIComponent(rel)}${ver ? `&v=${ver}` : ""}`;
 }
+/** 대화창 영상 — 못 열면(파일 없음 · 권한) 브라우저 기본 오류 대신 이유를 보여 준다 */
+const MediaVideo: React.FC<{ url: string; name: string }> = ({ url, name }) => {
+  const [bad, setBad] = useState<string | null>(null);
+  if (bad) return <div className="md-media-bad faint small"><Icon n="warn" s={13} /> {t("영상을 열 수 없어요")}: {name} — {bad}</div>;
+  return <video src={url} controls playsInline preload="metadata"
+    onError={async () => { try { const r = await fetch(url, { method: "HEAD" }); setBad(r.ok ? t("이 브라우저가 재생하지 못하는 형식") : t("파일이 없거나 이 영상의 파일이 아님 ({code})", { code: r.status })); } catch { setBad(t("서버에 닿지 못함")); } }} />;
+};
 const MediaRow: React.FC<{ items: MediaRef[]; ver?: string }> = ({ items, ver }) => {
   const sid = useContext(MediaCtx);
   const [open, setOpen] = useState<number | null>(null);
@@ -417,7 +424,7 @@ const MediaRow: React.FC<{ items: MediaRef[]; ver?: string }> = ({ items, ver })
           <figure key={k}>
             {!url ? <code>{it.path}</code>
               : kind === "image" ? <button type="button" className="md-media-zoom" onClick={() => setOpen(k)} aria-label={t("크게 보기: {n}", { n: name ?? "" })}><img src={url} alt={name} loading="lazy" decoding="async" /></button>
-              : kind === "video" ? <video src={url} controls playsInline preload="metadata" />
+              : kind === "video" ? <MediaVideo url={url} name={name ?? ""} />
               : kind === "audio" ? <audio src={url} controls preload="metadata" />
               : <a href={url} target="_blank" rel="noreferrer">{name}</a>}
             {it.caption && <figcaption>{inline(it.caption)}</figcaption>}
