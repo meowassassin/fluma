@@ -76,6 +76,7 @@ That is the niche Fluma is built for.
 - 🔎 **References first, enforced** — a storyboard can't pass lint (`L30`) until real reference Shorts are analyzed and linked. Noun-ending lines and mixed politeness fail too (`L31`).
 - 🧰 **The whole real toolset** — every stage leaves a Craft project file (`.ecproj` motion, `.scraft` sound, `.fcproj` cut, `.vectorcraft` drawing, `.psd`, `.deckcraft` …). Keep editing them; hand-edited files are detected by hash and never overwritten. When no material type fits, the agent writes app commands directly (`type: craft`).
 - 👁️ **Eyes that watch video (VL)** — an OpenRouter vision model watches reference Shorts end to end and maps scenes, hooks, twists, editing grammar, caption tone and retention devices with timestamps; it also drafts the cliché map, finds the moment you want in a clip, critiques the draft (what feels off at which second, and why) and checks generated shots. The agent can ask it anything about any video (`see.py ask`).
+- 🖼️ **Vertical extend** — landscape photos become 9:16: the original stays untouched in the middle and only the area above and below is continued (when an editing model is picked). Screen captures are left alone so nothing is invented; without a model, the center band + blurred background stays.
 - 🎞️ **Pick the feel** — the agent proposes 2–4 looks (documentary, dreamy, film …) and renders them side by side on the same scenes (`feel.py`). The chosen look is applied to all real footage and carried into generation prompts.
 - ♻️ **Reuse editing** — automatic clip-moment picking (`clip.py --best`), subject-tracking vertical reframing (`reframe.py`), trending-song finder (`trend_music.py`), upload guide (`upload_guide.py`).
 - 🎨 **You pick the look; effects need a reason** — the first scenes render as 2–3 design options side by side. Background motion, transitions and text animation stay off unless a reference or you ask for them.
@@ -246,6 +247,8 @@ fluma/
 - [ ] One complete public demo with its hand-work and performance numbers
 - [x] Linux, macOS, Windows and ARM CI; amd64 and arm64 Docker images
 - [x] Clip reuse: most-replayed moments, vertical reframing, trending-song guide
+- [x] One OpenRouter key for see · make · speak (a model per capability in Settings) with a cost gate
+- [x] Cliché map, concepts, feel (look) previews, image drafts → video from the picked draft, vertical extend
 
 ## Contributing
 
@@ -253,7 +256,7 @@ fluma/
 
 ## Status
 
-Early and opinionated. CI covers Linux (x86, ARM), macOS, Windows and Docker. Reference videos are analyzed for *structure*; their footage, voices, drawings and scripts are never copied — rights to sourced clips, memes, music and logos stay with their owners and using them is your call (credits are added to the description automatically).
+**v1.0** — CI covers Linux (x86, ARM), macOS, Windows and Docker. Reference videos are analyzed for *structure*; their footage, voices, drawings and scripts are never copied — rights to sourced clips, memes, music and logos stay with their owners and using them is your call (credits are added to the description automatically).
 
 ## License
 

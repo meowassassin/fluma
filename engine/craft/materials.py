@@ -374,6 +374,8 @@ MAT_VERSION = "8"     # 재료를 만드는 방식이 바뀌면 올린다(열쇠
 ADAPTERS = {"chart": chart, "doc_quote": doc_quote, "illustration": illustration, "photo": photo, "icon": illustration}   # icon: icons.py 로 받은 SVG
 PASSTHROUGH = {"screen", "video", "image", "meme", "web"}    # meme: meme.py fetch 폴더 · web: webrec.py 폴더
 FEEL_TYPES = {"video", "stock", "photo", "image", "photo_grade"}   # 영상 느낌(direction.feel)을 입히는 실사 재료 — feel.py 와 같게
+EXTEND_TYPES = {"photo", "archive", "photo_grade"}         # 가로 사진이면 세로로 이어 그리는 재료(edit.image 모델을 골랐을 때 — engine/providers/extend.py).
+#                 화면 캡처(image · screen)는 이어 그리면 없는 화면을 지어내므로 재료 칸 extend: true 일 때만, 누끼(cutout)는 안 함
 
 
 def _editable(old: dict, d: Path) -> Path | None:
@@ -571,6 +573,13 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             if m.get("ask"):                   # 사용자가 올린 파일(이름으로 찾은 것)도 열쇠에 — 새로 올리면 다시 만든다
                 up_f = find_upload(sid, m)
                 srcs.append(f"{up_f.name}:{_hash(up_f)}" if up_f else "missing")
+            ext_on = (t in EXTEND_TYPES and m.get("extend") is not False and not m.get("cutout")) or (t == "image" and m.get("extend") is True)
+            if ext_on:                         # 세로 확장 모델이 바뀌면 다시
+                try:
+                    import catalog
+                    srcs.append(f"extend:{catalog.chosen('edit.image', sb) or ''}")
+                except Exception:  # noqa: BLE001
+                    pass
             feel = ((sb.get("direction") or {}).get("feel") or {}) if t in FEEL_TYPES else {}
             if feel.get("grade"):              # 고른 느낌(engine/story/feel.py)이 바뀌면 실사 재료를 다시 입힌다
                 srcs.append(json.dumps(feel["grade"], sort_keys=True))
@@ -628,6 +637,16 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
                 info, file = {"app": None}, None
             else:
                 raise RuntimeError(f"모르는 재료 종류: {t} ({' · '.join(sorted({*adapters, *PASSTHROUGH, 'stock', 'text', 'stat'}))})")
+            if file and ext_on and file.exists() and file.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+                try:                               # 가로 사진 → 9:16(원본은 가운데 그대로, 위아래만 이어 그림). 모델이 없으면 그대로(가운데 띠 + 흐린 배경)
+                    from extend import vertical
+                    v = vertical(file, file.with_name(f"{file.stem}.v.jpg"), str(m.get("what") or m.get("query") or m.get("title") or ""), sid, sb=sb)
+                    if v:
+                        file = v
+                        info["extended"] = True
+                        info["full_frame"] = True          # 9:16 을 가득 채운 사진 — 액자 없이 화면을 덮는다(motion.covers_frame)
+                except Exception as e:  # noqa: BLE001 — 승인 필요 · 네트워크: 원본 그대로 쓰고 알린다
+                    print(f"[재료] {n}장면 {m['id']}: 세로 확장 건너뜀 — {e}")
             if file and feel.get("grade") and file.exists():      # 영상 전체 느낌을 실사 재료에 같은 색 · 질감으로
                 from feel import apply as feel_apply
                 file = feel_apply(file, feel["grade"], file.with_name(f"{file.stem}.feel{file.suffix}"))

@@ -1615,6 +1615,10 @@
                   "type": "string"
                 },
                 "description": "참조 그림마다 역할(영어) — 예: person's face and identity · outfit"
+              },
+              "extend": {
+                "type": "boolean",
+                "description": "가로 사진을 9:16 으로 이어 그릴지(사진 · archive 는 기본 켬, 화면 캡처 image 는 true 일 때만, false 면 끔) — 설정의 '고치기 · 이미지 편집' 모델이 있을 때"
               }
             }
           }

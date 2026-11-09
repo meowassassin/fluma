@@ -103,7 +103,7 @@ def main():
             continue
         if method == "initialize":
             reply(mid, {"protocolVersion": params.get("protocolVersion", "2025-06-18"), "capabilities": {"tools": {}},
-                        "serverInfo": {"name": "fluma", "version": "0.1.0"}})
+                        "serverInfo": {"name": "fluma", "version": "1.0.0"}})
         elif method == "tools/list":
             reply(mid, {"tools": TOOLS})
         elif method == "tools/call":

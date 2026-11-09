@@ -1,6 +1,6 @@
 {
-  "name": "shortsforge-web",
-  "version": "0.1.0",
+  "name": "fluma-studio",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {

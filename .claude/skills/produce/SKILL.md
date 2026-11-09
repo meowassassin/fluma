@@ -117,6 +117,9 @@ B. **키가 없거나 모델을 안 골랐으면 — 프롬프트만**(생성 �
 
 공통: 올라오기 전 초안은 그 컷 없이 렌더(L36). `genclip.py status` 로 샷마다 단계. 업로드 때 '변경 · 합성 콘텐츠' 표시는 자동, 워터마크는 지우지 않는다.
 
+## 세로 확장 — 가로 사진
+'고치기 · 이미지 편집' 모델(설정 → 보기 · 만들기 · 말하기)을 골랐으면 가로 사진 재료(photo · archive · photo_grade)는 자동으로 9:16 이 된다 — 원본은 가운데 그대로, 위아래만 이어 그림(`engine/providers/extend.py`, 같은 사진은 다시 안 그림, 상한 안에서). 화면 캡처(image)는 지어낸 화면이 되므로 재료 칸 `"extend": true` 일 때만, 원본 비율이 중요하면 `"extend": false`.
+
 ## 초안 비평(VL) — 렌더 검사가 못 보는 것
 - 초안 렌더 뒤 `python3 engine/providers/see.py critique <id>` → 보기 모델이 초안 전체를 보고 의도 · 콘셉트 · 레퍼런스 문법과 대조해 "몇 초에 무엇이 왜 어색한지 · 어떻게 고칠지"(`data/workspace/critique/<id>.json`). high 부터 고치고 다시 렌더 → 다시 비평. 템포 · 편집 밀도 검사(숫자)는 그대로 같이.
 - 특정 장면만 궁금하면 `see.py ask data/out/<id>-craft-Scenes.mp4 --q "8~11초 자막이 말보다 늦나?"` 처럼 직접.
