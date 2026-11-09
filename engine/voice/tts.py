@@ -4,10 +4,11 @@
 
 제공자는 환경변수 TTS_PROVIDER 로 고른다 (없으면 edge):
   edge        edge-tts (무료, 시제품용). 음성은 engine/spec/tokens/default.json audio.voice_id 또는 ko-KR-SunHiNeural
+  typecast    TYPECAST_API_KEY(설정 → API 키) 필요. 유료 · 한국어 성우 · 단어 시각을 함께 받는다 · 감정 프리셋(style)
+  elevenlabs  ELEVENLABS_API_KEY(설정 → API 키) 필요. 다국어 · 목소리 복제
   openrouter  오픈라우터 키 하나 — 설정 → 모델 → 말하기 · 음성 에서 고른 모델(유료). 말투 지시(style)를 받는 모델은 그대로 넘긴다
   로컬 엔진   supertonic · melotts · chatterbox · cosyvoice · xtts · espeak (engine/voice/engines/<이름>/adapter.py)
   silent      네트워크 없이 파이프라인을 돌리기 위한 무음 WAV (길이 = 공백 제외 글자수 / 5.5초, 최소 1초)
-업체별 키(Typecast · ElevenLabs · Gemini)는 2026-11-09 에 없앴다 — 유료 음성은 오픈라우터 하나로
 
 출력은 항상 24kHz 16-bit mono WAV 로 맞춘다 (다른 포맷은 ffmpeg 로 변환).
 제공자 추가 = PROVIDERS 딕셔너리에 함수 하나.
@@ -36,6 +37,8 @@ FFMPEG = shutil.which("ffmpeg") or next((str(p) for p in Path("/opt/pw-browsers"
 
 DEFAULT_VOICE = {
     "edge": TOKENS["audio"].get("voice_id") or "ko-KR-SunHiNeural",   # 남성: ko-KR-InJoonNeural
+    "typecast": TOKENS["audio"].get("voice_id") or "",
+    "elevenlabs": TOKENS["audio"].get("voice_id") or "",
 }
 
 
@@ -91,7 +94,120 @@ def _edge(text, out_wav, voice, speed=1.0):
     write_words(out_wav, words)
 
 
-PROVIDERS = {"silent": _silent, "edge": _edge}
+TYPECAST_API = "https://api.typecast.ai"
+TYPECAST_VOICES = ROOT / "data" / "workspace" / "cache" / "typecast-voices.json"
+TYPECAST_PRESETS = {"normal", "sad", "happy", "angry", "whisper", "toneup", "tonedown"}
+TYPECAST_MODELS = ("ssfm-v31", "ssfm-v30", "ssfm-v21")   # 앞쪽이 최신
+
+
+def _typecast_key() -> str:
+    return _env_key("TYPECAST_API_KEY")
+
+
+def typecast_voices(refresh: bool = False) -> list[dict]:
+    """GET /v3/voices (기본 제공 tc_ · 내 목소리 uc_) → [{id, title, gender, models, emotions, preview}]
+    data/workspace/cache/typecast-voices.json 에 저장해 두고 refresh 때만 다시 받는다."""
+    if TYPECAST_VOICES.exists() and not refresh:
+        return json.loads(TYPECAST_VOICES.read_text(encoding="utf-8"))
+    import requests
+    key = _typecast_key()
+    if not key:
+        return []
+    r = requests.get(f"{TYPECAST_API}/v3/voices", headers={"X-API-KEY": key}, timeout=30)
+    if not r.ok:
+        raise RuntimeError(f"Typecast 목소리 목록 실패 {r.status_code}: {r.text[:200]}")
+    out = []
+    for v in r.json():
+        name = v.get("voice_name") or {}
+        name = name.get("kor") or name.get("eng") if isinstance(name, dict) else str(name)
+        models = [m.get("version") for m in v.get("models") or [] if m.get("version")]
+        emo = sorted({e for m in v.get("models") or [] for e in m.get("emotions") or []})
+        age = {"child": "어린이", "teenager": "10대", "young_adult": "청년", "middle_age": "중년", "elder": "노년"}.get(v.get("age") or "", "")
+        mine = v.get("voice_type") == "custom"
+        out.append({"id": v["voice_id"], "title": " · ".join(x for x in [name or v["voice_id"], age, "내 목소리" if mine else ""] if x),
+                    "gender": {"male": "M", "female": "F"}.get(v.get("gender") or "", "-"),
+                    "models": models, "emotions": emo, "preview": v.get("preview_url")})
+    TYPECAST_VOICES.parent.mkdir(parents=True, exist_ok=True)
+    tmp = TYPECAST_VOICES.with_suffix(".tmp"); tmp.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8"); tmp.replace(TYPECAST_VOICES)
+    return out
+
+
+def _typecast(text, out_wav, voice, speed=1.0, style=None, intensity=None, pitch=None, prev_text=None, next_text=None):
+    """Typecast TTS (https://typecast.ai/docs) — POST /v1/text-to-speech/with-timestamps.
+    키는 .env.local 의 TYPECAST_API_KEY. 응답: base64 WAV(44.1kHz) + 단어별 시각(초) → <wav>.words.json 에 그대로 쓴다.
+    style: 감정 프리셋 이름(normal · happy · sad · angry · whisper · toneup · tonedown)이면 그 감정, 아니면 문맥으로 고르는 smart.
+    intensity: 감정 강도 0~2(작을수록 평평) · pitch: 반음 -12~12 · prev_text/next_text: 앞뒤 문장(smart 감정이 문맥을 본다)
+    목소리를 안 고르면 받은 목록에서 최신 모델을 지원하는 첫 기본 목소리. 텍스트는 한 번에 2000자까지."""
+    import base64
+    import time
+    import requests
+    key = _typecast_key()
+    if not key:
+        raise RuntimeError("TYPECAST_API_KEY 가 없습니다 — 설정 → 생성 · 음성 API 키에 넣으세요")
+    vs = typecast_voices()
+    vid = voice or DEFAULT_VOICE["typecast"] or os.environ.get("TYPECAST_VOICE_ID", "")
+    if not vid.startswith(("tc_", "uc_")):
+        vid = next((v["id"] for m in TYPECAST_MODELS for v in vs if m in v["models"] and v["id"].startswith("tc_")), "")
+        if not vid:
+            raise RuntimeError("Typecast 목소리를 고르지 못했습니다 — 설정에서 목소리를 고르세요")
+    have = next((v["models"] for v in vs if v["id"] == vid), None)
+    model = os.environ.get("TYPECAST_MODEL") or next((m for m in TYPECAST_MODELS if not have or m in have), TYPECAST_MODELS[0])
+    st = (style or "").strip().lower()
+    inten = round(max(0.0, min(2.0, float(1.0 if intensity is None else intensity))), 2)
+    if model == "ssfm-v21":
+        prompt = {"emotion_preset": st if st in {"normal", "happy", "sad", "angry"} else "normal", "emotion_intensity": inten}
+    elif st in TYPECAST_PRESETS:
+        prompt = {"emotion_type": "preset", "emotion_preset": st, "emotion_intensity": inten}
+    else:
+        prompt = {"emotion_type": "smart", **({"previous_text": prev_text[-2000:]} if prev_text else {}), **({"next_text": next_text[:2000]} if next_text else {})}
+    body = {"text": text[:2000], "model": model, "voice_id": vid, "language": "kor", "prompt": prompt,
+            "output": {"audio_format": "wav", "audio_tempo": round(max(0.5, min(2.0, speed)), 3), "target_lufs": -14.0,
+                       **({"audio_pitch": int(max(-12, min(12, round(pitch))))} if pitch else {})}}
+    for attempt in range(5):
+        r = requests.post(f"{TYPECAST_API}/v1/text-to-speech/with-timestamps", params={"granularity": "word"},
+                          headers={"X-API-KEY": key, "Content-Type": "application/json"}, json=body, timeout=120)
+        if r.status_code == 429 or r.status_code >= 500:
+            wait = min(30, 4 * (attempt + 1)); print(f"[음성] Typecast {r.status_code} — {wait}초 뒤 다시", file=sys.stderr); time.sleep(wait); continue
+        if r.status_code == 401:
+            raise RuntimeError("Typecast 키가 맞지 않습니다(401) — .env.local 의 TYPECAST_API_KEY 를 확인하세요")
+        if r.status_code == 402:
+            raise RuntimeError("Typecast 크레딧이 부족합니다(402) — 요금제 · 크레딧을 확인하세요")
+        if not r.ok:
+            raise RuntimeError(f"Typecast TTS 실패 {r.status_code}: {r.text[:300]}")
+        break
+    else:
+        raise RuntimeError("Typecast TTS: 한도 초과가 계속됩니다 — 잠시 뒤 다시")
+    d = r.json()
+    tmp = Path(tempfile.mkstemp(suffix="." + (d.get("audio_format") or "wav"))[1])
+    tmp.write_bytes(base64.b64decode(d["audio"]))
+    to_wav(tmp, out_wav); tmp.unlink(missing_ok=True)
+    words = [{"text": w["text"], "startMs": round(float(w["start"]) * 1000), "endMs": round(float(w["end"]) * 1000)}
+             for w in d.get("words") or [] if str(w.get("text", "")).strip()]
+    if words:
+        write_words(out_wav, words)
+
+
+def _elevenlabs(text, out_wav, voice):
+    import requests
+    key = _env_key("ELEVENLABS_API_KEY")
+    vid = voice or DEFAULT_VOICE["elevenlabs"] or os.environ.get("ELEVENLABS_VOICE_ID", "")
+    r = requests.post(f"https://api.elevenlabs.io/v1/text-to-speech/{vid}",
+                      headers={"xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
+                      json={"text": text, "model_id": "eleven_multilingual_v2",
+                            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "speed": TOKENS["audio"].get("speed", 1.0)}},
+                      timeout=90)
+    r.raise_for_status()
+    tmp = Path(tempfile.mkstemp(suffix=".mp3")[1]); tmp.write_bytes(r.content)
+    to_wav(tmp, out_wav); tmp.unlink(missing_ok=True)
+
+
+def _env_key(name: str) -> str:
+    """키: 환경 변수 → 설정 화면에 넣은 키(~/.shortsforge/api-keys.json) → .env.local (engine/core/apikeys.py). 값은 출력 · 기록하지 않는다"""
+    import apikeys
+    return apikeys.get(name)
+
+
+PROVIDERS = {"silent": _silent, "edge": _edge, "typecast": _typecast, "elevenlabs": _elevenlabs}
 
 # ---------- 음성 엔진 레지스트리 (engine/voice/engines/<이름>/voice.json + adapter.py) — 렌더 엔진처럼 갈아 끼운다 ----------
 VOICES = ROOT / "engine" / "voice" / "engines"
@@ -120,6 +236,10 @@ def _adapter(name: str):
 def engine_available(name: str) -> bool:
     if name in ("edge", "silent"):
         return True
+    if name == "typecast":
+        return bool(_typecast_key())
+    if name == "elevenlabs":
+        return bool(_env_key("ELEVENLABS_API_KEY"))
     a = _adapter(name)
     try:
         return bool(a and a.available())
@@ -198,9 +318,14 @@ def synth(text: str, out_wav, voice: str | None = None, engine: str | None = Non
     if eng == "edge":
         _edge(said, out_wav, voice, speed)
         restore_punct(out_wav, text)
+    elif eng == "typecast":
+        _typecast(said, out_wav, voice, speed, style, o.get("intensity"), o.get("pitch"), o.get("prev_text"), o.get("next_text"))
     elif eng in PROVIDERS:
         PROVIDERS[eng](said, out_wav, voice)
     else:
+        if not engine_available(eng):     # 설치 안 된 로컬 음성 · 키 없는 유료 음성 — 파일 없음 오류 대신 할 일을 말한다
+            meta = voice_meta(eng)
+            raise RuntimeError(f"{meta.get('title') or eng} 음성을 쓸 수 없습니다 — " + ("설정 → 미디어 → 음성에서 설치하세요" if meta.get("setup") else "설정에서 키 · 모델을 확인하세요"))
         raw = out_wav.with_suffix(".raw.wav")
         ad = _adapter(eng)
         if eng == "openrouter":
@@ -255,9 +380,14 @@ def duration(wav_path) -> float:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:2] == ["--voices"]:          # python engine/voice/tts.py --voices typecast  → 목소리 목록 새로 받기
+        print(json.dumps(typecast_voices(refresh=True), ensure_ascii=False, indent=1)); sys.exit(0)
     if len(sys.argv) < 3:
         sys.exit('사용: python engine/voice/tts.py "문장" out.wav')
     eng = sys.argv[3] if len(sys.argv) > 3 else None
     vid = sys.argv[4] if len(sys.argv) > 4 else None
-    p = synth(sys.argv[1], sys.argv[2], vid, eng)
+    try:
+        p = synth(sys.argv[1], sys.argv[2], vid, eng)
+    except RuntimeError as e:             # 사람이 읽을 한 줄로(미리 듣기 · 서버가 그대로 보여 준다)
+        print(f"[음성] {e}", file=sys.stderr); sys.exit(2)
     print(f"{eng or provider_name()} → {p} ({duration(p):.2f}s)")

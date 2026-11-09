@@ -194,7 +194,7 @@ def run_one(sid: str, r: dict, cwd: Path, env: dict) -> str:
     p = subprocess.run(cap + ["--", *r["cmd"]], env=env, capture_output=True, text=True, timeout=600)
     if p.returncode not in (0,):
         raise RuntimeError(f"{r['name']} 실행 실패: {(p.stdout + p.stderr).strip()[-300:]}")
-    rnd = [PY, str(ROOT / "engine" / "capture" / "termrec.py"), "render", sid, r["name"], "--font", str(r.get("font", 13)),
+    rnd = [PY, str(ROOT / "engine" / "capture" / "termrec.py"), "render", sid, r["name"], "--font", str(r.get("font", 14)),
            "--line-ms", str(r.get("line_ms", 20)), "--hold", str(r.get("hold", 1.8)), "--title", r.get("title") or r["name"]]
     for m in r.get("mark") or []:
         rnd += ["--mark", m]
@@ -246,7 +246,7 @@ def code_one(sid: str, c: dict, proj: Path) -> str:
     body = "".join(f'<div class="ln{" m" if a + i in marks else ""}"><i>{a + i}</i><span>{r or " "}</span></div>' for i, r in enumerate(rows))
     # 가장 긴 줄이 한 줄에 들어가는 글자 크기(고정폭 글자 폭 ≈ 0.6em, 줄 번호 칸 빼고 약 330px) — 11~14px, 그래도 길면 줄을 넘긴다
     longest = max((len(x) for x in chunk), default=20)
-    fs = c.get("font") or max(11.0, min(14.0, round(330 / (max(longest, 1) * 0.6), 1)))
+    fs = c.get("font") or max(13.0, min(16.0, round(330 / (max(longest, 1) * 0.6), 1)))   # 세로 화면에서 읽히게 13px 이상(넘치면 줄을 넘긴다)
     page = CODE_PAGE.format(fs=fs, title=html.escape(c.get("title") or f.name), where=html.escape(f"{f.name}:{a}-{b}"), body=body)
     dst = ROOT / "data" / "public" / "elements" / sid / c["name"]
     if dst.exists():

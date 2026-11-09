@@ -4,8 +4,8 @@ import { ENG_COLOR } from "./engines";
 /** 엔진 · 모델 아이콘. 공식 마크(studio/public/engine-icons/)가 있으면 그것, 없으면 엔진 색 타일에 머리글자.
  *  open-design 의 AgentIcon 처럼 같은 크기 · 같은 테두리로 맞춘다. */
 const ICONS: Record<string, string> = {
-  chatterbox: "png", claude: "png", cosyvoice: "png", edge: "svg",
-  melotts: "png", xtts: "png", supertonic: "png",
+  chatterbox: "png", claude: "png", cosyvoice: "png", edge: "svg", elevenlabs: "png",
+  melotts: "png", typecast: "png", xtts: "png", supertonic: "png",
 };
 const FILE: Record<string, string> = { openrouter: "prov-openrouter.png" };   // 공급자 마크를 그대로 쓰는 엔진
 const TINT: Record<string, string> = { ...ENG_COLOR, supertonic: "#7c5cff", espeak: "#8a8a8a", silent: "#555" };

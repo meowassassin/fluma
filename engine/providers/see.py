@@ -69,11 +69,13 @@ def _dur(p: Path) -> float:
 
 
 def _shrink(p: Path, td: Path) -> Path:
-    if p.stat().st_size <= MAX_INLINE:
+    """보기 모델에 보낼 영상은 늘 작게(360p · 초당 8장 · 소리 모노) — 모델은 어차피 초당 1~2장만 본다.
+    2026-11-09: 8.8MB 원본을 통째로 올려 무료 모델에서 한 편에 4분 넘게 걸림"""
+    if p.stat().st_size <= 1_500_000:
         return p
-    out = td / f"{p.stem}.480.mp4"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(p), "-vf", "scale=-2:480,fps=12", "-c:v", "libx264", "-crf", "30", "-preset", "veryfast",
-                    "-c:a", "aac", "-b:a", "64k", str(out)], check=True)
+    out = td / f"{p.stem}.vl.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(p), "-vf", "scale=-2:360,fps=8", "-c:v", "libx264", "-crf", "32", "-preset", "veryfast",
+                    "-c:a", "aac", "-ac", "1", "-b:a", "40k", str(out)], check=True)
     return out
 
 
@@ -102,7 +104,8 @@ def resolve_media(items: list[str], mdl: str, td: Path) -> tuple[list, list, flo
             vids.append(_shrink(local, td))
         else:
             dl = td / f"{y}.mp4"
-            subprocess.run([str(ROOT / ".venv" / "bin" / "yt-dlp") if (ROOT / ".venv" / "bin" / "yt-dlp").exists() else "yt-dlp", "-q", "-f",
+            from platform_util import venv_tool
+            subprocess.run([venv_tool("yt-dlp"), "-q", "-f",
                             "b[height<=480][ext=mp4]/b[height<=480]/b", "-o", str(dl), f"https://www.youtube.com/watch?v={y}"], check=True, timeout=600)
             secs += _dur(dl)
             vids.append(_shrink(dl, td))
@@ -252,21 +255,34 @@ def _sb(sid_or_path: str) -> dict:
 
 def critique(sid: str, video: str | None = None, approve: bool = False) -> dict:
     sb = _sb(sid)
-    v = Path(video) if video else next((ROOT / "data" / "out" / n for n in (f"{sid}-craft-Scenes.mp4", f"{sid}.mp4", f"{sid}-draft.mp4")
-                                        if (ROOT / "data" / "out" / n).exists()), None)
+    sid = sb["id"]
+    outs = [ROOT / "data" / "out" / n for n in (f"{sid}-craft-Scenes.mp4", f"{sid}-craft-Scenes-draft.mp4", f"{sid}.mp4", f"{sid}-draft.mp4")]
+    v = Path(video) if video else max((o for o in outs if o.exists()), key=lambda o: o.stat().st_mtime, default=None)   # 가장 최근 렌더(초안 포함)
     if not v or not Path(v).exists():
         raise SystemExit("초안 영상이 없습니다 — 먼저 render.py --draft (또는 --video 경로)")
     refs = {r: understanding(r) for r in sb.get("reference") or []}
-    ctx = {"intent": sb.get("intent"), "concept": sb.get("concept"), "feel": (sb.get("direction") or {}).get("feel", {}).get("name"),
-           "scenes": [{"i": i + 1, "sec": s.get("sec"), "beat": s.get("beat"), "narration": s.get("narration"), "caption": s.get("caption")}
+    dr = sb.get("direction") or {}
+    ctx = {"intent": sb.get("intent"), "concept": sb.get("concept"), "feel": (dr.get("feel") or {}).get("name"),
+           "planned_direction": {k: dr.get(k) for k in ("note", "transition", "motion", "font_title", "color_bg", "color_text") if dr.get(k)},
+           "scenes": [{"i": i + 1, "sec": s.get("sec"), "beat": s.get("beat"), "narration": s.get("narration"), "caption": s.get("caption"),
+                       "screen": s.get("screen"), "on_screen_text": s.get("hook_text") or s.get("text") or s.get("title"),
+                       "materials": [{k: m.get(k) for k in ("type", "id", "role", "prompt", "note", "text") if m.get(k)} for m in s.get("materials") or [] if isinstance(m, dict)]}
                       for i, s in enumerate(sb.get("scenes") or [])],
            "reference_understanding": {k: {kk: (u or {}).get(kk) for kk in ("hook", "editing", "turns", "retention", "borrow")} for k, u in refs.items()}}
     q = ("이 초안 쇼츠를 깐깐한 편집자로 보고 비평하라. 의도 · 콘셉트 · 레퍼런스에서 빌리기로 한 문법과 대조한다. "
+         "먼저 계획(planned_direction.note · 장면 materials · 화면 글자)이 화면에 실제로 나왔는지 장면마다 확인하고, 빠진 것(예: 계획한 전환 · 글자 · 연출이 없음)은 severity high 로 적는다. "
+         "가공 없이 붙인 웹 화면(브라우저 머리띠 · 주소 · 사업자 정보 · 흰 바닥글 · 빈 여백), 톤이 안 맞는 컷, 정지된 로고도 짚는다. "
          "넘기게 되는 순간, 어색한 타이밍(자막 · 말 · 컷 · 소리), 안 보이거나 읽기 어려운 글자, 화면이 멈춘 곳, 뻔한 곳, 느낌이 섞인 곳을 시각과 함께.\n"
          'JSON: {"overall": "한 문단", "watch_through": "끝까지 볼 확률과 이유", "issues": [{"t": [시작, 끝], "scene": 장면 번호, "what": "무엇이", '
          '"why": "왜 문제", "fix": "어떻게 고치나(구체적으로)", "severity": "high|mid|low"}], "keep": ["좋아서 남길 것"]}\n\n'
          + json.dumps(ctx, ensure_ascii=False)[:20000])
-    r = ask([str(v)], q, sid=sid, json_mode=True, approve=approve, sb=sb, what="초안 비평")
+    an = (sb.get("direction") or {}).get("anchor") or {}
+    frames = [f for f in an.get("frames") or [] if (ROOT / f).exists()][:4]
+    if frames:                                                   # 기준점: 사용자가 고른 기준 광고의 실제 프레임과 같은 세계인지도 본다
+        q += ("\n\n영상 뒤에 붙은 그림들은 사용자가 '" + str(an.get("words") or "") + "' 의 기준으로 고른 실제 광고 프레임이다. "
+              "초안이 그 시각 문법(" + json.dumps({k: (an.get("rules") or {}).get(k) for k in ("background", "light", "palette", "subject", "typography")}, ensure_ascii=False)
+              + ")과 얼마나 같은 세계인지 JSON 에 \"anchor\": {\"score\": 0~10, \"misses\": [\"기준과 다른 것\"]} 로 더하라. 6 미만이면 그 차이를 issues 에 high 로.")
+    r = ask([str(v), *frames], q, sid=sid, json_mode=True, approve=approve, sb=sb, what="초안 비평")
     d = {**(r.get("json") or {"raw": r["text"]}), "_model": r["model"], "_video": Path(v).relative_to(ROOT).as_posix() if Path(v).is_relative_to(ROOT) else str(v),
          "_at": dt.datetime.now().isoformat(timespec="seconds")}
     out = ROOT / "data" / "workspace" / "critique" / f"{sb['id']}.json"
@@ -276,18 +292,16 @@ def critique(sid: str, video: str | None = None, approve: bool = False) -> dict:
 
 
 def check_clip(sb: dict, mid: str, approve: bool = False) -> dict:
-    import genclip
-    m = next((m for _i, m in genclip.gen_materials(sb) if m["id"] == mid), None) or next(
-        (dict(m) for sc in sb.get("scenes") or [] for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("id") == mid), None)
+    m = next((dict(m) for sc in sb.get("scenes") or [] for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("id") == mid), None)
     if not m:
         raise SystemExit(f"재료 {mid} 가 콘티에 없습니다")
     from craft.materials import find_upload
-    f = genclip.clip_file(sb["id"], m) if m.get("gen") else (find_upload(sb["id"], {**m, "type": "video"}) or (ROOT / m["src"] if m.get("src") else None))
+    f = find_upload(sb["id"], {**m, "type": "video"}) or (ROOT / m["src"] if m.get("src") else None)
     if not f or not Path(f).exists():
         raise SystemExit(f"{mid}: 클립이 아직 없습니다")
-    spec = {k: m.get(k) for k in ("prompt", "camera", "framing", "setting", "line", "people", "mood", "style") if m.get(k)}
-    q = ("이 클립이 설계와 맞는지 보라. 설계: " + json.dumps(spec, ensure_ascii=False)
-         + '\nJSON: {"match": 0~1, "issues": [{"t": 초, "what": "다른 점 · 어색함(손 · 얼굴 · 물리 · 글자 · 잘림)", "fix": "다시 만들 때 프롬프트에 넣을 영어 문구"}], "usable": [시작, 끝]}')
+    spec = {k: m.get(k) for k in ("what", "want", "in", "out", "query") if m.get(k)}
+    q = ("이 클립(퍼온 클립 · 스톡 · 녹화)이 장면 의도와 맞는지 보라. 의도: " + json.dumps(spec, ensure_ascii=False)
+         + '\nJSON: {"match": 0~1, "issues": [{"t": 초, "what": "다른 점 · 어색함 · 잘림 · 글자", "fix": "어느 구간을 쓰거나 무엇으로 바꿀지"}], "usable": [시작, 끝]}')
     return ask([str(f)], q, sid=sb["id"], json_mode=True, approve=approve, sb=sb, what=f"클립 확인 {mid}").get("json") or {}
 
 

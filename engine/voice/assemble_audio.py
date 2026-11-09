@@ -304,7 +304,10 @@ def main():
         parts = continuous_parts(scenes, work, prov, vid, speed, style, vopts)
         print("[음성] 이어 말하기: 대본 전체를 한 번에 합성하고 단어 사이 쉼에서 장면을 자릅니다")
     for i, sc in enumerate(scenes if not cont else []):
-        wav, nar_text = scene_wav(sc, i, work, prov, vid, speed, style, vopts)
+        # 장면마다 합성할 때는 앞뒤 장면 글을 문맥으로 넘긴다(문맥으로 감정을 고르는 엔진 — typecast smart)
+        ctx = {"prev_text": (scenes[i - 1].get("narration") or "").strip() if i else None,
+               "next_text": (scenes[i + 1].get("narration") or "").strip() if i + 1 < len(scenes) else None} if prov == "typecast" and not (sb.get("voice") or {}).get("style") else {}
+        wav, nar_text = scene_wav(sc, i, work, prov, vid, speed, style, {**vopts, **{k: v for k, v in ctx.items() if v}})
         if nar_text:
             clip, words, speech_s = speech(wav)
         else:

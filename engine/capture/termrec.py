@@ -150,10 +150,13 @@ def cmd_render(a) -> int:
                 pg.evaluate("([c, n, k]) => __render(c, n, k)", list(st)); img = shot(); last = st
             (dst / "r01" / f"f{i + 1:05d}.jpg").write_bytes(img)
         pg.evaluate("([c, n, k]) => __render(c, n, k)", [len(cmd_text), len(lines), False]); pg.screenshot(path=str(dst / "s001.png"))
+        # 강조 줄(--mark)의 자리 — 나레이션이 없어도 재료 단계가 그 줄로 다가가게(highlight_box)
+        marks = pg.evaluate("() => Array.from(document.querySelectorAll('.m')).map(e => { const r = e.getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; })")
         b.close()
     meta = {"kind": "web", "viewport": [vw, vh], "scale": a.scale, "mobile": True, "states": ["s000.png", "s001.png"],
             "actions": [{"do": "record", "from": 0, "to": 1, "label": None, "box": None, "sec": dur}], "masked": 0, "sources": [],
             "license": "실제 실행 출력(직접 실행)",
+            "marks": [[round(x / vw, 4), round(y / vh, 4), round(w / vw, 4), round(h / vh, 4)] for x, y, w, h in (marks or []) if w and h],
             "terminal": {"cmd": rec.get("cmd"), "prompt": prompt, "real_sec": rec.get("real_sec"), "lines": len(lines), "dropped": rec.get("dropped"),
                          "drop_rules": rec.get("drop_rules"), "line_ms": a.line_ms, "note": "실제 실행 출력 — 글자는 그대로, 줄 사이 간격만 늘림"}}
     (dst / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), "utf-8")
@@ -169,7 +172,7 @@ def main() -> int:
     i = sub.add_parser("import"); i.add_argument("id"); i.add_argument("name"); i.add_argument("--log", required=True); i.add_argument("--prompt"); i.add_argument("--drop", action="append")
     r = sub.add_parser("render"); r.add_argument("id"); r.add_argument("name")
     r.add_argument("--line-ms", type=int, default=35); r.add_argument("--hold", type=float, default=2.5); r.add_argument("--mark", action="append")
-    r.add_argument("--title"); r.add_argument("--font", type=float, default=10.5); r.add_argument("--viewport", default="390x620", help="영상에서 위 제목 띠 아래 영역(1080×1718)과 같은 비율 — 세로로 길면 아래(새 줄이 찍히는 곳)가 잘린다"); r.add_argument("--scale", type=int, default=3)
+    r.add_argument("--title"); r.add_argument("--font", type=float, default=14, help="글자 크기(px, 390 폭 기준 — 14 면 세로 화면에서 약 42px). 2026-11-09: 10.5 는 세로 화면에서 읽히지 않았다"); r.add_argument("--viewport", default="390x620", help="영상에서 위 제목 띠 아래 영역(1080×1718)과 같은 비율 — 세로로 길면 아래(새 줄이 찍히는 곳)가 잘린다"); r.add_argument("--scale", type=int, default=3)
     argv = sys.argv[1:]
     cmd = argv[argv.index("--") + 1:] if "--" in argv else []
     a = ap.parse_args(argv[:argv.index("--")] if "--" in argv else argv)

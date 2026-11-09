@@ -97,5 +97,8 @@ def test_screen_kind_with_multimodal_embedding(world, monkeypatch, tmp_path):
     def vecs(texts, sid="-"):
         return [[1.0, 0.0, 0.0] if "funny meme" in t else [0.0, 1.0, 0.0] for t in texts]
     monkeypatch.setattr(embed, "vectors", vecs)
+    def no_clip():
+        raise OSError("CLIP 없음")
+    monkeypatch.setattr(vision_tags, "_load", no_clip)
     r = vision_tags.classify(str(img))
-    assert r["kind"] == "짤" and r["top"][0][0] == "짤"                                  # 로컬 CLIP 대신 고른 임베딩 모델로
+    assert r["kind"] == "짤" and r["top"][0][0] == "짤"                                  # 로컬 CLIP 을 못 쓸 때만 임베딩 모델로

@@ -4,7 +4,7 @@
 
 # Fluma
 
-**YouTube Shorts without having to pay for generative models — Fluma re-edits 2D graphics, images and footage that already exist, the way an editor would, and generates only the shots that truly need it, starting from cheap image drafts.**
+**YouTube Shorts without generative models — Fluma re-edits 2D graphics, images and footage that already exist, the way an editor and a director would. Every frame is made locally.**
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-5b5bd6)](LICENSE)
 [![Quick start](https://img.shields.io/badge/quick%20start-10%20min-2fb67c)](QUICKSTART.md)
@@ -23,7 +23,7 @@
 
 A local agent workspace for vertical short-form video (YouTube Shorts, Reels, TikTok).
 You talk to the **Claude Code or Codex** you already use. The agent studies Shorts that work, then turns **real material** — web screens, documents, data, photos, sourced clips, stock footage — into a video with open-source creative apps.
-By default it uses no generative model (no generation bill), and everything it makes stays an editable project file. Only when a shot can't be built from real material does it use **one OpenRouter key** to show image drafts first and make the video from the one you pick.
+It uses no image or video generation model (no generation bill), and everything it makes stays an editable project file. Scenes that never happened are staged with drawings, diagrams, memes or metaphors instead of fake footage.
 
 ## Why Fluma
 
@@ -48,7 +48,6 @@ That is the niche Fluma is built for.
 - **Mood pieces and ads** — real photos or store footage with short lines (`format-emotional`, `format-ad`)
 - **2D graphics and illustration** — drawings, diagrams and charts the agent draws itself in VectorCraft
 
-**Shots that need generation** — scenes that never happened (fictional actors, imagined places) can't be built from real material. Fluma flags those shots and, if you want, starts with **image drafts**: a few keyframes (a few cents each) → you pick one → the video is made from it (the expensive step comes last). With an OpenRouter key Fluma does this itself with the models you chose (Seedance, Kling, Veo, Seedream, Nano Banana …); without one it writes the prompts in each model's syntax for your own tools. If the whole video has to be generated, use a generation tool directly.
 
 ## What it costs
 
@@ -59,7 +58,7 @@ That is the niche Fluma is built for.
 | Footage | Sourced clips (credited automatically), free Pexels and Pixabay keys, reference photos |
 | Music | Finds the trending song Shorts in the same niche actually use, to attach from the Shorts editor's library at upload (licensed by YouTube) |
 | Creative apps | 16 open-source [Craft apps](#the-craft-apps) plus Blender — free |
-| (Optional) OpenRouter | One key for video understanding (reference analysis), images, video generation, voice and transcription. Pick a model per capability in Settings; above the per-video cap (default $3) the agent shows the amount and asks |
+| (Optional) OpenRouter | One key for video understanding (reference analysis, draft critique), voice, transcription and embeddings. Pick a model per capability in Settings; above the per-video cap (default $3) the agent shows the amount and asks |
 
 ## What it does
 
@@ -76,8 +75,8 @@ That is the niche Fluma is built for.
 - 🔎 **References first, enforced** — a storyboard can't pass lint (`L30`) until real reference Shorts are analyzed and linked. Noun-ending lines and mixed politeness fail too (`L31`).
 - 🧰 **The whole real toolset** — every stage leaves a Craft project file (`.ecproj` motion, `.scraft` sound, `.fcproj` cut, `.vectorcraft` drawing, `.psd`, `.deckcraft` …). Keep editing them; hand-edited files are detected by hash and never overwritten. When no material type fits, the agent writes app commands directly (`type: craft`).
 - 👁️ **Eyes that watch video (VL)** — an OpenRouter vision model watches reference Shorts end to end and maps scenes, hooks, twists, editing grammar, caption tone and retention devices with timestamps; it also drafts the cliché map, finds the moment you want in a clip, critiques the draft (what feels off at which second, and why) and checks generated shots. The agent can ask it anything about any video (`see.py ask`).
-- 🖼️ **Vertical extend** — landscape photos become 9:16: the original stays untouched in the middle and only the area above and below is continued (when an editing model is picked). Screen captures are left alone so nothing is invented; without a model, the center band + blurred background stays.
-- 🎞️ **Pick the feel** — the agent proposes 2–4 looks (documentary, dreamy, film …) and renders them side by side on the same scenes (`feel.py`). The chosen look is applied to all real footage and carried into generation prompts.
+- 🎞️ **Pick the feel** — the agent proposes 2–4 looks (documentary, dreamy, film …) and renders them side by side on the same scenes (`feel.py`). The chosen look is applied to all real footage.
+- 🎬 **Director and writer skills** — before writing, the agent fixes five anchors (emotion, motif, anchor object, break, final image) and a rhythm ladder; every shot gets one focal point, a reason for each zoom, and three concrete details. Hooks are written as three parts (visual, first line, on-screen text) and AI-sounding copy is blocked (adapted from smixs/visual-skills, screenwriting-skills, marketingskills).
 - ♻️ **Reuse editing** — automatic clip-moment picking (`clip.py --best`), subject-tracking vertical reframing (`reframe.py`), trending-song finder (`trend_music.py`), upload guide (`upload_guide.py`).
 - 🎨 **You pick the look; effects need a reason** — the first scenes render as 2–3 design options side by side. Background motion, transitions and text animation stay off unless a reference or you ask for them.
 - 🎲 **No two videos alike** — search every command, effect and preset (`craft_catalog.py`), proven recipes, overlap checks against recent videos (`V41–V45`).
@@ -205,7 +204,7 @@ npm --prefix studio run dev                     # → http://localhost:4311
 fluma/
 ├─ engine/                 Python production engine
 │  ├─ produce.py           one command: storyboard → voice → lint → draft → stills
-│  ├─ render.py · pipeline.py · doctor.py · fluma_agent.py · mcp_server.py
+│  ├─ produce.py · render.py · doctor.py · fluma_agent.py · mcp_server.py
 │  ├─ craft/               Craft pipeline — materials · motion · audio · edit · design.py (effects per video) · adapters/<app>.py
 │  │  ├─ apps/             the 16 Craft apps (craft.json each)
 │  │  ├─ renderer/         render-engine entry (engine.json · adapter)
@@ -214,7 +213,6 @@ fluma/
 │  ├─ research/            trends · Shorts X-ray · reference style & channel cards
 │  ├─ capture/             web / terminal recording · demo runs · sourced clips · vertical reframing · memes · stock · icons
 │  ├─ story/               storyboard helpers — concepts · feel (feel.py) · design drafts (directions.py) · variants · tone edit
-│  ├─ gen/                 generation — per-model prompts · image drafts → pick → video (OpenRouter) · checks on uploaded clips
 │  ├─ providers/           one OpenRouter key — models per capability · chosen model · cost gate (estimate → approve → ledger)
 │  ├─ checks/              lint · tempo · edit density · gates
 │  ├─ publish/             YouTube upload
@@ -248,7 +246,7 @@ fluma/
 - [x] Linux, macOS, Windows and ARM CI; amd64 and arm64 Docker images
 - [x] Clip reuse: most-replayed moments, vertical reframing, trending-song guide
 - [x] One OpenRouter key for see · make · speak (a model per capability in Settings) with a cost gate
-- [x] Cliché map, concepts, feel (look) previews, image drafts → video from the picked draft, vertical extend
+- [x] Cliché map, concepts, feel (look) previews, director and writer skills, anchor (reference matching)
 
 ## Contributing
 

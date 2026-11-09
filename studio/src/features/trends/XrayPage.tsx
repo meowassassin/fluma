@@ -41,7 +41,6 @@ export const XrayPage: React.FC = () => {
             <Button size="sm" variant="ghost" icon="trash" onClick={async () => {
               if (await confirmDialog({ title: tt("받아 둔 영상과 분해 결과를 지울까요?"), body: tt("트렌드 목록의 쇼츠는 그대로 남습니다."), ok: tt("지우기"), danger: true })) { await dropXray(vid); nav("/trends?v=feed"); }
             }}>{tt("지우기")}</Button>
-            <ToGraph vid={vid} />
             <Button size="sm" variant="primary" icon="sparkle" onClick={() => nav("/?prefill=" + encodeURIComponent(brief(x, item?.title)))}>{tt("이 구조로 만들기")}</Button>
           </>}
         </header>
@@ -334,34 +333,3 @@ const Lanes: React.FC<{ label: string; items: { start: number; end: number; labe
   );
 };
 
-/** 이 분해도의 형식(샷 리듬 · 주인공 자리 · 글자 자리 · 카메라)을 내 영상 설계도로. 미리 보고 넣는다 */
-const ToGraph: React.FC<{ vid: string }> = ({ vid }) => {
-  const { data: projects = [] } = useProjects();
-  const nav = useNavigate();
-  const [pick, setPick] = useState("");
-  const [preview, setPreview] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const call = async (apply: boolean) => {
-    setBusy(true);
-    try {
-      const r = await fetch(`/api/trends/xray/${vid}/to-graph`, { method: "POST", headers: { "content-type": "application/json", "x-fluma-client": "ui" }, body: JSON.stringify({ project: pick, apply }) });
-      const d = await r.json(); if (!r.ok) throw new Error(d?.error?.message ?? tt("실패"));
-      if (!apply) setPreview(d.log);
-      else { toast.success(tt("설계도에 넣었어요"), { description: tt("편집기에서 S(스케치)로 애니메틱을 보세요. 참고 그림 자리는 최종 렌더 전에 직접 만든 화면으로 바꿔야 합니다.") }); setPreview(null); nav(`/p/${pick}`); }
-    } catch (e) { toast.error(tt("옮기지 못했어요"), { description: errMsg(e) }); } finally { setBusy(false); }
-  };
-  return (
-    <Popover trigger={<Button size="sm" variant="secondary" icon="layers">{tt("내 영상 설계도로")}</Button>}>
-      <div className="col" style={{ width: 340, gap: 8 }}>
-        <b>{tt("형식만 내 영상으로 옮기기")}</b>
-        <span className="faint small">{tt("샷 리듬 · 주인공 자리 · 글자 자리 · 카메라 움직임을 내 영상 길이에 맞춰 넣습니다. 원본 그림 · 말 · 글은 옮기지 않고, 참고 그림은 구도 확인용(최종 렌더에서 막힘)입니다.")}</span>
-        <Select aria-label={tt("넣을 영상")} value={pick} onChange={(v) => { setPick(v); setPreview(null); }} options={[{ value: "", label: tt("넣을 영상 고르기") }, ...projects.map((p) => ({ value: p.id, label: p.title || p.id }))]} />
-        {preview && <pre className="xg-preview">{preview}</pre>}
-        <div className="row end">
-          <Button size="sm" disabled={!pick} loading={busy && !preview} onClick={() => call(false)}>{tt("미리 보기")}</Button>
-          <Button size="sm" variant="primary" disabled={!pick || !preview} loading={busy && !!preview} onClick={() => call(true)}>{tt("넣기")}</Button>
-        </div>
-      </div>
-    </Popover>
-  );
-};

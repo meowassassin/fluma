@@ -16,13 +16,37 @@ ARCH = "arm64" if platform.machine().lower() in ("arm64", "aarch64") else "x64"
 EXE = ".exe" if OS == "windows" else ""
 
 
+def env_dir(folder) -> Path:
+    """엔진(음성 · 렌더)마다 설치물(가상환경 · 설치 표시)을 두는 곳 — data/cache/envs/<종류>/<이름>.
+    2026-11-09: 엔진 폴더 안(.venv)에 두면 Docker 에서 이미지를 바꿀 때마다 설치한 모델이 사라졌다(data/cache 는 볼륨이라 남는다).
+    예전에 엔진 폴더에 설치한 것이 있으면 그것을 그대로 쓴다"""
+    folder = Path(folder).resolve()
+    if (folder / ".venv").exists() and not (folder / ".venv").is_symlink():
+        return folder
+    root = Path(__file__).resolve().parents[2]
+    kind = "voices" if folder.parent.name == "engines" and folder.parent.parent.name == "voice" else "engines"
+    name = folder.name if kind == "voices" else folder.parent.name
+    return root / "data" / "cache" / "envs" / kind / name
+
+
 def venv_python(folder) -> Path:
-    v = Path(folder) / ".venv"
+    v = env_dir(folder) / ".venv"
     return v / "Scripts" / "python.exe" if OS == "windows" else v / "bin" / "python"
 
 
 def which(name: str) -> str | None:
     return shutil.which(name)
+
+
+def venv_tool(name: str) -> str:
+    """가상환경에 설치된 명령(yt-dlp 등) — 저장소 .venv(Windows 는 Scripts\\이름.exe) > 지금 파이썬 옆 > PATH > 이름 그대로.
+    2026-11-09: '.venv/bin/yt-dlp' 를 박아 둬 Windows(venv 를 켜지 않고 실행)에서 yt-dlp 를 못 찾아 멈췄다"""
+    root = Path(__file__).resolve().parents[2]
+    for d in (root / ".venv" / ("Scripts" if OS == "windows" else "bin"), Path(sys.executable).parent):
+        f = d / (name + EXE)
+        if f.exists():
+            return str(f)
+    return shutil.which(name) or name
 
 
 def container_mount(ro: bool = False) -> str:

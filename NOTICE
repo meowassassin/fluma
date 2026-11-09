@@ -28,10 +28,16 @@ Optional engines (installed from Settings → Media)
 - Manim (MIT), Blender (GPL — run as a separate program), voice engines listed under
   engine/voice/engines/*/voice.json, each with its own license and commercial-use note shown in the app.
 
-Paid models (video understanding, image and video generation, voice, transcription) are reached
+Paid models (video understanding, voice, transcription, embeddings) are reached
 only through OpenRouter with a key the user supplies, under OpenRouter's and each model provider's
 terms. Free stock footage (Pexels, Pixabay) uses the user's own free keys.
 
-Prompt-writing rules in engine/gen (beat structure, camera, motion-physics phrases, negative-term handling,
-per-model prompt shapes and limits) are adapted from uniqaiapp/video-director (MIT) and other public guides
-listed in engine/gen/models/PROMPTING.md.
+The writer skill (.claude/skills/writer) adapts jtydhr88/screenwriting-skills (MIT, sw-dialogue) and
+coreyhaines31/marketingskills (MIT, copywriting, ai-tells, ad-creative hook system). Shot-design rules in the
+director skill also draw on zenstory-ai/drama-skills (MIT).
+
+The director skill (.claude/skills/director) (five anchors, scene formula, three-jobs and three-detail rules,
+one motivated camera move, rhythm ladder, Murch's rule of six) adapts smixs/visual-skills by Serge Shima (https://github.com/smixs/visual-skills),
+licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Changes: translated to Korean, condensed,
+and mapped onto Fluma's storyboard fields and lint checks.
+

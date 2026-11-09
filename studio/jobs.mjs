@@ -4,8 +4,9 @@
 import { randomUUID } from "node:crypto";
 import { run as runProc, tail } from "./lib.mjs";
 
-const CLASS = { xray: "heavy", render: "heavy", draft: "heavy", voice: "heavy", generate: "heavy", element: "heavy", upload: "heavy", install: "install", still: "light", build: "light" };
-const LIMIT = { heavy: 1, light: 2, install: 1 };
+// xray(레퍼런스 분석)는 따로 — 빠른 분석은 메모리를 적게 써서 두 편씩 동시에, 렌더 · 음성과도 줄을 서지 않는다(2026-11-09: 3편이 한 줄로 서서 기다림)
+const CLASS = { xray: "analysis", render: "heavy", draft: "heavy", voice: "heavy", generate: "heavy", element: "heavy", upload: "heavy", install: "install", still: "light", build: "light" };
+const LIMIT = { heavy: 1, light: 2, install: 1, analysis: 2 };
 const TIMEOUT = { xray: 20 * 60e3, render: 30 * 60e3, draft: 15 * 60e3, still: 3 * 60e3, build: 3 * 60e3, voice: 10 * 60e3, generate: 15 * 60e3, element: 30 * 60e3, upload: 10 * 60e3, install: 60 * 60e3 };
 const TERMINAL = new Set(["done", "failed", "canceled"]);
 const MAX_LOG = 500;

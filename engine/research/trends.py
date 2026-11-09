@@ -25,6 +25,8 @@ from pathlib import Path
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
+from platform_util import venv_tool  # noqa: E402
+YTDLP = venv_tool("yt-dlp")   # Windows: .venv\\Scripts\\yt-dlp.exe
 DIR = ROOT / "data" / "public" / "trends"
 INDEX = DIR / "index.json"
 THUMBS = DIR / "thumbs"
@@ -88,7 +90,7 @@ def thumb(vid: str) -> str | None:
 
 def hashtag(tag: str, limit: int) -> list[dict]:
     url = f"https://www.youtube.com/hashtag/{urllib.parse.quote(tag.lstrip('#'))}/shorts"
-    r = subprocess.run(["yt-dlp", "--flat-playlist", "--dump-json", "--playlist-end", str(limit), "--no-warnings", url],
+    r = subprocess.run([YTDLP, "--flat-playlist", "--dump-json", "--playlist-end", str(limit), "--no-warnings", url],
                        text=True, capture_output=True, timeout=120)
     out = []
     for line in r.stdout.splitlines():
@@ -186,7 +188,7 @@ def channel_items(handle: str, limit: int, max_sec: int = 60) -> list[dict]:
     """채널의 쇼츠 탭 + 일반 영상 중 max_sec 이하(광고는 쇼츠가 아니라 일반 영상으로 올라오는 일이 많다)"""
     out, seen = [], set()
     for tab in ("shorts", "videos"):
-        r = subprocess.run(["yt-dlp", "--flat-playlist", "--dump-json", "--playlist-end", str(limit * (1 if tab == "shorts" else 3)), "--no-warnings",
+        r = subprocess.run([YTDLP, "--flat-playlist", "--dump-json", "--playlist-end", str(limit * (1 if tab == "shorts" else 3)), "--no-warnings",
                             f"https://www.youtube.com/{handle}/{tab}"], capture_output=True, text=True, timeout=120)
         for line in r.stdout.splitlines():
             try:

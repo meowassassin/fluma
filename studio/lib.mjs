@@ -46,7 +46,13 @@ export async function atomicWrite(file, data, { mode } = {}) {
   const tmp = `${file}.${process.pid}.${randomUUID().slice(0, 6)}.tmp`;
   await fs.writeFile(tmp, data, mode ? { mode } : undefined);
   if (mode) await fs.chmod(tmp, mode).catch(() => {});
-  await fs.rename(tmp, file);
+  // Windows: 다른 프로세스(백신 · 탐색기 · 우리 파일 감시)가 잠깐 잡고 있으면 rename 이 EPERM · EBUSY — 잠깐 기다렸다 다시
+  for (let i = 0; ; i++) {
+    try { await fs.rename(tmp, file); return; } catch (e) {
+      if (!["EPERM", "EBUSY", "EACCES"].includes(e?.code) || i >= 6) { await fs.rm(tmp, { force: true }).catch(() => {}); throw e; }
+      await new Promise((r) => setTimeout(r, 50 * 2 ** i));
+    }
+  }
 }
 export async function readJson(file, fallback = null) {
   try { return JSON.parse(await fs.readFile(file, "utf8")); } catch { return fallback; }

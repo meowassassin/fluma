@@ -28,6 +28,7 @@ SFX_DIR = ROOT / "assets" / "sfx"
 RATE = 48000   # SoundCraft 새 세션의 샘플레이트
 
 TARGET_LUFS = -14.0     # 쇼츠 라우드니스 목표
+SFX_ONLY_LUFS = -18.0   # 효과음 · 정적만 있는 영상 — 조금 낮게(그래도 들리게)
 CEILING_DB = -1.5       # maximizer ceiling 은 샘플 peak 기준 → true peak 여유를 두고 −1.5
 LUFS_TOL = 0.5          # 이만큼 안이면 다시 바운스하지 않음
 START_THRESHOLD = -4.0  # 첫 바운스의 maximizer threshold(이후 측정값으로 고침)
@@ -366,10 +367,13 @@ def mix(sb: dict, dur: float, out_dir: Path | None = None) -> tuple[Path, Path] 
             au["edited"] = True
             target = None
         else:
-            # 라우드니스는 말소리 · 음악이 있을 때만 −14 LUFS 로(효과음만 있는 영상을 키우면 '딱' 소리만 커진다)
+            # 라우드니스: 말소리 · 음악 · 퍼온 클립 원음이 있으면 −14 LUFS(쇼츠 기준). 효과음만 있으면 −18 LUFS 로 조금 낮게(리미터가 '딱' 소리 꼭대기를 누른다)
+            # 2026-11-09: 효과음만 있는 영상을 아예 안 키워 −29 LUFS — 앱 · 폰에서 '소리가 안 들린다'
             v_only = PUBLIC / "audio" / f"{sid}.voice.wav"
-            program = bool(words) or music_path(sb) is not None or audible(v_only if v_only.exists() else voice)
-            target = TARGET_LUFS if program else None
+            has_clip = any(isinstance(m, dict) and m.get("type") in ("video", "stock") and m.get("audio") is not False
+                           for sc_ in sb.get("scenes") or [] for m in sc_.get("materials") or [])
+            program = bool(words) or music_path(sb) is not None or audible(v_only if v_only.exists() else voice) or has_clip
+            target = TARGET_LUFS if program else SFX_ONLY_LUFS
             gain = -START_THRESHOLD if program else 0.0
             # 1) 세션 짓기
             cmds = commands(sb, voice, words, dur, threshold=-gain)
@@ -403,7 +407,7 @@ def mix(sb: dict, dur: float, out_dir: Path | None = None) -> tuple[Path, Path] 
                     break
                 bounce = b2
             print(f"[소리] 라우드니스 {first:.1f} → {bounce['lufs']:.1f} LUFS · true peak {bounce.get('true_peak_db', 0):.1f} dBTP"
-                  + ("" if target is not None else " (말소리 · 음악 없음 — 키우지 않음)"))
+                  + ("" if target != SFX_ONLY_LUFS else " (효과음만 — 조금 낮은 목표)"))
             au = {"file": os.path.relpath(session, ROOT), "hash": _sha(session), "app": "soundcraft"}
     except subprocess.TimeoutExpired:
         print(f"{fail} (시간 초과)")

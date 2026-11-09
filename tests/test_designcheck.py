@@ -95,24 +95,11 @@ def test_clause_subtitles_keep_sentences_and_no_orphan_word():
 
 def test_retention_flags_monotony_and_passes_variety():
     import retention
-    one = [{"sec": 5, "narration": "그냥 말", "materials": [{"type": "form", "form": "parchment"}]} for _ in range(5)]
+    one = [{"sec": 5, "narration": "그냥 말", "materials": [{"type": "image", "src": "a.png"}]} for _ in range(5)]
     codes = {c for c, _, _ in retention.check({"scenes": one})}
     assert {"R01", "R02", "R05", "R06", "R07", "R09"} <= codes
-    forms = ["parchment", "atlas", "gridchart", "comic", "sunset"]
-    ok = [{"sec": 5, "narration": "왜 그럴까요?", "surprise": "x", "materials": [{"type": "form", "form": f}, {"type": "cast", "id": f"p{i}"}, {"type": "archive"}]} for i, f in enumerate(forms)]
+    kinds = ["chart", "web", "doc_quote", "illustration", "meme"]
+    ok = [{"sec": 5, "narration": "왜 그럴까요?", "surprise": "x", "materials": [{"type": k, "id": f"m{i}"}, {"type": "art", "id": f"p{i}"}, {"type": "archive"}]} for i, k in enumerate(kinds)]
     assert retention.check({"scenes": ok}) == []
 
 
-def test_cast_makes_different_people_from_specs():
-    from craft import cast
-    a = cast.Fig({"beard": "full", "hat": "hoplite"}).pose("talk").steps()
-    b = cast.Fig({"glasses": True, "garment": "suit"}).pose("talk").steps()
-    assert a != b and len(cast.materials({"id": "k", "poses": ["run", "talk", "shock"]})) == 11
-
-
-def test_geo_clips_real_coastline():
-    from craft import geo
-    polys, to = geo.land([20.5, 36.2, 24.6, 38.9], 1920, 1080)
-    assert len(polys) >= 3 and sum(len(p) for p in polys) > 300
-    x, y = to(23.73, 37.98)
-    assert 0 < x < 1920 and 0 < y < 1080

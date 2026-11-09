@@ -16,6 +16,7 @@ from __future__ import annotations
 import base64
 import json
 import mimetypes
+import os
 import sys
 import time
 from pathlib import Path
@@ -103,7 +104,7 @@ def _cost(js: dict) -> float | None:
 
 # ---------------------------------------------------------------- 보기
 def see(model: str, prompt: str, images: list | None = None, videos: list | None = None, system: str | None = None,
-        json_mode: bool = False, max_tokens: int | None = None) -> dict:
+        json_mode: bool = False, max_tokens: int | None = None, timeout: int | None = None) -> dict:
     """그림 · 영상을 보고 답하기 → {"text", "cost"}. videos: 유튜브 링크(Gemini AI Studio 는 유튜브만) 또는 mp4 경로"""
     parts = [{"type": "text", "text": prompt}]
     parts += [{"type": "image_url", "image_url": {"url": _media(i)}} for i in images or []]
@@ -114,7 +115,8 @@ def see(model: str, prompt: str, images: list | None = None, videos: list | None
         body["response_format"] = {"type": "json_object"}
     if max_tokens:
         body["max_tokens"] = max_tokens
-    js = post("chat/completions", body, timeout=600).json()
+    # 기다림 상한(FLUMA_SEE_TIMEOUT, 기본 180초) — 무료 모델 대기열에서 몇 분씩 묶이지 않게. 넘으면 오류로 알리고 부르는 쪽이 건너뛴다
+    js = post("chat/completions", body, timeout=timeout or int(os.environ.get("FLUMA_SEE_TIMEOUT", "180"))).json()
     ch = (js.get("choices") or [{}])[0]
     txt = (ch.get("message") or {}).get("content") or ""
     if isinstance(txt, list):
@@ -123,73 +125,6 @@ def see(model: str, prompt: str, images: list | None = None, videos: list | None
 
 
 # ---------------------------------------------------------------- 그리기
-def make_image(model: str, prompt: str, out: Path, aspect: str = "9:16", refs: list | None = None, **params) -> dict:
-    """그림 한 장 → out(확장자는 받은 형식). refs = 참조 · 편집할 그림(경로 · 주소). 반환 {"file", "cost"}"""
-    body = {"model": model, "prompt": prompt, "aspect_ratio": aspect, "n": 1, **{k: v for k, v in params.items() if v is not None}}
-    if refs:
-        body["input_references"] = [{"type": "image_url", "image_url": {"url": _media(r)}} for r in refs]
-    js = post("images", body, timeout=600).json()
-    d = (js.get("data") or [{}])[0]
-    if not d.get("b64_json"):
-        raise ProviderError(f"그림이 오지 않았습니다: {json.dumps(js)[:200]}")
-    ext = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/svg+xml": ".svg", "image/gif": ".gif"}.get(d.get("media_type") or "", ".png")
-    out = Path(out).with_suffix(ext)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_bytes(base64.b64decode(d["b64_json"]))
-    return {"file": out, "cost": _cost(js)}
-
-
-# ---------------------------------------------------------------- 찍기(비동기)
-def video_submit(model: str, prompt: str, aspect: str = "9:16", duration: int | None = None, resolution: str | None = None,
-                 first_frame: str | Path | None = None, last_frame: str | Path | None = None, refs: list | None = None,
-                 audio: bool | None = None, seed: int | None = None) -> dict:
-    """작업을 낸다 → {"id", "polling_url", "status"}. frame_images 가 있으면 이미지 → 영상"""
-    body = {"model": model, "prompt": prompt, "aspect_ratio": aspect}
-    if duration:
-        body["duration"] = int(duration)
-    if resolution:
-        body["resolution"] = resolution
-    frames = [(first_frame, "first_frame"), (last_frame, "last_frame")]
-    fi = [{"type": "image_url", "image_url": {"url": _media(f)}, "frame_type": t} for f, t in frames if f]
-    if fi:
-        body["frame_images"] = fi
-    if refs:
-        body["input_references"] = [{"type": "image_url", "image_url": {"url": _media(r)}} for r in refs]
-    if audio is not None:
-        body["generate_audio"] = bool(audio)
-    if seed is not None:
-        body["seed"] = int(seed)
-    return post("videos", body, timeout=120).json()
-
-
-def video_status(job: str) -> dict:
-    return get(f"videos/{job}").json()
-
-
-def video_wait(job: str, every: float = 30, limit: float = 1800, on_tick=None) -> dict:
-    """완료 · 실패까지 조회(문서 권장 30초 간격)"""
-    t0 = time.time()
-    while True:
-        st = video_status(job)
-        if on_tick:
-            on_tick(st)
-        if st.get("status") in ("completed", "failed"):
-            return st
-        if time.time() - t0 > limit:
-            raise ProviderError(f"영상 작업 {job} 이 {limit:.0f}초 안에 끝나지 않았습니다 — 나중에 이어 받기(작업 id 기록됨)")
-        time.sleep(every)
-
-
-def video_download(job: str, out: Path, index: int = 0) -> Path:
-    r = get(f"videos/{job}/content?index={index}", timeout=600, stream=True)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with open(out, "wb") as f:
-        for chunk in r.iter_content(1 << 16):
-            f.write(chunk)
-    return out
-
-
-# ---------------------------------------------------------------- 말하기 · 듣기 · 찾기
 def speech(model: str, text: str, out: Path, voice: str | None = None, speed: float | None = None, instructions: str | None = None) -> dict:
     body = {"model": model, "input": text, "response_format": "mp3"}
     if voice:

@@ -287,19 +287,85 @@ def element_video(el: Path, dst: Path, hold: float | list = 1.2, crop: list | No
     return r.returncode == 0
 
 
+def content_box(el: Path, pad: float = 0.03) -> list | None:
+    """웹 녹화 · 화면 녹화 요소 폴더에서 '내용이 있는 곳'(배경과 다른 픽셀)을 모든 상태 화면에 걸쳐 잰다 → crop [x, y, w, h] 0~1.
+    2026-11-09 git 영상: 세로 페이지 위쪽에 터미널만 있고 아래 2/3 가 빈 검정이라 화면이 비고 글씨가 작았다 → 내용만 잘라 화면에 크게.
+    배경이 화면의 80% 이상 내용이면(이미 꽉 참) None"""
+    import numpy as np
+    from PIL import Image
+    shots = sorted(el.glob("s[0-9][0-9][0-9].png")) or sorted(el.glob("f[0-9]*.png"))[::10]
+    for rec in sorted(el.glob("r[0-9][0-9]")):
+        shots += sorted(rec.glob("f*.jpg"))[::15]
+    box = None
+    for f in shots[:60]:
+        a = np.asarray(Image.open(f).convert("RGB").resize((270, 480)), dtype=np.int16)
+        edge = np.concatenate([a[0], a[-1], a[:, 0], a[:, -1]])
+        bg = np.median(edge, axis=0)
+        mask = np.abs(a - bg).sum(axis=2) > 40
+        ys, xs = np.where(mask)
+        if len(xs) < 50:
+            continue
+        b = [xs.min() / 270, ys.min() / 480, (xs.max() + 1) / 270, (ys.max() + 1) / 480]
+        box = b if box is None else [min(box[0], b[0]), min(box[1], b[1]), max(box[2], b[2]), max(box[3], b[3])]
+    if not box:
+        return None
+    x0, y0, x1, y1 = max(0.0, box[0] - pad), max(0.0, box[1] - pad), min(1.0, box[2] + pad), min(1.0, box[3] + pad)
+    if (x1 - x0) * (y1 - y0) > 0.8:
+        return None
+    return [round(x0, 4), round(y0, 4), round(x1 - x0, 4), round(y1 - y0, 4)]
+
+
+def quick_blank_states(el: Path, holds: list | float, n_states: int) -> list | float:
+    """앞쪽의 거의 빈 상태 화면(빈 프롬프트 '$ git' 만 있는 것)은 0.3초만 — 매 장면이 빈 화면 타이핑부터 시작하지 않게(L32 첫 1초)"""
+    import numpy as np
+    from PIL import Image
+    states = sorted(el.glob("s[0-9][0-9][0-9].png"))
+    if len(states) < 2:
+        return holds
+    def ink(f):
+        a = np.asarray(Image.open(f).convert("L").resize((135, 240)), dtype=np.int16)
+        bg = np.median(np.concatenate([a[0], a[-1]]))
+        return float((np.abs(a - bg) > 30).mean())
+    last = ink(states[-1]) or 1e-6
+    hs = list(holds) if isinstance(holds, list) else [float(holds)] * len(states)
+    hs += [hs[-1]] * (len(states) - len(hs))
+    for i, f in enumerate(states[:-1]):
+        if ink(f) < 0.15 * last:
+            hs[i] = min(hs[i], 0.3)
+        else:
+            break
+    return hs
+
+
 def passthrough(m: dict, out: Path, work: Path) -> dict:
     """이미 만들어진 재료(웹 녹화 · 사용자 영상 · 이미지 · 짤)는 그대로 쓴다"""
     src = _abs(m["src"])
     if src.is_dir():                       # 짤 · 웹 녹화 요소 폴더
         hold = float(m.get("hold", 1.2))
         holds = [float(x) for x in m["holds"]] if m.get("holds") else None
-        if element_video(src, out.with_suffix(".mp4"), holds or hold, m.get("crop")):   # crop: [x, y, w, h] 0~1 (쿠키 안내 · 빈 곳 잘라내기)
+        crop = m.get("crop")
+        if crop is None and m.get("type") in ("web", "screen") and m.get("fit") != "full":
+            crop = content_box(src)                                   # 내용이 있는 곳만(빈 여백 · 작은 글씨 방지) — crop: false 면 끔
+        if m.get("type") in ("web", "screen") and m.get("quick_start", True):
+            holds = quick_blank_states(src, holds or hold, len(list(src.glob("s[0-9][0-9][0-9].png"))))
+            holds = holds if isinstance(holds, list) else None
+        if element_video(src, out.with_suffix(".mp4"), holds or hold, crop or None):   # crop: [x, y, w, h] 0~1 (쿠키 안내 · 빈 곳 잘라내기)
             meta = _load(src / "meta.json")
+            hl = {}
+            if meta.get("marks") and not m.get("highlight_box"):        # 터미널 강조 줄 → 그 줄로 다가가기(잘라 낸 화면 기준 좌표 · 줄이 다 찍힌 시각)
+                cx, cy, cw, ch = crop or [0, 0, 1, 1]
+                bs = [[(x - cx) / cw, (y - cy) / ch, w / cw, h / ch] for x, y, w, h in meta["marks"]]
+                x0, y0 = min(b[0] for b in bs), min(b[1] for b in bs)
+                x1, y1 = max(b[0] + b[2] for b in bs), max(b[1] + b[3] for b in bs)
+                h0 = (holds[0] if isinstance(holds, list) and holds else hold)
+                rec_sec = sum(float(a_.get("sec") or 0) for a_ in meta.get("actions") or [] if a_.get("do") == "record")
+                hl = {"highlight_box": [round(max(0, x0), 4), round(max(0, y0), 4), round(min(1, x1) - max(0, x0), 4), round(min(1, y1) - max(0, y0), 4)],
+                      "highlight_t": round(h0 + rec_sec, 2)}
             at = lambda k: sum((holds[i] if i < len(holds) else holds[-1]) for i in range(k)) if holds else hold * k   # k 번째 상태가 보이기 시작하는 초
             # 웹 녹화 단계(동작 → 그 결과 상태가 보이는 시각): 움직임 단계가 '1. 주소 입력' 꼬리표를 띄운다
             steps = [{"t": round(at(int(a.get("to", 0))) - 0.15, 2), "t_end": round(at(int(a.get("to", 0)) + 1), 2), "label": a.get("label")}
                      for a in meta.get("actions") or [] if a.get("label")]
-            return {"app": None, "file_suffix": ".mp4", "source": meta.get("source") or meta.get("sources"), "steps": steps, "mobile": bool(meta.get("mobile"))}
+            return {"app": None, "file_suffix": ".mp4", "source": meta.get("source") or meta.get("sources"), "steps": steps, "mobile": bool(meta.get("mobile")), **hl}
         raise RuntimeError(f"요소 폴더에 프레임이 없습니다: {m['src']}")
     if src.suffix.lower() in (".mp4", ".mov", ".webm", ".mkv", ".m4v") and m.get("_clip"):
         return video_span(m, src, out)
@@ -326,7 +392,15 @@ def video_span(m: dict, src: Path, out: Path) -> dict:
     end = m.get("end") or "slow"
     vf = [f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}" if fit == "cover" else f"scale='min({W},iw)':-2"]
     pre, k = [], 1.0
-    if sec > length + 0.05 and end == "slow":
+    # 장면보다 긴 클립: 그냥 자르면 끝(생성 클립의 end_state — 화면 속으로 들어가는 순간)이 잘려 나간다(2026-11-09: 6초 클립을 3초 장면에 넣어 움직임 중간에 툭 끊김)
+    # → 1.25배까지만 빠르게(그 이상은 움직임이 정신없어 AI 티가 난다 — 2026-11-09 2배로 돌려 망침), 그래도 길면 앞을 잘라 끝을 지킨다(생성 클립 기본 · keep: "start" 면 앞부분)
+    if sec and length > sec + 0.05 and m.get("keep", "start") == "end":
+        k = max(0.8, sec / length)
+        if length * k > sec + 0.05:
+            a = b - sec / k
+            length = b - a
+        vf.append(f"setpts={k:.4f}*PTS")
+    elif sec > length + 0.05 and end == "slow":
         k = min(1.25, sec / length)
         vf.append(f"setpts={k:.4f}*PTS")
     elif sec > length + 0.05 and end == "loop":
@@ -369,13 +443,11 @@ def stock(m: dict, out: Path, work: Path, sid: str) -> dict:
     return {"app": None, "mobile": True, "credit": c, "source": [c["page"]]}
 
 
-MAT_VERSION = "8"     # 재료를 만드는 방식이 바뀌면 올린다(열쇠에 들어가 예전 결과를 다시 만든다) — 2: 아이콘 고해상도 · 영상 마지막 프레임 유지 · 요소 폴더 · 3: 차트 항목 아이콘 · 4: 앱별 어댑터 · 5: craft 재료 · 레시피 · 6: 생성 클립 · 7: 재료마다 방법(앱) 고르기 · 8: 느낌(feel) 입히기
+MAT_VERSION = "12"    # 재료를 만드는 방식이 바뀌면 올린다(열쇠에 들어가 예전 결과를 다시 만든다) — 2: 아이콘 고해상도 · 영상 마지막 프레임 유지 · 요소 폴더 · 3: 차트 항목 아이콘 · 4: 앱별 어댑터 · 5: craft 재료 · 레시피 · 6: 생성 클립 · 7: 재료마다 방법(앱) 고르기 · 8: 느낌(feel) 입히기 · 9: 긴 생성 클립은 빠르게 해 끝을 지킴 · 10: 빠르기 상한 1.25배 · 11: 생성 경로 제거(완전 로컬) · 12: 웹 녹화 내용만 자르기 · 빈 시작 짧게
 #                       4: 앱별 어댑터(PhotoCraft 카드 · PdfCraft 진짜 형광펜 · FilmCraft 다듬기 · 새 재료 종류) · 사람이 고친 편집 파일 열쇠 일반화
 ADAPTERS = {"chart": chart, "doc_quote": doc_quote, "illustration": illustration, "photo": photo, "icon": illustration}   # icon: icons.py 로 받은 SVG
 PASSTHROUGH = {"screen", "video", "image", "meme", "web"}    # meme: meme.py fetch 폴더 · web: webrec.py 폴더
 FEEL_TYPES = {"video", "stock", "photo", "image", "photo_grade"}   # 영상 느낌(direction.feel)을 입히는 실사 재료 — feel.py 와 같게
-EXTEND_TYPES = {"photo", "archive", "photo_grade"}         # 가로 사진이면 세로로 이어 그리는 재료(edit.image 모델을 골랐을 때 — engine/providers/extend.py).
-#                 화면 캡처(image · screen)는 이어 그리면 없는 화면을 지어내므로 재료 칸 extend: true 일 때만, 누끼(cutout)는 안 함
 
 
 def _editable(old: dict, d: Path) -> Path | None:
@@ -476,15 +548,6 @@ def _files_in(o) -> list[Path]:
 
 
 # ---------------------------------------------------------------- 디스패처
-def _figure_style(sb: dict, sc: dict, m: dict, remember: bool = True) -> dict:
-    from craft.figure import choose
-    f = sc.get("form")
-    c_ = choose.pick(sb, m, f if isinstance(f, str) else (f or {}).get("type") if isinstance(f, dict) else None)
-    if remember:
-        choose.remember(sb["id"], c_["style"])
-    return {**m, "style": c_["style"], "style_params": c_["params"], "anim": c_["anim"]}
-
-
 def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
     """콘티의 모든 재료를 만든다(입력이 같으면 다시 만들지 않음) → 재료 목록.
     indices: 장면 일부만 렌더할 때 각 장면의 원래 번호(0부터) — 재료 폴더 s<NN> 이 원래 번호와 맞게"""
@@ -503,11 +566,6 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             if int(d.name[1:]) > len(scs):
                 import shutil
                 shutil.rmtree(d, ignore_errors=True)
-    figs = [_figure_style(sb, sc, expand_recipe({"id": m.get("id") or f"m{i + 1}", **m}), remember=False)
-            for sc in scs for i, m in enumerate(sc.get("materials") or []) if m.get("type") == "figure"]
-    if len(figs) > 1:                                        # 인물은 Blender + 앱 그리기라 오래 걸린다 — 먼저 동시에 그려 둔다
-        from .adapters.figure import warm
-        warm(figs)
     for n, sc in zip(nums, scs):
         # 콘티에서 빠진 재료(기록 · 파일 · 뼈대)는 지운다 — 남겨 두면 움직임 단계가 지운 재료까지 그린다
         d0 = base / f"s{n:02d}"
@@ -531,14 +589,10 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             dm = ((sb.get("direction") or {}).get("methods") or {}).get(t)
             if dm and not m.get("method"):           # 방향이 정한 방법(앱)도 재료 칸에 — 바뀌면 열쇠가 달라져 다시 만든다
                 m = {**m, "method": dm}
-            if t == "video" and m.get("gen") and not m.get("ask"):     # 실사 생성 컷: 사용자가 자기 도구로 만들어 올린다(engine/gen/genclip.py prompts)
-                m = {**m, "ask": f"실사 생성 컷 — data/compositions/{sid}/gen/prompts.md 의 그림 → 영상 순서로 만들어 '{m['id']}.mp4' 로 올려 주세요", "fit": m.get("fit") or "cover"}
             if t == "video" and any(k in m for k in ("in", "out", "fit", "end")):
                 from engines import aspect_size        # 구간 영상: 화면 크기 · 장면 길이에 맞춰 만든다
                 _W, _H = aspect_size(sb)
                 m = {**m, "_clip": True, "_W": _W, "_H": _H, "_sec": float(sc.get("sec") or 0)}
-            if t == "figure":                                       # 화풍을 안 적었으면 영상에 맞게 고른다 — 고른 값이 재료 열쇠에 들어간다
-                m = _figure_style(sb, sc, m)
             d = base / f"s{n:02d}"
             d.mkdir(parents=True, exist_ok=True)
             out = d / f"{m['id']}.png"
@@ -554,8 +608,6 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             ed_now = _hash(ed_p) if ed_p else ""
             hand = bool(old.get("editable_hash") and ed_now and ed_now != old["editable_hash"])
             srcs.append(ed_now if hand else "")
-            if t == "figure":                 # 인물 엔진(Blender 장면 · 화풍 · 그리기 · 어댑터)을 고치면 다시 그린다
-                srcs += [_hash(ROOT / "engine" / "craft" / f) for f in ("figure/scene.py", "figure/styles.py", "figure/paint.py", "adapters/figure.py")]
             dep = _depends(t, m)              # 대상 재료(캡처 · 3D)가 바뀌면 주석 · 도면도 다시
             if dep:
                 srcs.append(_load(d / f"{dep}.json").get("key") or "missing")
@@ -573,13 +625,6 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             if m.get("ask"):                   # 사용자가 올린 파일(이름으로 찾은 것)도 열쇠에 — 새로 올리면 다시 만든다
                 up_f = find_upload(sid, m)
                 srcs.append(f"{up_f.name}:{_hash(up_f)}" if up_f else "missing")
-            ext_on = (t in EXTEND_TYPES and m.get("extend") is not False and not m.get("cutout")) or (t == "image" and m.get("extend") is True)
-            if ext_on:                         # 세로 확장 모델이 바뀌면 다시
-                try:
-                    import catalog
-                    srcs.append(f"extend:{catalog.chosen('edit.image', sb) or ''}")
-                except Exception:  # noqa: BLE001
-                    pass
             feel = ((sb.get("direction") or {}).get("feel") or {}) if t in FEEL_TYPES else {}
             if feel.get("grade"):              # 고른 느낌(engine/story/feel.py)이 바뀌면 실사 재료를 다시 입힌다
                 srcs.append(json.dumps(feel["grade"], sort_keys=True))
@@ -637,16 +682,6 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
                 info, file = {"app": None}, None
             else:
                 raise RuntimeError(f"모르는 재료 종류: {t} ({' · '.join(sorted({*adapters, *PASSTHROUGH, 'stock', 'text', 'stat'}))})")
-            if file and ext_on and file.exists() and file.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
-                try:                               # 가로 사진 → 9:16(원본은 가운데 그대로, 위아래만 이어 그림). 모델이 없으면 그대로(가운데 띠 + 흐린 배경)
-                    from extend import vertical
-                    v = vertical(file, file.with_name(f"{file.stem}.v.jpg"), str(m.get("what") or m.get("query") or m.get("title") or ""), sid, sb=sb)
-                    if v:
-                        file = v
-                        info["extended"] = True
-                        info["full_frame"] = True          # 9:16 을 가득 채운 사진 — 액자 없이 화면을 덮는다(motion.covers_frame)
-                except Exception as e:  # noqa: BLE001 — 승인 필요 · 네트워크: 원본 그대로 쓰고 알린다
-                    print(f"[재료] {n}장면 {m['id']}: 세로 확장 건너뜀 — {e}")
             if file and feel.get("grade") and file.exists():      # 영상 전체 느낌을 실사 재료에 같은 색 · 질감으로
                 from feel import apply as feel_apply
                 file = feel_apply(file, feel["grade"], file.with_name(f"{file.stem}.feel{file.suffix}"))

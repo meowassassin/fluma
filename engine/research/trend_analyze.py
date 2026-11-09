@@ -24,6 +24,8 @@ from PIL import Image, ImageFilter, ImageStat
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
+from platform_util import venv_tool  # noqa: E402
+YTDLP = venv_tool("yt-dlp")   # Windows: .venv\\Scripts\\yt-dlp.exe
 TR = ROOT / "data" / "public" / "trends"
 OUT = TR / "analysis"
 
@@ -35,7 +37,7 @@ def vid_of(s: str) -> str:
 
 def download(vid: str, d: Path) -> Path:
     url = f"https://www.youtube.com/shorts/{vid}"
-    r = subprocess.run(["yt-dlp", "-q", "--no-warnings", "-f", "bv*[height<=480][vcodec^=avc1]/bv*[height<=480]/worst",
+    r = subprocess.run([YTDLP, "-q", "--no-warnings", "-f", "bv*[height<=480][vcodec^=avc1]/bv*[height<=480]/worst",
                         "-o", str(d / "v.%(ext)s"), url], capture_output=True, text=True, timeout=180)
     files = list(d.glob("v.*"))
     if not files:

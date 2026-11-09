@@ -344,7 +344,7 @@
         },
         "feel": {
           "type": "object",
-          "description": "고른 느낌(engine/story/feel.py pick — 사용자가 고를 때만): 실사 재료에 입힐 색 · 질감(grade)과 실사 생성 프롬프트의 style · mood · color · lighting",
+          "description": "고른 느낌(engine/story/feel.py pick — 사용자가 고를 때만): 실제 재료(영상 · 스톡 · 사진)에 입힐 색 · 질감(grade)",
           "properties": {
             "name": {
               "type": "string"
@@ -369,20 +369,27 @@
             }
           }
         },
-        "route": {
-          "enum": [
-            "local",
-            "mixed",
-            "gen"
-          ],
-          "description": "실사 생성 여부: local = 실제 자료만 · mixed = 일부 컷만 생성(프롬프트) · gen = 대부분 생성"
-        },
-        "gen_scenes": {
-          "type": "array",
-          "items": {
-            "type": "integer"
+        "anchors": {
+          "type": "object",
+          "description": "감독의 다섯 기둥(director 스킬) — 감정 · 모티프 · 기준 물건 · 꺾임 · 끝 그림",
+          "properties": {
+            "emotion": {
+              "type": "string"
+            },
+            "motif": {
+              "type": "string"
+            },
+            "object": {
+              "type": "string"
+            },
+            "break": {
+              "type": "string"
+            },
+            "final_image": {
+              "type": "string"
+            }
           },
-          "description": "mixed 일 때 생성할 장면 번호(1부터)"
+          "additionalProperties": false
         }
       },
       "additionalProperties": {
@@ -617,29 +624,6 @@
         },
         "why": {
           "type": "string"
-        }
-      }
-    },
-    "cast": {
-      "type": "array",
-      "description": "실사 생성 컷의 등장인물 — 모든 그림 · 클립에 같은 외모 설명 · 기준 그림(engine/gen/genclip.py)",
-      "items": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "look": {
-            "type": "string",
-            "description": "외모 · 옷 — 영어로"
-          },
-          "ref": {
-            "type": "string",
-            "description": "기준 그림 경로"
-          }
         }
       }
     }
@@ -1031,13 +1015,9 @@
                   "drawing",
                   "craft",
                   "live",
-                  "form",
                   "archive",
-                  "cast",
                   "art",
-                  "silhouette",
-                  "relic",
-                  "figure"
+                  "relic"
                 ]
               },
               "camera": {
@@ -1521,9 +1501,6 @@
               "cut": {
                 "type": "string"
               },
-              "keep": {
-                "type": "array"
-              },
               "shard": {
                 "type": "array"
               },
@@ -1552,73 +1529,6 @@
               },
               "stride": {
                 "type": "number"
-              },
-              "gen": {
-                "type": "string",
-                "description": "실사 생성 컷(type video): 영상 모델 — seedance · kling · veo · omni · hailuo · runway · wan. Fluma 는 프롬프트만 쓰고 사용자가 만들어 올린다(engine/gen/genclip.py)"
-              },
-              "image_model": {
-                "type": "string",
-                "description": "실사 생성 컷의 키프레임 그림 모델 — seedream · nanobanana · gptimage · midjourney(생략하면 영상 모델과 짝)"
-              },
-              "prompt": {
-                "type": "string",
-                "description": "실사 생성 컷: 무엇이 일어나는가(영어)"
-              },
-              "cast": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "실사 생성 컷에 나오는 cast 이름"
-              },
-              "line": {
-                "type": "string",
-                "description": "실사 생성 컷 속 대사(원음으로 살린다)"
-              },
-              "people": {
-                "type": "integer",
-                "description": "화면에 보일 사람 수(만든 뒤 확인용)"
-              },
-              "physics": {
-                "type": "string",
-                "description": "실사 생성 컷: 움직임 물리 한 문장(영어) — 무게 · 접촉 · 끌림 · 가라앉음. 비우면 코드가 고른다(engine/gen/models/PROMPTING.md)"
-              },
-              "invariants": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "실사 생성 컷: 바뀌면 안 되는 것(영어) — 얼굴 · 옷 · 무늬 · 소품"
-              },
-              "end_state": {
-                "type": "string",
-                "description": "실사 생성 컷: 마지막 박자의 멈춘 상태(영어) — 새 동작으로 끝내지 않는다"
-              },
-              "must": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "실사 생성 컷: 꼭 지킬 사실(영어, 한 번 보고 확인할 수 있는 문장)"
-              },
-              "avoid": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "실사 생성 컷: 이 장면 특유의 실패(영어 명사) — 부정 칸에 들어간다"
-              },
-              "ref_roles": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "참조 그림마다 역할(영어) — 예: person's face and identity · outfit"
-              },
-              "extend": {
-                "type": "boolean",
-                "description": "가로 사진을 9:16 으로 이어 그릴지(사진 · archive 는 기본 켬, 화면 캡처 image 는 true 일 때만, false 면 끔) — 설정의 '고치기 · 이미지 편집' 모델이 있을 때"
               }
             }
           }
@@ -1652,6 +1562,25 @@
         "surprise": {
           "type": "string",
           "description": "이 장면의 놀라운 사실"
+        },
+        "transition": {
+          "type": "string",
+          "description": "다음 장면으로 넘어가는 방법 — cut(기본) | zoom(이 장면 끝에서 zoom_to 지점의 화면 속으로 빨려 들고 다음 장면이 크게 시작). direction.transition 이 zoom 이면 모든 장면에"
+        },
+        "zoom_to": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "zoom 전환이 빨려 드는 지점 [x, y](0~1, 화면 기준) — 장면 끝 프레임에서 화면 · 창이 있는 곳. 없으면 가운데"
+        },
+        "shot_fn": {
+          "type": "string",
+          "description": "샷 기능(director 스킬): 자리 잡기 · 힘 · 압박 · 디테일 · 반응 · 변화 · 충격 · 여운 · 끝"
         }
       }
     },

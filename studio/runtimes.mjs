@@ -177,7 +177,7 @@ export function makeCodexParser(emit, { onThread, rel }) {
 }
 
 export function codexPrompt(systemPrompt, message) {
-  return `<FLUMA_SYSTEM>\n${systemPrompt}\n\n## 접근 제한 (반드시 지킴)\n- .env · .env.* · ~/.shortsforge/** · ~/.claude/** 는 읽지도 쓰지도 않는다.\n- 쓰기는 data/storyboards/ data/compositions/ data/research/ data/captures/ data/public/ data/audio/ data/characters/ data/workspace/tmp/ 안에서만.\n</FLUMA_SYSTEM>\n\n${message}`;
+  return `<FLUMA_SYSTEM>\n${systemPrompt}\n\n## 접근 제한 (반드시 지킴)\n- .env · .env.* · ~/.shortsforge/** · ~/.claude/** 는 읽지도 쓰지도 않는다.\n- 쓰기는 data/storyboards/ data/compositions/ data/research/ data/captures/ data/public/ data/audio/ data/characters/ data/workspace/tmp/ data/workspace/feel/ data/workspace/concepts/ 안에서만.\n</FLUMA_SYSTEM>\n\n${message}`;
 }
 
 // 과금 안전: '로그인으로 쓰기'(Claude Code · Codex 계정 로그인) 모드에서는 결제 경로를 바꾸는 환경 변수를 지운다.

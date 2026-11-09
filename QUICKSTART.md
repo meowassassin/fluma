@@ -59,6 +59,9 @@ models); anything missing is installed automatically the first time it is used.
 npm --prefix studio run dev     # API on 127.0.0.1:4310, Studio on http://localhost:4311
 ```
 
+If it says the Studio packages are missing, step 2 (`doctor.py --fix`) was skipped — run `npm --prefix studio install` once and start again. Same command on Windows, macOS and Linux.
+
+
 Open the Studio, type a topic on Home and plan the video in chat. Press **Start production** when the storyboard
 looks right — the agent studies reference Shorts, builds the scenes and renders a draft. The editor's Explorer shows
 what the video is made of; ask the agent on the right to change anything.
@@ -88,7 +91,7 @@ python3 engine/doctor.py --fix                   # direct install: new packages 
 ## 3-1. OpenRouter key (optional)
 
 You don't need it — a video comes out end to end on the free local path. With a key, pick a model per capability in **Settings → See · Make · Speak**:
-reference video understanding (on by default once a key is set), image drafts, video generation, paid voices and transcription. Lists and prices come from OpenRouter.
+reference video understanding and draft critique (on by default once a key is set), paid voices, transcription and embeddings. There is no image or video generation (every frame is made locally). Lists and prices come from OpenRouter.
 Within the per-video cap (default $3) nothing asks; above it, or when a price can't be estimated, the agent shows the amount and asks. Spending shows on the same screen.
 An OpenRouter key saved in the agent settings (Models · Providers) is reused.
 

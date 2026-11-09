@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently --kill-others -n api,web -c blue,green \"node server.mjs\" \"vite --port 4311\"",
+    "dev": "node dev.mjs",
     "api": "node server.mjs",
     "build": "vite build",
     "typecheck": "tsc --noEmit -p ."

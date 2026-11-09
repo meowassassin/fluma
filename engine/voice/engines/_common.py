@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
-from platform_util import venv_python as _vp  # noqa: E402
+from platform_util import env_dir, venv_python as _vp  # noqa: E402
 
 
 def venv_python(here: Path) -> Path:
@@ -14,7 +14,7 @@ def venv_python(here: Path) -> Path:
 
 def installed(here: Path) -> bool:
     """설치기(engine/core/install.py)가 끝까지 성공하고 import 확인까지 했을 때만 생기는 표시 — 빈 가상환경을 '사용 가능'으로 보지 않게"""
-    return venv_python(here).exists() and (here / ".installed").exists()
+    return venv_python(here).exists() and ((env_dir(here) / ".installed").exists() or (here / ".installed").exists())
 
 
 def run_engine(here: Path, text: str, out_wav: Path, voice: str, speed: float, timeout: int = 900):

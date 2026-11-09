@@ -27,7 +27,7 @@ from pathlib import Path
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
-from platform_util import ARCH, OS, venv_python, which  # noqa: E402
+from platform_util import ARCH, OS, env_dir, venv_python, which  # noqa: E402
 
 
 def say(msg):
@@ -58,13 +58,14 @@ def pkg_manager():
 # ---------- 방식별 ----------
 def do_venv(folder: Path, st: dict):
     py = venv_python(folder)
+    env_dir(folder).mkdir(parents=True, exist_ok=True)
     uv = which("uv")
     if uv:
-        sh([uv, "venv", "--allow-existing", "--python", st.get("python", "3.12"), str(folder / ".venv")])
+        sh([uv, "venv", "--allow-existing", "--python", st.get("python", "3.12"), str(env_dir(folder) / ".venv")])
         pip = [uv, "pip", "install", "--python", str(py)]
     else:
         say(f"uv 가 없어 표준 venv 로 만듭니다 (권장 파이썬 {st.get('python', '3.12')}, 지금 {sys.version.split()[0]})")
-        sh([sys.executable, "-m", "venv", str(folder / ".venv")])
+        sh([sys.executable, "-m", "venv", str(env_dir(folder) / ".venv")])
         sh([py, "-m", "pip", "install", "-U", "pip"])
         pip = [py, "-m", "pip", "install"]
     pk = list(st.get("packages", []))
@@ -122,9 +123,11 @@ def main():
         if t == "manual":
             raise SystemExit("자동 설치가 어려운 엔진입니다 — 위 명령을 직접 실행하세요")
         return
-    (folder / ".installed").unlink(missing_ok=True)
+    mark = env_dir(folder) / ".installed"                # 설치 표시도 설치물과 같은 곳(볼륨)에
+    mark.parent.mkdir(parents=True, exist_ok=True)
+    mark.unlink(missing_ok=True)
     {"venv": lambda: do_venv(folder, st), "npm": lambda: do_npm(folder, st), "container": lambda: do_container(folder, st, meta), "system": lambda: do_system(folder, st)}[t]()
-    (folder / ".installed").write_text(json.dumps({"os": OS, "arch": ARCH}), encoding="utf-8")
+    mark.write_text(json.dumps({"os": OS, "arch": ARCH}), encoding="utf-8")
     say(f"[완료] {meta.get('title', a.name)} 설치됨")
 
 

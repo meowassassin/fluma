@@ -22,11 +22,9 @@ def form_of(sc: dict) -> str:
         t = m.get("type")
         if m.get("show") is False:                 # 다른 재료의 입력일 뿐 화면에 안 나온다
             continue
-        if t == "form":
-            fs.append(m.get("form"))
         elif t in ("archive", "model3d", "video", "screen", "web", "chart", "doc_quote", "photo", "meme", "live"):
             fs.append(t)
-    return fs[0] if fs else (next((m.get("type") for m in sc.get("materials") or [] if m.get("type") != "cast"), None) or "없음")
+    return fs[0] if fs else (next((m.get("type") for m in sc.get("materials") or [] ), None) or "없음")
 
 
 CLIP_FORMATS = ("ranking", "clip")       # 퍼온 클립 모음: 같은 종류(실사 클립)가 이어지고 연기하는 인물이 없는 게 형식 자체
@@ -48,8 +46,8 @@ def check_all(sb: dict) -> list:
             out.append(("R01", i, f"앞 장면과 같은 형식({a}) — 장면마다 형식을 바꾼다"))
     if len(S) >= 4 and len(set(forms)) < round(len(S) * .7):
         out.append(("R02", None, f"형식 {len(set(forms))}가지뿐(장면 {len(S)}개) — 레퍼런스는 장면마다 다르다"))
-    who = [(str(m.get("kit")) if m.get("type") == "figure" and m.get("kit") else str(m.get("id")).split("_")[0])      # 3D 인물은 같은 kit 이면 같은 사람
-           for s in S for m in s.get("materials") or [] if m.get("type") in ("cast", "art", "relic", "figure")]
+    who = [str(m.get("id")).split("_")[0]                                     # 직접 그린 인물(art)은 id 앞부분이 같으면 같은 사람
+           for s in S for m in s.get("materials") or [] if m.get("type") in ("art", "relic")]
     if len(S) >= 5 and len(set(who)) < 2:
         out.append(("R03", None, f"인물이 {len(set(who))}명 — 영상이 길수록 다른 사람이 나와야 질리지 않는다"))
     if len(S) >= 5 and not who:

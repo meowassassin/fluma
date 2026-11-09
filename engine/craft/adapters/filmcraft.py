@@ -182,7 +182,7 @@ def _v1(fc: str, proj: Path, work: Path) -> list[dict]:
 def trim(m: dict, file: Path, work: Path, info: dict | None = None) -> dict | None:
     """화면 녹화 mp4 를 FilmCraft 로 다듬는다. zoom · blur · speed 칸이 없으면 None(그대로 씀)"""
     zooms, blurs, ranges = list(m.get("zoom") or []), list(m.get("blur") or []), speed_ranges(m.get("speed") or [])
-    grade = m.get("grade") or (m.get("_grade") if m.get("gen") else None)
+    grade = m.get("grade")
     if not (zooms or blurs or ranges or grade):
         return None
     if Path(file).suffix.lower() not in (".mp4", ".mov", ".webm", ".mkv", ".m4v"):

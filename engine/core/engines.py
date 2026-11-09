@@ -170,8 +170,8 @@ def make_job(sb_path: Path, engine: str | None = None, template: str | None = No
     sb_path = Path(sb_path).resolve()
     sb = json.loads(sb_path.read_text(encoding="utf-8"))
     from craft.design import apply_art
-    from craft.forms import expand_sb
-    expand_sb(sb)                                         # 형식 · 실제 자료 · 인물 → 앱 재료
+    from craft.expand import expand_sb
+    expand_sb(sb)                                         # 실제 자료(archive) · 다듬기 레시피 → 앱 재료
     apply_art(sb)
     engine = engine or sb.get("engine") or DEFAULT_ENGINE
     engine_meta(engine)

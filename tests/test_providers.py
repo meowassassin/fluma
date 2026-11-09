@@ -50,38 +50,29 @@ def env(tmp_path, monkeypatch):
 
 
 def test_lists_only_usable_models_per_capability(env):
-    vids = {r["id"]: r for r in catalog.models("make.video")}
-    assert vids["google/veo-3.1-lite"]["ok"] and not vids["minimax/hailuo-2.3"]["ok"]          # 9:16 못 하는 모델은 고를 수 없게
-    assert vids["runway/gen-4.5"]["price_label"].startswith("초당 $0.120")                      # 센트 단위 → 달러
-    assert "영상 토큰" in vids["bytedance/seedance-2.5"]["price_label"]
     assert [r["id"] for r in catalog.models("see.video")] == ["google/gemini-4-argon"]           # 영상 입력 되는 것만
-    imgs = {r["id"]: r for r in catalog.models("edit.image")}
-    assert imgs["bytedance-seed/seedream-5-0-lite"]["ok"] and not imgs["x/square-only"]["ok"]
     assert catalog.models("embed")[0]["free"]
+    assert "make.video" not in catalog.CAPS and "make.image" not in catalog.CAPS and "edit.image" not in catalog.CAPS   # 생성은 없앴다 — 완전 로컬
 
 
 def test_chosen_model_order_and_local_and_no_key(env, monkeypatch):
     assert catalog.chosen("see.video") == "google/gemini-4-argon"                                # VL 은 기본 켬
-    assert catalog.chosen("make.video") is None                                                  # 생성은 고르기 전엔 로컬(프롬프트만)
     (env / "settings.json").write_text(json.dumps({"models": {"make.video": "runway/gen-4.5", "see.video": "local"}}))
-    assert catalog.chosen("make.video") == "runway/gen-4.5" and catalog.chosen("see.video") is None
-    sb = {"direction": {"models": {"make.video": "google/veo-3.1-lite"}}}
-    assert catalog.chosen("make.video", sb) == "google/veo-3.1-lite"                             # 영상마다 바꾸기
+    assert catalog.chosen("make.video") is None and catalog.chosen("see.video") is None         # 예전 설정이 남아도 생성은 없다
+    sb = {"direction": {"models": {"see.video": "google/gemini-4-argon"}}}
+    assert catalog.chosen("see.video", sb) == "google/gemini-4-argon"                             # 영상마다 바꾸기
     monkeypatch.setattr(OR, "key", lambda: "")
-    assert catalog.chosen("make.video", sb) is None                                              # 키가 없으면 전부 로컬
+    assert catalog.chosen("see.video", sb) is None                                                # 키가 없으면 전부 로컬
 
 
-def test_video_estimate_and_budget_gate(env):
-    assert catalog.estimate_video("google/veo-3.1-lite", 6, "720p", audio=True) == 0.3
-    assert catalog.estimate_video("google/veo-3.1-lite", 6, "720p", audio=False) == 0.18
-    assert catalog.estimate_video("bytedance/seedance-2.5", 5) is None                           # 토큰 단위 = 예상 불가
-    catalog.guard("v1", "make.video", "m", 2.0, "x")                                             # 상한 $3 안
-    catalog.record("v1", "make.video", "m", 2.5, "x")
+def test_budget_gate(env):
+    catalog.guard("v1", "see.video", "m", 2.0, "x")                                              # 상한 $3 안
+    catalog.record("v1", "see.video", "m", 2.5, "x")
     with pytest.raises(catalog.NeedApproval):
-        catalog.guard("v1", "make.video", "m", 1.0, "x")                                         # 2.5 + 1.0 > 3
+        catalog.guard("v1", "see.video", "m", 1.0, "x")                                          # 2.5 + 1.0 > 3
     with pytest.raises(catalog.NeedApproval):
-        catalog.guard("v2", "make.video", "m", None, "x")                                        # 예상 불가는 늘 승인
-    catalog.guard("v1", "make.video", "m", 1.0, "x", approve=True)
+        catalog.guard("v2", "see.video", "m", None, "x")                                         # 예상 불가는 늘 승인
+    catalog.guard("v1", "see.video", "m", 1.0, "x", approve=True)
     assert catalog.spent("v1") == 2.5 and catalog.spent("v2") == 0
 
 
@@ -95,19 +86,8 @@ def test_request_shapes_follow_official_docs(env, monkeypatch, tmp_path):
 
     def fake_post(path, body, timeout=0):
         sent.append((path, body))
-        if path == "images":
-            return R({"data": [{"b64_json": "iVBORw0KGgo=", "media_type": "image/png"}], "usage": {"cost": 0.03}})
-        if path == "videos":
-            return R({"id": "job1", "status": "pending"})
         return R({"choices": [{"message": {"content": "{}"}}], "usage": {"cost": 0.001}})
     monkeypatch.setattr(OR, "post", fake_post)
-    img = tmp_path / "k.png"; img.write_bytes(b"\x89PNG")
-    r = OR.make_image("m/img", "a cat", tmp_path / "out", refs=[img])
-    assert r["file"].suffix == ".png" and r["cost"] == 0.03
-    assert sent[-1][1]["input_references"][0]["image_url"]["url"].startswith("data:image/png;base64,")
-    OR.video_submit("m/vid", "walk", duration=6, resolution="720p", first_frame=img, audio=False)
-    b = sent[-1][1]
-    assert b["aspect_ratio"] == "9:16" and b["frame_images"][0]["frame_type"] == "first_frame" and b["generate_audio"] is False
     OR.see("m/vl", "what happens?", videos=["https://www.youtube.com/watch?v=abc"])
     assert sent[-1][1]["messages"][0]["content"][1] == {"type": "video_url", "video_url": {"url": "https://www.youtube.com/watch?v=abc"}}
 
@@ -115,4 +95,4 @@ def test_request_shapes_follow_official_docs(env, monkeypatch, tmp_path):
 def test_no_key_never_calls_paid_api(monkeypatch):
     monkeypatch.setattr(OR, "key", lambda: "")
     with pytest.raises(OR.ProviderError):
-        OR.post("videos", {})
+        OR.post("chat/completions", {})

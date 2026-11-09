@@ -21,7 +21,8 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
-YTDLP = str(ROOT / ".venv" / "bin" / "yt-dlp") if (ROOT / ".venv" / "bin" / "yt-dlp").exists() else "yt-dlp"
+from platform_util import venv_tool  # noqa: E402
+YTDLP = venv_tool("yt-dlp")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
 ORIGINAL = re.compile(r"오리지널 사운드|원본 사운드|original sound|original audio", re.I)
 

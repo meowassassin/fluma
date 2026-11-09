@@ -132,10 +132,7 @@ def material_checks(sb: dict) -> list:
     out = []
     # L36 사용자 녹화 대기: 자동으로 못 찍는 화면 — 사용자에게 부탁하고(무엇을 · 몇 초 · 어디에 올리는지) 받은 뒤 다시 렌더
     for r in recs:
-        if r.get("missing") and (r.get("spec") or {}).get("gen"):
-            out.append(("L36", r.get("scene"), f"실사 생성 컷 '{r.get('id')}' 을 기다림: `python3 engine/gen/genclip.py prompts data/storyboards/{sb['id']}.json` 의 그림 → 영상 프롬프트를 사용자에게 주고, "
-                                               f"그림('{r.get('id')}.png') · 클립('{r.get('id')}.mp4')을 올려 달라고 부탁. 받기 전 초안은 이 컷 없이 렌더됨"))
-        elif r.get("missing"):
+        if r.get("missing"):
             out.append(("L36", r.get("scene"), f"사용자 녹화가 필요: {r.get('ask')} → 편집기에 파일을 올려 달라고 부탁(이름에 '{r.get('id')}' 포함). 받기 전 초안은 이 재료 없이 렌더됨"))
     # 주석 오버레이는 대상 화면 위에 얹힐 뿐 새 화면이 아니다 — 종류 · 개수 · 전환 수에 세지 않는다
     notes = [r for r in recs if not r.get("missing") and r.get("type") == "overlay"]
@@ -207,6 +204,8 @@ def material_spec_checks(sb: dict) -> list:
                 out.append(("L39", i, f"{tag}: id 에 '.' · '/' 를 쓰지 않는다(재료 폴더 정리가 파일 이름의 첫 '.' 앞을 id 로 본다)"))
             if mid in seen:
                 out.append(("L39", i, f"{tag}: 같은 장면에 id 가 겹침"))
+            if m.get("gen"):                   # 생성(실사 영상 · 그림) 경로는 없앴다(2026-11-09) — 완전 로컬: 퍼온 클립 · 스톡 · 사진 · 화면 녹화 · Craft 그림으로
+                out.append(("L39", i, f"{tag}: 생성 재료(gen)는 쓰지 않는다 — 퍼온 클립(clip.py) · 스톡(stock) · 사진 · 화면 녹화(web) · Craft 그림(illustration · figure)으로 바꾼다"))
             def need(*keys, what=""):
                 if not any(m.get(x) not in (None, "", [], {}) for x in keys):
                     out.append(("L39", i, f"{tag}: {' 또는 '.join(keys)} 가 필요{(' — ' + what) if what else ''}"))
@@ -450,6 +449,18 @@ def lint(sb: dict, recent_titles=None) -> list:
     fails += material_checks(sb)
     # L39 재료 칸(필수 칸 · overlay 대상 · drawing 모형 · 가상 화면 표시) — 렌더 전에 콘티만으로
     fails += material_spec_checks(sb)
+    # L41 감독 없음 — 나레이션이 없으면 강조(확대 · 멈춤)가 저절로 생기지 않는다. 화면 녹화 장면에 감독이 짚은 곳이 하나도 없으면 같은 구도의 같은 창이 이어진다(2026-11-09 git 영상: 슬롭)
+    if not any(str(x.get("narration") or "").strip() for x in sb.get("scenes") or []):
+        flat = []
+        for i, sc in enumerate(sb.get("scenes") or []):
+            mats = [m for m in sc.get("materials") or [] if isinstance(m, dict)]
+            screens = [m for m in mats if m.get("type") in ("web", "screen")]
+            directed = any(b.get("do") == "확대" for b in sc.get("beats") or [] if isinstance(b, dict)) or any(m.get("zoom") or m.get("focus") or m.get("highlight") for m in screens)
+            if screens and not directed:
+                flat.append(i + 1)
+        if len(flat) >= 2:
+            fails.append(("L41", None, f"나레이션 없는 영상인데 화면 장면 {', '.join(map(str, flat))} 에 감독이 짚은 곳이 없음 — 장면마다 보는 사람이 봐야 할 한 곳을 정해 "
+                                       "재료 zoom([{t, box, dur}]) 또는 장면 beats [{\"do\": \"확대\", \"t\": 초}] 로 다가가고, 반전은 멈춤 · 소리로(director 스킬)"))
     # L38 스톡 영상 재료: 검색어(영어가 잘 찾힘)가 있어야 받는다 · 키가 없으면 미리 알린다(렌더 중에 멈추지 않게)
     stocks = [(i, m) for i, sc in enumerate(sb.get("scenes") or []) for m in (sc.get("materials") or []) if isinstance(m, dict) and m.get("type") == "stock"]
     for i, m in stocks:

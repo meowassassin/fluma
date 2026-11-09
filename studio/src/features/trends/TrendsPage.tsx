@@ -90,7 +90,7 @@ export const TrendsPage: React.FC = () => {
           {requests.map((r) => (
             <span key={r.id} className={cx("rq", req === r.id && "on", (r.status === "failed" || r.status === "stopped") && "bad")}>
               <button className="rq-b" title={r.text} onClick={() => setReq(req === r.id ? null : r.id)}>
-                {r.status === "running" && <FlumaBounce s={11} />}{r.label} <em>{all.filter((x) => x.request === r.id).length}</em>
+                {r.status === "running" && <FlumaBounce s={11} />}<span className="rq-l">{r.label}</span> <em>{all.filter((x) => x.request === r.id).length}</em>
                 {(r.status === "failed" || r.status === "stopped") && <span className="rq-x" title={r.error || t("중간에 끊김")}>{t("끊김")}</span>}
               </button>
               {r.status !== "running" && <button className="rq-del" aria-label={t("요청 {label} 지우기", { label: r.label })} onClick={() => dropRequest(r).then(() => { if (req === r.id) setReq(null); })}><Icon n="close" s={11} /></button>}

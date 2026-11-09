@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """미리 보기(프리비즈) — 녹화 · 생성에 시간과 돈을 쓰기 전에, 콘티만으로 '대충 만든' 영상을 뽑아 구성 · 타이밍 · 웃음 포인트를 본다.
-재료가 아직 없는 자리는 회색 카드(무엇이 들어갈지 · 실사 생성이면 추정 비용)로, 자막 배치 · 제목 띠 · 펀치라인 · 음성 · 박자는 실제와 같게.
+재료가 아직 없는 자리는 회색 카드(무엇이 들어갈지)로, 자막 배치 · 제목 띠 · 펀치라인 · 음성 · 박자는 실제와 같게.
 
   python3 engine/story/previz.py grammar data/storyboards/<id>.json      # 참고 쇼츠 스타일 카드의 자막 항목 → 콘티 grammar(고정 제목 · 펀치라인 · 상황 괄호 · 반응 자막 · 속마음 · 영상 칸)
   python3 engine/story/previz.py render data/storyboards/<id>.json       # 음성(없으면 무료 Edge) → data/out/<id>-previz.mp4 (540p, 빠름)

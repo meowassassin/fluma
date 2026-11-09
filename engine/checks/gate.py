@@ -4,7 +4,7 @@
   python3 engine/checks/gate.py status <id>              # 지금 어디까지 확인됐나
   python3 engine/checks/gate.py intent <id>              # 사용자가 의도 카드(콘티 intent)를 확인했다 — 사용자가 채팅 · 버튼으로 '좋다'고 한 뒤에만
   python3 engine/checks/gate.py draft  <id>              # 사용자가 시안(render.py --draft --scenes 1-3)을 보고 '좋다'고 했다
-  python3 engine/checks/gate.py check  <id> --for render|gen   # render.py(최종)가 부른다 — 막히면 종료 코드 3
+  python3 engine/checks/gate.py check  <id> --for render   # render.py(최종)가 부른다 — 막히면 종료 코드 3
 
 왜: 레퍼런스 느낌 · 말투 · 화면을 사용자 의도와 다르게 잡은 채 전체를 만들고 고치면 공수가 커지고,
     실사 생성(Seedance · Wan …)은 한 번마다 돈이 든다(2026-11-02 바이낸스 영상: 수정 요청 약 20번 · 나레이션 18번 다시 합성).
@@ -86,7 +86,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmd", choices=["status", "intent", "draft", "check"])
     ap.add_argument("id")
-    ap.add_argument("--for", dest="purpose", choices=["render", "gen"], default="render")
+    ap.add_argument("--for", dest="purpose", choices=["render"], default="render")
     ap.add_argument("--by", default="chat", help="누가 확인했나(chat · button)")
     a = ap.parse_args()
     sp, sb = sb_of(a.id)
@@ -114,7 +114,7 @@ def main():
         print(json.dumps(st, ensure_ascii=False)); return
     missing = [k for k in ("intent", "draft") if not st[k]]
     if missing:
-        what = "최종 렌더" if a.purpose == "render" else "유료 생성"
+        what = "최종 렌더"
         print(f"[관문] {what} 전에 사용자 확인이 필요합니다:\n  " + "\n  ".join(st["why"]), file=sys.stderr)
         sys.exit(3)
     print(json.dumps({"ok": True}, ensure_ascii=False))

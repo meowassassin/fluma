@@ -1,30 +1,23 @@
 #!/usr/bin/env python3
-"""느낌(룩) 단계 — 실사 생성이든 로컬 제작이든, 영상 전체의 느낌(현실 다큐 · 몽환 · 필름 · 차가운 테크 …)을 사용자가 시안을 보고 고른다.
-어떤 느낌을 제안할지, 실사 생성 컷이 필요한지는 에이전트(Claude)가 주제 · 레퍼런스 · 콘셉트를 보고 판단해 적는다. 코드는 칸 검사 · 시안 렌더 · 적용만.
+"""느낌(룩) 단계 — 영상 전체의 느낌(현실 다큐 · 몽환 · 필름 · 차가운 테크 …)을 사용자가 시안을 보고 고른다. 완전 로컬(생성 없음).
+어떤 느낌을 제안할지는 에이전트(Claude)가 주제 · 레퍼런스 · 콘셉트를 보고 판단해 적는다. 코드는 칸 검사 · 시안 렌더 · 적용만.
 
   python3 engine/story/feel.py check <id>                 # 안 파일 검사
-  python3 engine/story/feel.py preview <id> [--approve]   # 시안 → data/out/feel-<id>.png
-        그리기 모델(설정 → 모델)이 있으면: 안마다 대표 장면(scene_en)을 그 느낌으로 **실제로 그린 그림** 한 장씩(비용 관문 — 상한 안이면 그대로)
-        + 같은 장면 실제 자료에 안마다 색 · 질감을 입힌 줄. 없으면 입힌 줄만(무료)
-  python3 engine/story/feel.py pick <id> <번호|이름> <콘티.json>   # 사용자가 고른 안을 콘티 direction.feel · route 에 — 사용자가 고를 때만
+  python3 engine/story/feel.py preview <id>               # 시안 → data/out/feel-<id>.png(실제 자료에 안마다 색 · 질감을 입힌 줄, 맨 왼쪽은 원본 · 무료)
+  python3 engine/story/feel.py pick <id> <번호|이름> <콘티.json>   # 사용자가 고른 안을 콘티 direction.feel 에 — 사용자가 고를 때만
 
 안 파일: data/workspace/feel/<id>.json
-  {"route": "local | mixed | gen",            # local = 실제 자료만 · mixed = 일부 컷만 실사 생성(프롬프트) · gen = 대부분 생성
-   "route_why": "왜 — 실제 자료로 안 되는 컷이 무엇인가",
-   "gen_scenes": [3, 5],                      # mixed 일 때 생성할 장면 번호(1부터)
-   "options": [{                              # 2~4안, 서로 멀리
+  {"options": [{                              # 2~4안, 서로 멀리
      "name": "새벽 다큐", "why": "레퍼런스 3편이 모두 … / 콘셉트의 한 방이 …",
-     "style_en": "documentary photorealism, 35mm film look", "mood_en": "quiet, intimate", "color_en": "muted teal and warm skin tones",
+     "style_en": "documentary, 35mm film look", "mood_en": "quiet, intimate", "color_en": "muted teal and warm skin tones",
      "lighting_en": "soft window light, low contrast",
      "grade": {"temp": 0.1, "contrast": 1.05, "saturation": 0.85, "brightness": 0.0, "lift": 0.2, "grain": 0.3, "bloom": 0.0,
                "vignette": 0.3, "mono": false}}],
-   "preview_images": ["data/public/uploads/<id>/a.jpg"],   # (선택) 시안에 쓸 그림 — 없으면 올린 그림 · 재료 · 레퍼런스 장면에서 고른다
-   "scene_en": "a ginger cat on a rainy window ledge at dusk, looking back",   # 그리기 시안의 대표 장면(영어) — 실사 생성 컷이면 그 컷
-   "for_mid": "walk"                          # (선택) 고른 안의 그림을 이 생성 컷의 키프레임(첫 프레임)으로 — 그 그림에서 영상을 만든다
+   "preview_images": ["data/public/uploads/<id>/a.jpg"]   # (선택) 시안에 쓸 그림 — 없으면 올린 그림 · 재료 · 레퍼런스 장면에서 고른다
   }
 grade 범위: temp -1(차갑게)~1(따뜻하게) · contrast 0.6~1.6 · saturation 0~2 · brightness -0.3~0.3 · lift 0~1(검정 띄우기 · 필름) ·
            grain 0~1 · bloom 0~1(번짐 · 몽환) · vignette 0~1 · mono
-고른 느낌은 실사 재료(영상 · 스톡 · 사진 · 생성 클립)에 같은 색 · 질감으로 입혀지고(materials.py), 실사 생성 프롬프트의 style · mood · color · lighting 이 된다(gen/shotplan.py).
+고른 느낌은 실제 재료(영상 · 스톡 · 사진)에 같은 색 · 질감으로 입혀진다(materials.py). 그림 · 영상 생성은 2026-11-09 에 없앴다.
 """
 from __future__ import annotations
 
@@ -40,7 +33,6 @@ sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401
 from result import fail, ok  # noqa: E402
 
 STORE = ROOT / "data" / "workspace" / "feel"
-ROUTES = {"local", "mixed", "gen"}
 RANGE = {"temp": (-1, 1), "contrast": (0.6, 1.6), "saturation": (0, 2), "brightness": (-0.3, 0.3), "lift": (0, 1),
          "grain": (0, 1), "bloom": (0, 1), "vignette": (0, 1)}
 TEXT = ("name", "why", "style_en", "mood_en", "color_en", "lighting_en")
@@ -93,12 +85,6 @@ def apply(src: Path, g: dict, dst: Path) -> Path:
 
 def check(d: dict) -> tuple[list, list]:
     bad, note = [], []
-    if d.get("route") not in ROUTES:
-        bad.append(f"route 는 {' · '.join(sorted(ROUTES))} 중 하나")
-    if not str(d.get("route_why") or "").strip():
-        bad.append("route_why 가 비었음 — 실제 자료로 되는지 · 안 되는 컷이 무엇인지")
-    if d.get("route") == "mixed" and not d.get("gen_scenes"):
-        bad.append("mixed 면 gen_scenes(생성할 장면 번호)")
     ops = d.get("options") or []
     if not 2 <= len(ops) <= 4:
         bad.append(f"안은 2~4개 — 지금 {len(ops)}개")
@@ -183,51 +169,17 @@ def preview_sources(fid: str, d: dict, td: Path, n: int = 3) -> list[Path]:
     return out
 
 
-def gen_dir(fid: str) -> Path:
-    return STORE / fid
-
-
-def generate(fid: str, d: dict, approve: bool = False) -> list[Path | None]:
-    """그리기 모델로 안마다 대표 장면 한 장 — 이미 그린 같은 프롬프트는 다시 그리지 않는다(돈 아끼기)"""
-    import catalog
-    import openrouter as OR
-    model = catalog.chosen("make.image")
-    if not model or not str(d.get("scene_en") or "").strip():
-        return []
-    out_d = gen_dir(fid)
-    out_d.mkdir(parents=True, exist_ok=True)
-    todo, got = [], []
-    for i, o in enumerate(d["options"]):
-        prompt = (f"{d['scene_en'].rstrip('.')}. Style: {o['style_en']}. Mood: {o['mood_en']}. Colors: {o['color_en']}. Lighting: {o['lighting_en']}. "
-                  "Vertical 9:16 photograph-like frame for a YouTube Short, the lower third calm for captions. No text, no captions, no logos, no watermark.")
-        key = __import__("hashlib").sha1(f"{model}|{prompt}".encode()).hexdigest()[:10]
-        have = next(iter(sorted(out_d.glob(f"opt{i + 1}-{key}.*"))), None)
-        got.append(have)
-        if not have:
-            todo.append((i, prompt, key))
-    if todo:
-        each = catalog.estimate_image(model)
-        catalog.guard(fid, "make.image", model, None if each is None else round(each * len(todo), 4), f"느낌 시안 {len(todo)}장", approve)
-        for i, prompt, key in todo:
-            r = OR.make_image(model, prompt, out_d / f"opt{i + 1}-{key}", aspect="9:16")
-            catalog.record(fid, "make.image", model, r["cost"], f"느낌 시안 {i + 1}", est=each)
-            got[i] = r["file"]
-    return got
-
-
-def preview(fid: str, d: dict, approve: bool = False) -> Path:
-    """맨 위 줄 = 안마다 실제로 그린 시안(그리기 모델이 있을 때), 아래 줄 = 같은 실제 자료에 느낌을 입힌 것 — 맨 왼쪽은 원본"""
+def preview(fid: str, d: dict) -> Path:
+    """같은 실제 자료에 안마다 느낌(색 · 질감)을 입힌 시트 — 맨 왼쪽은 원본(무료 · 로컬)"""
     from PIL import Image, ImageDraw, ImageFont
     td_ = tempfile.TemporaryDirectory()
-    made = generate(fid, d, approve)
     srcs = preview_sources(fid, d, Path(td_.name))
-    if not srcs and not any(made):
+    if not srcs:
         fail("feel", stage="feel", error="시안에 쓸 그림이 없습니다 — 레퍼런스 X-ray 를 하거나, 장면 사진을 올리거나, preview_images 를 적으세요")
     ops = d["options"]
     W, H, pad, head = 270, 480, 12, 70
     cols = 1 + len(ops)
-    rows_n = len(srcs) + (1 if any(made) else 0)
-    sheet = Image.new("RGB", (pad + cols * (W + pad), head + rows_n * (H + pad) + pad), (18, 18, 22))
+    sheet = Image.new("RGB", (pad + cols * (W + pad), head + len(srcs) * (H + pad) + pad), (18, 18, 22))
     dr = ImageDraw.Draw(sheet)
     font = None
     for fp in (ROOT / "engine" / "assets" / "fonts").glob("Pretendard-Bold*"):
@@ -241,20 +193,6 @@ def preview(fid: str, d: dict, approve: bool = False) -> Path:
         dr.text((x, 14), t, fill=(240, 240, 240), font=font)
         dr.text((x, 44), sub, fill=(150, 150, 160), font=small)
     top = 0
-    if any(made):                                  # 생성 시안 줄: 왼쪽 칸에 설명
-        x0, y0 = pad, head
-        dr.rectangle([x0, y0, x0 + W, y0 + H], fill=(30, 30, 36))
-        dr.text((x0 + 14, y0 + 16), "그린 시안", fill=(240, 240, 240), font=font)
-        dr.text((x0 + 14, y0 + 50), (d.get("scene_en") or "")[:60], fill=(150, 150, 160), font=small)
-        for c, f in enumerate(made, 1):
-            if f:
-                with Image.open(f) as im:
-                    im = im.convert("RGB")
-                    ratio = max(W / im.width, H / im.height)
-                    im = im.resize((int(im.width * ratio) + 1, int(im.height * ratio) + 1))
-                    l, t_ = (im.width - W) // 2, (im.height - H) // 2
-                    sheet.paste(im.crop((l, t_, l + W, t_ + H)), (pad + c * (W + pad), head))
-        top = 1
     with tempfile.TemporaryDirectory() as td:
         for r, src in enumerate(srcs):
             base = Path(td) / f"s{r}.png"
@@ -275,7 +213,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("check").add_argument("id")
-    pv = sub.add_parser("preview"); pv.add_argument("id"); pv.add_argument("--approve", action="store_true", help="사용자가 금액을 보고 승인했을 때만")
+    sub.add_parser("preview").add_argument("id")
     p = sub.add_parser("pick"); p.add_argument("id"); p.add_argument("which"); p.add_argument("storyboard")
     a = ap.parse_args()
     d = _load(a.id)
@@ -283,15 +221,11 @@ def main() -> int:
     if bad:
         fail("feel", stage="feel", error=" / ".join(bad[:12]), notes=note)
     if a.cmd == "check":
-        ok("feel", options=len(d["options"]), route=d["route"], notes=note)
+        ok("feel", options=len(d["options"]), notes=note)
         return 0
     if a.cmd == "preview":
-        import catalog
-        try:
-            out = preview(a.id, d, a.approve)
-        except catalog.NeedApproval as e:
-            fail("feel", stage="feel", error=f"승인 필요: {e}", notes=["승인 없이 무료 시안(색 · 질감만)을 보려면 설정 → 모델 → 그리기를 '무료 · 로컬'로"])
-        ok("feel", sheet=out.relative_to(ROOT).as_posix(), options=[o["name"] for o in d["options"]], route=d["route"])
+        out = preview(a.id, d)
+        ok("feel", sheet=out.relative_to(ROOT).as_posix(), options=[o["name"] for o in d["options"]], media=[f"{out.relative_to(ROOT).as_posix()} | 느낌 시안"])
         return 0
     ops = d["options"]
     o = ops[int(a.which) - 1] if a.which.isdigit() and 1 <= int(a.which) <= len(ops) else next((x for x in ops if x.get("name") == a.which), None)
@@ -302,23 +236,8 @@ def main() -> int:
     sb = json.loads(sp.read_text("utf-8"))
     dr = sb.setdefault("direction", {})
     dr["feel"] = {k: o.get(k) for k in (*TEXT, "grade")}
-    dr["route"] = d["route"]
-    if d.get("gen_scenes"):
-        dr["gen_scenes"] = d["gen_scenes"]
     sp.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", "utf-8")
-    key = None
-    i = ops.index(o) + 1
-    drawn = next(iter(sorted(gen_dir(a.id).glob(f"opt{i}-*.*"))), None) if gen_dir(a.id).exists() else None
-    if drawn and d.get("for_mid"):                 # 고른 안의 그린 시안 = 그 생성 컷의 키프레임(첫 프레임) → 그 그림에서 영상을 만든다
-        up = ROOT / "data" / "public" / "uploads" / sb["id"]
-        up.mkdir(parents=True, exist_ok=True)
-        for old in up.glob(f"{d['for_mid']}.*"):
-            if old.suffix.lower() in IMG:
-                old.unlink()
-        dst = up / f"{d['for_mid']}{drawn.suffix}"
-        dst.write_bytes(drawn.read_bytes())
-        key = dst.relative_to(ROOT).as_posix()
-    ok("feel", picked=o["name"], route=d["route"], keyframe=key)
+    ok("feel", picked=o["name"])
     return 0
 
 

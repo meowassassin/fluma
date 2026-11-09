@@ -202,17 +202,6 @@ def main():
         ix = parse_scenes(a.scenes, len(job.sb["scenes"]))
         offset, job = job.scenes[ix[0]]["start"], sub_job(job, ix)
         tag += f"-s{ix[0] + 1}" + (f"-{ix[-1] + 1}" if len(ix) > 1 else "")
-    # 장면 설계도의 에셋 권리: 참고용(분해도 누끼 등) · 권리 미상 에셋을 쓰는 노드가 있으면 최종 렌더를 막는다(초안 · 미리보기는 허용)
-    gp = ROOT / "data" / "scenes" / f"{job.sb['id']}.scene.json"
-    if gp.exists() and not a.build and not a.draft and json.loads(gp.read_text(encoding="utf-8")).get("fidelity") == "sketch":
-        print("[애니메틱] 설계도가 스케치 단계 — 연필 밑그림 영상으로 렌더합니다(참고용 에셋 허용, 공개용 아님)")
-    elif gp.exists() and not a.build and not a.draft:
-        g = json.loads(gp.read_text(encoding="utf-8")); assets = g.get("assets") or {}
-        used = {n["asset"] for sc in g.get("scenes", []) for n in sc.get("nodes", []) if n.get("asset")}
-        bad = [f"{k}({assets[k].get('src')}) — {assets[k].get('rights', {}).get('status', 'unknown')}" for k in sorted(used)
-               if k in assets and assets[k].get("rights", {}).get("status", "unknown") in ("reference-only", "unknown")]
-        if bad:
-            sys.exit("쓸 권리가 확인되지 않은 에셋이 있어 최종 렌더를 멈춥니다:\n  " + "\n  ".join(bad) + "\n설계도에서 rights 를 own · licensed · cc0 · cc-by · generated 로 확인하거나 그 노드를 빼세요")
     eng = ensure(job.engine)
     print(f"[엔진] {job.engine} · 템플릿 {job.template} · {job.duration:.1f}s{' · 초안' if a.draft else ''}{' · 장면 ' + a.scenes if a.scenes else ''}")
     if a.build:
@@ -227,6 +216,7 @@ def main():
     print(f"[완료] {out}")
     if a.draft and not a.scenes and not os.environ.get("FLUMA_PREVIZ"):   # 미리 보기는 편집 밀도를 재지 않는다(자리표시 카드라)
         density(job.sb, sb_path, out)
+        critique(job.sb, out)
     if not a.scenes and not os.environ.get("FLUMA_PREVIZ"):   # 템포(첫 1초 · 멈춤 · 말 끊김 · 컷 밀도) — 넘기지 않고 보게 하는 기본기
         try:
             import tempo_check
@@ -240,6 +230,34 @@ def main():
         except Exception as e:   # 검사 실패가 렌더를 막지 않게
             print(f"[템포] 검사하지 못함: {e}")
     done(out, a)
+
+
+def critique(sb: dict, out: Path) -> None:
+    """초안이 나오면 보기(VL) 모델이 바로 본다 — 계획(전환 · 글자 · 연출)이 실제로 화면에 나왔는지, 어색한 곳은 어디인지.
+    2026-11-09: 계획한 '끊김 없는 줌' · 큰 세리프 글자가 초안에서 빠졌는데 아무도 몰랐다(비평이 초안 파일 이름을 못 찾아 돌지 않음).
+    보기 모델이 없거나 한도를 넘으면 건너뛴다(렌더는 그대로)."""
+    sys.path.insert(0, str(ROOT / "engine" / "providers"))
+    try:
+        import catalog
+        import see
+        if not catalog.chosen("see.video", sb):
+            return
+        print("[VL 비평] 보기 모델이 초안을 봅니다…", flush=True)
+        d = see.critique(sb["id"], str(out))
+    except SystemExit as e:
+        print(f"[VL 비평] 건너뜀: {e}"); return
+    except Exception as e:  # noqa: BLE001 — 승인 필요 · 네트워크 · 모델 오류가 렌더를 막지 않게
+        print(f"[VL 비평] 건너뜀: {str(e)[:300]}"); return
+    issues = sorted(d.get("issues") or [], key=lambda i: {"high": 0, "mid": 1}.get(i.get("severity"), 2))
+    print(f"[VL 비평] {str(d.get('overall') or '')[:400]}")
+    an = d.get("anchor") if isinstance(d.get("anchor"), dict) else None
+    if an:
+        print(f"   기준점 {an.get('score')}/10 — 다른 점: {' · '.join(str(x) for x in an.get('misses') or []) or '없음'}")
+    for i in issues[:10]:
+        t = i.get("t") or []
+        when = f"{t[0]}~{t[1]}초" if isinstance(t, list) and len(t) == 2 else ""
+        print(f"   {'✗' if i.get('severity') == 'high' else '△'} 장면 {i.get('scene', '?')} {when} {i.get('what', '')} → {i.get('fix', '')}")
+    print(f"   전체: data/workspace/critique/{sb['id']}.json — high 부터 고치고 다시 초안 렌더")
 
 
 def done(out, a) -> None:

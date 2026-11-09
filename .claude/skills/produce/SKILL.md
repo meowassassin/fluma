@@ -28,7 +28,7 @@ order: 2
 ## 순서
 0. **레퍼런스 먼저(건너뛰지 않는다 — 검사 L30)**: 콘티에 `reference` 가 없으면 만들기 전에
    - trends 스킬로 같은 주제 · 형식의 실제 쇼츠를 찾는다: `python3 engine/research/trends.py search --queries "<주제 검색어 2~3개>" --label "<주제>" --limit 8`
-   - 조회수 높은 2~3편을 분해: `python3 engine/research/analyze_ref.py <영상 id> --n 4`(서버 작업 · 끝난 단계는 건너뜀) → `data/public/trends/channels/<채널>/channel.md` 를 끝까지 읽는다
+   - 조회수 높은 2~3편을 분해: `python3 engine/research/analyze_ref.py <영상 id> --channel 3`(서버 작업 · 끝난 단계는 건너뜀) → `data/public/trends/channels/<채널>/channel.md` 를 끝까지 읽는다
    - 거기서 가져온다: **문장 끝 비율 · 이음말 · 첫 문장 방식**(대사), **컷 길이 · 문장당 화면 수**(리듬), **화면 종류 비율 · 배경 · 자막 위치**(화면). 내용 · 대사 · 그림은 베끼지 않는다
    - 콘티 `reference: ["<id>", …]` 에 걸고, 대사를 그 채널 말투로 다시 쓴다(storyboard 스킬 '레퍼런스가 있으면' 절). 사용자가 레퍼런스 없이 하라고 했을 때만 `reference_skip: "<사용자 말>"`
    - 대사는 소리 내어 읽듯: 명사로 끊지 않고(…쓴 말. ✗ → …썼대요 ✓), 존댓말 · 반말을 섞지 않는다(검사 L31)
@@ -97,31 +97,12 @@ order: 2
 - **같은 재료, 다른 앱**: 재료에 `"method": "<앱>"`(또는 direction.methods) — 예: 차트를 DeckCraft 차트 엔진으로 `{"type": "chart", "method": "deckcraft", "kind": "pie", …}`. 가능한 앱은 `materials.methods()` · lint L39 가 알려 준다. DeckCraft 막대 차트는 세로축이 0 부터가 아닐 수 있어 기준선이 중요한 비교는 기본 방법.
 
 ## 느낌(룩) — 실사 재료에 같은 색 · 질감
-- 콘티 `direction.feel`(plan 0.5턴에서 사용자가 시안을 보고 고른 것)이 있으면 실사 재료(영상 · 스톡 · 사진 · 생성 클립)에 같은 grade 가 자동으로 입혀진다(materials.py → engine/story/feel.py). 글자 · 그래픽에는 입히지 않는다.
+- 콘티 `direction.feel`(plan 0.5턴에서 사용자가 시안을 보고 고른 것)이 있으면 실제 재료(영상 · 스톡 · 사진)에 같은 grade 가 자동으로 입혀진다(materials.py → engine/story/feel.py). 글자 · 그래픽에는 입히지 않는다.
 - 아직 안 골랐으면 제작 전에 `feel.py preview` 시안을 보여 주고 고르게 한다(에이전트가 정하지 않는다).
 
-## 실사 생성 컷(사용자가 고른 경우만) — 그림 시안 → 사용자가 고름 → 그 그림으로 영상
-돈을 아끼고 원하는 스타일을 먼저 확인하려고 **그림부터** 만든다(그림은 장당 몇 센트, 영상은 초당 몇십 센트). 영상은 사용자가 고른 그림에서만.
-
-A. **오픈라우터 키가 있고 설정 → 보기 · 만들기 · 말하기 에서 '그리기' · '찍기' 모델을 골랐으면 — Fluma 가 직접 만든다**
-1. `python3 engine/gen/genclip.py key data/storyboards/<id>.json [--mid <재료 id>]` → 샷마다 키프레임 시안 3장(설계대로 · 더 가까이 · 다른 각도, 고른 느낌 · 레퍼런스 구도 반영) → `data/compositions/<id>/gen/<재료 id>-k1..3.png`. **그림을 직접 열어 보고** 설계와 맞는지 한 줄씩 말한 뒤 사용자에게 보여 준다.
-2. **사용자가 고른다** → `genclip.py pick-key data/storyboards/<id>.json <재료 id> <번호>` (사용자가 고를 때만). 마음에 안 들면 고칠 점을 받아 재료 칸(prompt · framing · setting)을 고치고 1 을 다시.
-3. `genclip.py run data/storyboards/<id>.json [--mid <재료 id>]` → 고른 그림을 첫 프레임으로 영상(고른 '찍기' 모델 문법의 움직임 · 카메라 위주 프롬프트). 작업은 몇 분 — 끊겨도 같은 명령이면 이어 받는다(`gen/jobs.json`). 결과는 `data/public/uploads/<id>/<재료 id>.mp4`.
-4. `shotplan.py check` → 다르면 고칠 문구로 다시 run.
-- **비용 관문**: 영상 한 편 상한(설정, 기본 $3) 안이면 묻지 않고 진행한다. 넘거나 값을 미리 알 수 없으면(예: 토큰 단위 모델) 명령이 `[승인 필요] …` 로 멈춘다 → 그 금액을 사용자에게 그대로 보여 주고 '예'를 받은 뒤에만 같은 명령에 `--approve`. 쓴 돈은 `data/workspace/spend.jsonl`.
-- 느낌 단계(plan 0.5턴)에서 `for_mid` 를 적었으면 사용자가 고른 느낌 시안 그림이 이미 그 컷의 키프레임이다 — 1 · 2 를 건너뛰고 3 으로.
-
-B. **키가 없거나 모델을 안 골랐으면 — 프롬프트만**(생성 비용 0)
-1. `genclip.py prompts data/storyboards/<id>.json` → `data/compositions/<id>/gen/prompts.md`(1단계 그림 · 2단계 영상 프롬프트, 모델마다 문법) — 사용자에게 그대로 준다.
-2. 사용자가 그림(`<재료 id>.png`) → 확인 → 영상(`<재료 id>.mp4`)을 올린다. 그림이 올라오면 `prompts` 를 다시 — 2단계가 그 그림 기준으로 바뀐다.
-
-공통: 올라오기 전 초안은 그 컷 없이 렌더(L36). `genclip.py status` 로 샷마다 단계. 업로드 때 '변경 · 합성 콘텐츠' 표시는 자동, 워터마크는 지우지 않는다.
-
-## 세로 확장 — 가로 사진
-'고치기 · 이미지 편집' 모델(설정 → 보기 · 만들기 · 말하기)을 골랐으면 가로 사진 재료(photo · archive · photo_grade)는 자동으로 9:16 이 된다 — 원본은 가운데 그대로, 위아래만 이어 그림(`engine/providers/extend.py`, 같은 사진은 다시 안 그림, 상한 안에서). 화면 캡처(image)는 지어낸 화면이 되므로 재료 칸 `"extend": true` 일 때만, 원본 비율이 중요하면 `"extend": false`.
-
 ## 초안 비평(VL) — 렌더 검사가 못 보는 것
-- 초안 렌더 뒤 `python3 engine/providers/see.py critique <id>` → 보기 모델이 초안 전체를 보고 의도 · 콘셉트 · 레퍼런스 문법과 대조해 "몇 초에 무엇이 왜 어색한지 · 어떻게 고칠지"(`data/workspace/critique/<id>.json`). high 부터 고치고 다시 렌더 → 다시 비평. 템포 · 편집 밀도 검사(숫자)는 그대로 같이.
+- 초안을 본 뒤 고칠 때는 **director 스킬**의 감독 검사(같은 구도 연속 · 빈 화면 · 약속한 증거 · 반전의 멈춤 · 시선 한 곳)로 본다. 나레이션이 없으면 강조가 저절로 생기지 않는다(L41) — 장면마다 `beats [{"do": "확대", "t": 초}]` 나 재료 `zoom` 으로 짚는다.
+- 초안 렌더(render.py --draft)가 끝나면 보기 모델이 **자동으로** 초안을 본다([VL 비평] 줄 · 다시 보려면 `python3 engine/providers/see.py critique <id>`) → 보기 모델이 초안 전체를 보고 의도 · 콘셉트 · 레퍼런스 문법과 대조해 "몇 초에 무엇이 왜 어색한지 · 어떻게 고칠지"(`data/workspace/critique/<id>.json`). high 부터 고치고 다시 렌더 → 다시 비평. 템포 · 편집 밀도 검사(숫자)는 그대로 같이.
 - 특정 장면만 궁금하면 `see.py ask data/out/<id>-craft-Scenes.mp4 --q "8~11초 자막이 말보다 늦나?"` 처럼 직접.
 
 ## 디테일 다듬기(초안 뒤 — refine 스킬)

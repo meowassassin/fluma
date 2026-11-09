@@ -78,8 +78,12 @@ def start_local() -> None:
         if any("ffmpeg" in t or "Node" in t or "npm" in t for t in tail):
             needs_input("fluma_agent", needs=["ffmpeg · Node.js 20+ 설치(시스템 프로그램)"], how=" / ".join(tail))
         fail("fluma_agent", stage="install", error=" / ".join(tail))
-    log = open(ROOT / "data" / "workspace" / "fluma-dev.log", "a") if (ROOT / "data" / "workspace").exists() else subprocess.DEVNULL
-    subprocess.Popen(["npm", "--prefix", "web", "run", "dev"], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    (ROOT / "data" / "workspace").mkdir(parents=True, exist_ok=True)
+    log = open(ROOT / "data" / "workspace" / "fluma-dev.log", "a")
+    # 화면은 studio/(예전 이름 web/ 을 보고 있어 시작이 안 됐다) · node 로 실행기를 직접(윈도우에서 npm.cmd 를 셸 없이 못 부르는 문제 없음)
+    kw = {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP | getattr(subprocess, "DETACHED_PROCESS", 0)} if os.name == "nt" else {"start_new_session": True}
+    node = shutil.which("node") or "node"
+    subprocess.Popen([node, str(ROOT / "studio" / "dev.mjs")], cwd=ROOT / "studio", stdout=log, stderr=subprocess.STDOUT, **kw)
 
 
 def logged_in() -> bool:

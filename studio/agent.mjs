@@ -16,7 +16,7 @@ import { runConfig as mcpRunConfig } from "./mcp.mjs";
 import { createCrafts } from "./crafts.mjs";
 
 // 쓰기 가능: 콘티 · 장면 재료 · Craft 제작 파일(data/compositions/<id>/) · 캐릭터 · 조사 · 메모. 엔진 템플릿은 사람이 관리
-export const WRITABLE = ["data/storyboards", "data/compositions", "data/characters", "data/workspace/tmp", "data/research", "data/briefs", "engine/spec/rules/trends/proposals.md"];
+export const WRITABLE = ["data/storyboards", "data/compositions", "data/characters", "data/workspace/tmp", "data/workspace/feel", "data/workspace/concepts", "data/research", "data/briefs", "engine/spec/rules/trends/proposals.md"];   // feel · concepts: 기획 단계에서 에이전트가 쓰는 느낌 안 · 콘셉트 · 뻔함 지도
 export const TOOLS = [
   "Read", "Glob", "Grep", "WebSearch", "WebFetch", "TodoWrite", "Skill",
   ...WRITABLE.flatMap((p) => {
@@ -33,8 +33,7 @@ const DENY = ["Read(./.env)", "Read(./.env.*)", "Read(~/.shortsforge/**)", "Edit
   // 홈의 비밀 · 인증 파일 (조사 중 웹 내용에 섞인 지시로 읽어 내보내는 일 방지)
   "Read(~/.ssh/**)", "Read(~/.cache/huggingface/**)", "Read(~/.codex/**)", "Read(~/.config/**)", "Read(~/.aws/**)", "Read(~/.gnupg/**)", "Read(~/.netrc)", "Read(~/.git-credentials)"];
 // 턴 전후 비교·되돌리기 대상 (WRITABLE 과 같은 범위)
-// 장면 설계도(scenes/)는 쓰기 허용 목록에 없다 — 에이전트는 engine/core/scene_graph.py patch(소유권 · 잠금 검사)로만 고친다. 되돌리기 대상에는 넣는다
-const TRACKED = [...WRITABLE.filter((p) => !p.startsWith("data/workspace/tmp")), "data/scenes"];  // 임시 폴더는 변경 목록에 안 띄움
+const TRACKED = WRITABLE.filter((p) => !p.startsWith("data/workspace/tmp"));  // 임시 폴더는 변경 목록에 안 띄움
 
 const autoChain = new Map();   // 프로젝트 → 사용자 말 이후 자동 이어가기를 몇 번 연속으로 했나
 
@@ -64,6 +63,7 @@ const SETUP_RULES = `## 설치는 스스로
 // 결과 보여 주기: 경로를 주고 '열어 보세요' 하지 않는다(2026-11-04: 컨테이너 경로 · docker cp 를 안내해 사용자가 찾지 못함)
 const SHOW_RULES = `## 결과는 채팅에 바로 보여 준다
 - 그림 · 시안 · 정지 화면 · 영상 · 소리를 만들면 답에 \`\`\`media 블록으로 띄운다(한 줄에 하나: \`경로 | 설명\`, 여러 개면 나란히 뜬다). \`![설명](경로)\` 도 된다
+- 도구(feel · preview · render)가 출력한 media 블록 · media= 줄은 그대로 붙인다
 - 경로만 적고 '열어 보세요 · 복사해서 보세요 · 렌더해 주세요' 라고 하지 않는다. docker cp · 파일 탐색기를 안내하지 않는다
 - 내가 먼저 본다: \`python3 engine/core/preview.py <파일들> [--at 초,…]\` — SVG 는 PNG 로, 영상은 정지 화면으로 만들어 주고(Read 로 보기) 붙일 media 블록을 출력한다. ImageMagick(convert) 같은 다른 렌더 명령은 쓰지 않는다
 - 시안을 비교하게 할 때는 고를 것들을 media 블록에 나란히 두고, 그 아래 선택지(\`\`\`choices)를 둔다`;

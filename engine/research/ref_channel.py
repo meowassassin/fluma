@@ -32,6 +32,8 @@ from PIL import Image, ImageDraw
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
+from platform_util import venv_tool  # noqa: E402
+YTDLP = venv_tool("yt-dlp")   # Windows: .venv\\Scripts\\yt-dlp.exe
 XR = ROOT / "data" / "public" / "trends" / "xray"
 CH = ROOT / "data" / "public" / "trends" / "channels"
 
@@ -59,7 +61,7 @@ def vid_of(s: str) -> str:
 
 
 def channel_of(vid: str) -> dict:
-    r = run(["yt-dlp", "-J", "--no-playlist", "--skip-download", "--no-warnings", f"https://www.youtube.com/shorts/{vid}"], timeout=120)
+    r = run([YTDLP, "-J", "--no-playlist", "--skip-download", "--no-warnings", f"https://www.youtube.com/shorts/{vid}"], timeout=120)
     if r.returncode != 0:
         sys.exit(f"영상 정보를 받지 못했습니다: {r.stderr.strip()[-300:]}")
     j = json.loads(r.stdout)
@@ -67,7 +69,7 @@ def channel_of(vid: str) -> dict:
 
 
 def channel_shorts(cid: str, limit: int) -> list[dict]:
-    r = run(["yt-dlp", "--flat-playlist", "-J", "--no-warnings", "--playlist-end", str(limit), f"https://www.youtube.com/channel/{cid}/shorts"], timeout=180)
+    r = run([YTDLP, "--flat-playlist", "-J", "--no-warnings", "--playlist-end", str(limit), f"https://www.youtube.com/channel/{cid}/shorts"], timeout=180)
     if r.returncode != 0:
         return []
     return [{"id": e["id"], "title": e.get("title") or ""} for e in (json.loads(r.stdout).get("entries") or []) if e.get("id")]

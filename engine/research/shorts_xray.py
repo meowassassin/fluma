@@ -33,6 +33,8 @@ from PIL import Image
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
+from platform_util import venv_tool  # noqa: E402
+YTDLP = venv_tool("yt-dlp")   # Windows: .venv\\Scripts\\yt-dlp.exe
 OUT = ROOT / "data" / "public" / "trends" / "xray"
 MAX_SEC = 180
 
@@ -56,7 +58,7 @@ def download(vid: str, d: Path) -> Path:
         return dst
     dst.unlink(missing_ok=True)
     url = f"https://www.youtube.com/shorts/{vid}"
-    r = subprocess.run(["yt-dlp", "-q", "--no-warnings", "--no-playlist",
+    r = subprocess.run([YTDLP, "-q", "--no-warnings", "--no-playlist",
                         # 쇼츠는 세로라 '높이'가 긴 변 — 960 이하(540×960)로 받아야 누끼가 정확하다 (480 이하면 240×426)
                         "-f", "bv*[height<=960][ext=mp4]+ba[ext=m4a]/bv*[height<=960]+ba/b[height<=960]/b",
                         "--merge-output-format", "mp4", "-o", str(d / "dl.%(ext)s"), url],
@@ -551,6 +553,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("video")
     ap.add_argument("--whisper", default=os.environ.get("XRAY_WHISPER", "small"), help="음성 인식 모델(tiny · base · small · medium) · none — 한국어는 small 부터 고유 낱말을 덜 틀린다")
+    ap.add_argument("--quick", action="store_true", help="빠르게: 샷 · 글자 · 대사 · 소리만 재고 누끼(레이어 분해) · 음원 분리는 건너뜀 — 레퍼런스 이해는 보기(VL) 모델이 맡을 때")
     a = ap.parse_args()
     vid = vid_of(a.video)
     d = OUT / vid
@@ -584,6 +587,10 @@ def main():
         s["frame"] = f"trends/xray/{vid}/shots/{key.name}"
         cut_p, bg_p = d / "cut" / f"{k:03d}.png", d / "bg" / f"{k:03d}.jpg"
         pf = None
+        if a.quick:                                   # 누끼는 분해도 화면(레이어)에서만 쓴다 — 샷마다 수 초 · 메모리를 많이 먹는다
+            s["subject"] = {"area": 0, "parts": 0, "bbox": None, "faces": 0, "skipped": "quick"}
+            s["palette"] = palette(key)
+            continue
         if s.get("camera", {}).get("kind") == "고정" and s["end"] - s["start"] >= 1.0:
             span = s["end"] - s["start"]
             pf = []
@@ -603,7 +610,7 @@ def main():
         s["palette"] = palette(key)
     subjects = group_subjects(shots)
     stems = None
-    if info["audio"]:
+    if info["audio"] and not a.quick:
         say(0.66, "목소리와 음악 나누는 중")
         try:
             import separate
@@ -625,7 +632,7 @@ def main():
     snd = sound(d / "music.m4a" if stems else src, dur, segs) if info["audio"] else {"has_audio": False}
     x = {"id": vid, "url": f"https://www.youtube.com/shorts/{vid}", "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
          "video": {**info, "src": f"trends/xray/{vid}/src.mp4"}, "shots": shots, "subjects": subjects,
-         "text": text_events, "speech": segs, "sound": snd, "stems": stems, "took_sec": None, "matte": MATTE["model"]}
+         "text": text_events, "speech": segs, "sound": snd, "stems": stems, "took_sec": None, "matte": MATTE["model"], "quick": bool(a.quick)}
     x["recipe"] = recipe(x)
     x["took_sec"] = round(time.time() - t0, 1)
     (d / "xray.json").write_text(json.dumps(x, ensure_ascii=False, indent=1), encoding="utf-8")

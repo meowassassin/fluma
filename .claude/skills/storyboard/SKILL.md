@@ -6,6 +6,9 @@ order: 1
 
 # 콘티 작성
 
+> 구성(다섯 기둥 · 박자 지도 · 리듬 계단)과 샷마다 연출(시선 한 곳 · 카메라 이유 · 세 가지 구체 · 끝 그림)은 **director 스킬**을 먼저 읽고 정한다(`direction.anchors`, 장면 `shot_fn`).
+> 나레이션 · 대사 · caption · 화면 글자는 **writer 스킬**의 규칙(훅 세 칸 · 말 밑의 행동 · AI 티 금지 · `[필요: 근거]`)으로 쓴다.
+
 ## 순서
 1. **형식 결정**: `python3 engine/story/decide.py "<주제>" [형식] [목표 초]` 로 형식 · 길이와 그 형식의 **흔한 구조**(JSON `scenes`)를 받는다. 흔한 구조는 뼈대가 아니라 뻔함 지도 후보다 — 장면 흐름은 고른 콘셉트(`concept.structure`)를 따른다. 형식(광고|감성|시세|compare …)과 길이를 사용자가 말했으면 넘긴다 (주제 문장 규칙보다 우선). 해당 형식 스킬(`format-*`)이 있으면 그 규칙도 따른다.
 2. **조사 확인**: `data/research/` 에 이 주제의 사실이 있는지 본다. 없으면 `research` 스킬 순서대로 먼저 조사한다. 출처 있는 사실 5개 미만이면 멈추고 사용자에게 알린다.
@@ -30,7 +33,7 @@ order: 1
 4. `direct.py --write` 는 프리셋에서 배치 · 바탕 · 자막 · 움직임을 정한다(무작위 아님). 검사 T27 = 프리셋 없음.
 
 ## 레퍼런스(참고 쇼츠 링크)가 있으면 — 구성 · 박자 · 말투는 레퍼런스 '채널', 내용은 사용자의 주제 (어떤 형식이든)
-1. `python3 engine/research/analyze_ref.py <id> --n 5` — 분해 → 스타일 → 채널을 서버 작업으로 이어 돌린다(턴이 끝나도 계속 · 끝난 단계는 건너뜀).
+1. `python3 engine/research/analyze_ref.py <id>` — 빠른 분해 → VL 이해 → 스타일을 서버 작업으로 이어 돌린다(편당 1분 안팎 · 턴이 끝나도 계속 · 끝난 단계는 건너뜀). 채널 말투 카드가 필요할 때만 `--channel 3`.
    (채널 카드는 같은 채널 쇼츠 여러 편 — 한 편 통계보다 이쪽이 기준. 스크립트를 직접 백그라운드로 돌리지 않는다)
 2. **채널 카드** `data/public/trends/channels/<채널>/channel.md` 를 끝까지 읽는다. 형식을 가정하지 않는다 — 카드 맨 위 **형식** 줄(말 주도 / 음악 · 화면 주도, 주된 화면 종류, 컷 길이, 음악 박자)이 기준이다: 구성 · 구조(문장마다 역할[화면] 뼈대, 화면 종류 비율, 문장당 컷) ·
    문장 끝 비율 · 이음말 · 첫 · 끝 문장 · 영상별 대사. 대사 시트(`lines-<영상>.jpg`, #번호 = 대사 번호)를 **직접 보고**
@@ -105,47 +108,10 @@ order: 1
 | thumbnail | (비우면 콘티 title · badge · hook_number) · title · hook · emphasis · src(false 면 글자만) | DesignCraft(세로 1080×1920 + 가로 1280×720). **영상 화면이 아니라 표지용** — 마지막 장면에 두고 화면에는 거의 안 보이게 |
 | model3d | shape(case·phone·bottle·tumbler·puck) + size(mm) 또는 commands 또는 src(.step·.stl·.obj …) · material(metal·plastic·wood·#색·{부품:재질}) · color · logo · turntable 또는 exploded · sec | SolidCraft(형태 · 분해도) + TextureCraft(재질 · 로고 · 렌더) — 9:16 화면 전체(배경 포함) |
 | live | src(실사 영상) · cuts{이름: {strokes[{frame, kind: fg\|bg, points(이어진 한 획), radius}], span, recolor{hue, sat, light}, remove, frame, grow}} · items[{id, kind: model3d(script · at · frame · height · shadow · light · behind)\|text(text · follow · offset · size · color · behind)\|image(file · follow · offset · scale · behind)}] — follow 는 {at, frame}(장면 고정) · {at, frame, moving}(움직이는 무늬) · {cut, at: top\|center}(분리한 물체). 3D 스크립트는 `L = F.live(ctx)` 로 시작하고 `L["at"]` · `ctx.args["height"] * L["unit"]` 로 놓는다. 끝나면 `cuts.check.png` 로 매트를 본다 — 완전히 가려지면 분리가 끊기므로 가려졌다 나오는 물체는 나온 직후 프레임에 획을 더한다. |
-| form | 화면 형식 라이브러리 — `form`: parchment(title · body) · atlas(bbox · route · marks · mountains, 실제 지형) · gridchart(bars · max) · comic(panels 2~4) · sunset(stops) · halftone(image · scale · dy). 영상마다 그림 코드를 쓰지 않는다 |
 | archive | 실제 사진 · 그림 — `title`("File:…", `engine/capture/commons.py search` 로 찾아 보고 고른다) · fit(cover\|contain). 출처는 자동으로 sources 에 들어간다. 실제 자료가 있는 사실은 재현하지 말고 진짜를 쓴다 |
-| video + gen | 실사 생성 컷(사용자가 plan 0.5턴에서 고른 경우만): `gen`(영상 모델 seedance · kling · veo · omni · hailuo · runway · wan) · `image_model`(키프레임: seedream · nanobanana · gptimage · midjourney) · `prompt`(영어, 무엇이 일어나는가 — 구체 명사) · camera(하나) · framing · setting · physics · invariants · end_state · must · avoid · ref_roles · cast · line(8단어 이하) · people · gen_sec — 칸을 잘 채우면 코드가 모델마다 문법을 맞춘다(`engine/gen/models/PROMPTING.md` 를 먼저 읽는다) | 프롬프트만 — 사용자가 그림 → 영상을 만들어 올림(engine/gen/genclip.py). 콘티 최상위 `cast` 로 인물 일관성 |
-| figure | **인물의 기본 경로** — Blender 인체(근육 · 손 · 발)에 자세 · 복장을 입혀 화풍으로 한 획씩 그린다. `kit`(고대: hoplite · messenger · elder · pan / 현대: office · scientist · worker · casual / 또는 복장 목록: shirt · tshirt · jacket · coat · trousers · shoes · shorthair · glasses · tunic · cuirass · helmet · horns · goatlegs …) · `hands`({"L","R"}: open · relax · loose · grip · point — 생략하면 자세에 맞게) · `hair_tone`(머리 밝기) · `pose`(thrust · stand · point · collapse · 조준 사전) · `anim`(still · sketch_in · run) · `style`(engrave · sketch · woodcut · wash · blackfigure · inkline(잡지 삽화 선화) · pop(망점 팝), 생략하면 주제 · 장면 · 이력으로 고른다) · `style_params`(density · line · contrast · angle · ink · paper · tint · fill · dot: 화풍을 자유롭게 변주) · `show:false`. `on_screen`(화면 높이 px — 작으면 가는 화풍은 사라지므로 굵은 화풍 · 선으로 바꾼다) · **화풍은 영상마다, 필요하면 장면마다 다르게 고른다** — 주제의 시대 · 감정, 장면 형식과 어울리는 것을 정하고 `direction.art.figure` 또는 재료 `style` 로 적는다. 화면에는 motion-figure |
 | relic | 실제 유물 · 조각 자체가 이야기일 때만 — 그래픽 장면 위 인물 대용으로 쓰지 않는다(사진이 겉돈다). — 실제 조각 · 흉상 · 도기 사진을 오린 컷아웃. `src`(archive 로 받은 파일) · `crop` · `cut`(matte · shard: PhotoCraft 작업, 레이어 PSD 가 남음 / ink 도기 안료 / none) · `matte:"ai"`(배경이 복잡해 Select Subject 가 옆 인물까지 잡을 때) · `keep` · `erase` · `jaw`(poly: 수염 · 턱 결을 따라 / mouth: 입술 틈 / hinge) · `width` · `show: false`. 말하는 인물은 id 하나에 `jaw` 를 적고 motion-relic 레시피(S0 · S1 말 구간, 경첩 · 목 px)로 놓는다. 그림 확대 격자로 poly 를 잡고 렌더해서 본다. 말하지 않는 인물은 `<인물>_<자세><번호>` 로 motion-cast |
 | art | 직접 그린 인물 · 소품 — `svg`(illustrate 스킬로 그린 파일) · `hide`(지울 표정 그룹) · `show: false`. 표정마다 재료 하나, id 는 `<인물>_<자세><번호>`. 화면에는 motion-cast 레시피 |
-| silhouette | 작은 전신 달리기(도기풍 검은 실루엣 8칸) — 지도 위 · 먼 풍경 |
-| cast | 실험 — 주인공에 쓰지 않는다. 사양 조립 인물은 어색하고 복장이 틀린다. 인물은 illustrate 스킬로 직접 그린다. 멀리 있는 군중 · 작은 실루엣에만 |
 | drawing | src(.dxf·.dwg) 또는 cmd[…] 또는 model(앞선 model3d id 또는 형태 칸) · views · title · paper(dark·white) · mark[[x0,y0,x1,y1]](빨간 구름) | CADCraft(투영도 · 치수 · 평면도) — 9:16 화면 전체 |
-
-**언제 무엇을** (실제 화면 > 효과 — 꾸민 그래픽보다 진짜 화면 · 진짜 문서가 먼저):
-- **기술 설명**: 실제 화면(web · screen) + 짚을 곳은 `overlay`(박스 · 화살표 · 한 줄 설명). 근거 문장은 `doc_quote`(진짜 형광펜 · 개인정보 가림), 약관 · 공지 · 바뀐 문구는 `document`. 캡처를 기기에 넣어 보여 줄 때 `ui_mock`(실제 캡처로 — 가상 화면은 mock: true 를 적고 설명용으로만). 순서 · 구조는 `diagram`(한 장면에 하나, 꾸밈 대신 단계 수만큼).
-- **제품**: 실물 사진이 없으면 `model3d`(정지 컷 · 짧은 turntable · 분해도), 치수 · 구조는 `drawing`. 실제 제품이면 STEP 원본(src)이 내장 형태보다 낫다.
-- **감성 · 광고**: 사용자 사진을 `photo_grade` 로 같은 톤에, 기사 · 캡처 한 장을 화면 카드로 세울 때 `photo` + `frame: "card"`(제목 · 강조 상자 · 로고 지우기 clean).
-- **반복 형식(daily · series)**: 같은 틀에 값만 바꿀 때 `template_card`(가격 · 수치 한 줄), 요점 정리는 `info_card`.
-- **썸네일**: `thumbnail` 하나 — 조립 단계도 훅 장면 프레임을 `edit/<id>.thumb.png` 로 따로 뽑는다.
-- 화면 녹화 다듬기(screen · video · web 공통 칸): `zoom[{t, box, dur}]`(펀치인) · `blur[[x,y,w,h]]`(개인정보) · `speed[{from, to, x}]`(빨리 감기) — FilmCraft. 시각은 녹화 시각, 줌은 빨리 감기 구간 밖에.
-- 움직임 칸(모든 재료): `enter`(등장 프리셋 id · false) · `exit` · `shadow` · `push`. 콘티 `direction.bg_preset` · `title_preset` · `sub_preset` · `enter`(기본은 형식별, false 면 끔).
-- 소리: 콘티 `music{src, gain_db, duck_db, fade_in, fade_out}` — 사용자가 준 파일만. -14 LUFS 는 SoundCraft 가 맞춘다.
-
-예시(그대로 고쳐 쓴다):
-```json
-{"id": "m1", "type": "web", "src": "data/public/elements/<id>/run-n1", "holds": [0.5, 3]},
-{"id": "m2", "type": "overlay", "target": "m1", "marks": [{"kind": "box", "box": [0.04, 0.42, 0.92, 0.08], "text": "쿼리 101번", "cue": "101번"}]},
-{"id": "m3", "type": "doc_quote", "pdf": "data/research/report.pdf", "find": "이용자의 43.7%는 AI가 제시한 정보를", "mark": "highlight", "redact": ["email", "phone"]},
-{"id": "m4", "type": "diagram", "kind": "steps", "title": "fetch join 으로 고치기", "items": ["연관 엔티티 확인", "JOIN FETCH 추가", "쿼리 1번 확인"], "cues": ["확인", "추가", "한 번"]},
-{"id": "m5", "type": "ui_mock", "src": "data/compositions/<id>/craft/src/settings.png", "device": "phone"},
-{"id": "m6", "type": "document", "title": "이용약관 제7조", "text": "① 구독 시작 후 7일 이내에 …", "highlight": ["프로모션 요금제는 환불되지 않습니다"], "track": {"from": "7일 이내", "to": "14일 이내"}},
-{"id": "m7", "type": "photo_grade", "src": "data/public/uploads/<id>/shop.jpg", "look": "warm", "credit": "사진: 직접 촬영"},
-{"id": "m8", "type": "photo", "src": "data/public/uploads/<id>/news.jpg", "frame": "card", "title": "교장이 5400만원을\n사비로 메웠다?", "highlight": [0, 0.535, 1, 0.09], "clean": [[0.02, 0.02, 0.15, 0.08]]},
-{"id": "m9", "type": "info_card", "kicker": "알아두기", "title": "N+1 은 지연 로딩의 기본 동작", "points": ["목록 1번 + 항목마다 1번", "fetch join · batch size 로 묶기"], "source": "Hibernate 문서"},
-{"id": "m10", "type": "template_card", "values": {"품목": "배추 1포기", "가격": "4,980원", "반응": "평소 가격"}},
-{"id": "m11", "type": "model3d", "shape": "tumbler", "material": "stainless", "logo": "FLUMA", "turntable": true, "sec": 3},
-{"id": "m12", "type": "drawing", "model": "m11", "views": ["front", "top"], "title": "텀블러 외형도 (mm)", "paper": "white"},
-{"id": "m13", "type": "thumbnail", "emphasis": "101번"}
-```
-검사 L39 가 칸을 본다: 필수 칸 · overlay 대상이 같은 장면 앞에 있는지 · drawing 의 model id · 가상 ui_mock 의 mock · id 에 '.' 금지. 앱 쪽 주의는 crafts 스킬.
-공통: `id`, `cue`(등장할 낱말), `place`(full · center · left · right · top · bottom). 재료는 제목 아래 · 자막 위 구간에 놓인다.
-숫자는 손으로 계산하지 말고 csv + percent 로 GridCraft 가 계산하게 한다.
-**화면 비율**: 콘티 `aspect`(9:16 기본 · 16:9 · 1:1) 또는 `render.py --aspect`. 세로 녹화(대화창 · 폰 화면)는 가로 화면에서 가운데에 작게 놓이니, 가로 영상이면 녹화도 가로(viewport)로 한다.
-**여러 버전 비교**: 훅 · 첫 장면 · 제목이 정해지지 않으면 콘티 `variants` 에 바꿀 칸만 적은 2~3개를 넣고 `python3 engine/story/variants.py render data/storyboards/<id>.json` → 나란히 비교 영상을 media 블록으로 보여 주고 고르게 한다(고른 것을 원본에 옮기는 건 확인받고)
 
 ### 다양한 화면 — 레시피 · craft 재료 (편향 금지)
 - 장면마다 `python3 engine/craft/craft_variety.py suggest "<장면 용도>"` 로 고른다(★ = 최근 영상에 안 쓴 것 먼저). 자세한 규칙: crafts 스킬 0절.
@@ -153,3 +119,4 @@ order: 1
 - 레시피: `{"id":"m1","recipe":"vertical-process","fill":{…}}`. 다 쓰면 `craft_variety.py check data/storyboards/<id>.json` 로 반복을 본다.
 
 - 다른 브랜드 광고 · 영상의 장면 · 문구를 그대로 따라 쓰지 않는다 — 구성 · 리듬만 빌린다.
+

@@ -365,6 +365,7 @@ const MediaSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; eng
   const raw = useParams().section ?? "media";
   const [tab, setTab] = useState<MediaTab>(() => (["voice", "stock", "render"].includes(raw) ? raw : "voice") as MediaTab);
   const sk = keys?.filter((k) => k.caps.includes("스톡 영상"));
+  const vk = keys?.filter((k) => k.caps.includes("음성"));
   return <>
     <div className="media-tabs">
       <Segmented aria-label={t("미디어 종류")} value={tab} onChange={(v) => setTab(v as MediaTab)} options={[
@@ -372,7 +373,7 @@ const MediaSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; eng
         { value: "stock", label: t("스톡 영상 · {n}개 연결", { n: (sk ?? []).filter((k) => k.hasKey).length }) },
         { value: "render", label: t("렌더 엔진 · {n}개", { n: engines.filter((e) => e.available).length }) }]} />
     </div>
-    {tab === "voice" && <VoiceSec s={s} set={set} voices={voices} />}
+    {tab === "voice" && <><VoiceSec s={s} set={set} voices={voices} /><GenKeys keys={vk} title={t("음성 API 키")} desc={t("유료 · 클라우드 음성(Typecast · ElevenLabs)을 연결하면 위 목록에서 '사용 가능'이 됩니다. 오픈라우터 음성은 설정 → 보기 · 말하기 에서 모델을 고릅니다.")} /></>}
     {tab === "stock" && <GenKeys keys={sk} title={t("스톡 영상 API 키")} desc={t("무료 스톡 영상(Pexels · Pixabay) — 일상 · 감성 · 광고 장면의 바탕(B-roll). 출처는 설명란에 자동으로 붙습니다.")} />}
     {tab === "render" && <RenderSec engines={engines} />}
   </>;
@@ -451,11 +452,17 @@ const VoiceSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; voi
   const [busy, setBusy] = useState("");
   const [vid, setVid] = useState<Record<string, string>>({});
   const audio = useRef<HTMLAudioElement | null>(null);
+  const [last, setLast] = useState<{ name: string; url: string } | null>(null);   // 마지막 미리 듣기 — 화면에 재생기로 남긴다
   useEffect(() => () => audio.current?.pause(), []);
   const play = async (v: Voice) => {
     const id = vid[v.name] ?? (s.voice_engine === v.name ? s.voice_id : "") ?? "";
     setBusy(v.name);
-    try { const d = await sapi.previewVoice(v.name, id); audio.current?.pause(); audio.current = new Audio(d.url); await audio.current.play().catch(() => {}); }
+    try {
+      const d = await sapi.previewVoice(v.name, id);
+      audio.current?.pause(); audio.current = new Audio(d.url); setLast({ name: v.name, url: d.url });
+      // 재생이 막히면(브라우저 자동 재생 정책 · 기다림이 길어 클릭 효과가 끝남) 조용히 넘기지 않고 알린다 — 아래 재생기로 직접 들을 수 있다
+      await audio.current.play().catch((e) => toast.info(t("소리를 바로 틀지 못했어요 — 아래 재생 단추를 눌러 들어 보세요"), { description: String(e?.name || e) }));
+    }
     catch (e) { toast.error(t("{name} 미리 듣기 실패", { name: t(v.title) }), { description: errMsg(e) }); }
     finally { setBusy(""); }
   };
@@ -488,6 +495,7 @@ const VoiceSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; voi
           onChange={(x) => { setVid((o) => ({ ...o, [cur.name]: x })); if (on) set({ voice_id: x }); }}
           options={[{ value: "", label: t("기본 목소리") }, ...cur.voices.map((x) => ({ value: x.id, label: x.gender && x.gender !== "-" ? t(x.gender === "F" ? "{name} (여)" : "{name} (남)", { name: t(x.title) }) : t(x.title) }))]} />}
         <Button size="sm" variant="ghost" icon="volume" loading={busy === cur.name} disabled={!!busy && busy !== cur.name} onClick={() => play(cur)}>{t("들어 보기")}</Button>
+        {last?.name === cur.name && <audio key={last.url} src={last.url} controls preload="auto" style={{ height: 30, maxWidth: 220 }} />}
         <span className="grow" />
         {!on && <Button size="sm" variant="primary" onClick={() => set({ voice_engine: cur.name, voice_id: voiceId })}>{t("기본으로 쓰기")}</Button>}
       </div> : cur.kind === "api"

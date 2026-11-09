@@ -12,6 +12,7 @@ import { api, errMsg } from "../../lib/api";
 import { AttachChips, AttachMenu, attachNote, useAttachments } from "./attachments";
 import { qc, qk, useActiveAgents, useProjects, useSkills } from "../../lib/queries";
 import { useNavigate } from "react-router-dom";
+import * as RDialog from "@radix-ui/react-dialog";
 import { useUi } from "../../lib/ui";
 import type { ChatContext, ChatMessage, Todo } from "../../lib/types";
 import { t } from "../../lib/i18n";
@@ -331,6 +332,7 @@ const inline = (body: string) => body.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(
   return p;
 });
 export const Md = memo<{ text: string }>(({ text }) => {
+  const ver = verOf(text);
   const lines = text.replace(/\n{3,}/g, "\n\n").split("\n");
   const out: React.ReactNode[] = [];
   for (let i = 0; i < lines.length; i++) {
@@ -348,7 +350,7 @@ export const Md = memo<{ text: string }>(({ text }) => {
       if (lang === "brief") { out.push(<Brief key={i} rows={parseBrief(buf.join("\n"))} />); continue; }
       if (lang === "titles") { out.push(<Titles key={i} items={buf.map((b) => b.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean)} />); continue; }
       if (lang === "desc") { out.push(<Desc key={i} text={buf.join("\n").trim()} />); continue; }
-      if (lang === "media") { out.push(<MediaRow key={i} items={buf.map(parseMedia).filter((x): x is MediaRef => !!x)} />); continue; }
+      if (lang === "media") { out.push(<MediaRow key={i} ver={ver} items={buf.map(parseMedia).filter((x): x is MediaRef => !!x)} />); continue; }
       out.push(<pre key={i}><code>{buf.join("\n")}</code></pre>); continue;
     }
     if (!line.trim()) { out.push(<div key={i} className="md-gap" />); continue; }
@@ -357,7 +359,7 @@ export const Md = memo<{ text: string }>(({ text }) => {
       const items: MediaRef[] = [];
       while (i < lines.length && IMG_LINE.test(lines[i])) { const m = IMG_LINE.exec(lines[i])!; items.push({ path: m[2].trim(), caption: m[1].trim() }); i++; }
       i--;
-      out.push(<MediaRow key={i} items={items} />);
+      out.push(<MediaRow key={i} ver={ver} items={items} />);
       continue;
     }
     const h = /^#{1,4}\s+(.*)/.exec(line);
@@ -385,27 +387,36 @@ const parseMedia = (line: string): MediaRef | null => {
   return { path: p.replace(/^`|`$/g, "").trim(), caption: c.join(" · ").trim() };
 };
 const mediaKind = (p: string) => /\.(png|jpe?g|webp|gif|svg)$/i.test(p) ? "image" : /\.(mp4|webm|mov|m4v)$/i.test(p) ? "video" : /\.(wav|mp3|m4a|ogg|aac|flac)$/i.test(p) ? "audio" : "file";
-function mediaUrl(sid: string | null, p: string): string | null {
+// 같은 이름으로 다시 그린 시안(s2-cup-k1.jpg)이 브라우저에 남은 옛 그림으로 뜨지 않게 — 메시지마다 다른 v(그 메시지 글의 해시)
+const verOf = (text: string) => { let h = 0; for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
+function mediaUrl(sid: string | null, p: string, ver = ""): string | null {
   if (/^https?:\/\//.test(p)) return p;
   let rel = p.replace(/\\/g, "/").replace(/^\.?\//, "").replace(/^app\//, "");
   const k = rel.search(/(^|\/)(compositions|workspace|public|out|audio)\//);   // 절대 경로(/home/…/phantasos/out/…)도 저장소 기준으로
   if (k > 0) rel = rel.slice(rel[k] === "/" ? k + 1 : k);
-  if (rel.startsWith("public/")) return `/api/public/${rel.slice(7).split("/").map(encodeURIComponent).join("/")}`;
+  const v = ver ? `${rel.includes("?") ? "&" : "?"}v=${ver}` : "";
+  if (rel.startsWith("public/")) return `/api/public/${rel.slice(7).split("/").map(encodeURIComponent).join("/")}${v}`;
   if (!sid) return null;
-  return `/api/projects/${encodeURIComponent(sid)}/studio-file?p=${encodeURIComponent(rel)}`;
+  return `/api/projects/${encodeURIComponent(sid)}/studio-file?p=${encodeURIComponent(rel)}${ver ? `&v=${ver}` : ""}`;
 }
-const MediaRow: React.FC<{ items: MediaRef[] }> = ({ items }) => {
+const MediaRow: React.FC<{ items: MediaRef[]; ver?: string }> = ({ items, ver }) => {
   const sid = useContext(MediaCtx);
+  const [open, setOpen] = useState<number | null>(null);
   if (!items.length) return null;
+  const urls = items.map((it) => mediaUrl(sid, it.path, ver));
+  const images = items.map((it, k) => ({ ...it, url: urls[k], k })).filter((x) => x.url && mediaKind(x.path) === "image");
+  const at = open == null ? -1 : images.findIndex((x) => x.k === open);
+  const cur = at >= 0 ? images[at] : null;
+  const step = (d: number) => images.length && setOpen(images[(at + d + images.length) % images.length].k);
   return (
-    <div className={cx("md-media", items.length > 1 && "multi")}>
+    <div className={cx("md-media", items.length > 1 && "multi", items.length === 2 && "two")}>
       {items.map((it, k) => {
-        const url = mediaUrl(sid, it.path), kind = mediaKind(it.path);
+        const url = urls[k], kind = mediaKind(it.path);
         const name = it.caption || it.path.split("/").pop();
         return (
           <figure key={k}>
             {!url ? <code>{it.path}</code>
-              : kind === "image" ? <a href={url} target="_blank" rel="noreferrer"><img src={url} alt={name} loading="lazy" /></a>
+              : kind === "image" ? <button type="button" className="md-media-zoom" onClick={() => setOpen(k)} aria-label={t("크게 보기: {n}", { n: name ?? "" })}><img src={url} alt={name} loading="lazy" decoding="async" /></button>
               : kind === "video" ? <video src={url} controls playsInline preload="metadata" />
               : kind === "audio" ? <audio src={url} controls preload="metadata" />
               : <a href={url} target="_blank" rel="noreferrer">{name}</a>}
@@ -413,6 +424,23 @@ const MediaRow: React.FC<{ items: MediaRef[] }> = ({ items }) => {
           </figure>
         );
       })}
+      <RDialog.Root open={!!cur} onOpenChange={(v) => !v && setOpen(null)}>
+        <RDialog.Portal>
+          <RDialog.Overlay className="lb-overlay" />
+          <RDialog.Content className="lb" aria-describedby={undefined}
+            onKeyDown={(e) => { if (e.key === "ArrowRight") step(1); if (e.key === "ArrowLeft") step(-1); }}>
+            <RDialog.Title className="sr-only">{cur?.caption || t("그림 크게 보기")}</RDialog.Title>
+            {cur && <img src={cur.url!} alt={cur.caption} />}
+            <div className="lb-bar">
+              {images.length > 1 && <IconButton icon="chevron" className="flip-x" label={t("이전")} onClick={() => step(-1)} />}
+              <span className="lb-cap">{cur?.caption}{images.length > 1 && <span className="faint"> · {at + 1}/{images.length}</span>}</span>
+              {images.length > 1 && <IconButton icon="chevron" label={t("다음")} onClick={() => step(1)} />}
+              {cur && <a className="btn btn-ghost btn-sm" href={cur.url!} target="_blank" rel="noreferrer">{t("원본")}</a>}
+              <RDialog.Close asChild><IconButton icon="close" label={t("닫기")} /></RDialog.Close>
+            </div>
+          </RDialog.Content>
+        </RDialog.Portal>
+      </RDialog.Root>
     </div>
   );
 };

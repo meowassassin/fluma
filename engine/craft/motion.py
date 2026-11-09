@@ -36,7 +36,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 ROLE_KO = {"hook": "훅", "reveal": "반전", "setup": "의문", "step": "과정", "proof": "증거", "outro": "맺음", "contrast": "대비",
            "verdict": "결론", "payoff": "결론", "cta": "행동", "item": "항목", "benefit": "이점", "problem": "고민", "context": "맥락"}
-ART_EXT = (".png", ".svg", ".jpg", ".jpeg", ".webp", ".mp4", ".mov")
 
 
 def js(v) -> str:
@@ -123,19 +122,50 @@ def beat_at(sc: dict, sec: float, *needles: str) -> float | None:
     return round(pref[0], 3) if pref else (round(hits[0][1], 3) if hits else None)
 
 
-def art_files(sid: str, n: int) -> list[Path]:
-    d = ROOT / "data" / "compositions" / sid / "craft" / "art"
-    if not d.exists():
-        return []
-    return sorted(p for p in d.iterdir() if p.suffix.lower() in ART_EXT and re.match(rf"s{n:02d}(\b|[-_.])", p.name))
+# 설치된 글꼴(engine/assets/fonts — EFFECTCRAFT_FONT_DIRS)의 PostScript 이름. direction.font_title · font_body 를 여기로 맞춘다
+# 2026-11-09: 방향에 'Noto Serif CJK KR' 을 적었지만 어디서도 읽지 않아 늘 Pretendard-Black + 노란 상자가 나왔다
+FONTS = {"sans": "Pretendard-Black", "sans-bold": "Pretendard-Bold", "sans-regular": "Pretendard-Regular", "serif": "GowunBatang-Bold",
+         "serif-regular": "GowunBatang-Regular", "display-serif": "SongMyung-Regular", "latin": "Geist-Regular", "mono": "JetBrainsMono-ExtraBold",
+         "hand": "NanumPen-Regular", "heavy": "BlackHanSans-Regular"}
+_INSTALLED = set(FONTS.values()) | {"Pretendard-ExtraBold"}
+
+
+def resolve_font(name: str | None, default: str) -> str:
+    """'Noto Serif CJK KR' · '명조' · 'serif light' · 'SongMyung-Regular' → 설치된 글꼴. 모르는 이름은 계열(세리프 · 산세리프 · 손글씨)로 가깝게"""
+    n = str(name or "").strip()
+    if not n:
+        return default
+    if n in _INSTALLED:
+        return n
+    low = n.lower()
+    if any(k in low for k in ("song", "송명", "display serif")):
+        return FONTS["display-serif"]
+    if any(k in low for k in ("serif", "batang", "바탕", "myeongjo", "명조", "garamond", "times", "didot")) and "sans" not in low:
+        return FONTS["serif-regular"] if any(k in low for k in ("light", "regular", "thin", "가는")) else FONTS["serif"]
+    if any(k in low for k in ("pen", "hand", "손글씨", "script")):
+        return FONTS["hand"]
+    if "mono" in low:
+        return FONTS["mono"]
+    if any(k in low for k in ("regular", "light", "thin", "medium")):
+        return FONTS["sans-regular"]
+    if "bold" in low and "black" not in low:
+        return FONTS["sans-bold"]
+    return default
+
+
+def is_serif(font: str) -> bool:
+    return font in (FONTS["serif"], FONTS["serif-regular"], FONTS["display-serif"])
 
 
 def grammar(sb: dict) -> dict:
     g = dict(sb.get("grammar") or {})
     g.setdefault("subs", {"y": 0.76, "h": 0.024, "box": False, "fg": "#ffffff"})
     g.setdefault("pill", {"y": 0.09, "h": 0.03})
-    g.setdefault("title", {"y": 0.24, "h": 0.04, "box": True, "bg": "#ffd60a", "fg": "#111111"})
     d = sb.get("direction") or {}
+    # 제목 모양: 방향이 세리프 · 절제(editorial)면 노란 상자 대신 상자 없는 큰 글자(방향 글자색), 아니면 예전 노란 상자
+    editorial = d.get("title_style") == "editorial" or is_serif(resolve_font(d.get("font_title"), ""))
+    g.setdefault("title", {"y": 0.24, "h": 0.04, "box": False, "fg": d.get("color_text") or "#ffffff", "editorial": True} if editorial
+                 else {"y": 0.24, "h": 0.04, "box": True, "bg": "#ffd60a", "fg": "#111111"})
     for k in ("subs", "title"):                     # 디자인 방향(시안 · 사용자)이 자막 · 제목 모양을 바꾼다
         if isinstance(d.get(k), dict):
             g[k] = {**g[k], **d[k]}
@@ -168,14 +198,11 @@ def pill_color(what: str, k: int) -> list[float]:
 POS_X = {"left": 0.26, "center": 0.5, "right": 0.74, "far_left": -0.2, "far_right": 1.2}
 
 
-def figure_dir(sid: str, name: str) -> Path:
-    return ROOT / "data" / "compositions" / sid / "craft" / "art" / "figures" / name
-
-
 def puppet(J, sid: str, fig: dict, sec: float, words: list[dict], start: float, end: float, W: int, H: int, k: int,
            d: Path | None = None) -> bool:
     """그린 캐릭터(rig.json)를 부품 레이어 인형으로 조립하고 동작을 붙인다. 좌표는 장면 말(at · to · size)에서만 온다"""
-    d = d or figure_dir(sid, fig.get("name", ""))
+    if d is None:
+        return False
     rp = d / "rig.json"
     if not rp.exists():
         return False
@@ -411,13 +438,12 @@ def input_materials(mats: list[dict]) -> set:
 
 
 def palette_list(sid: str) -> list[list[float]]:
-    """화풍 시스템 팔레트(역할 순서) → 차트 · 강조 색. 없으면 기본"""
-    import sys as _s
-    _s.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401
-    from drawlib import style as _st
+    """영상 팔레트(data/compositions/<id>/style.json 의 palette, 역할 순서) → 차트 · 강조 색. 없으면 기본"""
     f = ROOT / "data" / "compositions" / sid / "style.json"
-    st = _st.resolve(json.loads(f.read_text("utf-8")) if f.exists() else {})
-    pal = st.get("palette") or {}
+    try:
+        pal = (json.loads(f.read_text("utf-8")) if f.exists() else {}).get("palette") or {}
+    except ValueError:
+        pal = {}
     order = [pal.get(k) for k in ("accent", "accent2", "main", "main_dark", "light")] + ["#ffd60a", "#ff3d6b", "#14c6d0", "#52cc66"]
     return [rgb(c) for c in order if isinstance(c, str) and c.startswith("#")]
 
@@ -587,6 +613,8 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
     fit = "Math.max" if place == "full" else "Math.min"
     if typ == "icon":                        # 로고는 작게(가운데 칸의 절반) — 흰 타일 위에
         pw, ph = pw * 0.5, ph * 0.5
+    elif typ == "meme" and place == "center":   # 짤은 반응 박자 — 검은 바탕에 작게 툭 놓지 않고 화면을 크게(2026-11-09 git 영상)
+        pw, ph = 0.96, min(0.66, (bottom - top) * 0.96)
     J(f"var k1 = {fit}({W * pw} / r1.width, {H * ph} / r1.height) * 100; ml.property('Transform').property('Scale').setValue([k1, k1]); ml.property('Transform').property('Position').setValue([{W * px:.0f}, {H * py:.0f}]);")
     if typ == "icon":
         # 흰 둥근 타일(앱 아이콘처럼): 로고 색이 배경에 묻히지 않게. 로고에 붙여(parent) 같이 커지고 움직인다
@@ -775,6 +803,9 @@ def full_still(J, rec: dict, words: list[dict], start: float, end: float, sec: f
         return            # 폰 화면은 확대 · 훑기 없이 그대로(녹화 자체가 움직인다)
     # 주석 오버레이가 짚으면 동그라미는 안 그린다. 이미 짜인 화면(PhotoCraft 카드 등 full_frame)도 — 제목 글자에 동그라미 · 확대가 겹쳤다(2026-11-06)
     ev = [] if rec.get("_no_focus") or rec.get("full_frame") else focus_events(rec, words, start, t0, t_out, sec)
+    hb0, ht0 = rec.get("highlight_box"), rec.get("highlight_t")
+    if not ev and not words and isinstance(hb0, list) and len(hb0) == 4 and isinstance(ht0, (int, float)) and t0 + ht0 < (t_out if t_out is not None else sec) - 0.4:
+        ev = [{"t": round(t0 + float(ht0), 2), "box": hb0}]       # 말이 없는 영상: 강조 줄이 찍히는 순간 그 줄로 다가간다(감독이 짚을 한 곳)
     J("var ps = ml.property('Transform').property('Position'), ss = ml.property('Transform').property('Scale');")
     J(f"ss.setValueAtTime({t0:.2f}, [k1, k1]); ps.setValueAtTime({t0:.2f}, [{W / 2}, cy]);")
     if cover and not ev:
@@ -1025,6 +1056,8 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
     glow_a, glow_b = (pal[1] if len(pal) > 1 else [1, 0.24, 0.42]), (pal[2] if len(pal) > 2 else [0.08, 0.78, 0.82])
     total = round(sum(float(s["sec"]) for s in sb["scenes"]), 3)
     W, H = width, height
+    title_font = resolve_font(d.get("font_title"), font)       # 방향의 글꼴을 실제로 쓴다(설치된 것 중 가장 가까운 것)
+    font = resolve_font(d.get("font_body"), font)
     J = Jsx()
     J(PRELUDE)
     J(f"var main = app.project.items.addComp('Main', {W}, {H}, 1, {total}, {fps});")
@@ -1059,17 +1092,14 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         zoom_at = None
         for b in sc.get("beats") or []:
             if b.get("do") == "확대":
-                zoom_at = cue_time(b.get("at"), words, start, end)
+                # 나레이션 낱말(at) 또는 장면 안 초(t) — 말이 없는 영상도 감독이 짚을 수 있게(2026-11-09: 무음 영상에서 강조가 하나도 없었다)
+                zoom_at = float(b["t"]) if isinstance(b.get("t"), (int, float)) else cue_time(b.get("at"), words, start, end)
                 break
         J("var zs = cam.property('Transform').property('Scale');")
         if zoom_at is not None:
             J(f"zs.setValueAtTime(0, [100, 100]); zs.setValueAtTime({zoom_at}, [104, 104]); zs.setValueAtTime({min(sec, zoom_at + 0.6)}, [122, 122]); zs.setValueAtTime({sec}, [126, 126]); ease(zs, 75);")
         elif DZ["cam_push"] > 1.0:   # 장면 내내 천천히 밀기 — 방향이 정했을 때만
             J(f"zs.setValueAtTime(0, [100, 100]); zs.setValueAtTime({sec}, [{DZ['cam_push'] * 100:.1f}, {DZ['cam_push'] * 100:.1f}]); ease(zs, 40);")
-        # 그림 층
-        arts = art_files(sid, n)
-        figs = [f for f in (sc.get("figures") or []) if isinstance(f, dict)]
-        drew = [puppet(J, sid, f, sec, words, start, end, W, H, i) for i, f in enumerate(figs)]
         mats = scene_materials(sid, n, sc)
         ovs = [r for r in mats if r.get("type") == "overlay"]      # 주석 오버레이: 대상 재료 위에 차례로 — 대상을 다 그린 뒤에
         mats = [r for r in mats if r.get("type") != "overlay"]
@@ -1150,14 +1180,6 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             by_id = {r["id"]: r for r in mats}
             for ov in ovs:
                 overlay_jsx(J, ov, by_id.get(ov_target(ov)), slots.get(ov_target(ov), (None, None)), words, start, end, sec)
-        elif any(drew):
-            pass
-        elif arts:
-            for p in arts:
-                J(f"var f = app.project.importFile(new ImportOptions(new File({js(str(p))})));")
-                J("var a = c.layers.add(f);")
-                J(f"var sz = a.sourceRectAtTime(0, false); var k = Math.max({W} / sz.width, {H} / sz.height) * 100; a.property('Transform').property('Scale').setValue([k, k]);")
-                J(f"a.property('Transform').property('Position').setValue([{W / 2}, {H / 2}]); a.parent = cam;   // 화면 위치를 먼저, 부모는 나중(세계 좌표 유지)")
         else:
             # 재료가 없는 장면: 자리표시 상자 대신 이 장면의 핵심어로 화면을 짠다(목록이면 하나씩, 아니면 큰 낱말 하나)
             v = sc.get("visual") or {}
@@ -1184,8 +1206,14 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             size = int(gt["h"] * H * 1.6)
             for i, line in enumerate(lines):
                 y = gt["y"] * H + i * size * 1.25
-                J(f"var tl = txt(c, 'Title {i + 1}', {js(line)}, {js(font)}, {size}, {js(rgb(gt.get('fg', '#111111')))}, null, 0, [{W / 2}, {y:.0f}]);")
+                J(f"var tl = txt(c, 'Title {i + 1}', {js(line)}, {js(title_font)}, {size}, {js(rgb(gt.get('fg', '#111111')))}, null, 0, [{W / 2}, {y:.0f}]);")
                 ti = t0 + i * 0.4
+                if gt.get("editorial"):
+                    # 절제된 등장: 0.7초에 걸쳐 살짝 떠오르며 나타남(튀거나 상자 없이) — 브랜드 필름 · 애플식 글자
+                    J(f"var tlo = tl.property('Transform').property('Opacity'); tlo.setValueAtTime(0, 0); tlo.setValueAtTime({ti:.3f}, 0); tlo.setValueAtTime({ti + 0.7:.3f}, 100); ease(tlo, 60);"
+                      f" var tlp = tl.property('Transform').property('Position'); tlp.setValueAtTime({ti:.3f}, [{W / 2}, {y + size * 0.35:.0f}]); tlp.setValueAtTime({ti + 0.8:.3f}, [{W / 2}, {y:.0f}]); ease(tlp, 80);")
+                    J(f"tl.property('Transform').property('Opacity').setValueAtTime({max(0.0, sec - 0.35):.3f}, 100); tl.property('Transform').property('Opacity').setValueAtTime({sec:.3f}, 0);")
+                    continue
                 if gt.get("box", True):
                     J(f"fitBox(c, 'TitleBox {i + 1}', 'Title {i + 1}', {js(rgb(gt.get('bg', '#ffd60a')))}, 48, 28, 8{f', {ti + 0.55:.3f}' if title_preset else ''});")
                 if title_preset:
@@ -1196,6 +1224,28 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 elif DZ["text_pop"]:
                     J(f"popIn(tl, {ti:.3f}, 0.18);")
                 J(f"tl.property('Transform').property('Opacity').setValueAtTime({max(0.0, sec - 0.25):.3f}, 100); tl.property('Transform').property('Opacity').setValueAtTime({sec:.3f}, 0);")
+        # 화면 글자(caption) — 나레이션이 없으면 자막이 말소리에서 나오지 않는다. 그래도 콘티에 적은 화면 글자는 보여야 한다
+        # 2026-11-09: 음악 없이 효과음만 쓰는 브랜드 필름에서 '아이디어를,' · 슬로건이 전부 빠졌다(자막은 말에서만 만들었음)
+        cap = str(sc.get("caption") or "").strip()
+        if cap and not words and not lines:
+            gt = g["title"]
+            ed = bool(gt.get("editorial"))
+            parts = [x.strip() for x in re.split(r"\n|(?<=[,，])\s+", cap) if x.strip()] if len(cap) > 12 else [cap]
+            card_like = "카드" in str(sc.get("screen") or "") or not any(is_full(r, layout, W, H) for r in mats)
+            size = int(H * (0.05 if len(cap) <= 8 else 0.036 if len(cap) <= 16 else 0.03))
+            mstarts = [float((m or {}).get("start") or 0) for m in sc.get("materials") or [] if isinstance(m, dict)]
+            t0 = min(max(0.2, (max(mstarts) + 0.9) if card_like and mstarts and max(mstarts) > 0 else 0.25), max(0.2, sec - 1.4))
+            has_screen = any(r.get("type") in ("web", "screen", "video") for r in mats)
+            y0 = (0.70 if card_like else 0.875 if has_screen else g["subs"]["y"]) * H   # 화면 녹화가 가운데를 채우면 글자는 그 아래 띠에(내용 위에 겹치지 않게)
+            fg = rgb(d.get("color_text") or gt.get("fg") or "#ffffff") if ed else [1, 1, 1]
+            stroke = "null, 0" if card_like else f"[0.02, 0.02, 0.03], {max(4, size // 12)}"
+            for i, line in enumerate(parts[:3]):
+                y = y0 + i * size * 1.3
+                ti = t0 + i * 0.25
+                J(f"var ct = txt(c, {js(f'Caption {i + 1}')}, {js(line)}, {js(title_font if ed else font)}, {size}, {js(fg)}, {stroke}, [{W / 2}, {y:.0f}]);")
+                J(f"var cto = ct.property('Transform').property('Opacity'); cto.setValueAtTime(0, 0); cto.setValueAtTime({ti:.3f}, 0); cto.setValueAtTime({ti + 0.6:.3f}, 100); ease(cto, 60);"
+                  f" var ctp = ct.property('Transform').property('Position'); ctp.setValueAtTime({ti:.3f}, [{W / 2}, {y + size * 0.3:.0f}]); ctp.setValueAtTime({ti + 0.7:.3f}, [{W / 2}, {y:.0f}]); ease(ctp, 80);"
+                  f" cto.setValueAtTime({max(ti + 0.7, sec - 0.3):.3f}, 100); cto.setValueAtTime({sec:.3f}, 0);")
         # 숫자 알약 — 레퍼런스 문법: 위쪽 가운데에 영상 내내 떠 있고 값만 굴러 바뀐다 → 장면이 아니라 Main 에 하나(아래에서 만듦)
         pe = element(sc, "숫자 알약", "알약")
         if pe:
@@ -1256,6 +1306,21 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             elif DZ["text_pop"]:
                 J(pop)
         J(f"var sl = main.layers.add(c); sl.startTime = {start:.3f};")
+        # 끝 장면이 영상 없이 그림 · 로고 · 글자만이면 멈춘 화면이 된다(2026-11-09: 로고 4초 정지) → 천천히 다가오며 나타남
+        if oi == len(sb["scenes"]) - 1 and not any((m or {}).get("type") in ("video", "web", "screen", "stock") for m in sc.get("materials") or [] if isinstance(m, dict)):
+            J(f"var eS = sl.property('Transform').property('Scale'); eS.setValueAtTime({start:.3f}, [93, 93]); eS.setValueAtTime({start + sec:.3f}, [100, 100]); ease(eS, 50);"
+              f" var eO = sl.property('Transform').property('Opacity'); eO.setValueAtTime({start:.3f}, 0); eO.setValueAtTime({start + 0.6:.3f}, 100);")
+        # 장면 사이 '들어가기' 전환(direction.transition: zoom · 장면 transition: zoom) — 앞 장면은 끝 0.35초에 화면 속으로 빨려 들고, 다음 장면은 크게 시작해 자리를 잡는다
+        # 2026-11-09: 기획은 '화면 속으로 끊김 없이' 였는데 조립은 컷만 있어 클립이 툭툭 붙었다
+        tr = str(sc.get("transition") or d.get("transition") or "")
+        nxt = sb["scenes"][oi + 1] if oi + 1 < len(sb["scenes"]) else None
+        zp = sc.get("zoom_to") or [0.5, 0.5]
+        if nxt is not None and "zoom" in tr and sec > 0.8:
+            J(f"var zA = sl.property('Transform').property('Anchor Point'), zP = sl.property('Transform').property('Position'); zA.setValue([{W * float(zp[0]):.0f}, {H * float(zp[1]):.0f}]); zP.setValue([{W * float(zp[0]):.0f}, {H * float(zp[1]):.0f}]);")
+            J(f"var zS = sl.property('Transform').property('Scale'); zS.setValueAtTime({start + sec - 0.35:.3f}, [100, 100]); zS.setValueAtTime({start + sec:.3f}, [240, 240]); ease(zS, 85);")
+        prev = sb["scenes"][oi - 1] if oi > 0 else None
+        if prev is not None and "zoom" in str(prev.get("transition") or d.get("transition") or "") and sec > 0.8:
+            J(f"var zI = sl.property('Transform').property('Scale'); zI.setValueAtTime({start:.3f}, [135, 135]); zI.setValueAtTime({start + 0.4:.3f}, [100, 100]); ease(zI, 70);")
     # 위쪽 고정 주제 제목(레퍼런스: '컴퓨터 버그의 유래'처럼 영상 내내 위에 떠 있음) — 콘티 direction.pin_title > pin_title > 짧은 제목
     if pin:
         J("\n// ---------- 위쪽 고정 주제 제목(영상 전체)")

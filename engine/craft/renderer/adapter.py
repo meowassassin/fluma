@@ -14,7 +14,6 @@ ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "path
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 
 from engines import ROOT, run  # noqa: E402
-from craft.art import build_all as build_art  # noqa: E402
 from craft.materials import build as build_materials  # noqa: E402
 from craft.motion import build_jsx  # noqa: E402
 
@@ -68,7 +67,6 @@ def build(job) -> Path:
     mkey = "motion" + aspect_tag(job.sb)
     mo = man.get(mkey) or {}
     build_materials(job.sb, [int(t.get("index", i)) for i, t in enumerate(job.scenes)])        # 장면 재료(차트 · 문서 인용 · 일러스트 · 사진 · 화면) → 능력 목록대로 Craft 앱이 만든다
-    build_art(job.sb["id"])        # 형태(forms/*.form.json) → 부품 레이어 SVG + 뼈대(그림이 바뀌면 JSX 도 바뀌어 다시 만든다)
     W, H = aspect_size(job.sb)
     jsx = build_jsx(job.sb, job.captions, job.scenes, proj, fps=job.fps, width=W, height=H)
     # 열쇠 = 스크립트 + 불러오는 파일의 내용 — 같은 경로의 재료가 바뀌어도(새로 올린 녹화 · 다시 그린 그림) 다시 만든다

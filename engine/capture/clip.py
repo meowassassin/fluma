@@ -33,7 +33,8 @@ ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "path
 PUBLIC = ROOT / "data" / "public"
 ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
 AI_TITLE = re.compile(r"\b(ai|a\.i\.|sora|veo|kling|generated)\b|인공지능|AI\s*영상", re.I)
-YTDLP = str(ROOT / ".venv" / "bin" / "yt-dlp") if (ROOT / ".venv" / "bin" / "yt-dlp").exists() else "yt-dlp"
+from platform_util import venv_tool  # noqa: E402
+YTDLP = venv_tool("yt-dlp")
 
 
 def _run(args: list[str], timeout: int = 300) -> str:

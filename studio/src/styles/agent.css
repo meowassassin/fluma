@@ -131,8 +131,18 @@
 
 /* 채팅 안 결과 보기(```media · ![](경로)) — 사용자가 파일을 찾아 열지 않아도 되게 */
 .md .md-media { display: grid; gap: 8px; margin: 8px 0; }
-.md .md-media.multi { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.md .md-media.multi { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.md .md-media.two { grid-template-columns: 1fr 1fr; }
+.md .md-media-zoom { all: unset; display: block; cursor: zoom-in; border-radius: 10px; }
+.md .md-media-zoom:focus-visible { outline: 2px solid var(--focus, var(--accent)); outline-offset: 2px; }
+.lb-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .82); z-index: 1000; }
+.lb { position: fixed; inset: 0; z-index: 1001; display: grid; grid-template-rows: 1fr auto; place-items: center; padding: 24px 24px 12px; gap: 10px; outline: none; }
+.lb img { max-width: 100%; max-height: calc(100vh - 96px); object-fit: contain; border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, .5); }
+.lb-bar { display: flex; align-items: center; gap: 8px; color: #fff; max-width: min(900px, 100%); }
+.lb-bar .btn, .lb-bar button { color: #fff; }
+.lb-cap { font-size: 13px; opacity: .9; text-align: center; }
+.flip-x svg { transform: scaleX(-1); }
 .md .md-media figure { margin: 0; display: grid; gap: 4px; }
-.md .md-media img, .md .md-media video { width: 100%; max-height: 420px; object-fit: contain; border-radius: 10px; background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-2); display: block; }
+.md .md-media img, .md .md-media video { width: 100%; max-height: 520px; object-fit: contain; border-radius: 10px; background: var(--bg-2); box-shadow: inset 0 0 0 1px var(--line-2); display: block; }
 .md .md-media audio { width: 100%; }
 .md .md-media figcaption { font-size: var(--fs-xs, 12px); color: var(--fg-2, inherit); opacity: .8; }

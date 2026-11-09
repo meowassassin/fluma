@@ -1,5 +1,14 @@
 # Changelog
 
+
+## Unreleased
+
+- 완전 로컬: 그림 · 영상 생성 경로(실사 생성 컷 · 그림 시안 · 세로 확장)를 없앴습니다 — 화면은 퍼온 클립 · 스톡 · 사진 · 화면 녹화 · Craft 그림으로 / Fully local: removed the image and video generation route (generated shots, image drafts, vertical extend)
+- 감독 스킬(다섯 기둥 · 리듬 계단 · 시선 한 곳 · 세 가지 구체)과 작가 스킬(훅 세 칸 · 대사 · AI 티 금지) / Director and writer skills
+- 나레이션 없는 영상의 화면 글자(caption) 표시 · 초 단위 확대 · 감독 없음 검사(L41) / Captions without narration, timed zoom, no-direction lint
+- 레퍼런스 분석 빨라짐(빠른 분해 기본 · VL 과 스타일 카드 병렬 · 두 편씩 동시) · 기준점(anchor) · 초안 뒤 VL 비평 자동 / Faster reference analysis, anchor matching, automatic draft critique
+- 대화창 그림 크게 보기 · 다시 그린 그림이 옛 그림으로 뜨던 문제 / Chat image lightbox and stale-image fix
+
 ## v1.0.0 — 2026-11-09
 
 첫 정식 배포 / First stable release.

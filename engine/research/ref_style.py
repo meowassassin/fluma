@@ -131,29 +131,19 @@ def main():
               "summary": (f"단색 바탕({bg}) 가운데 띠에 내용 — 띠 높이 화면의 약 {round((np.median(bots) - np.median(tops)) * 100)}%, 폭 가득" if letterbox > 0.5 and tops else "화면 가득 채움")}
 
     # 2) 샷마다 대표 프레임 OCR → 화면 종류
-    say(0.25, "샷 글자 읽기")
-    langs = ocr.order_langs(a.langs.split(","), " ".join(sg.get("text", "") for sg in x.get("speech", [])))
-    shots = []
-    for i, s in enumerate(x.get("shots", [])):
-        mid = (s["start"] + s["end"]) / 2
-        f = frame_at(src, mid, tmp / f"shot{i:02d}.jpg")
-        lines = ocr.read(str(f), langs)
-        n_txt = len(lines)
-        vt = vision_tags.classify(str(f), lines)
-        kind = vt["kind"]
-        shots.append({"i": i, "start": s["start"], "end": s["end"], "sec": round(s["end"] - s["start"], 2), "kind": kind, "kind_top": vt["top"],
-                      "camera": (s.get("camera") or {}).get("kind"), "text_lines": n_txt})
-        say(0.25 + 0.35 * (i + 1) / max(1, len(x["shots"])), f"샷 {i + 1}/{len(x['shots'])}")
-
     # 3) 자막: 1초마다 OCR → 편집자가 얹은 자막만 골라, 같은 글이 이어지면 한 번으로 묶는다(등장 · 사라짐 시각)
-    say(0.62, "자막 읽기")
+    say(0.25, "자막 읽기")
+    langs = ocr.order_langs(a.langs.split(","), " ".join(sg.get("text", "") for sg in x.get("speech", [])))
     caps, open_ = [], {}
     n = int(dur)
     caps_frames = ocr.frames(src, 0.5, 1.0, n + 1)
+    per_sec: list[tuple[float, list]] = []          # 1초마다 읽은 글자 — 샷 글자 수도 여기서 가져온다(예전엔 샷마다 또 읽어 OCR 이 두 배: 80샷 영상에서 4분)
     for k, (t, f) in enumerate(caps_frames):
         t = min(dur - 0.3, t)
         seen = set()
-        for o in ocr.read(f, langs):
+        got = ocr.read(f, langs)
+        per_sec.append((t, got))
+        for o in got:
             if not is_overlay(o):
                 continue
             key = re.sub(r"\s+", "", o["text"])[:24]
@@ -166,9 +156,22 @@ def main():
                 open_[key] = {"start": max(0, t - 0.5), "end": t + 0.5, "band": band, "y": round(by, 3), "h": round(bh, 3), "text_example": o["text"], "style": cap_style(o), "bg": o["bg"], "fg": o["fg"]}
         for key in [k_ for k_ in open_ if k_ not in seen]:
             caps.append(open_.pop(key))
-        say(0.62 + 0.2 * (k + 1) / len(caps_frames), f"자막 {k + 1}/{len(caps_frames)}초")
+        say(0.25 + 0.45 * (k + 1) / len(caps_frames), f"자막 {k + 1}/{len(caps_frames)}초")
     caps += list(open_.values())
     caps.sort(key=lambda c: c["start"])
+    say(0.72, "샷 화면 종류")
+    shots = []
+    for i, s in enumerate(x.get("shots", [])):
+        mid = (s["start"] + s["end"]) / 2
+        f = frame_at(src, mid, tmp / f"shot{i:02d}.jpg")
+        lines = min(per_sec, key=lambda r: abs(r[0] - mid))[1] if per_sec else []     # 가장 가까운 초에 읽은 글자
+        n_txt = len(lines)
+        vt = vision_tags.classify(str(f), lines)
+        kind = vt["kind"]
+        shots.append({"i": i, "start": s["start"], "end": s["end"], "sec": round(s["end"] - s["start"], 2), "kind": kind, "kind_top": vt["top"],
+                      "camera": (s.get("camera") or {}).get("kind"), "text_lines": n_txt})
+        say(0.72 + 0.1 * (i + 1) / max(1, len(x["shots"])), f"샷 {i + 1}/{len(x['shots'])}")
+
     style_counts = {}
     for c in caps:
         style_counts[c["style"]] = style_counts.get(c["style"], 0) + 1
