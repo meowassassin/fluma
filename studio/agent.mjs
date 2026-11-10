@@ -26,7 +26,8 @@ export const TOOLS = [
   // 비대화 실행(-p)은 승인을 물을 곳이 없다 — 여기 없는 명령은 곧바로 막혀 작업이 멈춘다. 에이전트가 실제로 쓰는 것을 적되,
   // 비밀 파일을 읽을 수 있는 명령(cat · grep · curl · 셸 전체)은 넣지 않는다
   "Bash(python3 engine/*)", "Bash(.venv/bin/python engine/*)", "Bash(python engine/*)",
-  "Bash(ffmpeg *)", "Bash(ffprobe *)", "Bash(ls *)", "Bash(mkdir -p data/*)", "Bash(cp data/*)", "Bash(mv data/*)",
+  "Bash(ffmpeg *)", "Bash(ffprobe *)", "Bash(ls *)",
+  "Bash(cd *)",          // 2026-11-10: 'cd /app && python3 engine/…' 조합이 막혀 에이전트가 우회하느라 호출이 늘었다 — cd 는 무해(뒤 명령은 각자 규칙대로) "Bash(mkdir -p data/*)", "Bash(cp data/*)", "Bash(mv data/*)",
 ];
 // 키·인증 파일은 읽지도 못하게
 // 저장소 코드 · 설정은 고치지 못하게 — 쓰기는 acceptEdits(저장소 안 파일 편집 자동 허용)로 열고 여기서 막는다.
@@ -272,7 +273,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         for (const c of e.message?.content || []) {
           if (c?.type !== "tool_result") continue;
           const text = Array.isArray(c.content) ? c.content.map((x) => x.text || "").join("") : String(c.content ?? "");
-          emit({ type: "tool_result", id: c.tool_use_id, error: !!c.is_error, preview: text.slice(0, 400) });
+          emit({ type: "tool_result", id: c.tool_use_id, error: !!c.is_error, preview: text.slice(0, 400), out: resultLines(text) });
         }
       } else if (e.type === "system" && e.subtype === "permission_denied") {
         emit({ type: "denied" });
@@ -281,6 +282,18 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
           durationMs: e.duration_ms ?? null, denials: (e.permission_denials || []).map((d) => summarize(d.tool_name, d.tool_input || {})) });
       }
     };
+  }
+  // 도구 결과에서 사람이 알아야 할 줄만 — 대화창의 결과 칩(값 조정 · 음악 · 목소리 · 소리 · 걸린 시간). 대화 기록에 남는다
+  function resultLines(text) {
+    const out = [];
+    for (const raw of String(text || "").split("\n")) {
+      const ln = raw.trim();
+      const m = ln.match(/^(changed|sound|took|error|picked|file)=(.+)$/);
+      if (m) out.push(`${m[1]}=${m[2].slice(0, 160)}`);
+      else if (/^\[(음악|음성)\]/.test(ln)) out.push(ln.slice(0, 160));
+      if (out.length >= 8) break;
+    }
+    return out;
   }
   function summarize(name, input) {
     if (input.file_path) return path.relative(ROOT, input.file_path) || input.file_path;
@@ -489,9 +502,12 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
 
     const onEv = (ev) => {
       if (ev.type === "text") run.text += ev.text;
-      if (ev.type === "tool_use") run.tools.push({ name: ev.name, input: ev.input });
+      if (ev.type === "tool_use") run.tools.push({ id: ev.id, name: ev.name, input: ev.input });
       if (ev.type === "todos") run.todos = ev.todos;
-      if (ev.type === "tool_result" && ev.error) { const t = run.tools.at(-1); if (t) t.error = true; }
+      if (ev.type === "tool_result") {
+        const t = run.tools.find((x) => x.id === ev.id) || run.tools.at(-1);
+        if (t) { if (ev.error) t.error = true; if (ev.out?.length) t.out = ev.out; }
+      }
       if (ev.type === "result") { run.result = ev; if (run.stdinOpen && child.stdin) { run.stdinOpen = false; child.stdin.end(); } }
       broadcast(run, ev);
     };

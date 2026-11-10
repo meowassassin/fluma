@@ -35,9 +35,9 @@ function apply(cur: LiveTurn | null, ev: AgentEvent): LiveTurn | null {
   switch (ev.type) {
     case "status": return { ...cur, status: t(ev.label) };
     case "text": return { ...cur, text: cur.text + ev.text, status: t("답을 쓰는 중") };
-    case "tool_start": return { ...cur, tools: [...cur.tools, { id: ev.id, name: ev.name, input: "", done: false }] };
+    case "tool_start": return { ...cur, tools: [...cur.tools, { id: ev.id, name: ev.name, input: "", done: false, t0: Date.now() }] };
     case "tool_use": return { ...cur, tools: cur.tools.map((t) => (t.id === ev.id ? { ...t, input: ev.input } : t)) };
-    case "tool_result": return { ...cur, tools: cur.tools.map((t) => (t.id === ev.id ? { ...t, done: true, error: ev.error } : t)) };
+    case "tool_result": return { ...cur, tools: cur.tools.map((t) => (t.id === ev.id ? { ...t, done: true, error: ev.error, out: ev.out ?? t.out } : t)) };
     case "todos": return { ...cur, todos: ev.todos };
     case "steer": return { ...cur, steers: [...cur.steers, ev.text] };
     case "queued": return { ...cur, queued: [...(cur.queued ?? []), ev.text] };

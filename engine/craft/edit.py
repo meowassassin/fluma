@@ -15,6 +15,8 @@
 from __future__ import annotations
 
 import hashlib
+import time
+import shutil
 import json
 import os
 import subprocess
@@ -139,6 +141,14 @@ def assemble(sb: dict, video: Path, audio: Path | None, out: Path, fps: int = 30
     if caps_p.exists():
         (d / f"{sid}.srt").write_text(srt(words), "utf-8")
     edited = proj.exists() and ed.get("hash") and _sha(proj) != ed["hash"]
+    if edited and not ed.get("keep"):
+        # 해시만 다르다고 '사람이 고친 것'으로 계속 쓰면, 그 프로젝트에 박힌 예전 영상 타임라인으로 내보내 화면이 멈추거나 검게 나왔다
+        # (2026-11-10 DB 인덱스 영상: 에이전트가 앱 도구로 열어 다시 저장한 뒤 '45초 내내 같은 화면'). 고친 판은 백업하고 새 영상으로 다시 짓는다.
+        # 사람이 고친 조립을 그대로 쓰려면 craft.json 의 edit.keep = true
+        bak = proj.with_name(f"{proj.stem}.edited-{time.strftime('%Y%m%d-%H%M%S')}{proj.suffix}")
+        shutil.copy2(proj, bak)
+        print(f"[조립] {os.path.relpath(proj, ROOT)} 이 바뀌어 있어 백업({bak.name})하고 새 영상으로 다시 짓습니다 — 고친 판을 그대로 쓰려면 craft.json edit.keep=true")
+        edited = False
     try:
         if not edited:
             proj.unlink(missing_ok=True)

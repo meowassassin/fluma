@@ -240,13 +240,38 @@ def continuous_parts(scenes: list, work: Path, prov: str, vid, speed: float, sty
     if not wav.exists() or not Path(str(wav) + ".words.json").exists():
         synth(full, wav, vid, prov, speed=speed, style=style, opts=opts)
     clip, words, total = speech(wav)
+    # 글자로 장면을 가른다 — 대본과 음성 단어의 글자 수가 다르다(문장부호 · 숫자 읽는 법 · 엔진마다 단어 경계).
+    # 2026-11-10: 절대 글자 수로 가르니 차이가 쌓여 경계가 뒤로 밀렸다(장면 5 음성 44.8초). 문장부호 · 공백을 양쪽에서 빼고 비율로 맞춘다
+    norm = lambda s: re.sub(r"[\W_]", "", s)
     cum, acc = [], 0
     for t in texts:
-        acc += len(re.sub(r"\s", "", t)); cum.append(acc)
-    owner, c = [], 0
+        acc += len(norm(t)); cum.append(acc)
+    tot_w = sum(len(norm(w["text"])) for w in words) or 1
+    # 1) 비율로 경계 자리를 어림하고 2) 그 근처(±4 단어)에서 다음 장면 첫 낱말과 가장 닮은 단어 · 긴 쉼(문장 끝)을 경계로 고른다
+    #    — 숫자를 다르게 읽으면('100만' ↔ '백만') 비율만으로는 한 단어씩 어긋났다
+    import difflib
+    wc, c = [], 0
     for w in words:
-        c += len(re.sub(r"\s", "", w["text"]))
-        owner.append(next((i for i, x in enumerate(cum) if c <= x + 1), len(texts) - 1))
+        c += len(norm(w["text"])); wc.append(c / tot_w * cum[-1])
+    bounds, lo = [], 0
+    for i in range(len(texts) - 1):
+        est = next((k for k, x in enumerate(wc) if x > cum[i] + 0.5), len(words))
+        head = [norm(x) for x in texts[i + 1].split()[:2]]
+        best, best_s = est, -1.0
+        for k in range(max(lo + 1, est - 4), min(len(words), est + 5)):
+            sim = difflib.SequenceMatcher(None, norm(words[k]["text"]), head[0] if head else "").ratio() if head else 0
+            if len(head) > 1 and k + 1 < len(words):
+                sim += 0.5 * difflib.SequenceMatcher(None, norm(words[k + 1]["text"]), head[1]).ratio()
+            gap = (words[k]["startMs"] - words[k - 1]["endMs"]) / 1000 if k > 0 else 0
+            score = sim + min(0.6, gap) - 0.08 * abs(k - est)
+            if score > best_s:
+                best, best_s = k, score
+        bounds.append(best); lo = best
+    owner, b = [], 0
+    for k in range(len(words)):
+        while b < len(bounds) and k >= bounds[b]:
+            b += 1
+        owner.append(b)
     cuts = [0.0]
     for i in range(len(texts) - 1):
         a = [w for w, o in zip(words, owner) if o == i]; b = [w for w, o in zip(words, owner) if o == i + 1]
@@ -258,6 +283,12 @@ def continuous_parts(scenes: list, work: Path, prov: str, vid, speed: float, sty
     cuts.append(total)
     for i in range(1, len(cuts) - 1):   # 장면은 2초 이상(스키마) — 짧으면 자르는 자리를 뒤로 민다(말은 이어지므로 티가 안 난다)
         cuts[i] = max(cuts[i], round((cuts[i - 1] + 2.0) * 30) / 30)
+    # 안전 검사: 어느 장면 음성이 제 글자 몫의 2배를 넘으면 가르기가 틀린 것 — 장면별 합성으로 돌아간다(호출한 쪽이 처리)
+    share = [(cum[i] - (cum[i - 1] if i else 0)) / max(1, cum[-1]) * total for i in range(len(texts))]
+    for i in range(len(texts)):
+        got = cuts[i + 1] - cuts[i]
+        if share[i] > 0.5 and got > max(2.5, share[i] * 2):
+            raise ValueError(f"이어 말하기 가르기가 어긋남(장면 {i + 1}: {got:.1f}초, 글자 몫 {share[i]:.1f}초)")
     parts = []
     for i, t in enumerate(texts):
         a0, a1 = cuts[i], max(cuts[i] + 1 / 30, cuts[i + 1])
@@ -312,8 +343,12 @@ def main():
     parts = []
     cont = continuous_mode(sb) and not keep and all((sc.get("narration") or "").strip() for sc in scenes)
     if cont:
-        parts = continuous_parts(scenes, work, prov, vid, speed, style, vopts)
-        print("[음성] 이어 말하기: 대본 전체를 한 번에 합성하고 단어 사이 쉼에서 장면을 자릅니다")
+        try:
+            parts = continuous_parts(scenes, work, prov, vid, speed, style, vopts)
+            print("[음성] 이어 말하기: 대본 전체를 한 번에 합성하고 단어 사이 쉼에서 장면을 자릅니다")
+        except ValueError as e:                       # 가르기가 어긋나면 멈추지 말고 장면별 합성으로
+            print(f"[음성] {e} — 장면마다 따로 합성합니다")
+            cont, parts = False, []
     for i, sc in enumerate(scenes if not cont else []):
         # 장면마다 합성할 때는 앞뒤 장면 글을 문맥으로 넘긴다(문맥으로 감정을 고르는 엔진 — typecast smart)
         ctx = {"prev_text": (scenes[i - 1].get("narration") or "").strip() if i else None,

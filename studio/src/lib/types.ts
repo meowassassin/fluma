@@ -44,7 +44,7 @@ export interface Settings {
 // ---------- 에이전트 ----------
 export interface ChatContext { menu?: "trends" | "character" | "studio" | "plan"; selection?: string; note?: string }
 export interface MemoryRef { id: string; title: string; scope: string; type: string }
-export interface ChatTool { name: string; input: string; error?: boolean }
+export interface ChatTool { name: string; input: string; error?: boolean; id?: string; out?: string[]; t0?: number }
 export interface Todo { content: string; status: "pending" | "in_progress" | "completed"; activeForm?: string }
 export interface ChatFile { path: string; kind: "added" | "modified" | "deleted" }
 export interface ChatMessage {
@@ -60,7 +60,7 @@ export type AgentEvent =
   | { type: "thinking"; text: string }
   | { type: "tool_start"; id: string; name: string }
   | { type: "tool_use"; id: string; name: string; input: string }
-  | { type: "tool_result"; id: string; error: boolean; preview: string }
+  | { type: "tool_result"; id: string; error: boolean; preview: string; out?: string[] }
   | { type: "denied" }
   | { type: "steer"; text: string } | { type: "queued"; text: string } | { type: "unqueued"; index: number }
   | { type: "todos"; todos: Todo[] }

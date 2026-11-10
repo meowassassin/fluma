@@ -120,7 +120,10 @@ def record(plan: dict, out: Path) -> None:
                 ev.update({"i": i, "do": do})
                 if do == "card":                                 # 글자 카드 — 녹화하지 않는다(렌더가 장면 사이에 넣음)
                     events.append(ev); continue
-                loc, b = box(s["target"]) if s.get("target") else (None, None)
+                if do in ("stage", "reveal") and s.get("target"):    # 숨긴 요소 — 보이기를 기다리거나 굴리지 않는다(자리는 보인 뒤 잰다)
+                    loc, b = page.locator(s["target"]).first, None
+                else:
+                    loc, b = box(s["target"]) if s.get("target") else (None, None)
                 ev["box"] = b
                 ev["t"] = round(time.time() - t0, 3)
                 if do == "click" and loc:
@@ -139,6 +142,23 @@ def record(plan: dict, out: Path) -> None:
                     loc.hover(timeout=8000)
                 elif do == "scroll":
                     page.mouse.wheel(0, float(s.get("by", 500)))
+                elif do == "stage" and loc:                    # 다시 보여 주기 준비: 대화 목록의 메시지를 모두 숨긴다(녹화 화면에서만 — 앱 · 데이터는 그대로)
+                    loc.evaluate("e => { for (const k of e.children) { k.dataset.flumaHidden = '1'; k.style.display = 'none'; } }")
+                    page.wait_for_timeout(120)
+                elif do == "reveal" and loc:                   # 메시지 하나 보이기: pop(말풍선 — 떠오르며) · stream(에이전트 답 — 위에서 아래로 흘러나오듯)
+                    ms_ = int(s.get("reveal_ms", 1200 if s.get("mode") == "stream" else 350))
+                    loc.evaluate("""(e, a) => new Promise(res => { e.style.display = ''; delete e.dataset.flumaHidden;
+                        let box = e.parentElement; while (box && box !== document.body && !/auto|scroll/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+                        const full = e.scrollHeight, t0 = performance.now();
+                        if (a.mode === 'stream') { e.style.overflow = 'hidden'; e.style.maxHeight = '0px'; } else { e.style.opacity = '0'; e.style.transform = 'translateY(14px)'; e.style.transition = 'none'; }
+                        const f = (n) => { const u = Math.min(1, (n - t0) / a.ms), k = 1 - Math.pow(1 - u, 2);
+                          if (a.mode === 'stream') e.style.maxHeight = Math.round(full * u) + 'px'; else { e.style.opacity = String(k); e.style.transform = `translateY(${14 * (1 - k)}px)`; }
+                          if (box) box.scrollTop = box.scrollHeight;
+                          if (u < 1) requestAnimationFrame(f); else { e.style.maxHeight = ''; e.style.overflow = ''; e.style.transform = ''; e.style.opacity = ''; if (box) box.scrollTop = box.scrollHeight; res(); } };
+                        requestAnimationFrame(f); })""", {"ms": ms_, "mode": s.get("mode", "pop")})
+                    ev["t_end"] = round(time.time() - t0, 3)
+                elif do == "clear" and loc:                    # 입력창 비우기(보낸 것처럼) — React 값까지
+                    loc.evaluate("e => { const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(e), 'value').set; set.call(e, ''); e.dispatchEvent(new Event('input', {bubbles: true})); }")
                 elif do == "scrollthrough" and loc:            # 대화 · 목록을 천천히 훑는다(실제로 굴러가는 모습이 영상에 담김)
                     ms_ = int(s.get("scroll_ms", 4000))
                     loc.evaluate("""(e, a) => new Promise(res => { let el = e; while (el && el !== document.body && !(el.scrollHeight > el.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(el).overflowY))) el = el.parentElement;
@@ -174,7 +194,7 @@ def record(plan: dict, out: Path) -> None:
                             ev["box"] = fb
                     except Exception:
                         pass
-                elif loc and do in ("focus", "hover"):          # 머무는 동안 자리가 바뀌었을 수 있다(그림 로딩 · 펼침) — 끝 자리를 강조 상자로
+                elif loc and do in ("focus", "hover", "reveal"):   # 머무는 동안 자리가 바뀌었을 수 있다(그림 로딩 · 펼침 · 흘러나옴) — 끝 자리를 강조 상자로
                     try:
                         be = measure(loc)
                         if be and be[2] > 4:
@@ -425,6 +445,22 @@ def cursor(img, px, py, s, press=0.0):
     cv2.polylines(img, [np.int32(tri)], True, (15, 15, 15), max(2, int(s * 0.07)), lineType=cv2.LINE_AA)
 
 
+def spring(target: np.ndarray, dt: float, w) -> np.ndarray:
+    """임계 감쇠 스프링(겹 없이 가장 빨리 따라감) — x'' = w²(목표 − x) − 2w·x'. 프레임마다 4번 쪼개 계산해 안정적으로"""
+    x = target[0].astype(np.float64).copy()
+    v = np.zeros_like(x)
+    w = np.asarray(w, np.float64)
+    out = np.empty_like(target, dtype=np.float64)
+    h = dt / 4
+    for i, tg in enumerate(target):
+        for _ in range(4):
+            a = w * w * (tg - x) - 2 * w * v
+            v = v + a * h
+            x = x + v * h
+        out[i] = x
+    return out
+
+
 def badge(img, txt: str, W: int):
     from PIL import Image, ImageDraw
     f = font(max(20, W // 64))
@@ -443,10 +479,17 @@ def badge(img, txt: str, W: int):
     return img
 
 
-def to_gif(mp4: Path, gif: Path, width: int = 1280, fps: int = 20) -> Path:
+def to_web(mp4: Path, dst: Path) -> Path:
+    """페이지에 넣는 소리 없는 mp4(자동 재생 · 반복용) — 같은 화질에서 GIF 보다 훨씬 작다"""
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(mp4), "-an", "-c:v", "libx264", "-preset", "slow", "-crf", "26", "-pix_fmt", "yuv420p",
+                    "-movflags", "+faststart", str(dst)], check=True)
+    return dst
+
+
+def to_gif(mp4: Path, gif: Path, width: int = 800, fps: int = 10, colors: int = 96) -> Path:
     """발표 자료 · 페이지용 GIF — 두 번 거쳐 색 표(palette)를 영상에 맞춰 만들고, 바뀐 곳만 다시 그려 크기를 줄인다"""
     # bayer 떨림(규칙 무늬)이 오차 확산보다 프레임 사이 변화가 적어 훨씬 작다(같은 31초: 60MB → 21MB)
-    vf = f"fps={fps},scale={width}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=160:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle"
+    vf = f"fps={fps},scale={width}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors={colors}:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(mp4), "-vf", vf, "-loop", "0", str(gif)], check=True)
     return gif
 
@@ -518,7 +561,25 @@ def render(out: Path, aspect: str, music: str | None, dst: Path | None, fps: int
     ff = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(fps), "-i", "-",
                            "-c:v", "libx264", "-preset", "medium", "-crf", "17", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(silent)], stdin=subprocess.PIPE)
     csize = max(34, W // 34) if W >= H else max(40, W // 22)
-    for fi in range(int(total * fps)):
+    # 부드러움: 프레임마다 목표(카메라 · 줌 · 강조 상자 · 강조 세기)를 먼저 구하고 임계 감쇠 스프링으로 따라가게 한다.
+    # 구간마다 따로 가감속하면 열쇠 시점에서 속도가 0 으로 끊기고, 강조 상자는 대상이 바뀔 때 툭 옮겨 갔다(2026-11-10 사용자: 부드럽지 않다)
+    nF = int(total * fps)
+    tbs = [min(max(0.0, fi / fps - intro), body) for fi in range(nF)]
+    def clamp_cam(c_):
+        """줌 인했을 때 화면 밖(앱 창 가장자리 너머)을 비추지 않게 — 아래 입력창으로 다가가면 창 아래 빈 바탕이 보였다"""
+        cx_, cy_, z_, f_ = c_
+        k_ = frame_w / sw * z_
+        hw, hh = W / (2 * k_), H / (2 * k_)
+        cx_ = min(max(cx_, hw), sw - hw) if sw * k_ > W else sw / 2
+        cy_ = min(max(cy_, hh), sh - hh) if sh * k_ > H else sh / 2
+        return cx_, cy_, z_, f_
+    tgt_cam = np.array([[c_[0], c_[1], math.log(max(1e-3, c_[2])), c_[3]] for c_ in (clamp_cam(cam_at(keys, x)) for x in tbs)], np.float64)
+    def pick_rect(x):
+        return min(boxed, key=lambda b_: 0 if b_[0] - 0.6 <= x <= b_[1] + 0.6 else min(abs(b_[0] - x), abs(b_[1] - x)))[2] if boxed else [0, 0, sw, sh]
+    tgt_rect = np.array([pick_rect(x) for x in tbs], np.float64)
+    SM_CAM = spring(tgt_cam, 1 / fps, np.array([float(plan.get("cam_spring", 5.5))] * 3 + [7.0]))
+    SM_RECT = spring(tgt_rect, 1 / fps, float(plan.get("box_spring", 8.0)))
+    for fi in range(nF):
         t = fi / fps
         tb = min(max(0.0, t - intro), body)
         img = background(0.0 if demo else t)          # 데모는 바탕을 멈춘다 — 움직이는 빛은 GIF 의 모든 프레임을 바꿔 크기가 몇 배로 커졌다
@@ -531,7 +592,10 @@ def render(out: Path, aspect: str, music: str | None, dst: Path | None, fps: int
                 ps_, pb_ = load(frame_at(s_prev))
                 sharp = cv2.addWeighted(ps_, 1 - a_, sharp, a_, 0); blur = cv2.addWeighted(pb_, 1 - a_, blur, a_, 0)
                 break
-        cx, cy, z, foc = cam_at(keys, tb)
+        cx, cy, lz, foc = SM_CAM[fi]
+        z = math.exp(lz)
+        cx, cy, z, _ = clamp_cam((cx, cy, z, 0.0))      # 스프링이 따라가는 사이에도 가장자리를 넘지 않게
+        foc = min(1.0, max(0.0, foc))
         frect = None
         if t < intro:
             z, foc = 0.9 + 0.1 * ease(t / max(intro, 1e-6)), 0.0
@@ -545,8 +609,7 @@ def render(out: Path, aspect: str, music: str | None, dst: Path | None, fps: int
         view = cv2.warpAffine(sharp, M, (W, H), flags=cv2.INTER_LINEAR)
         if foc > 0.01:
             vblur = cv2.warpAffine(blur, M, (W, H), flags=cv2.INTER_LINEAR)
-            cur = min(boxed, key=lambda b_: 0 if b_[0] - 0.6 <= tb <= b_[1] + 0.6 else min(abs(b_[0] - tb), abs(b_[1] - tb)))[2]
-            bx, by, bw_, bh_ = cur
+            bx, by, bw_, bh_ = SM_RECT[fi]
             pad = 12 / k * 2
             fx0, fy0 = k * (bx - pad) + M[0, 2], k * (by - pad) + M[1, 2]
             fx1, fy1 = k * (bx + bw_ + pad) + M[0, 2], k * (by + bh_ + pad) + M[1, 2]
@@ -652,8 +715,11 @@ def render(out: Path, aspect: str, music: str | None, dst: Path | None, fps: int
         silent.replace(dst)
     print(f"[쇼케이스] {total:.1f}초 · {fps}fps ({aspect}) → {dst.relative_to(ROOT) if dst.is_relative_to(ROOT) else dst}")
     if demo:                                     # 데모는 GIF 도 함께(발표 자료 · README) — mp4 는 소리 없이(페이지 자동 재생용)
-        gif = to_gif(dst, dst.with_suffix(".gif"), int(plan.get("gif_width", 1280)), int(plan.get("gif_fps", 20)))
+        # 크기 기준(2026-11-10 실측, 44초 · 대화가 계속 흐름): 1080px · 15fps 59MB → 800px · 10fps · 96색 22MB — 길면 기능별로 나눈 짧은 GIF 가 낫다
+        gif = to_gif(dst, dst.with_suffix(".gif"), int(plan.get("gif_width", 800)), int(plan.get("gif_fps", 10)), int(plan.get("gif_colors", 96)))
+        web = to_web(dst, dst.with_name(dst.stem + ".web.mp4"))
         print(f"[쇼케이스] GIF {gif.stat().st_size / 1e6:.1f}MB → {gif.relative_to(ROOT) if gif.is_relative_to(ROOT) else gif}")
+        print(f"[쇼케이스] 페이지용 mp4 {web.stat().st_size / 1e6:.1f}MB → {web.relative_to(ROOT) if web.is_relative_to(ROOT) else web}")
     return dst
 
 

@@ -1,6 +1,19 @@
 /* 에이전트 패널 · 홈(기획 대화 · 영상 목록) · lib(작업 상태 · API 오류 · 서버 오류 문장) 번역 */
 
 export const en: Record<string, string> = {
+  "이 단계에서 다시 시도한 호출이 있어요 — 펼쳐서 확인": "Some calls in this step were retried — expand to see",
+  "확인 · 준비": "Checks & prep",
+  "화면 녹화": "Screen capture",
+  "레퍼런스 분석": "Reference analysis",
+  "사실 조사": "Research",
+  "음악": "Music",
+  "장면 만들기": "Building scenes",
+  "값 조정": "Adjusting",
+  "초안 렌더": "Draft render",
+  "최종 렌더": "Final render",
+  "확인": "Checking",
+  "준비": "Preparing",
+  "작업": "Working",
   "Craft 앱": "Craft apps",
   "ArtCraft 의 오픈소스 제작 도구 · MIT / Apache-2.0": "Open-source creative tools by ArtCraft · MIT / Apache-2.0",
   "모두 설치 ({n}개)": "Install all ({n})",

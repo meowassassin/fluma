@@ -16,6 +16,7 @@ import * as RDialog from "@radix-ui/react-dialog";
 import { useUi } from "../../lib/ui";
 import type { ChatContext, ChatMessage, Todo } from "../../lib/types";
 import { t } from "../../lib/i18n";
+import { Stages } from "./stages";
 
 export interface AgentDockProps {
   sessionId: string;
@@ -179,7 +180,7 @@ const Msg = memo<{ m: ChatMessage; sessionId: string; canRevert: boolean }>(({ m
   return (
     <div className="m-ai">
       {!!m.todos?.length && <Todos todos={m.todos} done />}
-      {tools.length > 0 && <Steps tools={tools.map((x, k) => ({ ...x, id: String(k), done: true }))} />}
+      {tools.length > 0 && <Stages tools={tools.map((x, k) => ({ ...x, id: x.id ?? String(k), done: true }))} />}
       {m.text && <div className="md"><Md text={m.text} /></div>}
       {m.error && <div className="m-err"><Icon n="warn" s={13} />{m.error}</div>}
       {m.stopped && <div className="m-meta">{t("멈춤")}</div>}
@@ -213,7 +214,7 @@ const Live: React.FC<{ t: LiveTurn; sessionId: string; work?: boolean }> = ({ t:
         <div className="live-h">{work ? <FlumaStrain s={18} /> : <FlumaBounce s={18} />}<b>{now ?? turn.status}</b><Elapsed from={turn.started} />{tools.length > 0 && <span className="faint">· {t("단계 {n}", { n: tools.length })}</span>}</div>
         {!!turn.memories?.length && <div className="m-meta" title={turn.memories.map((m) => `[${m.scope}] ${m.title}`).join("\n")}>{t("기억 {n}개를 참고하는 중", { n: turn.memories.length })}</div>}
         {turn.todos && <Todos todos={turn.todos} />}
-        {tools.length > 0 && <Steps tools={tools} live />}
+        {tools.length > 0 && <Stages tools={tools} live />}
         {turn.text && <div className="md"><Md text={turn.text} /></div>}
       </div>
     </>
@@ -240,35 +241,6 @@ const Todos: React.FC<{ todos: Todo[]; done?: boolean }> = ({ todos, done }) => 
       ))}
     </div>
   );
-};
-
-const Steps: React.FC<{ tools: (LiveTurn["tools"][number])[]; live?: boolean }> = ({ tools, live }) => {
-  const [open, setOpen] = useState(false);
-  const shown = open ? tools : tools.slice(-3);
-  return (
-    <div className="steps">
-      {tools.length > 3 && <button className="steps-more" onClick={() => setOpen(!open)} aria-expanded={open}>{open ? t("접기") : t("단계 {n}개 모두 보기", { n: tools.length })}</button>}
-      {shown.map((x) => <Step key={x.id} x={x} live={live} />)}
-    </div>
-  );
-};
-/** 한 단계 — 누르면 명령 · 경로 전체를 줄바꿈해서 펼친다(긴 명령이 잘려 안 보이던 문제) */
-const Step: React.FC<{ x: LiveTurn["tools"][number]; live?: boolean }> = ({ x, live }) => {
-  const [open, setOpen] = useState(false);
-  const full = shortInput(x.input);
-  return (
-    <div className={cx("step", x.error && "err", !x.done && live && "run", open && "open")}>
-      <button className="step-row" onClick={() => setOpen(!open)} aria-expanded={open} disabled={!full}>
-        <span className="step-i">{!x.done && live ? <FlumaBounce s={12} label={t("진행 중")} /> : x.error ? <Icon n="close" s={11} /> : <Icon n="check" s={11} />}</span>
-        <span className="step-n">{TOOL_KO[x.name] ? t(TOOL_KO[x.name]) : x.name}</span>
-        {!open && <span className="step-a ellipsis">{full}</span>}
-      </button>
-      {open && <pre className="step-full">{full}</pre>}
-    </div>
-  );
-};
-const shortInput = (s: string) => {
-  try { const o = JSON.parse(s); return o.command ?? o.file_path ?? o.pattern ?? o.query ?? o.url ?? s; } catch { return s; }
 };
 
 /* ---------- 입력 ---------- */

@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- 대화창: 도구 호출을 제작 단계(레퍼런스 분석 · 사실 조사 · 기획 · 콘티 · 목소리 · 음악 · 장면 · 값 조정 · 초안 · 최종 렌더)로 묶고, 결과(값 조정 · 음악 · 목소리 · 소리)는 칩으로 · 누르면 명령 · 경로 펼침 / Chat groups tool calls into production stages with result chips
+- 고침: 바뀐 조립 프로젝트를 '사람이 고친 것'으로 계속 써서 화면이 검게 · 멈춰 나오던 문제(백업하고 다시 지음, 잠그려면 edit.keep) · 이어 말하기가 숫자 읽기 · 문장부호 차이로 장면 경계를 밀던 문제(다음 장면 첫 낱말 · 쉼으로 경계, 어긋나면 장면별 합성) · 에이전트의 `cd … && …` 명령이 막히던 문제 / Fixed stale FilmCraft reuse (black/frozen output), continuous-voice scene split drift, blocked `cd` in agent commands
+- 실제 화면 기반 UI 애니메이션(`engine/capture/uianim.py`): 디자인으로 다시 그린 화면을 시간표대로 프레임마다 그려 데모 영상 · GIF / UI animation renderer for product demos
 - 대화로 고치기 — 값으로: 에이전트가 코드 · 좌표 · 전체 렌더 대신 요소의 값(조정 adjust · 스크립트 args · 장면 칸)을 바꾸고 바뀐 부분만 다시 지어 바로 보여 줌(`engine/story/knob.py`). 실측(카톡 영상): 값 바꾸기 + 정지 화면 1.6초 · 장면 하나 영상 7.5초(예전 한 번 고치는 데 4~17분) / Edit by values: change knobs, rebuild only what changed, preview in ~2 s (scene clip ~8 s)
 - 에이전트 대화 갈아타기: 몇 턴마다 새 대화로 시작하고 상태(콘티 값 · 사용자 지시 그대로 · 직전 답)는 코드가 넘김 — 턴 비용이 쌓여 커지지 않게 / Agent conversations rotate with a code-built state brief so per-turn cost stays flat
 - 남은 승인 · 관문 · '렌더 버튼' 안내 삭제 — '좋아'면 에이전트가 바로 최종 렌더 · 보기 모델이 꺼져 있으면 비평을 건너뛰었다고 알림 · 화풍 거리(최근 영상과 너무 닮으면 알림, 로컬 CLIP) / Removed leftover approvals, auto final render, VL-off notice, style-distance warning

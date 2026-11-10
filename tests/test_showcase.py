@@ -28,3 +28,13 @@ def test_goto_loading_is_cut_even_with_preroll():
     ev = [{"t": 1.0, "t_end": 1.4, "do": "focus"}, {"do": "goto", "t0": 2.0, "t": 3.5, "t_end": 3.8}, {"t": 3.9, "t_end": 4.5, "do": "focus"}]
     pts = S.time_map(ev, 5.0)
     assert all(not (2.05 < S.src_time(pts, x / 100) < 3.45) for x in range(0, int(pts[-1][0] * 100)))   # 로딩 화면이 한 프레임도 안 나옴
+
+
+def test_spring_is_smooth_and_settles():
+    import numpy as np
+    tgt = np.array([[0.0]] * 10 + [[1.0]] * 110)          # 계단 목표
+    out = S.spring(tgt, 1 / 60, 6.0)[:, 0]
+    assert abs(out[-1] - 1.0) < 0.01                       # 따라간다
+    assert out.max() <= 1.0 + 1e-6                         # 임계 감쇠 — 넘치지 않음
+    vel = np.diff(out)
+    assert np.abs(np.diff(vel)).max() < 0.01               # 속도가 끊기지 않음(급가속 없음)
