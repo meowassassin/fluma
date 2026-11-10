@@ -34,3 +34,4 @@ library3d/s3-bucket/
 .claude/scheduled_tasks.lock
 *.fcproj.lock
 tools/ui-scenes/.build/
+MUJOCO_LOG.TXT
