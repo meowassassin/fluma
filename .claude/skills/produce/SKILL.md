@@ -120,6 +120,14 @@ order: 2
 - 아직 안 골랐으면 제작 전에 `feel.py preview` 시안을 보여 주고 고르게 한다(에이전트가 정하지 않는다).
 
 ## 초안 비평(VL) — 렌더 검사가 못 보는 것
+- **3D 장면**: 모델 · 재질 · 조명은 코드로 상자부터 쌓지 말고 라이브러리에서 — `python3 engine/craft/assets3d.py search <말> [--kind model|hdri|material]` → `get`
+  (Poly Haven · ambientCG, CC0). 화풍은 레퍼런스 나란히 보기 · 사용자 그림을 보고 정해 콘티 `direction.style3d`(realistic · lowpoly · toon · clay)에 적고,
+  스크립트에서 `F.asset("data/assets/3d/…")` · `F.hdri(…)` · `F.pbr(…)` · `F.toon(물체, 색)` · `F.clay(물체)`. Kenney · Quaternius 팩은 사용자가 받아 오면 `assets3d.py import`.
+  Blender 공식 데모(대부분 CC-BY-SA)는 영상에 넣지 않고 `assets3d.py study blender-demo:<경로>` 로 조명 · 색 관리 · 셰이더 설정만 배운다.
+- **움직임**: 손 · 캐릭터(배우)는 애니메이션 원칙으로 연출한 자세 키(`poses` — `ease` · `anticipate` · `arc` · `overshoot` · `overlap`), 도미노 · 버튼 · 쏟아짐(반응)만 물리.
+  부딪히는 순간은 `retime` 으로 느리게. 모션 블러는 기본으로 켜져 있다. 어떤 움직임을 쓸지는 영상마다 새로 정한다(부품으로 쌓지 않는다).
+- 초안이 나오면 먼저 **초안 · 레퍼런스 나란히**(`data/compositions/<id>/craft/review/sheet.png` — 12장씩, produce 결과 media 두 번째)를 Read 로 본다.
+  VL 은 켜져 있을 때만 덧붙는다(강제 아님) — 기본은 이 그림을 에이전트가 직접 보고 레퍼런스와 리듬 · 피사체 크기 · 글자 크기를 견준다.
 - 초안을 본 뒤 고칠 때는 **director 스킬**의 감독 검사(같은 구도 연속 · 빈 화면 · 약속한 증거 · 반전의 멈춤 · 시선 한 곳)로 본다. 나레이션이 없으면 강조가 저절로 생기지 않는다(L41) — 장면마다 `beats [{"do": "확대", "t": 초}]` 나 재료 `zoom` 으로 짚는다.
 - 초안 렌더(render.py --draft)가 끝나면 보기 모델이 **자동으로** 초안을 본다([VL 비평] 줄 · 다시 보려면 `python3 engine/providers/see.py critique <id>`) → 보기 모델이 초안 전체를 보고 의도 · 콘셉트 · 레퍼런스 문법과 대조해 "몇 초에 무엇이 왜 어색한지 · 어떻게 고칠지"(`data/workspace/critique/<id>.json`). high 부터 고치고 다시 렌더 → 다시 비평. 템포 · 편집 밀도 검사(숫자)는 그대로 같이.
 - 특정 장면만 궁금하면 `see.py ask data/out/<id>-craft-Scenes.mp4 --q "8~11초 자막이 말보다 늦나?"` 처럼 직접.

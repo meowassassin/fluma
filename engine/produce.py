@@ -234,6 +234,12 @@ def main() -> int:
     # 4) 장면별 정지 화면
     t0 = time.time()
     media = [f"{b['file'][0]} | 초안"] + (stills(video, sb, sid) if not a.scenes else []) + (extras(sid) if not a.scenes else [])
+    if not a.scenes:                              # 초안 · 레퍼런스 나란히(프레임 12장씩) — VL 없이 에이전트가 직접 본다(engine/checks/sheet.py)
+        try:
+            import sheet as _sheet
+            media.insert(1, f"{_sheet.make(video, sb).relative_to(ROOT)} | 초안 · 레퍼런스 나란히")
+        except Exception as e:  # noqa: BLE001
+            print(f"[제작] 나란히 보기를 만들지 못함: {str(e)[:120]}", flush=True)
     TIMES["stills"] = round(time.time() - t0, 1)
     save_times(sid)
     if not a.scenes:                              # 화풍 거리 — 최근 영상과 너무 닮았으면 알린다(막지 않음, 로컬 CLIP · 1초 안쪽)
@@ -251,7 +257,8 @@ def main() -> int:
     if mu.get("upload_sound"):
         sound.append("업로드 때 붙일 수 있는 유행곡(쇼츠 편집기 '사운드 추가'): " + " / ".join(mu["upload_sound"][:3]))
     ok("produce", file=b["file"][0], media=media, warn=warns[:16], lint_soft=len(soft), depth=depth, sound=sound,
-       time=[f"{k}:{v}" for k, v in TIMES.items()], next="정지 화면을 보고(Read) 글자 겹침 · 잘림 · 빈 화면 · 말과 안 맞는 재료를 고친 뒤 다시 produce")
+       time=[f"{k}:{v}" for k, v in TIMES.items()], next="먼저 '초안 · 레퍼런스 나란히'(sheet.png)를 Read 로 보고 director 검사(화면이 바뀌는 리듬 · 피사체 크기 · 글자 크기 · 시선 한 곳)로 레퍼런스와 견준다. "
+            "그다음 장면 정지 화면으로 글자 겹침 · 잘림 · 빈 화면 · 말과 안 맞는 재료를 고친 뒤 다시 produce")
 
 
 if __name__ == "__main__":

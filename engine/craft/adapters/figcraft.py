@@ -2,6 +2,7 @@
 
   { "id": "m1", "type": "ui_mock", "src": "data/compositions/<id>/craft/src/settings.png", "device": "phone" }
   { "id": "m1", "type": "ui_mock", "src": "…/lcp.png", "device": "browser", "url": "pagespeed.web.dev" }
+  { "id": "m3", "type": "ui_mock", "device": "phone", "mock": true, "ui": "data/compositions/<id>/ui/orders.tsx" }   # Astryx 장면(권장 — 앱 · 대시보드 화면)
   { "id": "m2", "type": "ui_mock", "device": "phone", "mock": true,
     "screen": { "title": "알림 설정", "subtitle": "앱마다 따로 끌 수 있어요", "search": "검색",
                 "items": [ "방해 금지 모드",
@@ -583,6 +584,26 @@ def _ratio(b, W, H) -> list[float]:
     return [round(b[0] / W, 4), round(b[1] / H, 4), round(b[2] / W, 4), round(b[3] / H, 4)]
 
 
+def _ui_scene(tsx: Path, device: str, work: Path, m: dict) -> Path:
+    """Astryx 장면(.tsx) → 기기 화면 크기 PNG(tools/ui-scenes/build.mjs — 타입 검사 후 빌드 · 정지 화면)"""
+    import shutil
+    import subprocess
+    root = Path(__file__).resolve().parents[3]
+    if not tsx.exists():
+        raise RuntimeError(f"ui 장면 파일이 없습니다: {tsx}")
+    if not (root / "tools" / "ui-scenes" / "node_modules").exists():
+        raise RuntimeError("tools/ui-scenes 가 설치되지 않았습니다 — npm --prefix tools/ui-scenes ci")
+    size = m.get("ui_size") or ("390x844" if device == "phone" else "1280x800")
+    od = work / f"ui-{m['id']}"
+    shutil.rmtree(od, ignore_errors=True)
+    r = subprocess.run(["node", str(root / "tools" / "ui-scenes" / "build.mjs"), str(tsx), str(od), "--mode", str(m.get("ui_mode") or "dark"), "--png", str(size)],
+                       capture_output=True, text=True, cwd=str(root))
+    png = od / "scene.png"
+    if r.returncode != 0 or not png.exists():
+        raise RuntimeError("ui 장면 빌드 실패:\n" + (r.stderr or r.stdout)[-1500:])
+    return png
+
+
 def ui_mock(m: dict, out: Path, work: Path) -> dict:
     from ..materials import _abs
     device = str(m.get("device") or "").lower()
@@ -596,6 +617,9 @@ def ui_mock(m: dict, out: Path, work: Path) -> dict:
         raise RuntimeError(f"ui_mock device 는 phone 또는 browser 입니다(받은 값: {device})")
     sc = m.get("screen") if isinstance(m.get("screen"), dict) else None
     src = _abs(m["src"]) if isinstance(m.get("src"), str) and m["src"] else None
+    if isinstance(m.get("ui"), str) and m["ui"]:
+        # 앱 · 대시보드 화면은 Astryx(Meta 디자인 시스템) 장면 파일로 짓는다 — 손으로 그린 가상 화면보다 '진짜 앱' 같다(tools/ui-scenes, crafts 스킬)
+        src = _ui_scene(_abs(m["ui"]), device, work, m)
     if src is not None and not src.exists():
         raise RuntimeError(f"ui_mock 캡처 파일이 없습니다: {m['src']}")
     if src is None and sc is None:

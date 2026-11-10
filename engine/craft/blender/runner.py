@@ -9,6 +9,15 @@ import bpy  # noqa: E402
 import fluma3d as F  # noqa: E402
 import guard  # noqa: E402
 
+# Blender 내장 모듈을 감시를 켜기 전에 미리 불러 둔다 — numpy 는 불러올 때 환경 변수를 쓰는데(os.putenv) 감시 안에서는 막힌다.
+# glTF 들여오기(F.asset) · numpy 를 쓰는 내장 애드온이 사용자 스크립트 안에서 처음 불리면 실패했다(2026-11-10)
+try:
+    import numpy  # noqa: E402,F401
+    import io_scene_gltf2  # noqa: E402,F401
+    from io_scene_gltf2.blender.imp import gltf2_blender_gltf  # noqa: E402,F401
+except Exception:  # noqa: BLE001
+    pass
+
 c = json.loads(os.environ["FL_CTX"])
 OUT = os.environ["FL_OUT"]
 STILLS = [float(x) for x in os.environ.get("FL_STILLS", "").split(",") if x]

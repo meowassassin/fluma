@@ -1,0 +1,15 @@
+<mujoco model="thud">
+  <!-- 글자 다섯 개가 바닥에 서 있고, 큰 단어가 위에서 떨어져 흩어 놓는다. 값: drop(떨어지는 높이 m) -->
+  <option timestep="0.002"/>
+  <default><geom friction="0.6 0.01 0.001" solref="0.005 0.8"/>
+    <default class="p"><joint type="slide"/></default></default>
+  <worldbody>
+    <geom name="floor" type="plane" size="10 1 .1"/>
+    <body name="t0" pos="-0.9 0 0.17"><joint type="slide" axis="1 0 0"/><joint type="slide" axis="0 0 1"/><joint type="hinge" axis="0 1 0"/><geom type="box" size=".1 .2 .17" mass=".15" rgba=".3 .32 .4 1"/></body>
+    <body name="t1" pos="-0.45 0 0.17"><joint type="slide" axis="1 0 0"/><joint type="slide" axis="0 0 1"/><joint type="hinge" axis="0 1 0"/><geom type="box" size=".1 .2 .17" mass=".15" rgba=".3 .32 .4 1"/></body>
+    <body name="t2" pos="0 0 0.17"><joint type="slide" axis="1 0 0"/><joint type="slide" axis="0 0 1"/><joint type="hinge" axis="0 1 0"/><geom type="box" size=".1 .2 .17" mass=".15" rgba=".3 .32 .4 1"/></body>
+    <body name="t3" pos="0.45 0 0.17"><joint type="slide" axis="1 0 0"/><joint type="slide" axis="0 0 1"/><joint type="hinge" axis="0 1 0"/><geom type="box" size=".1 .2 .17" mass=".15" rgba=".3 .32 .4 1"/></body>
+    <body name="t4" pos="0.9 0 0.17"><joint type="slide" axis="1 0 0"/><joint type="slide" axis="0 0 1"/><joint type="hinge" axis="0 1 0"/><geom type="box" size=".1 .2 .17" mass=".15" rgba=".3 .32 .4 1"/></body>
+    <body name="big" pos="0.3 0 {{drop}}" euler="0 18 0"><joint type="slide" axis="1 0 0"/><joint type="slide" axis="0 0 1"/><joint type="hinge" axis="0 1 0"/><geom type="box" size=".5 .2 .22" mass="4" rgba="1 .84 .04 1"/></body>
+  </worldbody>
+</mujoco>

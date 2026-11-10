@@ -29,6 +29,7 @@ COPY . .
 # .venv · Chromium(+ 시스템 의존성) · npm 패키지
 RUN python3 -m venv .venv \
     && .venv/bin/pip install --no-cache-dir -r engine/$( [ "$PROFILE" = lite ] && echo requirements.txt || echo requirements-$PROFILE.txt ) \
+    && .venv/bin/pip install --no-cache-dir --no-deps "dm_control>=1.0.20" \
     && .venv/bin/python engine/doctor.py --hook \
     && .venv/bin/python engine/craft/crafts.py install $( [ "$CRAFTS" = core ] && echo effectcraft soundcraft filmcraft vectorcraft gridcraft pdfcraft photocraft || echo $CRAFTS ) --no-web \
     && .venv/bin/python -m playwright install --with-deps chromium \

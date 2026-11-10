@@ -121,15 +121,53 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 동작 대상 상자로 카메라가 줌 인 · 아웃(멀면 빠졌다 들어감), 짚는 곳만 선명 · 나머지 흐림, 입력은 실제 한 자씩, 글자 줄은 한 자씩, 기다림은 빨리 감기, 맞는 무료 곡까지.
 계획 형식은 파일 맨 위 설명. 예: data/public/showcase/fluma-demo.json(Fluma 자체 소개). 보내기(Enter) 같은 실제 동작은 대본에 넣지 않으면 일어나지 않는다.
 
-## 물리로 움직이기(MuJoCo) — 떨어짐 · 부딪힘 · 튕김 · 쌓임 · 넘어짐
-손으로 키프레임을 짜면 딱딱해지는 움직임(무너지는 블록 · 도미노 · 굴러가는 꾸러미 · 튕기는 아이콘 · 흔들리다 넘어지는 랙)은 물리로 계산한다.
-1. 장면을 MJCF 로 쓴다 — `data/compositions/<id>/src/<이름>.mjcf.xml`. 물체마다 `<body name="…"><freejoint/><geom …/></body>`, 바닥은 plane.
-   마찰 · 높이 · 미는 속도 같은 숫자는 `{{이름}}` 으로 두고 콘티 재료 `args` 에 값을 적는다(대화로 고칠 때 `knob.py set <id> <요소>.args.friction=0.4`).
-   처음 속도는 `<keyframe><key qvel="…"/></keyframe>`(freejoint 하나에 6칸: 직선 3 + 회전 3).
-2. Blender 스크립트에서 같은 이름의 물체를 만들고 `F.physics(ctx.args["physics"], {"이름": 물체, …})` — 프레임마다 위치 · 회전 키가 들어간다(축 같음: Z 위, 미터).
-3. 재료: `{"type": "model3d", "method": "blender", "script": "…/<이름>.py", "physics": "…/<이름>.mjcf.xml", "args": {…}, "sec": 4}` — 렌더 전에 자동으로 계산(1초 안쪽).
-빠른 확인: `python3 engine/craft/physics.py check <장면>` · `python3 engine/craft/adapters/blender.py <스크립트> --physics <장면> --args '{…}' --anim --sec 3.5`(짧은 영상).
-예: `engine/craft/examples/physics/dominoes.*`(공이 도미노 13개를 넘어뜨림 — 재료로 쓸 때는 data/compositions/<id>/src/ 로 복사). 물리가 어울리는 비유가 있는 장면에만 — 모든 움직임을 물리로 하지 않는다.
+## 물리로 움직이기(MuJoCo) — 로봇이 아니라 '움직임이 뜻을 가진 장면' 전부
+손으로 키를 짜면 딱딱해지는 움직임은 물리로 계산한다(`engine/craft/physics.py`, 계산은 보통 1초 안 · 손 계획은 수십 초).
+어울리는 곳: 데이터가 쌓임(동전 · 막대가 떨어져 쌓임, 병이 차오름) · 키네틱 타이포(핵심 단어가 쿵 떨어져 글자를 흩음) · 알림 · 카드가 쏟아지고 무너짐 ·
+비유(도미노 = 연쇄, 젠가 = 쌓인 위험, 저울 = 비교, 시소 · 줄다리기 = 대립) · 천 걷기 · 줄에 매달려 흔들림 · 손이 미는 · 누르는 순간 · 카메라.
+이야기의 뜻(원인 → 결과, 무게, 쌓임)과 맞을 때만 — 모든 움직임을 물리로 하지 않는다. 장면은 영상마다 새로 짠다(아래 예는 형식만).
+
+장면 쓰기 — `data/compositions/<id>/src/<이름>.mjcf.xml` 또는 `<이름>.py`
+- XML(MJCF): 물체마다 `<body name><freejoint/><geom/></body>`, 바닥 plane. 숫자는 `{{이름}}` → 재료 `args`(대화로 `knob.py set <id> <요소>.args.friction=0.4`). 처음 속도 `<keyframe><key qvel/>`.
+- 파이썬(반복 배치 · 무작위 · 모델 붙이기): `def scene(args)` 가 dm_control `mjcf.RootElement`(또는 `mujoco.MjSpec`)를 돌려준다. 2D 는 body 마다
+  slide x · slide z · hinge y 관절(평면 안에서만). 받은 모델 붙이기: `r.worldbody.attach(mjcf.from_path(손.xml))`.
+
+쓰는 곳 세 가지
+1. **2D 재료**(EffectCraft 레이어): `{"id": "coins", "type": "physics", "physics": "…/coins.py", "args": {…}, "sec": 4.5,
+   "view": {"width": 화면 폭에 든 세상 m, "x": 0.5, "ground": 바닥 세로 비율}, "bind": {"coin*": "그림.svg" | {"text": "데", "size": 120} | false}}`
+   — 물체마다 레이어 하나 + 프레임마다 위치 · 회전. bind 가 없으면 MuJoCo 모양(상자 · 공) 그대로 그 색. 계산 0초 = 재료 cue 시각.
+2. **HTML 페이지**(uianim): 행동 `{"at": 1, "do": "physics", "physics": "…", "bind": {"n0": "#card0"}, "view": {…}}` — 페이지 요소를 제자리에서 떨어뜨림.
+3. **3D**(Blender): 재료 `{"type": "model3d", "method": "blender", "script": "…", "physics": "…", "visual": true}` → 스크립트에서
+   `objs = F.mjcf_build(ctx.args["physics"])`(모델 모양 그대로 · 메시 포함) 또는 직접 만든 물체 → `F.physics(ctx.args["physics"], objs, offset=…)`.
+
+카메라(물리): 2D 장면 `"camera": {"follow": [{"t": 0, "x": .5, "y": .5, "zoom": 1}, {"at": "낱말", "body": "big", "material": "thud", "zoom": 1.25}], "stiffness": 50, "damping": 0.6}`
+— 목표를 스프링으로 따라감(늦게 붙고 부드럽게 멈춤, body 면 그 물체를 계속). 3D `F.spring_camera(cam, [(초, (x,y,z)) | (초, "body")], look=…)`.
+
+손 · 몸 동작 — **움직이는 쪽은 자세 키대로, 물리는 닿은 뒤의 반응만**(애니메이터처럼 동작을 정하고 물리가 결과를 계산)
+- 애니메이션 원칙(키마다 — 그 키로 가는 구간에 적용): `"ease": "inout" | "out" | "in" | "snap"(빠르게 툭) | "soft" | [x1,y1,x2,y2]`(베지어 시간 곡선)
+  · `"anticipate": 0.15`(반대로 15% 갔다가) · `"overshoot": 0.08`(지나쳤다 돌아와 멈춤) · `"arc": [0, 0, 0.04]`(손끝이 위로 4cm 호를 그리며 — IK 로 경로를 따라감)
+  · `"overlap": 0.08`(어느 키에든 — 뿌리 관절이 먼저, 손끝이 0.08초 늦게). 예: 가리키기(out, overlap) → 호로 다가가 멈춤(inout, arc) → 살짝 당겼다 툭 밀기(snap, anticipate)
+  → 들어 올리며 여운(out, overshoot) → 호로 물러남. 확인한 예: `engine/craft/examples/physics/hand_domino_view.py` 설명의 명령.
+- 속도 연출: 재료 `"retime": [{"from": 1.18, "to": 1.55, "speed": 0.35}]` · CLI `--retime` — 부딪히는 순간 0.35배속(영상이 그만큼 길어진다 → 콘티 sec 를 맞춘다).
+- 재료 `"poses": [{"t": 0}, {"t": 0.35, "joints": {"*MFJ[123]": 1.45, …}}, {"t": 0.9, "ik": [{"site" | "body": "손끝", "to": [x,y,z]}]}, {"t": 1.9, "back": 1}]`
+  — 자세(관절 각도) · IK(mink: 그 점이 그 자리에 오는 자세)를 위치 작동기 목표로, 키 사이는 최소 저크 곡선. 준비 → 다가감 → 누름 → 떼기처럼 키를 나눈다.
+  밀어 넘길 땐 충분히 깊게(도미노는 다음 것에 닿을 만큼 기울도록), 뗄 땐 먼저 위로 들고 물러난다(마찰로 끌려 넘어지지 않게).
+- 장면 규칙: 손은 고정하지 않고 '팔'(받침 미끄럼 관절 + 위치 작동기)에 단다 · `gravcomp=1`(손가락이 처지지 않게) · 붙인 물체의 접촉은 모델과 같게(solref 0.005)
+  · 질량은 현실값 · 시작할 때 손과 물체가 겹치지 않게 떼어 둔다 · 버튼 같은 관절은 이동 범위 [0, 눌림] + 감쇠.
+- `"expect": [{"touch": "d0", "by": "rh_ffdistal"}]` — 그 물체에 처음 닿은 게 기대한 부위인지 검사(손등 · 다른 손가락이면 경고). 시작 겹침 · 파고듦(3mm 넘음)도 경고.
+  계산이 발산하면 오류로 멈춘다(MuJoCo 는 조용히 처음으로 되돌려 '손이 안 움직이는' 결과가 정상처럼 보였다).
+- 근육 모델(MyoHand)은 `physics.position_drive(spec)`로 관절 위치 구동으로 바꿔 쓴다(적분기 implicitfast 자동). 뼈 모델이라 피부가 없다 — 해부 · 건강 설명용.
+- 계획기(`"goals"`)는 동작을 모를 때만(예: "이 방향으로 기어가기") — 손처럼 동작을 아는 장면에는 쓰지 않는다(떨림 · 다른 손가락 꿈틀 · 엉뚱한 부위가 누름).
+
+받아 쓰는 모델: `python3 engine/craft/physics.py fetch menagerie/<폴더>`(Shadow Hand · Franka · OP3 …) — 폴더 하나만 받고 라이선스를 읽어
+상업 이용이 분명하지 않으면 받지 않는다 → `data/assets/mujoco/…/CREDIT.txt` 줄을 영상 설명란에. 사람 손(근육): `myo_sim.load_spec("myohand_r")`(MyoSuite, Apache-2.0).
+AI 학습 설명: 진짜 학습된 정책으로 — `physics.py policy farama-minari/Ant-v5-SAC-simple`(라이선스가 안 적힌 저장소는 사람이 확인 뒤 `--checked-license`) →
+`physics.py gym Ant-v5 --policy hf:farama-minari/Ant-v5-SAC-expert --visual --out x.traj.json` → `blender.py …/gym_view.py --traj x.traj.json --anim`.
+'무작위 → simple → expert' 가 배움의 단계다. 계획기(--policy plan) 결과를 'AI 가 배웠다'고 보여 주지 않는다.
+
+빠른 확인: `physics.py check <장면>` · `blender.py <스크립트> --physics <장면> [--goals …] --args '{…}' --anim --sec 3`.
+예(형식만): `engine/craft/examples/physics/` — dominoes(3D 연쇄) · coins(2D 쌓임, dm_control) · thud(글자 흩기 + 카메라) · hand_domino(손끝이 첫 도미노) ·
+myo_bell(사람 손이 버튼, 자세 키) · gym_view(무작위 · 학습 단계). 손 장면 자세 키는 각 파일 설명 참고.
 
 ## 앱 · 대시보드 화면은 Astryx 컴포넌트로 — 손으로 그린 표 · 버튼 대신
 영상 속 '실제 같은' 관리 화면 · 대시보드 · 설정 창 · 채팅 앱 · 표(예: DB 테이블, 주문 목록, 결제 화면)는 HTML 을 손으로 짜지 않고
@@ -143,4 +181,16 @@ Astryx(Meta 디자인 시스템, 컴포넌트 174개 — Table · Card · Badge 
 4. 영상에 넣기: webrec 계획의 `"start": "file:///app/data/compositions/<id>/ui/<이름>/index.html"`(로컬은 저장소 절대 경로) →
    `webrec.py run` 으로 클릭 · 입력 · 스크롤을 단계 캡처 → 재료 `web`. 움직임이 필요하면 페이지 안 React 상태로 직접.
 화면 하나하나는 그 영상에 맞게 새로 짠다 — 장면 파일을 부품 · 템플릿으로 모아 재사용하지 않는다. 예: `tools/ui-scenes/examples/db-table.tsx`.
+
+## 3D 에셋 라이브러리(engine/craft/assets3d.py) — 모델 · 재질 · 조명은 가져오고, 동작 · 연출은 영상마다
+| 화풍(`direction.style3d`) | 어디서 | Blender 스크립트 |
+|---|---|---|
+| realistic | Poly Haven 모델 · HDRI(CC0) · ambientCG 재질(CC0) | `F.asset(폴더)` · `F.hdri(.hdr)` · `F.pbr(재질 폴더, scale)` |
+| lowpoly | Kenney · Quaternius 팩(CC0 — 사용자가 받아 와 `import --license CC0 --source …`) | `F.asset` + 단색 `F.mat_plastic` |
+| toon | 어느 모델이든 | `F.toon(묶음, color, shade, outline)` — 단계 셰이딩 + 외곽선 |
+| clay | 어느 모델이든 | `F.clay(묶음)` + 부드러운 HDRI |
+- 고르는 법: produce 의 '초안 · 레퍼런스 나란히' · 레퍼런스 정지 화면 · 사용자가 올린 그림을 보고 화풍을 정한다(VL 은 켜져 있을 때만).
+- 라이선스: CC0 · CC-BY 만 영상에 넣는다(받은 폴더의 CREDIT.txt 줄을 설명란에). CC-BY-SA · 비상업(NC)은 넣지 않는다 — 공유 조건이 영상까지 번진다.
+- Blender 공식 데모 파일(blender.org/download/demo-files — EEVEE 데모 대부분 CC-BY-SA)은 `assets3d.py study blender-demo:eevee/<이름>/<파일>.blend` 로
+  렌더 설정 · 조명 배치 · 색 관리(View Transform · Look) · 셰이더 노드 구성만 뽑아 배운다(파일은 data/assets/study/ — 영상에 넣지 않음).
 

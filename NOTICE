@@ -20,7 +20,19 @@ Installed by npm / pip (not bundled)
 - CLIP ViT-B/32 (OpenAI, MIT) via Xenova ONNX export — downloaded on first use
 - MobileSAM — Apache-2.0 — downloaded on first use
 - ONNX Runtime — MIT
-- MuJoCo (physics for 3D motion, engine/craft/physics.py) — Apache-2.0 — https://github.com/google-deepmind/mujoco
+- MuJoCo (physics for 2D/3D motion, engine/craft/physics.py) — Apache-2.0 — https://github.com/google-deepmind/mujoco
+- dm_control (scene assembly, mjcf) — Apache-2.0 — https://github.com/google-deepmind/dm_control
+- Gymnasium (MuJoCo environments for learning explainers) — MIT — https://github.com/Farama-Foundation/Gymnasium
+- myo_sim / MyoSuite (human hand musculoskeletal model) — Apache-2.0 — https://github.com/MyoHub/myo_sim
+- 3D assets (engine/craft/assets3d.py): Poly Haven and ambientCG (CC0) are downloaded on request into data/ and never bundled;
+  user-imported packs keep their license in CREDIT.txt. Blender demo files are downloaded only for study (settings summary), not used in videos.
+- mink (inverse kinematics for pose keys) — Apache-2.0 — https://github.com/kevinzakka/mink
+- Trained policies (engine/craft/physics.py policy, e.g. farama-minari Ant-v5 SAC) are downloaded on request into data/
+  and never bundled; repositories without a stated license are fetched only with --checked-license.
+- The goal planner in engine/craft/physics.py (plan) reimplements the Predictive Sampling method of
+  google-deepmind/mujoco_mpc (Apache-2.0, https://github.com/google-deepmind/mujoco_mpc) in Python; no code is copied.
+- MuJoCo Menagerie models (engine/craft/physics.py fetch) are downloaded per model on request, only when the model
+  folder's license allows commercial use; each keeps its own license (CREDIT.txt next to the model).
 - Astryx design system (@astryxdesign/*, UI screens inside videos, tools/ui-scenes) — MIT — https://github.com/meta/astryx
   with StyleX (MIT) and React (MIT)
 - Playwright / Chromium — Apache-2.0 / BSD-style

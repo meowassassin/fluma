@@ -61,7 +61,9 @@ def reset(w=1080, h=1080, fps=30, sec=3.0, transparent=True, draft=False):
         sc.view_settings.look = "AgX - Medium High Contrast"
     except TypeError:
         pass
-    sc.render.use_motion_blur = not draft
+    # 모션 블러는 초안에서도 켠다 — 빠른 움직임이 뚝뚝 끊겨 '딱딱하다'로 보였다(2026-11-10). 셔터 0.5 = 영화 180도 셔터
+    sc.render.use_motion_blur = True
+    sc.render.motion_blur_shutter = 0.5
     return sc
 
 
@@ -131,7 +133,8 @@ def use_quality(ctx):
     sc = bpy.context.scene
     sc.eevee.taa_render_samples = int(ctx.samples or 32)
     o = getattr(ctx, "eevee", None) or {}
-    sc.render.use_motion_blur = bool(o.get("motion_blur", sc.render.use_motion_blur))
+    mb = (getattr(ctx, "args", None) or {}).get("motion_blur", o.get("motion_blur", sc.render.use_motion_blur))
+    sc.render.use_motion_blur = bool(mb)
     for k in ("use_raytracing", "use_shadows", "shadow_ray_count", "shadow_step_count", "use_fast_gi"):
         if k in o and hasattr(sc.eevee, k):
             setattr(sc.eevee, k, o[k])
@@ -853,6 +856,242 @@ def camera(lens=55, loc=(0, -9, 1.5), target=(0, 0, 0), fstop=0.0, ortho=False, 
 def dolly(cam, to, start=0.0, end=None):
     end = end if end is not None else (bpy.context.scene.frame_end - 1) / _FPS[0]
     key(cam, "location", start, tuple(cam.location), "SINE"); key(cam, "location", end, tuple(to), "SINE")
+
+
+# ---------- 라이브러리 에셋(engine/craft/assets3d.py 로 받은 것) — 모델 · 재질 · 조명은 가져오고, 동작 · 연출은 영상마다 새로 ----------
+def _p(path):
+    """상대 경로는 저장소 루트 기준(Blender 는 스크립트 폴더에서 돈다) — 'data/assets/3d/…' 를 그대로 쓴다"""
+    import os
+    path = str(path)
+    if os.path.isabs(path):
+        return path
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), path)
+
+
+def asset(path, loc=(0, 0, 0), rot=(0, 0, 0), size=None, name=None):
+    """glTF(.gltf · .glb) · .blend(모든 물체) · .fbx · .obj 를 들여온다 → 묶음 빈 물체(이것을 움직이면 통째로). size: 가장 긴 변을 이 길이(m)로"""
+    import os
+    path = _p(path)
+    if os.path.isdir(path):
+        path = next((os.path.join(path, f) for f in sorted(os.listdir(path)) if f.lower().endswith((".gltf", ".glb", ".blend", ".fbx", ".obj"))), path)
+    before = set(bpy.data.objects)
+    ext = os.path.splitext(path)[1].lower()
+    if ext in (".gltf", ".glb"):
+        bpy.ops.import_scene.gltf(filepath=path)
+    elif ext == ".fbx":
+        bpy.ops.import_scene.fbx(filepath=path)
+    elif ext == ".obj":
+        bpy.ops.wm.obj_import(filepath=path)
+    elif ext == ".blend":
+        with bpy.data.libraries.load(path, link=False) as (src, dst):
+            dst.objects = list(src.objects)
+        for o in dst.objects:
+            if o is not None and o.type not in ("CAMERA", "LIGHT"):
+                bpy.context.collection.objects.link(o)
+    else:
+        raise RuntimeError(f"들여올 수 없는 형식: {path}")
+    new = [o for o in bpy.data.objects if o not in before]
+    root = bpy.data.objects.new(name or os.path.splitext(os.path.basename(path))[0], None)
+    bpy.context.collection.objects.link(root)
+    for o in new:
+        if o.parent is None:
+            o.parent = root
+    if size:
+        import mathutils
+        pts = [o.matrix_world @ mathutils.Vector(c) for o in new if o.type == "MESH" for c in o.bound_box]
+        if pts:
+            ext_ = max(max(p[i] for p in pts) - min(p[i] for p in pts) for i in range(3))
+            k = float(size) / max(1e-6, ext_)
+            root.scale = (k, k, k)
+    root.location, root.rotation_euler = loc, rot
+    return root
+
+
+def hdri(path, strength=1.0, rotate=0.0, background=True):
+    """HDRI 로 조명(+배경). background=False 면 빛만 주고 배경은 지금 세계 색 그대로(투명 렌더 · 단색 배경일 때)"""
+    import math
+    w = bpy.context.scene.world or bpy.data.worlds.new("world")
+    bpy.context.scene.world = w
+    w.use_nodes = True
+    nt = w.node_tree
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    out = nt.nodes.new("ShaderNodeOutputWorld")
+    env = nt.nodes.new("ShaderNodeTexEnvironment"); env.image = bpy.data.images.load(_p(path))
+    mp = nt.nodes.new("ShaderNodeMapping"); co = nt.nodes.new("ShaderNodeTexCoord")
+    mp.inputs["Rotation"].default_value[2] = math.radians(rotate)
+    nt.links.new(co.outputs["Generated"], mp.inputs["Vector"]); nt.links.new(mp.outputs["Vector"], env.inputs["Vector"])
+    bg = nt.nodes.new("ShaderNodeBackground"); bg.inputs["Strength"].default_value = strength
+    nt.links.new(env.outputs["Color"], bg.inputs["Color"])
+    if background:
+        nt.links.new(bg.outputs["Background"], out.inputs["Surface"])
+    else:   # 카메라에는 단색, 빛은 HDRI
+        lp = nt.nodes.new("ShaderNodeLightPath"); mix = nt.nodes.new("ShaderNodeMixShader"); flat = nt.nodes.new("ShaderNodeBackground")
+        flat.inputs["Color"].default_value = (0.02, 0.02, 0.03, 1)
+        nt.links.new(lp.outputs["Is Camera Ray"], mix.inputs["Fac"]); nt.links.new(bg.outputs["Background"], mix.inputs[1]); nt.links.new(flat.outputs["Background"], mix.inputs[2])
+        nt.links.new(mix.outputs["Shader"], out.inputs["Surface"])
+    return w
+
+
+def pbr(folder, scale=1.0, name=None):
+    """텍스처 세트 폴더(ambientCG · Poly Haven) → PBR 재질: 색(Color · diff) · 거칠기(Roughness · rough) · 노멀(NormalGL · nor_gl) · 금속(Metalness)"""
+    import os
+    folder = _p(folder)
+    files = os.listdir(folder)
+    pick = lambda *keys: next((os.path.join(folder, f) for f in files if any(k in f.lower() for k in keys) and f.lower().endswith((".jpg", ".png"))), None)  # noqa: E731
+    m, b = _bsdf(name or os.path.basename(folder.rstrip("/")))
+    nt = m.node_tree
+    co = nt.nodes.new("ShaderNodeTexCoord"); mp = nt.nodes.new("ShaderNodeMapping"); mp.inputs["Scale"].default_value = (scale, scale, scale)
+    nt.links.new(co.outputs["UV"], mp.inputs["Vector"])
+
+    def tex(f, non_color=False):
+        t = nt.nodes.new("ShaderNodeTexImage"); t.image = bpy.data.images.load(f)
+        if non_color:
+            t.image.colorspace_settings.name = "Non-Color"
+        nt.links.new(mp.outputs["Vector"], t.inputs["Vector"]); return t
+    c = pick("_color", "diff", "albedo", "basecolor")
+    if c:
+        nt.links.new(tex(c).outputs["Color"], b.inputs["Base Color"])
+    r = pick("rough")
+    if r:
+        nt.links.new(tex(r, True).outputs["Color"], b.inputs["Roughness"])
+    mt = pick("metal")
+    if mt:
+        nt.links.new(tex(mt, True).outputs["Color"], b.inputs["Metallic"])
+    n = pick("normalgl", "nor_gl", "normal")
+    if n:
+        nm = nt.nodes.new("ShaderNodeNormalMap"); nt.links.new(tex(n, True).outputs["Color"], nm.inputs["Color"]); nt.links.new(nm.outputs["Normal"], b.inputs["Normal"])
+    return m
+
+
+def toon(objs, color="#8B80FF", shade="#3A2F8F", outline=0.006, steps=2):
+    """툰 셰이딩(빛 → 단계 색) + 외곽선(뒤집힌 껍질). objs: 물체 하나 · 목록 · 묶음(자식 포함)"""
+    objs = objs if isinstance(objs, (list, tuple)) else [objs]
+    meshes = [x for o in objs for x in ([o] + list(o.children_recursive)) if x.type == "MESH"]
+    m = bpy.data.materials.new("toon"); m.use_nodes = True; nt = m.node_tree
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    out = nt.nodes.new("ShaderNodeOutputMaterial"); dif = nt.nodes.new("ShaderNodeBsdfDiffuse")
+    s2r = nt.nodes.new("ShaderNodeShaderToRGB"); ramp = nt.nodes.new("ShaderNodeValToRGB"); emi = nt.nodes.new("ShaderNodeEmission")
+    ramp.color_ramp.interpolation = "CONSTANT"
+    ramp.color_ramp.elements[0].color = (*tuple(rgb(shade))[:3], 1); ramp.color_ramp.elements[1].color = (*tuple(rgb(color))[:3], 1)
+    ramp.color_ramp.elements[1].position = 1.0 / max(2, steps)
+    nt.links.new(dif.outputs[0], s2r.inputs[0]); nt.links.new(s2r.outputs["Color"], ramp.inputs["Fac"])
+    nt.links.new(ramp.outputs["Color"], emi.inputs["Color"]); nt.links.new(emi.outputs[0], out.inputs["Surface"])
+    line = bpy.data.materials.new("toon_line"); line.use_nodes = True; line.use_backface_culling = True
+    lb = line.node_tree.nodes.get("Principled BSDF")
+    if lb:
+        lb.inputs["Base Color"].default_value = (0.02, 0.02, 0.03, 1)
+    for o in meshes:
+        o.data.materials.clear(); o.data.materials.append(m); o.data.materials.append(line)
+        if outline:
+            sol = o.modifiers.new("outline", "SOLIDIFY"); sol.thickness = outline; sol.offset = 1; sol.use_flip_normals = True; sol.material_offset = 1
+    return m
+
+
+def clay(objs, color="#E8E1D6", rough=0.75):
+    """점토 재질 — 부드럽고 무광(모델의 원래 텍스처를 덮는다). HDRI 와 함께 쓰면 '클레이 렌더' 느낌"""
+    objs = objs if isinstance(objs, (list, tuple)) else [objs]
+    m, b = _bsdf("clay"); _set(b, base=rgb(color), rough=rough, coat=0)
+    for o in [x for o in objs for x in ([o] + list(o.children_recursive)) if x.type == "MESH"]:
+        o.data.materials.clear(); o.data.materials.append(m)
+    return m
+
+
+def mjcf_build(visual, material=None, colors=None, smooth=True):
+    """physics.py 가 내보낸 모양(.visual.json — simulate(visual=…) · 재료 "visual": true)을 Blender 물체로 짓는다.
+    body 마다 빈 물체(이름 = body) 하나 + 그 아래 모양들(상자 · 공 · 캡슐 · 원기둥 · 메시) → {body 이름: 빈 물체}. 그대로 F.physics(traj, 결과) 로 움직인다.
+    material: 모든 모양에 같은 재질(그림체 통일) · colors: {"body 패턴": "#hex"} 부분 색 · 없으면 모델 색(rgba)으로 플라스틱"""
+    import fnmatch
+    import json as _json
+    z = _json.load(open(visual, encoding="utf-8"))
+    if "visual" in z and "geoms" not in z:                            # 결과(.traj.json)를 주면 그 안의 visual 경로
+        z = _json.load(open(z["visual"], encoding="utf-8"))
+    meta, meshes = z["geoms"], z["meshes"]
+    roots, mats = {}, {}
+    for i, g in enumerate(meta):
+        b = g["body"]
+        if b not in roots:
+            e = bpy.data.objects.new(b, None); bpy.context.collection.objects.link(e); e.rotation_mode = "QUATERNION"; roots[b] = e
+        if g["type"] == "mesh":
+            me = bpy.data.meshes.new(f"{b}_m{i}")
+            me.from_pydata([tuple(v) for v in meshes[g["mesh"]]["v"]], [], [tuple(f) for f in meshes[g["mesh"]]["f"]])
+            me.update()
+            o = bpy.data.objects.new(f"{b}_g{i}", me); bpy.context.collection.objects.link(o)
+            if smooth:
+                for poly in me.polygons:
+                    poly.use_smooth = True
+        else:
+            sz = g["size"]
+            if g["type"] == "box":
+                bpy.ops.mesh.primitive_cube_add(size=2); o = bpy.context.object; o.scale = (sz[0], sz[1], sz[2])
+            elif g["type"] in ("sphere", "ellipsoid"):
+                bpy.ops.mesh.primitive_uv_sphere_add(radius=1, segments=32, ring_count=16); o = bpy.context.object
+                o.scale = (sz[0], sz[0], sz[0]) if g["type"] == "sphere" else (sz[0], sz[1], sz[2]); bpy.ops.object.shade_smooth()
+            elif g["type"] == "cylinder":
+                bpy.ops.mesh.primitive_cylinder_add(radius=sz[0], depth=2 * sz[1], vertices=32); o = bpy.context.object; bpy.ops.object.shade_smooth()
+            else:   # capsule
+                bpy.ops.mesh.primitive_cylinder_add(radius=sz[0], depth=2 * sz[1], vertices=24); o = bpy.context.object
+                for zz in (-sz[1], sz[1]):
+                    bpy.ops.mesh.primitive_uv_sphere_add(radius=sz[0], location=(0, 0, zz), segments=24, ring_count=12); cap = bpy.context.object
+                    cap.select_set(True); o.select_set(True); bpy.context.view_layer.objects.active = o; bpy.ops.object.join()
+                bpy.ops.object.shade_smooth()
+            o.name = f"{b}_g{i}"
+        o.rotation_mode = "QUATERNION"
+        o.location = tuple(g["pos"]); o.rotation_quaternion = tuple(g["quat"])
+        o.parent = roots[b]
+        col = next((c for pat, c in (colors or {}).items() if fnmatch.fnmatchcase(b, pat)), None)
+        if material is not None and col is None:
+            m = material
+        else:
+            rgba = g["rgba"]
+            hx = col or "#%02x%02x%02x" % tuple(int(max(0, min(1, v)) * 255) for v in rgba[:3])
+            m = mats.get(hx) or mats.setdefault(hx, mat_plastic(hx, rough=0.35))
+        o.data.materials.clear(); o.data.materials.append(m)
+    return roots
+
+
+def spring_camera(cam, marks, sec=None, stiffness=60.0, damping=0.7, look=None, physics=None, offset=(0.0, -4.0, 1.2)):
+    """물리 카메라 — 카메라 자리(와 보는 곳)를 목표에 스프링으로 매단다: 늦게 붙고 부드럽게 멈춘다(직선 dolly 의 기계적인 움직임 대신).
+    marks: [(초, (x, y, z)) | (초, "body 이름")] — 그 시각부터 그 자리로. body 이름이면 physics(보통 ctx.args["physics"]) 의 그 물체를
+    offset 만큼 떨어져 계속 따라간다. look: 같은 꼴의 목표(보는 곳 · cam_target) — 없으면 보는 곳은 그대로.
+    stiffness 30~150(클수록 빨리 붙음) · damping 1 = 출렁임 없음, 0.5 쯤 = 살짝 지나쳤다 돌아옴"""
+    import json as _json
+    import math as _m
+    fps = _FPS[0]
+    sec = sec if sec is not None else (bpy.context.scene.frame_end - 1) / fps
+    d = _json.load(open(physics, encoding="utf-8")) if isinstance(physics, str) else physics
+
+    def goal_at(ms, t, off):
+        cur = None
+        for tt, g in ms:
+            if tt <= t + 1e-9:
+                cur = g
+        cur = cur if cur is not None else ms[0][1]
+        if isinstance(cur, str):
+            rows = d["bodies"][cur]
+            r = rows[min(len(rows) - 1, int(round(t * d.get("fps", fps))))]
+            return (r[0] + off[0], r[1] + off[1], r[2] + off[2])
+        return tuple(cur)
+
+    def run(obj, ms, off):
+        ms = sorted(ms, key=lambda m: m[0])
+        w0, sub = _m.sqrt(stiffness), 8
+        dt = 1.0 / (fps * sub)
+        pos, vel = list(goal_at(ms, 0.0, off)), [0.0, 0.0, 0.0]
+        for f in range(int(round(sec * fps)) + 1):
+            obj.location = pos
+            obj.keyframe_insert("location", frame=f + 1)
+            g = goal_at(ms, f / fps, off)
+            for _ in range(sub):
+                for k in range(3):
+                    vel[k] += (w0 * w0 * (g[k] - pos[k]) - 2 * damping * w0 * vel[k]) * dt
+                    pos[k] += vel[k] * dt
+    run(cam, marks, offset)
+    tgt = bpy.data.objects.get("cam_target")
+    if look and tgt is not None:
+        run(tgt, look, (0.0, 0.0, 0.0))
+    return cam
 
 
 def glow(strength=0.35, threshold=0.9):

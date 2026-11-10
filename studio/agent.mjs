@@ -27,7 +27,8 @@ export const TOOLS = [
   // 비밀 파일을 읽을 수 있는 명령(cat · grep · curl · 셸 전체)은 넣지 않는다
   "Bash(python3 engine/*)", "Bash(.venv/bin/python engine/*)", "Bash(python engine/*)",
   "Bash(ffmpeg *)", "Bash(ffprobe *)", "Bash(ls *)",
-  "Bash(cd *)",          // 2026-11-10: 'cd /app && python3 engine/…' 조합이 막혀 에이전트가 우회하느라 호출이 늘었다 — cd 는 무해(뒤 명령은 각자 규칙대로) "Bash(mkdir -p data/*)", "Bash(cp data/*)", "Bash(mv data/*)",
+  "Bash(mkdir -p data/*)", "Bash(cp data/*)", "Bash(mv data/*)",
+  "Bash(cd *)",          // 2026-11-10: 'cd /app && python3 engine/…' 조합이 막혀 에이전트가 우회하느라 호출이 늘었다 — cd 는 무해(뒤 명령은 각자 규칙대로)
 ];
 // 키·인증 파일은 읽지도 못하게
 // 저장소 코드 · 설정은 고치지 못하게 — 쓰기는 acceptEdits(저장소 안 파일 편집 자동 허용)로 열고 여기서 막는다.

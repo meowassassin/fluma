@@ -450,6 +450,17 @@ def lint(sb: dict, recent_titles=None) -> list:
     fails += material_checks(sb)
     # L39 재료 칸(필수 칸 · overlay 대상 · drawing 모형 · 가상 화면 표시) — 렌더 전에 콘티만으로
     fails += material_spec_checks(sb)
+    # L53 가상 앱 화면(ui_mock · mock)은 Astryx 장면(ui 칸)으로 — 손으로 그린 표 · 버튼은 '진짜 앱' 느낌이 안 났다(2026-11-10)
+    for i, sc in enumerate(sb.get("scenes") or [], 1):
+        for m in sc.get("materials") or []:
+            if m.get("type") == "ui_mock" and m.get("mock") and not m.get("ui") and not m.get("src"):
+                fails.append(("L53", i, f"{m.get('id')}: 가상 앱 화면은 Astryx 장면으로 — ui: data/compositions/<id>/ui/<이름>.tsx (컴포넌트 문서: npm --prefix tools/ui-scenes run -s astryx -- component <이름>)"))
+    # L50 화면 변화 간격 · L51 구절 길이 · L52 접속어 강의체 · T50 말 속도 — 레퍼런스 X-ray 수치와 견준다(engine/checks/refnorm.py)
+    try:
+        from refnorm import check as _refnorm
+    except ImportError:
+        from checks.refnorm import check as _refnorm
+    fails += _refnorm(sb)
     # L41 감독 없음 — 나레이션이 없으면 강조(확대 · 멈춤)가 저절로 생기지 않는다. 화면 녹화 장면에 감독이 짚은 곳이 하나도 없으면 같은 구도의 같은 창이 이어진다(2026-11-09 git 영상: 슬롭)
     if not any(str(x.get("narration") or "").strip() for x in sb.get("scenes") or []):
         flat = []

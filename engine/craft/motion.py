@@ -261,7 +261,7 @@ PLACE = {"full": (0.5, 0.5, 1.0, 1.0), "center": (0.5, 0.47, 0.82, 0.5), "left":
          "right": (0.7, 0.55, 0.5, 0.45), "top": (0.5, 0.3, 0.86, 0.32), "bottom": (0.5, 0.66, 0.86, 0.32)}
 
 
-KNOWN_TYPES = {"chart", "stat", "text", "illustration", "icon", "doc_quote", "image", "photo", "screen", "video", "web", "stock", "overlay"}
+KNOWN_TYPES = {"physics", "chart", "stat", "text", "illustration", "icon", "doc_quote", "image", "photo", "screen", "video", "web", "stock", "overlay"}
 VIDEO_EXT = (".mp4", ".mov", ".webm", ".mkv", ".m4v")
 SCREENS = ("screen", "video", "web", "stock")      # 실제 화면(캡처 · 녹화)
 
@@ -475,6 +475,134 @@ def adjust_jsx(mid: str, adj: dict, W: int, H: int) -> str:
             + " ".join(body) + " } })();")
 
 
+def _hex01(c, default):
+    if isinstance(c, list) and len(c) >= 3:
+        return [float(v) for v in c[:3]]
+    if isinstance(c, str) and re.fullmatch(r"#?[0-9a-fA-F]{6}", c.strip()):
+        h = c.strip().lstrip("#")
+        return [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+    return default
+
+
+def physics_proj(rec: dict, W: int, H: int, bottom: float = 0.74) -> dict | None:
+    """physics 재료의 계산 결과를 화면 평면으로 — view: {"width": 화면 폭에 든 세상 너비 m, "x": 원점 가로 비율, "ground": 바닥 세로 비율}"""
+    if rec.get("_proj") is not None:
+        return rec["_proj"]
+    f = ROOT / str(rec.get("file") or "")
+    if not rec.get("file") or not f.is_file():
+        return None
+    from . import physics as _phys
+    res = json.loads(f.read_text("utf-8"))
+    v = (rec.get("spec") or {}).get("view") or {}
+    pr = _phys.project2d(res, W, H, float(v.get("width", 3.6)), float(v.get("x", 0.5)), float(v.get("ground", bottom)))
+    pr["fps"], pr["shapes"] = res.get("fps", 30), res.get("shapes") or {}
+    rec["_proj"] = pr
+    return pr
+
+
+def physics_jsx(J, rec: dict, t0: float, t_out: float | None, sec: float, W: int, H: int, font: str, bottom: float) -> None:
+    """물리로 움직이는 2D 요소(engine/craft/physics.py) — 물체마다 레이어 하나, 프레임마다 위치 · 회전 키(계산이 이미 부드러워 손 키 · 이징 없음).
+    bind: {"이름 또는 패턴(coin*)": "그림 파일(svg · png)" | {"text": "글", "size": 120, "color": "#fff", "file": …, "w": px} | false(그리지 않음)}
+    bind 가 없거나 짝이 없는 물체는 MuJoCo 모양(상자 · 공 · 캡슐) 그대로 그 색으로 그린다. 계산 0초 = 재료가 나오는 시각(cue)"""
+    import fnmatch
+    pr = physics_proj(rec, W, H, bottom)
+    mid = rec["id"]
+    if not pr:
+        J(f"// physics {mid}: 계산 결과 없음")
+        return
+    sp = rec.get("spec") or {}
+    bind = sp.get("bind") or {}
+    fps, ppm = pr["fps"], pr["ppm"]
+    stride = 1 if sum(len(v) for v in pr["bodies"].values()) <= 24000 else 2
+    t_end = t_out if t_out is not None else sec
+    for name, rows in pr["bodies"].items():
+        b = next((bind[k] for k in bind if fnmatch.fnmatchcase(name, k)), None) if bind else None
+        if b is False or b == "hide":
+            continue
+        shp = pr["shapes"].get(name)
+        if b is None and not shp:
+            continue                                              # 모양 없는 body(관절 묶음 등)는 그리지 않는다
+        b = {"file": b} if isinstance(b, str) else (b or {})
+        kind, size = (shp or {}).get("type", "box"), (shp or {}).get("size", [0.1, 0.1, 0.1])
+        w_px = 2 * size[0] * ppm
+        h_px = 2 * (size[2] if kind in ("box", "ellipsoid") else size[0]) * ppm
+        if kind == "capsule":
+            h_px = 2 * (size[0] + size[1]) * ppm
+        ln = f"Phys {mid} {name}"
+        col = _hex01(b.get("color"), (shp or {}).get("rgba", [0.6, 0.6, 0.7])[:3])
+        if b.get("file"):
+            fp = ROOT / str(b["file"])
+            J(f"var pf = app.project.importFile(new ImportOptions(new File({js(str(fp))}))); var L = c.layers.add(pf); L.name = {js(ln)}; "
+              f"var pk = {float(b.get('w') or w_px):.1f} / L.source.width * 100; L.property('Transform').property('Scale').setValue([pk, pk]);")
+        elif b.get("text") is not None:
+            J(f"var L = txt(c, {js(ln)}, {js(str(b['text']))}, {js(b.get('font') or font)}, {int(b.get('size') or max(24, h_px * 0.8))}, {js(col if b.get('color') else [1, 1, 1])}, null, 0, [{W / 2}, {H / 2}]); "
+              f"L.property('Transform').property('Anchor Point').expression = 'var r = sourceRectAtTime(0, false); [r.left + r.width / 2, r.top + r.height / 2]';")
+        elif kind in ("sphere", "ellipsoid", "cylinder") and kind != "box":
+            J(f"var L = c.layers.addShape(); L.name = {js(ln)}; var pg = L.property('Contents').addProperty('ADBE Vector Group'); "
+              f"pg.property('Contents').addProperty('ADBE Vector Shape - Ellipse').property('Size').setValue([{w_px:.1f}, {w_px:.1f}]); "
+              f"pg.property('Contents').addProperty('ADBE Vector Graphic - Fill').property('Color').setValue({js(col)});")
+        else:
+            rnd = w_px / 2 if kind == "capsule" else float(b.get("round", min(w_px, h_px) * 0.12))
+            J(f"var L = card(c, {js(ln)}, {w_px:.1f}, {h_px:.1f}, {js(col)}, {rnd:.1f});")
+        flat = []
+        for i in range(0, len(rows), stride):
+            t = t0 + i / fps
+            if t > t_end + 1e-6:
+                break
+            flat += rows[i]
+        J(f"(function () {{ var d = {json.dumps(flat, separators=(',', ':'))}; var P = L.property('Transform').property('Position'), R = L.property('Transform').property('Rotation'); "
+          f"for (var i = 0; i < d.length / 3; i++) {{ var t = {t0:.3f} + i * {stride / fps:.5f}; P.setValueAtTime(t, [d[3 * i], d[3 * i + 1]]); R.setValueAtTime(t, d[3 * i + 2]); }} }})();")
+        J(f"var Lo = L.property('Transform').property('Opacity'); Lo.setValueAtTime(0, 0); Lo.setValueAtTime({max(0.0, t0 - 0.01):.3f}, 0); Lo.setValueAtTime({t0:.3f}, 100);"
+          + (f" Lo.setValueAtTime({max(t0, t_end - 0.18):.3f}, 100); Lo.setValueAtTime({t_end:.3f}, 0);" if t_out is not None and t_out < sec - 0.05 else ""))
+        if sp.get("camera", True) is not False:
+            J("try { L.parent = cam; } catch (e) {}")
+
+
+def camera_follow_jsx(J, sc: dict, mats: list[dict], slots: dict, words: list[dict], start: float, end: float, sec: float, fps: int, W: int, H: int, bottom: float) -> bool:
+    """물리 카메라: 장면 camera.follow 의 목표를 스프링으로 따라간다(늦게 붙고 부드럽게 멈춤). 목표 하나 =
+    {"t": 초 | "at": "낱말", "x": 0.5, "y": 0.5, "zoom": 1.2} 또는 {"t"|"at", "body": "ball", "material": "<physics 재료 id>", "zoom": 1.3}(그 물체를 계속 따라감).
+    camera.stiffness(단단함, 기본 60) · camera.damping(1 = 출렁임 없음, 기본 0.7). 정해 두면 '확대' · 천천히 밀기 대신 이것만 쓴다"""
+    cf = (sc.get("camera") or {}) if isinstance(sc.get("camera"), dict) else {}
+    follow = cf.get("follow")
+    if not follow:
+        return False
+    from . import physics as _phys
+    by_id = {r["id"]: r for r in mats}
+    pts = []        # (초, 화면 x px, y px, 확대) — 물체를 따라가는 구간은 프레임마다
+    marks = []
+    for e in follow:
+        t = float(e["t"]) if isinstance(e.get("t"), (int, float)) else (cue_time(e.get("at"), words, start, end) if e.get("at") else 0.0)
+        marks.append((0.0 if t is None else t, e))
+    marks.sort(key=lambda m: m[0])
+    for k, (t, e) in enumerate(marks):
+        t_next = marks[k + 1][0] if k + 1 < len(marks) else sec
+        z = float(e.get("zoom", 1.0))
+        if e.get("body"):
+            r = by_id.get(e.get("material")) or next((m for m in mats if m.get("type") == "physics"), None)
+            pr = physics_proj(r, W, H, bottom) if r else None
+            rows = (pr or {}).get("bodies", {}).get(e["body"])
+            if not rows:
+                continue
+            t0 = (slots.get(r["id"]) or (0.0, None))[0] or 0.0
+            tt = t
+            while tt < t_next - 1e-6:
+                i = min(len(rows) - 1, max(0, int(round((tt - t0) * pr["fps"]))))
+                pts.append((tt, rows[i][0], rows[i][1], z))
+                tt += 1.0 / fps
+        else:
+            pts.append((t, float(e.get("x", 0.5)) * W, float(e.get("y", 0.5)) * H, z))
+    if not pts:
+        return False
+    seq = _phys.spring_follow(pts, fps, sec, float(cf.get("stiffness", 60)), float(cf.get("damping", 0.7)))
+    cx, cy = W / 2, H / 2
+    flat = []
+    for x, y, z in seq:
+        flat += [round(cx - z * (x - cx), 1), round(cy - z * (y - cy), 1), round(z * 100, 2)]
+    J(f"(function () {{ var d = {json.dumps(flat, separators=(',', ':'))}; var P = cam.property('Transform').property('Position'), S = cam.property('Transform').property('Scale'); "
+      f"for (var i = 0; i < d.length / 3; i++) {{ var t = i / {fps}; P.setValueAtTime(t, [d[3 * i], d[3 * i + 1]]); S.setValueAtTime(t, [d[3 * i + 2], d[3 * i + 2]]); }} }})();")
+    return True
+
+
 def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec: float, W: int, H: int, font: str, colors: list,
                  top: float = 0.0, bottom: float = 0.74, t_in: float | None = None, t_out: float | None = None, layout: str = "card",
                  direction: dict | None = None) -> None:
@@ -484,6 +612,9 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
     t0 = 0.0 if t0 is None else t0
     mid = rec["id"]
     typ = rec["type"]
+    if typ == "physics":
+        physics_jsx(J, rec, t0, t_out, sec, W, H, font, bottom)
+        return
     if typ == "chart" and rec.get("as") != "image":
         # 막대 차트: 깨끗한 바탕(장면 배경 톤이 비치지 않게) · 옅은 눈금 · 기준선 · 항목 아이콘(Lucide) · 값 세기 · 배수 배지
         # 2026-11-04: 흐린 갈색 배경 위 막대만 있어 밋밋하다는 지적
@@ -1124,7 +1255,10 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 zoom_at = float(b["t"]) if isinstance(b.get("t"), (int, float)) else cue_time(b.get("at"), words, start, end)
                 break
         J("var zs = cam.property('Transform').property('Scale');")
-        if zoom_at is not None:
+        cam_follow = isinstance(sc.get("camera"), dict) and bool(sc["camera"].get("follow"))
+        if cam_follow:
+            pass                                     # 물리 카메라 — 재료를 그린 뒤 camera_follow_jsx 가 키를 넣는다
+        elif zoom_at is not None:
             J(f"zs.setValueAtTime(0, [100, 100]); zs.setValueAtTime({zoom_at}, [104, 104]); zs.setValueAtTime({min(sec, zoom_at + 0.6)}, [122, 122]); zs.setValueAtTime({sec}, [126, 126]); ease(zs, 75);")
         elif DZ["cam_push"] > 1.0:   # 장면 내내 천천히 밀기 — 방향이 정했을 때만
             J(f"zs.setValueAtTime(0, [100, 100]); zs.setValueAtTime({sec}, [{DZ['cam_push'] * 100:.1f}, {DZ['cam_push'] * 100:.1f}]); ease(zs, 40);")
@@ -1205,6 +1339,8 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 rec["_subs"] = bool(words) or bool(rec.get("steps"))     # 자막이 없으면 자막 그림자도 없다
                 rec["_pin_bottom"] = pin_bottom
                 material_jsx(J, rec, words, start, end, sec, W, H, font, colors, top=top, bottom=g["subs"]["y"] - 0.03, t_in=t_in, t_out=t_out, layout=layout, direction=d)
+            if cam_follow:
+                camera_follow_jsx(J, sc, mats, slots, words, start, end, sec, fps, W, H, g["subs"]["y"] - 0.03)
             by_id = {r["id"]: r for r in mats}
             for ov in ovs:
                 overlay_jsx(J, ov, by_id.get(ov_target(ov)), slots.get(ov_target(ov), (None, None)), words, start, end, sec)

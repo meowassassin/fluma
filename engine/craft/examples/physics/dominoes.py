@@ -12,4 +12,9 @@ def build(ctx):
     objs["ball"] = F.sphere(0.1, material=F.mat_plastic("#FF9A3C", rough=0.25))
     F.physics(ctx.args["physics"], objs)
     cam = F.camera(lens=50, loc=(-1.9, -3.2, 1.25), target=(1.0, 0, 0.15), fstop=4.0)
-    F.dolly(cam, (0.4, -3.0, 1.0), start=0.0, end=ctx.sec)
+    if not ctx.args.get("spring_cam"):
+        F.dolly(cam, (0.4, -3.0, 1.0), start=0.0, end=ctx.sec)
+    # 물리 카메라(선택): 직선 dolly 대신 — 공을 따라가다 마지막 도미노 쪽으로, 스프링이라 늦게 붙고 부드럽게 멈춘다
+    if ctx.args.get("spring_cam"):
+        F.spring_camera(cam, [(0.0, (-1.9, -3.2, 1.25)), (1.2, (1.2, -2.6, 0.9))], sec=ctx.sec, stiffness=25, damping=0.65,
+                        look=[(0.0, "ball"), (1.0, "d8")], physics=ctx.args["physics"])

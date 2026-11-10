@@ -35,7 +35,7 @@ FONTS = ROOT / "engine" / "assets" / "fonts"
 # 품질 단계 — 프레임당 시간은 8코어 CPU · 1080×1920 기준 실측(2026-11-06). 잡티 제거가 샘플을 메워 balanced 가 best 와 거의 같다
 # scale: 렌더 해상도 배율(결과는 확대 · 선명화해 목표 크기로). 스크립트는 F.use_quality(ctx) 로 받는다
 QUALITY = {"fast": {"engine": "eevee", "scale": 1.0, "samples": 8, "sec": 1.2,        # 기본: 영상 한 편 10분 이내. 8샘플은 32샘플과 거의 같고,
-                    "eevee": {"motion_blur": False, "use_raytracing": False}},       # 레이 트레이싱을 끄면 빨라지고 표면 그림자 얼룩도 사라진다
+                    "eevee": {"motion_blur": True, "use_raytracing": False}},        # 레이 트레이싱을 끄면 빨라지고 표면 그림자 얼룩도 사라진다 · 모션 블러는 켬(움직임이 끊겨 보였다)
            "balanced": {"engine": "cycles", "scale": 0.5, "samples": 16, "sec": 9},  # 반사가 더 사실적 — 약 50분
            "best": {"engine": "cycles", "scale": 1.0, "samples": 32, "sec": 37}}     # 정지 컷 · 꼭 필요할 때
 
@@ -201,7 +201,11 @@ def _render(script: Path, m: dict, out: Path, work: Path) -> dict:
         if not scene.exists() or (ROOT / "data" / "compositions") not in scene.parents:
             raise RuntimeError(f"physics 장면은 data/compositions/ 안의 MJCF(.xml) 여야 합니다: {m['physics']}")
         traj = work / f"{out.stem}.traj.json"
-        res = physics.simulate(scene, float(m.get("sec") or 4), int(m.get("fps", 24)), {k: v for k, v in args.items() if not isinstance(v, (dict, list))})
+        res = physics.simulate(scene, float(m.get("sec") or 4), int(m.get("fps", 24)), {k: v for k, v in args.items() if not isinstance(v, (dict, list))},
+                               m.get("ctrl"), m.get("goals"), work / f"{out.stem}.visual.json" if m.get("visual") else None,
+                               poses=m.get("poses"), expect=m.get("expect"))
+        if m.get("retime"):                                    # 속도 연출(부딪히는 순간 느리게) — physics.retime
+            res = physics.retime(res, m["retime"])
         traj.write_text(json.dumps(res), "utf-8")
         args["physics"] = str(traj)
         m = {**m, "args": args}
@@ -271,15 +275,28 @@ def main() -> int:
     ap.add_argument("--args", default="{}", help="JSON → ctx.args")
     ap.add_argument("--physics", help="MuJoCo 장면(MJCF) — 먼저 계산해 ctx.args['physics'] 로 넘긴다")
     ap.add_argument("--anim", action="store_true", help="정지 화면 대신 짧은 영상(mp4)으로 — 움직임 확인용")
+    ap.add_argument("--ctrl", help="조종 값 시간표 JSON(physics.py 와 같음)")
+    ap.add_argument("--goals", help="목표 JSON — 계획기가 조종 값을 찾는다(physics.py plan) · 손 동작은 --poses 가 맞다")
+    ap.add_argument("--poses", help="자세 키 JSON(physics.py pose_ctrl) — 손 · 몸 동작")
+    ap.add_argument("--expect", help="닿음 기대 JSON(physics.py check_contacts)")
+    ap.add_argument("--retime", help='속도 연출 JSON [{"from": 1.0, "to": 1.4, "speed": 0.3}] — 그 구간 느리게(영상 길이가 늘어난다)')
+    ap.add_argument("--traj", help="이미 계산한 결과(.traj.json — physics.py gym · run) 를 그대로 ctx.args['physics'] 로")
     ap.add_argument("--fps", type=int, default=24)
     a = ap.parse_args()
     script = Path(a.script).resolve()
     out = Path(a.out).resolve() if a.out else ROOT / "data" / "workspace" / "blender" / script.stem
     out.mkdir(parents=True, exist_ok=True)
     args = json.loads(a.args)
+    if a.traj:
+        args["physics"] = str(Path(a.traj).resolve())
     if a.physics:
         from craft import physics
-        res = physics.simulate(Path(a.physics).resolve(), a.sec, a.fps, {k: v for k, v in args.items() if not isinstance(v, (dict, list))})
+        res = physics.simulate(Path(a.physics).resolve(), a.sec, a.fps, {k: v for k, v in args.items() if not isinstance(v, (dict, list))},
+                               json.loads(a.ctrl) if a.ctrl else None, json.loads(a.goals) if a.goals else None, out / "physics.visual.json",
+                               poses=json.loads(a.poses) if a.poses else None, expect=json.loads(a.expect) if a.expect else None)
+        if a.retime:
+            res = physics.retime(res, json.loads(a.retime))
+            a.sec = res["sec"]
         tp = out / "physics.traj.json"
         tp.write_text(json.dumps(res), "utf-8")
         args["physics"] = str(tp)
