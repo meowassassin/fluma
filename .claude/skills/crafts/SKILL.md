@@ -121,3 +121,26 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 동작 대상 상자로 카메라가 줌 인 · 아웃(멀면 빠졌다 들어감), 짚는 곳만 선명 · 나머지 흐림, 입력은 실제 한 자씩, 글자 줄은 한 자씩, 기다림은 빨리 감기, 맞는 무료 곡까지.
 계획 형식은 파일 맨 위 설명. 예: data/public/showcase/fluma-demo.json(Fluma 자체 소개). 보내기(Enter) 같은 실제 동작은 대본에 넣지 않으면 일어나지 않는다.
 
+## 물리로 움직이기(MuJoCo) — 떨어짐 · 부딪힘 · 튕김 · 쌓임 · 넘어짐
+손으로 키프레임을 짜면 딱딱해지는 움직임(무너지는 블록 · 도미노 · 굴러가는 꾸러미 · 튕기는 아이콘 · 흔들리다 넘어지는 랙)은 물리로 계산한다.
+1. 장면을 MJCF 로 쓴다 — `data/compositions/<id>/src/<이름>.mjcf.xml`. 물체마다 `<body name="…"><freejoint/><geom …/></body>`, 바닥은 plane.
+   마찰 · 높이 · 미는 속도 같은 숫자는 `{{이름}}` 으로 두고 콘티 재료 `args` 에 값을 적는다(대화로 고칠 때 `knob.py set <id> <요소>.args.friction=0.4`).
+   처음 속도는 `<keyframe><key qvel="…"/></keyframe>`(freejoint 하나에 6칸: 직선 3 + 회전 3).
+2. Blender 스크립트에서 같은 이름의 물체를 만들고 `F.physics(ctx.args["physics"], {"이름": 물체, …})` — 프레임마다 위치 · 회전 키가 들어간다(축 같음: Z 위, 미터).
+3. 재료: `{"type": "model3d", "method": "blender", "script": "…/<이름>.py", "physics": "…/<이름>.mjcf.xml", "args": {…}, "sec": 4}` — 렌더 전에 자동으로 계산(1초 안쪽).
+빠른 확인: `python3 engine/craft/physics.py check <장면>` · `python3 engine/craft/adapters/blender.py <스크립트> --physics <장면> --args '{…}' --anim --sec 3.5`(짧은 영상).
+예: `engine/craft/examples/physics/dominoes.*`(공이 도미노 13개를 넘어뜨림 — 재료로 쓸 때는 data/compositions/<id>/src/ 로 복사). 물리가 어울리는 비유가 있는 장면에만 — 모든 움직임을 물리로 하지 않는다.
+
+## 앱 · 대시보드 화면은 Astryx 컴포넌트로 — 손으로 그린 표 · 버튼 대신
+영상 속 '실제 같은' 관리 화면 · 대시보드 · 설정 창 · 채팅 앱 · 표(예: DB 테이블, 주문 목록, 결제 화면)는 HTML 을 손으로 짜지 않고
+Astryx(Meta 디자인 시스템, 컴포넌트 174개 — Table · Card · Badge · SideNav · TopNav · ChatMessage · CommandPalette · Stepper · ProgressBar …)로 만든다.
+손으로 그린 화면은 '진짜 앱' 느낌이 안 나고(2026-11-10 DB 영상) 고치는 데 오래 걸린다.
+1. 컴포넌트 문서를 먼저 읽는다 — 속성 이름을 추측하지 않는다(Badge 는 children 이 아니라 `label`, Stack 간격은 숫자 `gap={4}`):
+   `npm --prefix tools/ui-scenes run -s astryx -- component --list` · `… component Table`
+2. 장면 파일 하나: `data/compositions/<id>/ui/<이름>.tsx` — `export default function Scene()` (React 19, 데이터는 파일 안에).
+3. 짓기: `node tools/ui-scenes/build.mjs data/compositions/<id>/ui/<이름>.tsx data/compositions/<id>/ui/<이름> --mode dark --png 1080x1920`
+   타입 검사가 먼저 돌아 잘못된 속성을 렌더 전에 알려 준다. `--png` 로 정지 화면 확인.
+4. 영상에 넣기: webrec 계획의 `"start": "file:///app/data/compositions/<id>/ui/<이름>/index.html"`(로컬은 저장소 절대 경로) →
+   `webrec.py run` 으로 클릭 · 입력 · 스크롤을 단계 캡처 → 재료 `web`. 움직임이 필요하면 페이지 안 React 상태로 직접.
+화면 하나하나는 그 영상에 맞게 새로 짠다 — 장면 파일을 부품 · 템플릿으로 모아 재사용하지 않는다. 예: `tools/ui-scenes/examples/db-table.tsx`.
+

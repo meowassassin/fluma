@@ -20,6 +20,9 @@ Installed by npm / pip (not bundled)
 - CLIP ViT-B/32 (OpenAI, MIT) via Xenova ONNX export — downloaded on first use
 - MobileSAM — Apache-2.0 — downloaded on first use
 - ONNX Runtime — MIT
+- MuJoCo (physics for 3D motion, engine/craft/physics.py) — Apache-2.0 — https://github.com/google-deepmind/mujoco
+- Astryx design system (@astryxdesign/*, UI screens inside videos, tools/ui-scenes) — MIT — https://github.com/meta/astryx
+  with StyleX (MIT) and React (MIT)
 - Playwright / Chromium — Apache-2.0 / BSD-style
 - edge-tts — see https://github.com/rany2/edge-tts (output audio is produced by a
   Microsoft online service whose commercial terms are not stated)

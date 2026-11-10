@@ -602,7 +602,7 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             meta_p = d / f"{m['id']}.json"
             # 열쇠 = 요청 + 원본 파일 내용 + 사람이 고친 편집 파일 → 무엇이든 바뀌면 다시 만든다
             srcs = [_hash(_abs(m[k])) if not _abs(m[k]).is_dir() else "|".join(f"{f.name}:{f.stat().st_size}" for f in sorted(_abs(m[k]).iterdir()))
-                    for k in ("src", "csv", "xlsx", "pdf", "template", "script", "bridge") if isinstance(m.get(k), str)]
+                    for k in ("src", "csv", "xlsx", "pdf", "template", "script", "bridge", "physics") if isinstance(m.get(k), str)]   # physics: MuJoCo 장면(MJCF) — 바뀌면 다시 계산 · 렌더
             srcs += [_hash(_abs(i[k])) for i in m.get("items") or [] if isinstance(i, dict) for k in ("script", "file") if isinstance(i.get(k), str) and _abs(i[k]).is_file()]   # live 재료의 요소
             old = _load(meta_p)
             # 사람이 고친 편집 파일: 기록의 editable_hash(우리가 만든 그대로의 해시)와 다르면 열쇠에 넣는다 → 다시 만들어 그 파일을 쓴다.

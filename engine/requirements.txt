@@ -9,3 +9,4 @@ yt-dlp[default]>=2025.11   # [default] = 유튜브 자바스크립트 풀이(yt-
 pillow>=10
 numpy>=1.26
 python-dotenv>=1.0        # .env.local 로드(키는 설정 화면이 ~/.shortsforge/api-keys.json 에도 저장)
+mujoco>=3.2   # 물리로 움직임 계산(engine/craft/physics.py) — Blender 장면의 키로 들어간다

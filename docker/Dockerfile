@@ -33,6 +33,7 @@ RUN python3 -m venv .venv \
     && .venv/bin/python engine/craft/crafts.py install $( [ "$CRAFTS" = core ] && echo effectcraft soundcraft filmcraft vectorcraft gridcraft pdfcraft photocraft || echo $CRAFTS ) --no-web \
     && .venv/bin/python -m playwright install --with-deps chromium \
     && npm --prefix studio ci --no-audit --no-fund \
+    && npm --prefix tools/ui-scenes ci --no-audit --no-fund \
     && mkdir -p data/storyboards data/compositions data/audio data/public/audio data/public/uploads data/public/elements data/public/trends data/research data/characters data/briefs data/scenes data/out data/workspace data/cache data/public/clips \
     && mkdir -p /home/node/.shortsforge /home/node/.claude /home/node/.codex \
     && chown -R node:node /app /ms-playwright /home/node   # node = uid 1000(볼륨도 처음 만들 때 이 소유자를 따른다)

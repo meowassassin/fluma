@@ -195,6 +195,17 @@ def _render(script: Path, m: dict, out: Path, work: Path) -> dict:
     if m.get("bridge"):
         args["asm"] = str(ensure_bridge(ROOT / m["bridge"]))
         m = {**m, "args": args}
+    if m.get("physics"):                                       # MuJoCo 로 움직임을 먼저 계산 → 스크립트가 fluma3d.physics 로 키를 넣는다
+        from craft import physics
+        scene = (ROOT / m["physics"]).resolve()
+        if not scene.exists() or (ROOT / "data" / "compositions") not in scene.parents:
+            raise RuntimeError(f"physics 장면은 data/compositions/ 안의 MJCF(.xml) 여야 합니다: {m['physics']}")
+        traj = work / f"{out.stem}.traj.json"
+        res = physics.simulate(scene, float(m.get("sec") or 4), int(m.get("fps", 24)), {k: v for k, v in args.items() if not isinstance(v, (dict, list))})
+        traj.write_text(json.dumps(res), "utf-8")
+        args["physics"] = str(traj)
+        m = {**m, "args": args}
+        print(f"[3D] {out.stem}: 물리 계산(MuJoCo) {len(res['bodies'])}개 물체 · {res['sec']}초", flush=True)
     blend = work / f"{out.stem}.blend"
     still = bool(m.get("still")) or not m.get("sec")
     sec = float(m.get("sec") or 1)
@@ -249,7 +260,7 @@ ADAPTERS = {"model3d": model3d, "model3d@blender": model3d}
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("script")
-    ap.add_argument("--still", required=True, help="초, 쉼표로 여러 개")
+    ap.add_argument("--still", default="1", help="초, 쉼표로 여러 개")
     ap.add_argument("--sec", type=float, default=4)
     ap.add_argument("--width", type=int, default=540)
     ap.add_argument("--height", type=int, default=960)
@@ -258,11 +269,32 @@ def main() -> int:
     ap.add_argument("--quality", default="best", choices=list(QUALITY))
     ap.add_argument("--out")
     ap.add_argument("--args", default="{}", help="JSON → ctx.args")
+    ap.add_argument("--physics", help="MuJoCo 장면(MJCF) — 먼저 계산해 ctx.args['physics'] 로 넘긴다")
+    ap.add_argument("--anim", action="store_true", help="정지 화면 대신 짧은 영상(mp4)으로 — 움직임 확인용")
+    ap.add_argument("--fps", type=int, default=24)
     a = ap.parse_args()
     script = Path(a.script).resolve()
     out = Path(a.out).resolve() if a.out else ROOT / "data" / "workspace" / "blender" / script.stem
     out.mkdir(parents=True, exist_ok=True)
-    m = {"width": a.width, "height": a.height, "samples": a.samples, "transparent": not a.opaque, "draft": True, "args": json.loads(a.args), "quality": a.quality}
+    args = json.loads(a.args)
+    if a.physics:
+        from craft import physics
+        res = physics.simulate(Path(a.physics).resolve(), a.sec, a.fps, {k: v for k, v in args.items() if not isinstance(v, (dict, list))})
+        tp = out / "physics.traj.json"
+        tp.write_text(json.dumps(res), "utf-8")
+        args["physics"] = str(tp)
+    m = {"width": a.width, "height": a.height, "samples": a.samples, "transparent": not a.opaque, "draft": True, "args": args, "quality": a.quality, "fps": a.fps}
+    if a.anim:
+        fd = out / "frames"
+        shutil.rmtree(fd, ignore_errors=True)
+        run(script, fd, _ctx(m, out, a.sec), stills="")
+        frames = sorted(fd.glob("*.png"))
+        mp4 = out / f"{script.stem}.mp4"
+        lst = out / "frames.txt"
+        lst.write_text("".join(f"file '{f}'\nduration {1 / a.fps:.6f}\n" for f in frames), "utf-8")
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-vf", f"fps={a.fps},format=yuv420p", "-c:v", "libx264", "-crf", "18", str(mp4)], check=True)
+        print(str(mp4.relative_to(ROOT)) if mp4.is_relative_to(ROOT) else str(mp4))
+        return 0
     run(script, out, _ctx(m, out, a.sec), stills=a.still)
     print("\n".join(str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else str(p) for p in sorted(out.glob("s*.png"))))
     return 0

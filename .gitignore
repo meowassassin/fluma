@@ -33,3 +33,4 @@ library3d/s3-bucket/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 *.fcproj.lock
+tools/ui-scenes/.build/

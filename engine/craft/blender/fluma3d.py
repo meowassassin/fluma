@@ -745,6 +745,34 @@ def key(obj, path, sec, value, ease="BEZIER"):
                 kp.easing = "EASE_OUT"
 
 
+def physics(traj, objs=None, start=0.0, scale=1.0, offset=(0.0, 0.0, 0.0), every=1):
+    """MuJoCo 가 계산한 움직임(engine/craft/physics.py 결과 — 보통 ctx.args["physics"])을 물체에 키로 넣는다.
+    objs: {"body 이름": 물체} — 없으면 같은 이름의 Blender 물체를 찾는다. 좌표 축은 같다(Z 위). scale · offset 으로 장면에 맞춘다.
+    키는 프레임마다(every 로 솎기) · 선형 보간 — 물리가 이미 부드러워 베지어로 다시 휘게 하지 않는다"""
+    import json as _json
+    d = _json.load(open(traj, encoding="utf-8")) if isinstance(traj, str) else traj
+    fps = _FPS[0]
+    src_fps = d.get("fps", fps)
+    done = []
+    for name, rows in d["bodies"].items():
+        o = (objs or {}).get(name) or bpy.data.objects.get(name)
+        if o is None:
+            continue
+        o.rotation_mode = "QUATERNION"
+        for i in range(0, len(rows), max(1, every)):
+            x, y, z, qw, qx, qy, qz = rows[i]
+            f = round((start + i / src_fps) * fps) + 1
+            o.location = (x * scale + offset[0], y * scale + offset[1], z * scale + offset[2])
+            o.rotation_quaternion = (qw, qx, qy, qz)
+            o.keyframe_insert("location", frame=f)
+            o.keyframe_insert("rotation_quaternion", frame=f)
+        for fc in _fcurves(o.animation_data.action) if o.animation_data and o.animation_data.action else []:
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
+        done.append(name)
+    return done
+
+
 def appear(obj, at):
     """at 초 전에는 렌더에서 숨김 (자식까지). 등장 효과(pop_in · drop_in · rise_in)가 at>0 이면 자동으로 부른다 —
     그러지 않으면 시작 전에도 처음 자세(작게 · 아래)로 이미 보인다"""
