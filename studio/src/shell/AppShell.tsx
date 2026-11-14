@@ -35,6 +35,8 @@ export const AppShell: React.FC = () => {
         <RailLink to="/" icon="home" label={t("홈")} end />
         <VideosLink />
         <RailLink to="/trends" icon="trend" label={t("트렌드")} />
+        <RailLink to="/library" icon="library" label={t("라이브러리")} />
+        <RailLink to="/automation" icon="zap" label={t("자동화")} />
         <div className="rail-sep" />
         <AgentToggle />
         <div className="grow" />
@@ -112,11 +114,12 @@ const Palette: React.FC = () => {
           <Command.Group heading={t("이동")}>
             <Command.Item onSelect={() => go("/")}><Icon n="home" s={15} />{t("홈")}</Command.Item>
             <Command.Item onSelect={() => go("/trends")}><Icon n="trend" s={15} />{t("트렌드")}</Command.Item>
+            <Command.Item onSelect={() => go("/library")}><Icon n="library" s={15} />{t("라이브러리 (캐릭터 · 시리즈 프리셋)")}</Command.Item>
+            <Command.Item onSelect={() => go("/automation")}><Icon n="zap" s={15} />{t("자동화 (n8n 영상 생성 & 업로드)")}</Command.Item>
             <Command.Item onSelect={() => go("/crafts")}><Icon n="palette" s={15} />{t("Craft 앱 (Photoshop · Illustrator · After Effects 류)")}</Command.Item>
             <Command.Item onSelect={() => go("/settings/agent")}><Icon n="agent" s={15} />{t("설정 · 에이전트")}</Command.Item>
             <Command.Item onSelect={() => go("/settings/agent")}><Icon n="agent" s={15} />{t("설정 · 모델 · 공급자")}</Command.Item>
             <Command.Item onSelect={() => go("/settings/voice")}><Icon n="mic" s={15} />{t("설정 · 미디어 · 음성")}</Command.Item>
-            <Command.Item onSelect={() => go("/settings/gen")}><Icon n="sparkle" s={15} />{t("설정 · 미디어 · 이미지 · 영상 생성")}</Command.Item>
             <Command.Item onSelect={() => go("/settings/render")}><Icon n="engine" s={15} />{t("설정 · 미디어 · 렌더 엔진")}</Command.Item>
             <Command.Item onSelect={() => go("/settings/memory")}><Icon n="memory" s={15} />{t("설정 · 기억")}</Command.Item>
             <Command.Item onSelect={() => { set({ paletteOpen: false, shortcutsOpen: true }); }}><Icon n="keyboard" s={15} />{t("단축키 보기")}</Command.Item>

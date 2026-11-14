@@ -79,8 +79,23 @@ def target() -> tuple[str, str]:
     raise SystemExit(f"지원하지 않는 운영체제입니다: {sysname}")
 
 
+def _urlopen(req, timeout: int = 30):
+    try:
+        return urllib.request.urlopen(req, timeout=timeout)
+    except urllib.error.URLError as e:
+        import ssl
+        if isinstance(e.reason, ssl.SSLError):
+            try:
+                import certifi
+                ctx = ssl.create_default_context(cafile=certifi.where())
+                return urllib.request.urlopen(req, timeout=timeout, context=ctx)
+            except Exception:
+                pass
+        raise e
+
+
 def get_json(url: str):
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
+    with _urlopen(urllib.request.Request(url, headers=UA), timeout=30) as r:
         return json.load(r)
 
 
@@ -96,10 +111,10 @@ def release(app: dict) -> dict:
 def release_from_web(repo: str) -> dict:
     """API 대신 공개 릴리스 페이지에서 최신 태그 · 파일 목록을 읽는다(API 와 같은 모양으로, 크기는 모름)"""
     req = urllib.request.Request(f"https://github.com/{repo}/releases/latest", headers={"User-Agent": UA["User-Agent"]})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with _urlopen(req, timeout=30) as r:
         tag = urllib.parse.unquote(r.geturl().rstrip("/").rsplit("/", 1)[1])
     req = urllib.request.Request(f"https://github.com/{repo}/releases/expanded_assets/{urllib.parse.quote(tag)}", headers={"User-Agent": UA["User-Agent"]})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with _urlopen(req, timeout=30) as r:
         html = r.read().decode("utf-8", "replace")
     pre = f"/{repo}/releases/download/{tag}/"
     names = sorted({urllib.parse.unquote(m) for m in re.findall(r'href="' + re.escape(pre) + r'([^"?#]+)"', html)})
@@ -128,7 +143,7 @@ def sums(rel: dict) -> dict[str, str]:
     a = next((x for x in rel.get("assets", []) if x["name"] == "SHA256SUMS.txt"), None)
     if not a:
         return {}
-    with urllib.request.urlopen(urllib.request.Request(a["browser_download_url"], headers={"User-Agent": UA["User-Agent"]}), timeout=30) as r:
+    with _urlopen(urllib.request.Request(a["browser_download_url"], headers={"User-Agent": UA["User-Agent"]}), timeout=30) as r:
         txt = r.read().decode("utf-8", "replace")
     out = {}
     for line in txt.splitlines():
@@ -142,7 +157,7 @@ def download(asset: dict, to: Path) -> str:
     h = hashlib.sha256()
     req = urllib.request.Request(asset["browser_download_url"], headers={"User-Agent": UA["User-Agent"]})
     size, done, last = asset.get("size", 0), 0, -1
-    with urllib.request.urlopen(req, timeout=60) as r, open(to, "wb") as f:
+    with _urlopen(req, timeout=60) as r, open(to, "wb") as f:
         while chunk := r.read(1 << 20):
             f.write(chunk); h.update(chunk); done += len(chunk)
             pct = int(done * 100 / size) if size else 0
@@ -223,7 +238,7 @@ def direct_build(dx: dict) -> dict | None:
 
 
 def install_direct(app: dict) -> bool:
-    """GitHub 릴리스가 아닌 앱(Blender): craft.json 의 direct 칸 — 이 운영체제 · CPU 용 공식 빌드를 받아 공식 sha256 과 대조한 뒤 푼다.
+    """GitHub 릴리스가 아닌 앱: craft.json 의 direct 칸 — 이 운영체제 · CPU 용 공식 빌드를 받아 공식 sha256 과 대조한 뒤 푼다.
     공식 빌드가 없는 곳(Linux ARM · macOS)은 이미 설치된 앱을 찾아 쓰고, 그것도 없으면 건너뛴다(그 앱이 필요한 장면만 못 만든다)"""
     name, dx = app["name"], app["direct"]
     build = direct_build(dx)
@@ -243,7 +258,7 @@ def install_direct(app: dict) -> bool:
     fname = dx["url"].rsplit("/", 1)[1]
     p = dl / fname
     got = download({"name": fname, "browser_download_url": dx["url"]}, p)
-    with urllib.request.urlopen(urllib.request.Request(dx["sha256_url"], headers={"User-Agent": "fluma-crafts"}), timeout=30) as r:
+    with _urlopen(urllib.request.Request(dx["sha256_url"], headers={"User-Agent": "fluma-crafts"}), timeout=30) as r:
         sums_txt = r.read().decode()
     want = next((ln.split()[0] for ln in sums_txt.splitlines() if ln.strip().endswith(fname)), None)
     if not want or got != want:
@@ -264,7 +279,7 @@ def install_direct(app: dict) -> bool:
     return True
 
 
-def install(app: dict, web: bool, desk: bool) -> bool:
+def install(app: dict, web: bool = False, desk: bool = True, keep_gui: bool = False) -> bool:
     name = app["name"]
     if app.get("direct"):
         return install_direct(app)
@@ -293,17 +308,66 @@ def install(app: dict, web: bool, desk: bool) -> bool:
     shutil.rmtree(dl, ignore_errors=True)
     app_dir = d / "app"
     if app_dir.exists():
-        info["bin"] = find(app_dir, app.get("bin", name))
         info["cli"] = find(app_dir, app.get("cli", f"{name}-cli"))
+        info["bin"] = find(app_dir, app.get("bin", name))
+        if not keep_gui and info["cli"] and info["bin"] and info["bin"] != info["cli"]:
+            try:
+                (ROOT / info["bin"]).unlink(missing_ok=True)
+                info["bin"] = None
+            except OSError:
+                pass
     if (d / "web").exists():
-        info["web"] = find_web(d / "web")
+        if web:
+            info["web"] = find_web(d / "web")
+        else:
+            shutil.rmtree(d / "web", ignore_errors=True)
     (d / "installed.json").write_text(json.dumps(info, ensure_ascii=False, indent=1) + "\n", "utf-8")
     print(f"[{name}] 설치됨 {info['version']} · cli={'있음' if info['cli'] else '없음'} · web={'있음' if info['web'] else '없음'}")
     return True
 
 
+def slim() -> dict:
+    """이미 설치된 Craft 폴더에서 에이전트/엔진이 쓰지 않는 중복 데스크톱 GUI 실행 파일 · 웹 번들 · 구형 blender 폴더를 정리해 경량화한다."""
+    freed = 0
+    cleaned = []
+    blender_dir = DEST / "blender"
+    if blender_dir.exists():
+        sz = sum(f.stat().st_size for f in blender_dir.rglob("*") if f.is_file() and not f.is_symlink())
+        shutil.rmtree(blender_dir, ignore_errors=True)
+        freed += sz
+        cleaned.append("blender")
+    for a in apps():
+        name = a["name"]
+        d = DEST / name
+        inst_file = d / "installed.json"
+        if not inst_file.exists():
+            continue
+        info = installed(name) or {}
+        changed = False
+        app_dir = d / "app"
+        cli_rel = info.get("cli") or (find(app_dir, a.get("cli", f"{name}-cli")) if app_dir.exists() else None)
+        bin_rel = info.get("bin") or (find(app_dir, a.get("bin", name)) if app_dir.exists() else None)
+        if cli_rel and bin_rel and bin_rel != cli_rel:
+            bp = ROOT / bin_rel
+            if bp.is_file():
+                freed += bp.stat().st_size
+                bp.unlink(missing_ok=True)
+                changed = True
+            info["bin"] = None
+        web_dir = d / "web"
+        if web_dir.exists():
+            freed += sum(f.stat().st_size for f in web_dir.rglob("*") if f.is_file() and not f.is_symlink())
+            shutil.rmtree(web_dir, ignore_errors=True)
+            info["web"] = None
+            changed = True
+        if changed:
+            inst_file.write_text(json.dumps(info, ensure_ascii=False, indent=1) + "\n", "utf-8")
+            cleaned.append(name)
+    return {"freed_mb": round(freed / 1048576, 1), "cleaned": cleaned}
+
+
 def ensure(name: str) -> dict | None:
-    """필요한 순간 설치(앱 실행 파일만 · 확인값 검사 그대로) — 엔진이 부른다. 사용자에게 '설치해 주세요' 를 부탁하지 않기 위해.
+    """필요한 순간 설치(CLI 실행 파일만 · 확인값 검사 그대로) — 엔진이 부른다. 사용자에게 '설치해 주세요' 를 부탁하지 않기 위해.
     이미 있으면 그대로, 이 운영체제용 릴리스가 없거나 받지 못하면 None"""
     have = installed(name)
     if have and have.get("cli"):
@@ -311,9 +375,9 @@ def ensure(name: str) -> dict | None:
     app = next((x for x in apps() if x["name"] == name), None)
     if not app:
         return None
-    print(f"[{name}] 없어서 설치합니다(한 번만)", file=sys.stderr, flush=True)
+    print(f"[{name}] 없어서 설치합니다(한 번만 · CLI 경량 모드)", file=sys.stderr, flush=True)
     try:
-        ok = install(app, web=False, desk=True)
+        ok = install(app, web=False, desk=True, keep_gui=False)
     except Exception as e:          # 네트워크 · 압축 오류 — 호출한 쪽이 대체 경로로
         print(f"[{name}] 설치 실패: {e}", file=sys.stderr, flush=True)
         return None
@@ -332,12 +396,18 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("list"); s.add_argument("--json", action="store_true")
-    s = sub.add_parser("plan"); s.add_argument("name", nargs="?", default="all"); s.add_argument("--no-web", action="store_true"); s.add_argument("--no-app", action="store_true")
-    s = sub.add_parser("install"); s.add_argument("name", nargs="+"); s.add_argument("--no-web", action="store_true"); s.add_argument("--no-app", action="store_true")
+    s = sub.add_parser("plan"); s.add_argument("name", nargs="?", default="all"); s.add_argument("--no-web", action="store_true"); s.add_argument("--with-web", action="store_true"); s.add_argument("--no-app", action="store_true")
+    s = sub.add_parser("install"); s.add_argument("name", nargs="+"); s.add_argument("--no-web", action="store_true"); s.add_argument("--with-web", action="store_true"); s.add_argument("--with-gui", action="store_true"); s.add_argument("--no-app", action="store_true")
+    s = sub.add_parser("slim", help="중복 데스크톱 GUI · 웹 번들 · 구형 blender 정리 (CLI/MCP 전용 경량화)")
     s = sub.add_parser("remove"); s.add_argument("name")
     # 에이전트는 python3 engine/… 만 돌릴 수 있다 — Craft 앱 CLI(vectorcraft-cli convert … 등)는 이걸로(없으면 설치부터)
     s = sub.add_parser("run", help="설치된 앱의 CLI 실행: crafts.py run vectorcraft convert a.svg b.png"); s.add_argument("name"); s.add_argument("args", nargs=argparse.REMAINDER)
     a = ap.parse_args()
+
+    if a.cmd == "slim":
+        res = slim()
+        print(json.dumps(res, ensure_ascii=False))
+        return
 
     if a.cmd == "run":
         rec = ensure(a.name)
@@ -356,7 +426,7 @@ def main() -> None:
         return
 
     names = a.name if isinstance(a.name, list) else [a.name]
-    chosen = apps() if "all" in names else [x for x in apps() if x["name"] in names]
+    chosen = [x for x in apps() if not x.get("optional")] if "all" in names else [x for x in apps() if x["name"] in names]   # 선택 앱(optional)은 이름으로만
     unknown = [n for n in names if n != "all" and n not in {x["name"] for x in apps()}]
     if unknown or not chosen:
         raise SystemExit(f"없는 앱입니다: {', '.join(unknown or names)} (engine/craft/apps/ 아래 이름)")
@@ -369,14 +439,14 @@ def main() -> None:
                 print(f"{x['name']:15} {(b['url'].rsplit('/', 1)[1] if b else '(이 컴퓨터용 공식 빌드 없음 — 설치된 것을 찾음)'):52}  {b['url'] if b else ''}")
                 continue
             rel = release(x)
-            for f in pick(x, rel, not a.no_web, not a.no_app):
+            for f in pick(x, rel, bool(a.with_web and not a.no_web), not a.no_app):
                 total += f.get("size", 0)
                 print(f"{x['name']:15} {f['name']:52} {f.get('size', 0) / 1048576:7.0f}MB  {f['browser_download_url']}")
         print(f"합계 {total / 1048576:.0f}MB")
         return
 
     if a.cmd == "install":
-        bad = [x["name"] for x in chosen if not install(x, not a.no_web, not a.no_app)]
+        bad = [x["name"] for x in chosen if not install(x, bool(a.with_web and not a.no_web), not a.no_app, keep_gui=bool(a.with_gui))]
         if bad:
             raise SystemExit(f"설치 실패: {', '.join(bad)}")
         return

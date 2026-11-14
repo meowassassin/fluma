@@ -13,6 +13,7 @@ import { useUi } from "../../lib/ui";
 import { AgentDock, Brief, lastBrief } from "../agent/AgentDock";
 import { AttachChips, AttachMenu, attachNote, useAttachments } from "../agent/attachments";
 import { BgJobs } from "../studio/BgJobs";
+import { PipelineGraph } from "../videos/PipelineGraph";
 import { resetSession, sendMessage, useSession } from "../../lib/agent";
 import { FlumaBounce, FlumaStrain } from "../../ui/BrandIcons";
 import type { ProjectSummary } from "../../lib/types";
@@ -136,7 +137,7 @@ const ChatList: React.FC<{ cur: string | null }> = ({ cur }) => {
   );
 };
 
-const PRODUCE = "제작 시작: produce 스킬대로 지금 콘티를 Craft 파이프라인으로 만들어 줘 — 음성(assemble_audio) → 장면 재료(materials: 숫자는 chart, 근거는 doc_quote, 인물 · 사물은 illustrate 스킬로 새로 그린 SVG) → lint → 초안 렌더(render.py --draft) → 정지 화면 확인. 콘티 내용은 바꾸지 말고, 막히면 멈추고 알려 줘.";
+const PRODUCE = "제작 시작: produce 스킬대로 지금 콘티를 Craft 파이프라인으로 만들어 줘 — 음성(assemble_audio) → 장면 재료(materials: 숫자는 chart, 근거는 doc_quote, 비주얼은 실제 자료 · 목업) → lint → 초안 렌더(render.py --draft) → 정지 화면 확인. 콘티 내용은 바꾸지 말고, 막히면 멈추고 알려 줘.";
 
 /* 가운데 대화 + 오른쪽 콘티 보드 */
 const HomeChat: React.FC<{ id: string }> = ({ id }) => {
@@ -151,7 +152,7 @@ const HomeChat: React.FC<{ id: string }> = ({ id }) => {
     <>
       <div className="home-chat">
         <AgentDock layout="page" sessionId={id} defaultSkill={produced ? null : "plan"}
-          context={{ menu: produced ? "studio" : "plan", note: produced ? undefined : "홈 기획 대화 — plan 스킬. 묻지 않고 추천안으로 진행해 콘티를 쓰고, 검사를 통과하면 같은 턴에 produce 로 초안까지(버튼 없음)" }}
+          context={{ menu: produced ? "studio" : "plan", note: produced ? undefined : "홈 기획 대화 — plan 스킬(.claude/skills/plan/SKILL.md)을 따른다. 경로(generate · clip · material)와 추천 선택지를 보여 주고 사용자 확인을 받아 진행하며, 생성(generate) 경로에서는 1단계 샷 계획(plan.py) → 2단계 캐릭터 시트(character.py) → 3단계 키 프레임(keyframe.py) → 4단계 영상 생성(video.py) 순서와 프롬프트·캐릭터 일관성 규칙을 지킨다." }}
           autoSend={autoSend} onAutoSent={() => { setAutoSend(null); nav(`/?c=${id}`, { replace: true, state: null }); }}
           placeholder={produced ? t("영상에 대해 더 말해 주세요 — 편집기에서 장면별로 고칠 수도 있어요") : t("답하거나 선택지를 누르세요. 예: 훅은 B안, 20초로")} />
       </div>
@@ -163,69 +164,55 @@ const HomeChat: React.FC<{ id: string }> = ({ id }) => {
 const StoryBoard: React.FC<{ id: string; produced: boolean; producing: boolean }> = ({ id, produced, producing }) => {
   const nav = useNavigate();
   const { data: sb } = useStoryboard(id);
-  const { data: lint } = useLint(id, !!sb);
-  const { data: chats = [] } = useChats();
   const s = useSession(id);
-  const sum = chats.find((c) => c.id === id);
   const brief = useMemo(() => lastBrief([...s.messages.filter((m) => m.role === "assistant").map((m) => m.text || ""), s.live?.text ?? ""]), [s.messages, s.live?.text]);
-  const hard = (lint?.lint ?? []).filter((l) => l.code && !l.code.startsWith("T") && l.message !== "통과").length;
-  const steps: [string, boolean][] = [["기획", !!brief || !!sb], ["콘티", !!sb], ["검사", !!sb && hard === 0], ["목소리", !!sum?.audio], ["화면", !!sum?.composed]];
   const open = useUi((u) => u.boardOpen);
   const setOpen = (v: boolean) => useUi.getState().set({ boardOpen: v });
-  const start = async () => {
-    if (await sendMessage(id, PRODUCE, { skill: "produce", context: { menu: "studio" } })) toast.success(t("제작을 시작했어요"), { description: t("왼쪽 ‘영상’ 아이콘에 진행 중인 수가 떠요. 여기서 계속 대화해도 됩니다.") });
-  };
+
   if (!open) return (
-    // 접힘: 오른쪽 가장자리 손잡이 — 진행 단계 점과 제작 중 표시만
-    <aside className="sboard closed" aria-label={t("콘티 보드 (접힘)")}>
-      <IconButton icon="sidebarR" label={t("콘티 보드 펼치기")} tipSide="left" onClick={() => setOpen(true)} />
+    <aside className="sboard closed" aria-label={t("진행 보드 (접힘)")}>
+      <IconButton icon="sidebarR" label={t("진행 보드 펼치기")} tipSide="left" onClick={() => setOpen(true)} />
       {producing ? <FlumaStrain s={16} /> : null}
-      <ol className="sb-dots">{steps.map(([n, ok]) => <li key={n} className={cx(ok && "ok")} title={t(n)} />)}</ol>
     </aside>
   );
+
   return (
-    <aside className="sboard" aria-label={t("콘티 보드")}>
+    <aside className="sboard" aria-label={t("파이프라인 보드")}>
       <div className="sb-top">
-        <ol className="sb-steps">{steps.map(([n, ok], k) => <li key={n} className={cx(ok && "ok", !ok && steps.slice(0, k).every((x) => x[1]) && "now")}><i />{t(n)}</li>)}</ol>
-        <IconButton icon="sidebarR" label={t("콘티 보드 접기")} size="sm" tipSide="left" onClick={() => setOpen(false)} />
+        <b className="sb-title" style={{ fontSize: 13, fontWeight: 700 }}>{t("진행 상태 그래프")}</b>
+        <span className="grow" />
+        <IconButton icon="sidebarR" label={t("보드 접기")} size="sm" tipSide="left" onClick={() => setOpen(false)} />
       </div>
       <div className="sb-body">
-      <BgJobs project={id} />
-      {producing && <div className="sb-prod"><FlumaStrain s={16} /><span>{t("제작 중 — 음성 · 화면을 만들고 있어요")}</span></div>}
-      {brief && <section className="sb-sec"><h4>{t("기획 카드")}</h4><Brief rows={brief} /></section>}
-      {sb ? (
-        <section className="sb-sec">
-          <h4>{t("콘티")} <span className="faint">{sb.title} · {t("{n}초", { n: sb.duration_sec })} · {t("{n}장면", { n: sb.scenes.length })} · {hard ? t("검사 {n}개 걸림", { n: hard }) : t("검사 통과")}</span></h4>
-          <ol className="sb-scenes">
-            {sb.scenes.map((sc, k) => (
-              <li key={k}>
-                <span className="sb-n mono">{k + 1}</span>
-                <div className="sb-b">
-                  <div className="sb-h"><b>{ROLE_KO[sc.role] ? t(ROLE_KO[sc.role]) : sc.role}</b><span className="mono faint">{t("{n}초", { n: Math.round(sc.sec * 10) / 10 })}</span></div>
-                  {sc.caption && <p className="sb-cap">{sc.caption}</p>}
-                  {sc.narration && <p className="sb-nar">“{sc.narration}”</p>}
-                </div>
-              </li>))}
-          </ol>
-        </section>
-      ) : !brief && <EmptyState compact icon="list" title={t("콘티가 여기 생겨요")} body={t("대화로 훅 · 길이 · 장면을 정하면 이 자리에 장면 카드가 채워집니다.")} />}
-      {sb && (
-        <section className="sb-sec">
-          <h4>{t("업로드 정보")} <span className="faint">{t("유튜브 · 쇼츠")}</span></h4>
-          <dl className="brief sb-up">
-            <dt>{t("제목")}</dt><dd>{sb.title || <span className="faint">{t("아직")}</span>} <button className="sb-copy" aria-label={t("제목 복사")} onClick={() => navigator.clipboard.writeText(sb.title || "").then(() => toast.success(t("복사했어요")))}><Icon n="copy" s={12} /></button></dd>
-            <dt>{t("설명")}</dt><dd>{sb.caption ? <span className="sb-cap2">{sb.caption}</span> : <span className="faint">{t("아직")}</span>}</dd>
-            {!!sb.hashtags?.length && <><dt>{t("태그")}</dt><dd>{sb.hashtags.join(" ")}</dd></>}
-          </dl>
-          <div className="row end">
-            {(sb.caption || sb.title) && <Button size="sm" variant="ghost" icon="copy" onClick={() => navigator.clipboard.writeText(`${sb.title}\n\n${sb.caption ?? ""}\n${(sb.hashtags ?? []).join(" ")}`).then(() => toast.success(t("제목 · 설명을 복사했어요")))}>{t("모두 복사")}</Button>}
-            <Button size="sm" variant="secondary" icon="sparkle" disabled={!!s.live} onClick={() => sendMessage(id, "이 영상의 유튜브 제목 후보 3개와 설명 · 해시태그를 titles · desc 블록으로 줘.", { skill: produced ? null : "plan", context: { menu: produced ? "studio" : "plan" } })}>{t("제목 · 설명 후보 받기")}</Button>
-          </div>
-        </section>
-      )}
+        <BgJobs project={id} />
+        {producing && <div className="sb-prod"><FlumaStrain s={16} /><span>{t("제작 중 — 음성 · 화면을 만들고 있어요")}</span></div>}
+        <PipelineGraph
+          id={id}
+          variant="panel"
+          orientation="vertical"
+          onOpenEditor={() => { useUi.getState().set({ lastProject: id }); nav(`/p/${id}`); }}
+        />
+        {brief && <section className="sb-sec"><h4>{t("기획 카드")}</h4><Brief rows={brief} /></section>}
+        {sb && (
+          <section className="sb-sec">
+            <h4>{t("콘티")} <span className="faint">{sb.title} · {t("{n}초", { n: sb.duration_sec })} · {t("{n}장면", { n: sb.scenes.length })}</span></h4>
+            <ol className="sb-scenes">
+              {sb.scenes.map((sc, k) => (
+                <li key={k}>
+                  <span className="sb-n mono">{k + 1}</span>
+                  <div className="sb-b">
+                    <div className="sb-h"><b>{ROLE_KO[sc.role] ? t(ROLE_KO[sc.role]) : sc.role}</b><span className="mono faint">{t("{n}초", { n: Math.round(sc.sec * 10) / 10 })}</span></div>
+                    {sc.caption && <p className="sb-cap">{sc.caption}</p>}
+                    {sc.narration && <p className="sb-nar">“{sc.narration}”</p>}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
       </div>
       <div className="sb-acts">
-        {sb && <Button variant="secondary" icon="external" onClick={() => { useUi.getState().set({ lastProject: id }); nav(`/p/${id}`); }}>{t("편집기에서 열기")}</Button>}
+        <Button variant="secondary" icon="external" onClick={() => { useUi.getState().set({ lastProject: id }); nav(`/p/${id}`); }}>{t("편집기에서 열기")}</Button>
       </div>
     </aside>
   );

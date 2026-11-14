@@ -1,0 +1,34 @@
+/* 영상 편집기(ArtCraft video editor, src/vendor/artcraft/video-editor) — 화면 스타일.
+   Tailwind(@tailwind base · components · utilities) · 색 토큰(--primary 등) · 최소 초기화 · ArtCraft 클래스는
+   ArtCraft 공용 테마 한 곳(_theme/artcraft-fluma.css, .ac-root 와 .ve-root 공통)에서 온다 — 여기서 다시 내지 않는다
+   (예전처럼 여기서 @tailwind 를 또 내면 유틸리티가 두 번 생기고, base 가 없어 --tw-* 변수가 빠져 translate · blur 가 무효였다).
+   이 파일은 편집기만의 것: 편집기가 쓰는 글꼴 @font-face, 화면 틀(.ve-page), 파이프라인 패널. */
+@import "../../vendor/artcraft/_theme/artcraft-fluma.css";
+
+/* 편집기 글꼴 — 시스템 글꼴처럼 바로 쓰는 것들(fluma/fonts/catalog.ts 의 source: "local", fonts/system-fonts.ts).
+   Pretendard 는 앱 tokens.css 에도 있지만 굵기 900 · 편집기 단독 진입을 위해 여기서도 모두 선언 */
+@font-face { font-family: "Pretendard"; font-weight: 400; font-style: normal; src: url("/fonts/Pretendard-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Pretendard"; font-weight: 500; font-style: normal; src: url("/fonts/Pretendard-Medium.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Pretendard"; font-weight: 600; font-style: normal; src: url("/fonts/Pretendard-SemiBold.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Pretendard"; font-weight: 700; font-style: normal; src: url("/fonts/Pretendard-Bold.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Pretendard"; font-weight: 800; font-style: normal; src: url("/fonts/Pretendard-ExtraBold.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Pretendard"; font-weight: 900; font-style: normal; src: url("/fonts/Pretendard-Black.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Black Han Sans"; font-weight: 400; font-style: normal; src: url("/fonts/BlackHanSans-Regular.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Geist"; font-weight: 100 900; font-style: normal; src: url("/fonts/Geist.ttf") format("truetype"); font-display: swap; }
+@font-face { font-family: "Geist Mono"; font-weight: 100 900; font-style: normal; src: url("/fonts/GeistMono.ttf") format("truetype"); font-display: swap; }
+
+/* 편집기만의 바탕 — 색 토큰은 _theme 공통(--primary = Fluma #5850f8) */
+.ve-root {
+  font-family: Pretendard, system-ui, sans-serif;
+  color: hsl(var(--foreground));
+  background: hsl(var(--background));
+  word-break: keep-all;          /* 한국어 낱말 중간에서 줄이 갈리지 않게 */
+  height: 100%;
+}
+.ve-root .truncate { min-width: 0; }
+
+/* 화면 틀: 앱 위에 꽉 차게. 포털(메뉴 · 대화상자 · 툴팁)은 body 직속이라 z-50 이상이면 이 위에 뜬다 */
+.ve-page { position: fixed; inset: 0; z-index: 50; background: hsl(var(--background)); display: flex; overflow: hidden; }
+
+/* 왼쪽 패널 '파이프라인'(extraPanels) */
+.ve-pipe-panel { height: 100%; overflow-y: auto; padding: 10px; }

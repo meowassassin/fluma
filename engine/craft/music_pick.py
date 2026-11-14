@@ -66,6 +66,8 @@ def music_on(sb: dict) -> bool:
 
 def sfx_allowed(sb: dict, ev) -> bool:
     """음악이 깔리면 효과음은 빼는 게 기본 — 콘티가 그 소리에 keep: true(꼭 필요한 사건 소리)를 달았거나 direction.sfx_with_music 일 때만"""
+    if "sfx" in ((sb.get("intent") or {}).get("ban") or []):                    # 콘티 intent.ban — 효과음 금지
+        return False
     if not music_on(sb) or (sb.get("direction") or {}).get("sfx_with_music"):
         return True
     return isinstance(ev, dict) and bool(ev.get("keep"))

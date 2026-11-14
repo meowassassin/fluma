@@ -42,6 +42,8 @@ def resolve(sb: dict) -> dict:
             out[k] = {**v, **d[k]}
         else:
             out[k] = d[k]
+    if "bg_motion" in ((sb.get("intent") or {}).get("ban") or []) and "bg_motion" in out:   # 콘티 intent.ban — 움직이는 배경 금지
+        out["bg_motion"] = NONE["bg_motion"]
     return out
 
 
@@ -62,11 +64,18 @@ def art_problems(sb: dict) -> list:
 def apply_art(sb: dict) -> dict:
     """색을 영상 전체에 편다: 배경 · 강조 자막 · 재료 강조색. 콘티에 직접 적은 값이 이긴다(읽을 때만 적용, 파일은 그대로)"""
     d = sb.get("direction")
-    p = ((d or {}).get("art") or {}).get("palette") if isinstance(d, dict) else None
+    if not isinstance(d, dict):
+        return sb
+    locked = set(d.get("locked") or [])
+    fp = (d.get("feel") or {}).get("palette") or {}
+    for k in ("bg", "surface", "text", "muted", "accent"):      # 고른 느낌의 색이 direct.py 자동 색보다 앞선다(2026-11-11: 크림 느낌을 골랐는데 검은 배경)
+        if fp.get(k) and f"color_{k}" not in locked:
+            d[f"color_{k}"] = fp[k]
+    p = (d.get("art") or {}).get("palette")
     if not isinstance(p, dict):
         return sb
-    if p.get("bg"):
-        d.setdefault("color_bg", p["bg"])
+    if p.get("bg") and "color_bg" not in locked:
+        d["color_bg"] = p["bg"]                                  # 디자인 팔레트도 자동 색보다 앞선다(전엔 setdefault 라 늘 졌다)
     if p.get("accent"):
         d["subs"] = {"hot": p["accent"], **(d.get("subs") or {})}
     for s in sb.get("scenes") or []:

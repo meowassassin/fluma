@@ -14,7 +14,7 @@ Fluma runs locally: a web Studio (Node) plus a Python pipeline, driving the open
 | To change Fluma itself | Install, then `npm --prefix studio run dev` and the [tests](#check--troubleshoot) | — |
 
 Either way you need an agent: a logged-in **Claude Code** or **Codex** CLI on your computer (Docker reuses that login),
-or an API key (Anthropic, OpenAI, OpenRouter, Gemini, or a local Ollama) entered in **Settings → Models · Providers**.
+or an API key (Anthropic, OpenAI, Gemini, or a local Ollama) entered in **Settings → Models · Providers**.
 
 ### What your computer needs
 
@@ -35,7 +35,7 @@ Smaller: `PROFILE=lite CRAFTS=core MODELS=0 docker compose build`, or `doctor.py
 | Node.js | 20+ | [nodejs.org](https://nodejs.org) |
 | ffmpeg | any recent | `sudo apt install ffmpeg` · `sudo dnf install ffmpeg` · `brew install ffmpeg` · `winget install ffmpeg` |
 
-You also need an agent: a logged-in **Claude Code** or **Codex** CLI, or an API key (Anthropic, OpenAI, OpenRouter,
+You also need an agent: a logged-in **Claude Code** or **Codex** CLI, or an API key (Anthropic, OpenAI,
 Gemini, or a local Ollama) entered later in **Settings → Models · Providers**.
 
 ## 2. Install
@@ -88,12 +88,11 @@ python3 engine/doctor.py --fix                   # direct install: new packages 
 (cd docker && docker compose pull && docker compose up -d)   # Docker: your work stays in the volumes
 ```
 
-## 3-1. OpenRouter key (optional)
+## 3-1. API keys (optional)
 
-You don't need it — a video comes out end to end on the free local path. With a key, pick a model per capability in **Settings → See · Make · Speak**:
-reference video understanding and draft critique (on by default once a key is set), paid voices, transcription and embeddings. There is no image or video generation (every frame is made locally). Lists and prices come from OpenRouter.
-Within the per-video cap (default $3) nothing asks; above it, or when a price can't be estimated, the agent shows the amount and asks. Spending shows on the same screen.
-An OpenRouter key saved in the agent settings (Models · Providers) is reused.
+You don't need any — a video comes out end to end on the free local path. Paid voices (Typecast, ElevenLabs) go in **Settings → Media → Voice**,
+free stock footage keys (Pexels, Pixabay) in **Settings → Media → Stock footage**, and a YouTube Data API key for finding trending music in **Settings → Media → Music**.
+Keys are stored in `~/.shortsforge/api-keys.json` (0600); the agent can't read them.
 
 ## 4. Connect YouTube (optional)
 

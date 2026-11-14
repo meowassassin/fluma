@@ -222,7 +222,6 @@ def main():
     print(f"[완료] {out}")
     if a.draft and not a.scenes and not os.environ.get("FLUMA_PREVIZ"):   # 미리 보기는 편집 밀도를 재지 않는다(자리표시 카드라)
         density(job.sb, sb_path, out)
-        critique(job.sb, out)
     if not a.scenes and not os.environ.get("FLUMA_PREVIZ"):   # 템포(첫 1초 · 멈춤 · 말 끊김 · 컷 밀도) — 넘기지 않고 보게 하는 기본기
         try:
             import tempo_check
@@ -235,37 +234,10 @@ def main():
                 print(f"   {'✗' if code.startswith('L') else '△'} {code} {msg}")
         except Exception as e:   # 검사 실패가 렌더를 막지 않게
             print(f"[템포] 검사하지 못함: {e}")
+    if a.draft and not a.scenes and not os.environ.get("FLUMA_PREVIZ"):   # 초안은 숫자 검사로 끝내지 말고 눈으로 본다(engine/look — 에이전트가 직접 · 유료 보기 API 없음)
+        print(f"[보기] 초안을 프레임 모음으로 본다: python3 engine/look/look.py sheet {Path(out).resolve().relative_to(ROOT) if Path(out).resolve().is_relative_to(ROOT) else out}"
+              f"  (기록이 남는 비평: python3 engine/look/look.py critique {job.sb['id']})")
     done(out, a)
-
-
-def critique(sb: dict, out: Path) -> None:
-    """초안이 나오면 보기(VL) 모델이 바로 본다 — 계획(전환 · 글자 · 연출)이 실제로 화면에 나왔는지, 어색한 곳은 어디인지.
-    2026-11-09: 계획한 '끊김 없는 줌' · 큰 세리프 글자가 초안에서 빠졌는데 아무도 몰랐다(비평이 초안 파일 이름을 못 찾아 돌지 않음).
-    보기 모델이 없거나 한도를 넘으면 건너뛴다(렌더는 그대로)."""
-    sys.path.insert(0, str(ROOT / "engine" / "providers"))
-    try:
-        import catalog
-        import see
-        if not catalog.chosen("see.video", sb):
-            # 조용히 건너뛰지 않는다 — 2026-11-09 영상은 보기 모델이 꺼져 있어 초안 32번 동안 비평이 한 번도 안 돌았는데 아무도 몰랐다
-            print("[VL 비평] 꺼짐 — 설정 → 보기 · 말하기 에서 '영상 이해' 모델을 고르면 초안마다 움직임 · 호흡을 봅니다(지금은 정지 화면만 확인)", flush=True)
-            return
-        print("[VL 비평] 보기 모델이 초안을 봅니다…", flush=True)
-        d = see.critique(sb["id"], str(out))
-    except SystemExit as e:
-        print(f"[VL 비평] 건너뜀: {e}"); return
-    except Exception as e:  # noqa: BLE001 — 승인 필요 · 네트워크 · 모델 오류가 렌더를 막지 않게
-        print(f"[VL 비평] 건너뜀: {str(e)[:300]}"); return
-    issues = sorted(d.get("issues") or [], key=lambda i: {"high": 0, "mid": 1}.get(i.get("severity"), 2))
-    print(f"[VL 비평] {str(d.get('overall') or '')[:400]}")
-    an = d.get("anchor") if isinstance(d.get("anchor"), dict) else None
-    if an:
-        print(f"   기준점 {an.get('score')}/10 — 다른 점: {' · '.join(str(x) for x in an.get('misses') or []) or '없음'}")
-    for i in issues[:10]:
-        t = i.get("t") or []
-        when = f"{t[0]}~{t[1]}초" if isinstance(t, list) and len(t) == 2 else ""
-        print(f"   {'✗' if i.get('severity') == 'high' else '△'} 장면 {i.get('scene', '?')} {when} {i.get('what', '')} → {i.get('fix', '')}")
-    print(f"   전체: data/workspace/critique/{sb['id']}.json — high 부터 고치고 다시 초안 렌더")
 
 
 def done(out, a) -> None:

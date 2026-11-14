@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """실제 화면 자동화 — 예제를 실제로 돌려 터미널 녹화 · 코드 화면 · 공식 문서 녹화를 한 번에 만든다(개발 · IT 설명 영상).
-꾸민 로그 · 그림 대신 '진짜로 실행한 화면' 이 기본이 되게(2026-11-05 경쟁력 정리: 실제 화면을 주제마다 자동으로).
+증거가 필요할 때 '진짜로 실행한 화면'을 재료로 만든다.
 
   python3 engine/capture/demo.py run <영상 id>            # data/compositions/<id>/demo/demo.json 대로 전부
   python3 engine/capture/demo.py run <영상 id> --only run-n1,code-service

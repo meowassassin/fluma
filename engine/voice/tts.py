@@ -6,7 +6,6 @@
   edge        edge-tts (무료, 시제품용). 음성은 engine/spec/tokens/default.json audio.voice_id 또는 ko-KR-SunHiNeural
   typecast    TYPECAST_API_KEY(설정 → API 키) 필요. 유료 · 한국어 성우 · 단어 시각을 함께 받는다 · 감정 프리셋(style)
   elevenlabs  ELEVENLABS_API_KEY(설정 → API 키) 필요. 다국어 · 목소리 복제
-  openrouter  오픈라우터 키 하나 — 설정 → 모델 → 말하기 · 음성 에서 고른 모델(유료). 말투 지시(style)를 받는 모델은 그대로 넘긴다
   로컬 엔진   supertonic · melotts · chatterbox · cosyvoice · xtts · espeak (engine/voice/engines/<이름>/adapter.py)
   silent      네트워크 없이 파이프라인을 돌리기 위한 무음 WAV (길이 = 공백 제외 글자수 / 5.5초, 최소 1초)
 
@@ -15,7 +14,7 @@
 
 CLI:  python engine/voice/tts.py "문장" out.wav
       TTS_PROVIDER=silent python engine/voice/tts.py "문장" out.wav
-      python engine/voice/tts.py "문장" out.wav openrouter alloy   (엔진 · 목소리 지정)
+      python engine/voice/tts.py "문장" out.wav edge ko-KR-SunHiNeural   (엔진 · 목소리 지정)
 """
 import json
 import math
@@ -310,7 +309,7 @@ def tts_text(text: str, ending: str | None) -> str:
 def synth(text: str, out_wav, voice: str | None = None, engine: str | None = None, speed: float = 1.0, style: str | None = None,
           opts: dict | None = None) -> Path:
     """합성 + 단어 타이밍(<wav>.words.json). 경계를 안 주는 엔진은 글자 수로 추정.
-    opts(콘티 voice 의 조절 값): ending(keep · period) — 말투 지시(style)는 받는 엔진(openrouter 의 일부 모델)만 쓴다"""
+    opts(콘티 voice 의 조절 값): ending(keep · period)"""
     out_wav = Path(out_wav); out_wav.parent.mkdir(parents=True, exist_ok=True)
     eng = engine or provider_name()
     o = opts or {}
@@ -326,20 +325,10 @@ def synth(text: str, out_wav, voice: str | None = None, engine: str | None = Non
     else:
         if not engine_available(eng):     # 설치 안 된 로컬 음성 · 키 없는 유료 음성 — 파일 없음 오류 대신 할 일을 말한다
             meta = voice_meta(eng)
-            raise RuntimeError(f"{meta.get('title') or eng} 음성을 쓸 수 없습니다 — " + ("설정 → 미디어 → 음성에서 설치하세요" if meta.get("setup") else "설정에서 키 · 모델을 확인하세요"))
+            raise RuntimeError(f"{meta.get('title') or eng} 음성을 쓸 수 없습니다 — " + ("설정 → 미디어 → 음성에서 설치하세요" if meta.get("setup") else "설정에서 키를 확인하세요"))
         raw = out_wav.with_suffix(".raw.wav")
         ad = _adapter(eng)
-        if eng == "openrouter":
-            ad.synth(said, raw, voice, speed, style)
-            try:                              # 단어 시각을 주지 않는 엔진 — '듣기' 모델이 있으면 실제로 받아써서 맞춘다(없으면 글자 수 추정)
-                import listen
-                segs = listen.remote(raw)
-                if segs:
-                    write_words(out_wav, [{"text": w["w"], "startMs": int(w["s"] * 1000), "endMs": int(w["e"] * 1000)} for s in segs for w in s["words"] if w["w"]])
-            except Exception as e:  # noqa: BLE001
-                print(f"[tts] 단어 시각 받아쓰기 건너뜀: {e}", file=sys.stderr)
-        else:
-            ad.synth(said, raw, voice, speed)
+        ad.synth(said, raw, voice, speed)
         to_wav(raw, out_wav); raw.unlink(missing_ok=True)
     if not words_path(out_wav).exists():
         write_words(out_wav, estimate_words(text, duration(out_wav)))

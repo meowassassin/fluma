@@ -72,34 +72,17 @@ def _pixels(img: Image.Image) -> np.ndarray:
 
 def classify(image, ocr_lines: list[dict] | None = None) -> dict:
     """→ {kind, score, top:[(kind, p), …3]}. ocr_lines(ocr.read 결과)가 있으면 기사 표지로 한 번 더 가른다
-    로컬 CLIP 이 먼저다(프레임당 0.05초 · 무료) — 원격 임베딩은 한 장에 1~4초라 프레임마다 부르면 분석 · 렌더 검사가 수 분씩 늘어난다(2026-11-09: 327번 호출).
-    로컬 CLIP 을 못 쓸 때(모델 못 받음 등)만 설정의 그림 받는 '찾기 · 임베딩' 모델로."""
-    top = None
-    try:
-        S = _load()
-    except Exception as e:  # noqa: BLE001 — onnx · 모델 다운로드 실패 → 원격 임베딩
-        S = None
-        if not isinstance(image, Image.Image):
-            try:
-                import embed
-                top = embed.zero_shot(image, KINDS)
-            except Exception as e2:  # noqa: BLE001
-                print(f"[vision_tags] 로컬 CLIP({e}) · 임베딩 모델({e2}) 모두 실패", file=sys.stderr)
-        if not top:
-            raise
-    if top:
-        kind, score = top[0]
-        top3 = [(n, round(p, 3)) for n, p in top[:3]]
-    else:
-        img = Image.open(image) if not isinstance(image, Image.Image) else image
-        # 세로 쇼츠는 위아래 띠(검정 · 제목)가 많아 가운데 정사각을 본다 — 내용이 가운데 띠에 있다
-        e = S["vis"].run(None, {"pixel_values": _pixels(img)})[0][0]
-        e = e / np.linalg.norm(e)
-        logits = 100.0 * S["text"] @ e
-        p = np.exp(logits - logits.max()); p /= p.sum()
-        order = np.argsort(-p)
-        kind, score = KINDS[order[0]][0], float(p[order[0]])
-        top3 = [(KINDS[i][0], round(float(p[i]), 3)) for i in order[:3]]
+    로컬 CLIP(프레임당 0.05초 · 무료)."""
+    S = _load()
+    img = Image.open(image) if not isinstance(image, Image.Image) else image
+    # 세로 쇼츠는 위아래 띠(검정 · 제목)가 많아 가운데 정사각을 본다 — 내용이 가운데 띠에 있다
+    e = S["vis"].run(None, {"pixel_values": _pixels(img)})[0][0]
+    e = e / np.linalg.norm(e)
+    logits = 100.0 * S["text"] @ e
+    p = np.exp(logits - logits.max()); p /= p.sum()
+    order = np.argsort(-p)
+    kind, score = KINDS[order[0]][0], float(p[order[0]])
+    top3 = [(KINDS[i][0], round(float(p[i]), 3)) for i in order[:3]]
     if ocr_lines is not None:
         import ref_channel
         txt = " ".join(o["text"] for o in ocr_lines)

@@ -586,9 +586,6 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
         for i, m in enumerate(sc.get("materials") or []):
             m = expand_recipe({"id": m.get("id") or f"m{i + 1}", **m})
             t = m.get("type")
-            rq = (sb.get("direction") or {}).get("render_quality")
-            if rq and m.get("method") == "blender" and not m.get("quality"):     # 영상 전체 품질 단계 — 재료 열쇠에 들어가 바뀌면 다시 만든다
-                m = {**m, "quality": rq}
             dm = ((sb.get("direction") or {}).get("methods") or {}).get(t)
             if dm and not m.get("method"):           # 방향이 정한 방법(앱)도 재료 칸에 — 바뀌면 열쇠가 달라져 다시 만든다
                 m = {**m, "method": dm}
@@ -602,9 +599,8 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             meta_p = d / f"{m['id']}.json"
             # 열쇠 = 요청 + 원본 파일 내용 + 사람이 고친 편집 파일 → 무엇이든 바뀌면 다시 만든다
             srcs = [_hash(_abs(m[k])) if not _abs(m[k]).is_dir() else "|".join(f"{f.name}:{f.stat().st_size}" for f in sorted(_abs(m[k]).iterdir()))
-                    for k in ("src", "csv", "xlsx", "pdf", "template", "script", "bridge", "physics", "ui") if isinstance(m.get(k), str)]   # physics: MuJoCo 장면(MJCF) — 바뀌면 다시 계산 · 렌더
+                    for k in ("src", "csv", "xlsx", "pdf", "template", "script", "ui") if isinstance(m.get(k), str)]
             srcs += [_hash(_abs(i[k])) for i in m.get("items") or [] if isinstance(i, dict) for k in ("script", "file") if isinstance(i.get(k), str) and _abs(i[k]).is_file()]   # live 재료의 요소
-            srcs += [_hash(_abs(v)) for v in (m.get("bind") or {}).values() if isinstance(v, str) and _abs(v).is_file()]   # physics 재료가 입히는 그림
             old = _load(meta_p)
             # 사람이 고친 편집 파일: 기록의 editable_hash(우리가 만든 그대로의 해시)와 다르면 열쇠에 넣는다 → 다시 만들어 그 파일을 쓴다.
             # editable_hash 를 남기는 어댑터(그림 · 사진 카드 · 화면 다듬기 · 3D · 도면)만 — 고친 파일을 알아보고 덮어쓰지 않는 어댑터들
@@ -615,7 +611,7 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             dep = _depends(t, m)              # 대상 재료(캡처 · 3D)가 바뀌면 주석 · 도면도 다시
             if dep:
                 srcs.append(_load(d / f"{dep}.json").get("key") or "missing")
-            if isinstance(m.get("uses"), dict):   # 다른 재료의 결과를 쓴다(앱을 넘나든다): Blender 화면 · 표면 등 — 그 재료가 바뀌면 다시
+            if isinstance(m.get("uses"), dict):   # 다른 재료의 결과를 쓴다(앱을 넘나든다) — 그 재료가 바뀌면 다시
                 got = {}
                 for name, mid in m["uses"].items():
                     u = _load(d / f"{mid}.json")
@@ -690,21 +686,11 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
                 suf = info.pop("file_suffix", None)
                 file = out.with_suffix(suf) if suf else out
                 file = file if file.exists() else None
-            elif t == "physics":                   # 물리로 움직이는 2D 요소(MuJoCo) — 결과(위치 · 회전)를 움직임 단계가 레이어 키로 넣는다
-                from . import physics as _phys
-                scene = (ROOT / str(m.get("physics") or "")).resolve()
-                if not m.get("physics") or not scene.is_file() or (ROOT / "data" / "compositions") not in scene.parents:
-                    raise RuntimeError(f"physics 재료 {m['id']}: physics 에 data/compositions/<id>/ 안의 장면(.mjcf.xml 또는 .py)을 적으세요")
-                res = _phys.simulate(scene, float(m.get("sec") or 4), int(m.get("fps") or 30), {k: v for k, v in (m.get("args") or {}).items() if not isinstance(v, (dict, list))},
-                                     m.get("ctrl"), m.get("goals"), poses=m.get("poses"), expect=m.get("expect"))
-                file = out.with_suffix(".traj.json")
-                file.write_text(json.dumps(res), "utf-8")
-                info = {"app": "mujoco", "bodies": len(res["bodies"])}
-                print(f"[재료] {n}장면 {m['id']}: 물리 계산(MuJoCo) 물체 {len(res['bodies'])}개 · {res['sec']}초")
-            elif t in ("text", "stat"):            # 글자 · 수치 카드는 움직임 단계가 바로 그린다(앱 없음)
-                info, file = {"app": None}, None
+            elif t in ("stat", "text"):
+                # 숫자 덧씌우기 · 글자는 움직임 단계(motion.py)가 그린다 — 만들 파일 없이 기록만 넘긴다(2026-11-11: 여기서 '모르는 재료'로 멈췄다)
+                info, file = {}, None
             else:
-                raise RuntimeError(f"모르는 재료 종류: {t} ({' · '.join(sorted({*adapters, *PASSTHROUGH, 'stock', 'text', 'stat', 'physics'}))})")
+                raise RuntimeError(f"모르는 재료 종류: {t} ({' · '.join(sorted({*adapters, *PASSTHROUGH, 'stock', 'text', 'stat'}))})")
             if file and feel.get("grade") and file.exists():      # 영상 전체 느낌을 실사 재료에 같은 색 · 질감으로
                 from feel import apply as feel_apply
                 file = feel_apply(file, feel["grade"], file.with_name(f"{file.stem}.feel{file.suffix}"))

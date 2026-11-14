@@ -1,64 +1,26 @@
-// 에이전트 실행 환경 (open-design 의 '로컬 CLI / API 키(BYOK)' 구성을 따름)
-//
-// - 로컬 CLI: 이 컴퓨터에 설치된 에이전트 CLI 를 그대로 쓴다 (Claude Code · Codex 를 Fluma 가 직접 구동).
-// - API 키(BYOK): 사용자가 키를 넣은 제공자로 같은 에이전트를 돌린다.
-//     · Anthropic 호환 엔드포인트(Anthropic · OpenRouter · DeepSeek · MiniMax · Kimi · GLM · Ollama) → Claude Code 에
-//       ANTHROPIC_BASE_URL / 토큰을 넣어 실행 → 파일 접근 제한(.env 등)이 그대로 지켜진다.
-//     · OpenAI Responses 호환(OpenAI · xAI · Azure) → Codex CLI 에 model_providers 설정을 넣어 실행.
-//       (Codex 0.159 는 wire_api="chat" 을 더는 지원하지 않는다 — Chat 전용 API 는 OpenRouter 를 거친다)
-// 키는 workspace 가 아니라 ~/.shortsforge/byok.json(0600) 에 둔다 — 에이전트는 이 폴더를 읽을 수 없다(DENY).
+// 에이전트 실행 환경: 로컬 CLI (Claude Code · Antigravity · Codex) 직접 구동
 import { execFile } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync, chmodSync, renameSync } from "node:fs";
-import os from "node:os";
 import { OS, which } from "./platform.mjs";
-import path from "node:path";
-
-export const KEY_FILE = path.join(os.homedir(), ".shortsforge", "byok.json");
 
 /** 로컬 CLI 에이전트. runs = Fluma 가 직접 구동할 수 있는지 */
 export const AGENTS = [
   { id: "claude", title: "Claude Code", vendor: "Anthropic", bin: "claude", runs: true, tagline: "파일 접근 제한 · 스킬 · 기억 연동이 가장 잘 됨 (기본)" },
+  { id: "antigravity", title: "Antigravity", vendor: "Google", bin: "agy", runs: true, tagline: "Google 계정 로그인 · Gemini 모델 (숏폼 생성 파이프라인 오케스트레이터)" },
   { id: "codex", title: "Codex", vendor: "OpenAI", bin: "codex", runs: true, tagline: "ChatGPT 계정 또는 OpenAI 키로 GPT 모델 사용" },
-  { id: "opencode", title: "OpenCode", vendor: "SST", bin: "opencode", runs: false, tagline: "75개 이상 제공자 — 연결 준비 중" },
-  { id: "gemini", title: "Gemini CLI", vendor: "Google", bin: "gemini", runs: false, tagline: "Gemini 모델 — 연결 준비 중" },
-  { id: "qwen", title: "Qwen Code", vendor: "Alibaba", bin: "qwen", runs: false, tagline: "Qwen 모델 — 연결 준비 중" },
-  { id: "cursor-agent", title: "Cursor Agent", vendor: "Cursor", bin: "cursor-agent", runs: false, tagline: "연결 준비 중" },
-  { id: "copilot", title: "GitHub Copilot CLI", vendor: "GitHub", bin: "copilot", runs: false, tagline: "연결 준비 중" },
+];
+
+/** agy models 출력(2026-11-12 확인) — 기본은 agy 설정을 따른다 */
+export const AGY_MODELS = [
+  { id: "", label: "기본 (Antigravity 설정)" },
+  { id: "gemini-4-argon-high", label: "Gemini 4 Argon (High)" }, { id: "gemini-4-argon-medium", label: "Gemini 4 Argon (Medium)" },
+  { id: "gemini-3.8-flash-high", label: "Gemini 3.8 Flash (High)" }, { id: "gemini-3.8-flash-medium", label: "Gemini 3.8 Flash (Medium)" },
+  { id: "claude-opus-5-5-high", label: "Claude Opus 5.5 (High)" }, { id: "claude-sonnet-5-5-high", label: "Claude Sonnet 5.5 (High)" },
 ];
 
 export const CLAUDE_MODELS = [
   { id: "", label: "기본 (Claude Code 설정)" }, { id: "claude-fable-5-1", label: "Fable 5.1" }, { id: "opus", label: "Opus (최신)" },
   { id: "sonnet", label: "Sonnet (최신)" }, { id: "haiku", label: "Haiku (최신)" },
 ];
-
-/** API 키 제공자. protocol: anthropic → Claude Code, responses → Codex */
-export const PROVIDERS = [
-  { id: "anthropic", title: "Anthropic", protocol: "anthropic", baseUrl: "https://api.anthropic.com", auth: "x-api-key", models: ["claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"], keyHint: "sk-ant-…", console: "https://console.anthropic.com/settings/keys" },
-  { id: "openrouter", title: "OpenRouter", protocol: "anthropic", baseUrl: "https://openrouter.ai/api", auth: "bearer", models: ["anthropic/claude-sonnet-5.5", "anthropic/claude-opus-5.5", "openai/gpt-6.1-sol", "google/gemini-3.5-pro", "deepseek/deepseek-v4-pro", "qwen/qwen3.7-plus"], keyHint: "sk-or-…", console: "https://openrouter.ai/keys", note: "Gemini · Mistral · Qwen 등 거의 모든 모델을 한 키로" },
-  { id: "openai", title: "OpenAI", protocol: "responses", baseUrl: "https://api.openai.com/v1", auth: "bearer", models: ["gpt-6.1-sol", "gpt-6-astra", "gpt-5.6-sol", "gpt-6-luna"], keyHint: "sk-…", console: "https://platform.openai.com/api-keys" },
-  { id: "deepseek", title: "DeepSeek", protocol: "anthropic", baseUrl: "https://api.deepseek.com/anthropic", auth: "bearer", models: ["deepseek-v4-pro", "deepseek-v4-flash"], keyHint: "sk-…", console: "https://platform.deepseek.com/api_keys" },
-  { id: "xai", title: "xAI (Grok)", protocol: "responses", baseUrl: "https://api.x.ai/v1", auth: "bearer", models: ["grok-5", "grok-5-mini"], keyHint: "xai-…", console: "https://console.x.ai" },
-  { id: "minimax", title: "MiniMax", protocol: "anthropic", baseUrl: "https://api.minimax.io/anthropic", auth: "bearer", models: ["MiniMax-M2.7", "MiniMax-M2.7-highspeed"], keyHint: "MiniMax 키", console: "https://www.minimax.io/platform" },
-  { id: "moonshot", title: "Kimi (Moonshot)", protocol: "anthropic", baseUrl: "https://api.moonshot.ai/anthropic", auth: "bearer", models: ["kimi-k3", "kimi-k2.5"], keyHint: "sk-…", console: "https://platform.moonshot.ai" },
-  { id: "zai", title: "Z.ai (GLM)", protocol: "anthropic", baseUrl: "https://api.z.ai/api/anthropic", auth: "bearer", models: ["glm-5", "glm-4.7"], keyHint: "Z.ai 키", console: "https://z.ai/manage-apikey" },
-  { id: "azure", title: "Azure OpenAI", protocol: "responses", baseUrl: "", auth: "api-key", models: [], keyHint: "Azure 키", console: "https://portal.azure.com", note: "배포 주소 · 배포 이름을 직접 입력" },
-  { id: "ollama", title: "Ollama (내 컴퓨터)", protocol: "anthropic", baseUrl: "http://localhost:11434", auth: "bearer", models: [], keyHint: "키 필요 없음", local: true, note: "로컬 LLM — 도구 사용을 지원하는 모델(qwen3-coder 등) 권장" },
-  { id: "custom", title: "직접 입력", protocol: "anthropic", baseUrl: "", auth: "bearer", models: [], keyHint: "키", custom: true, note: "Anthropic 또는 OpenAI Responses 호환 주소" },
-];
-
-// ---------- 키 보관 ----------
-export function readKeys() { try { return JSON.parse(readFileSync(KEY_FILE, "utf8")); } catch { return {}; } }
-/** 0600 으로 만든 임시 파일에 쓰고 rename — 권한이 열린 순간이 없게 */
-export function writeKey(id, key) {
-  const all = readKeys();
-  if (key) all[id] = key; else delete all[id];
-  mkdirSync(path.dirname(KEY_FILE), { recursive: true, mode: 0o700 });
-  const tmp = `${KEY_FILE}.${process.pid}.tmp`;
-  writeFileSync(tmp, JSON.stringify(all, null, 1), { mode: 0o600 });
-  try { chmodSync(tmp, 0o600); } catch { /* 윈도우 */ }
-  renameSync(tmp, KEY_FILE);
-}
-export const mask = (k) => (k ? `${k.slice(0, 3)}…${k.slice(-2)}` : "");
 
 // ---------- 감지 (비동기 — 이벤트 루프를 막지 않는다. 결과는 캐시, 10분마다 · 요청 시 새로) ----------
 const sh = (where) => OS === "windows" && /\.(cmd|bat)$/i.test(where || "");
@@ -103,32 +65,12 @@ export function detectAgents() {
 export function codexModels() { return codexModelCache || []; }
 
 // ---------- 실행 구성 ----------
-/** 설정 → { runtime: "claude"|"codex", model, effort, env, codexConfig[], label } */
+/** 설정 → { runtime: "claude"|"antigravity"|"codex", model, effort, env, codexConfig[], label } */
 export function resolveRuntime(cfg = {}) {
   const a = cfg.agent || {};
   const effort = a.effort ?? cfg.effort ?? "";
-  if (a.mode === "api") {
-    const p = PROVIDERS.find((x) => x.id === a.provider) || PROVIDERS[0];
-    const baseUrl = (a.baseUrl || p.baseUrl || "").replace(/\/+$/, "");
-    const key = readKeys()[p.id] || (p.local ? "ollama" : "");
-    const model = a.apiModel || p.models[0] || "";
-    const protocol = p.custom ? (a.protocol === "responses" ? "responses" : "anthropic") : p.protocol;
-    if (!baseUrl) throw new Error(`${p.title}: 주소(Base URL)를 설정에서 입력하세요`);
-    if (!key) throw new Error(`${p.title}: API 키가 없습니다 — 설정 → 에이전트 → API 키에서 넣으세요`);
-    if (!model) throw new Error(`${p.title}: 모델 이름을 설정에서 입력하세요`);
-    if (protocol === "anthropic") {
-      const env = { ANTHROPIC_BASE_URL: baseUrl, ANTHROPIC_MODEL: model, ANTHROPIC_SMALL_FAST_MODEL: model, CLAUDE_CODE_SUBAGENT_MODEL: model };
-      if (p.auth === "x-api-key") { env.ANTHROPIC_API_KEY = key; env.ANTHROPIC_AUTH_TOKEN = ""; } else { env.ANTHROPIC_AUTH_TOKEN = key; env.ANTHROPIC_API_KEY = ""; }
-      return { runtime: "claude", model, effort, env, label: `${p.title} · ${model}`, provider: p.id };
-    }
-    const codexConfig = [
-      `model_provider="fluma"`, `model_providers.fluma.name="${p.title}"`, `model_providers.fluma.base_url="${baseUrl}"`,
-      `model_providers.fluma.env_key="FLUMA_BYOK_KEY"`, `model_providers.fluma.wire_api="responses"`,
-    ];
-    if (p.id === "azure") codexConfig.push(`model_providers.fluma.query_params={"api-version"="2025-04-01-preview"}`);
-    return { runtime: "codex", model, effort, env: { FLUMA_BYOK_KEY: key }, codexConfig, label: `${p.title} · ${model}`, provider: p.id };
-  }
   const cli = a.cli || "claude";
+  if (cli === "antigravity") return { runtime: "antigravity", model: a.agyModel ?? "", effort, env: {}, label: `Antigravity${a.agyModel ? ` · ${a.agyModel}` : ""}` };
   if (cli === "codex") return { runtime: "codex", model: a.codexModel ?? "", effort, env: {}, codexConfig: [], label: `Codex${a.codexModel ? ` · ${a.codexModel}` : ""}` };
   return { runtime: "claude", model: a.claudeModel ?? cfg.model ?? "", effort, env: {}, label: `Claude Code${(a.claudeModel ?? cfg.model) ? ` · ${a.claudeModel ?? cfg.model}` : ""}` };
 }
@@ -150,6 +92,59 @@ export function codexArgs({ cwd, threadId, model, effort, codexConfig = [], prom
   if (threadId) args.push(threadId);
   args.push(prompt);
   return args;
+}
+
+/** agy(Antigravity CLI) 인자 — 한 번 실행(-p), 대화는 --conversation 으로 이어 간다. 오케스트레이터 역할 전용(영상 생성 경로 A 는 engine/gen/video.py 가 따로 부른다).
+ *  도구 허용: 파일 읽기 · 쓰기 · 고치기 · 셸 · 웹 검색. 접근 제한(.env · 키 폴더 금지, 쓰기 경로)은 지시문(codexPrompt 와 같은 블록)으로 준다 */
+export function agyArgs({ cwd, conversation, model, effort, prompt }) {
+  // 규칙은 "이름(대상)" 꼴이어야 한다 — 이름만 쓰면 무시되고 headless 에서 자동 거부된다(2026-11-12 실측: run_command 는 없는 이름, 셸은 command).
+  // 비대화형(-p)에서는 --sandbox 를 켜면 네트워크·이미지/영상 생성 스크립트가 막히고 승인 프롬프트도 띄울 수 없으므로 지시문으로만 경로를 제한한다(claude 와 동일).
+  const allow = ["read_file(*)", "write_file(*)", "edit_file(*)", "command(*)", "search_web(*)", "manage_task(*)", "invoke_subagent(*)"];
+  const args = ["-p", prompt, "--output-format", "stream-json", "--dangerously-skip-permissions", "--settings", JSON.stringify({ permissions: { allow } }), "--add-dir", cwd];
+  if (conversation) args.push("--conversation", conversation);
+  if (model) args.push("--model", model);
+  if (effort) args.push("--effort", effort === "max" ? "max" : effort);
+  return args;
+}
+
+/** agy 응답 앞부분에 도구 호출마다 누적된 한 줄짜리 진행 독백('~하고 있습니다.', '~다시 실행합니다.' 등)을 정리 */
+function cleanAgyResponse(raw) {
+  const lines = String(raw || "").split("\n");
+  const isNarration = (ln) => {
+    const t = ln.trim();
+    if (!t || t.startsWith("#") || t.startsWith("-") || t.startsWith("*") || t.startsWith("|") || t.startsWith("```") || t.startsWith("[")) return false;
+    return /(확인하고 있습니다|설정하고 있습니다|실행하고 있습니다|수정하고 있습니다|생성합니다(\([^)]*\))?|다시 실행합니다|안내드리겠습니다|보여 드리겠습니다|진행 중입니다)\.?$/.test(t);
+  };
+  let idx = 0;
+  while (idx < lines.length - 1 && isNarration(lines[idx])) idx++;
+  return lines.slice(idx).join("\n").trimStart() || String(raw || "");
+}
+
+/** agy stream-json → Fluma 공통 이벤트. 2026-11-12: 마지막 줄 {"event":"result","result":{conversation_id,status,response,error}} 만 확인됨 —
+ *  중간 이벤트는 모양을 확인하기 전이라 흔한 모양(text · delta · tool)을 너그럽게 받고, 모르는 것은 무시한다 */
+export function makeAgyParser(emit, { onConversation }) {
+  let said = "";
+  return (line) => {
+    let e; try { e = JSON.parse(line); } catch { return; }
+    const kind = e.event || e.type;
+    if (kind === "result") {
+      const r = e.result || {};
+      if (r.conversation_id) onConversation?.(r.conversation_id);
+      if (r.response && !said) emit({ type: "text", text: cleanAgyResponse(r.response) });
+      emit({ type: "result", ok: r.status === "SUCCESS", cost: null, durationMs: r.duration_seconds ? r.duration_seconds * 1000 : null, denials: (r.denied_actions || []).map((d) => d.display_name || d.action),
+        ...(r.status === "SUCCESS" ? {} : { error: r.error || "Antigravity 실패" }) });
+      return;
+    }
+    const txt = e.text ?? e.delta ?? e.content ?? e.message?.text;
+    if (/message|text|delta|assistant/i.test(String(kind)) && typeof txt === "string" && txt) { emit({ type: "text", text: txt }); said += txt; return; }
+    if (/tool/i.test(String(kind)) && (e.name || e.tool)) {
+      const id = String(e.id || e.call_id || `${e.name || e.tool}-${Date.now()}`);
+      if (/result|end|done/i.test(String(kind))) emit({ type: "tool_result", id, error: !!e.error, preview: String(e.output || e.result || "").slice(0, 400) });
+      else { emit({ type: "tool_start", id, name: String(e.name || e.tool) }); emit({ type: "tool_use", id, name: String(e.name || e.tool), input: JSON.stringify(e.input || e.args || e.params || "").slice(0, 160) }); }
+      return;
+    }
+    if (/status|progress|thinking/i.test(String(kind))) emit({ type: "status", label: String(e.label || e.status || "생각 중").slice(0, 60) });
+  };
 }
 
 /** codex --json 이벤트 → Fluma 공통 이벤트 (claude 파서와 같은 모양) */
@@ -177,13 +172,12 @@ export function makeCodexParser(emit, { onThread, rel }) {
 }
 
 export function codexPrompt(systemPrompt, message) {
-  return `<FLUMA_SYSTEM>\n${systemPrompt}\n\n## 접근 제한 (반드시 지킴)\n- .env · .env.* · ~/.shortsforge/** · ~/.claude/** 는 읽지도 쓰지도 않는다.\n- 쓰기는 data/storyboards/ data/compositions/ data/research/ data/captures/ data/public/ data/audio/ data/characters/ data/workspace/tmp/ data/workspace/feel/ data/workspace/concepts/ 안에서만.\n</FLUMA_SYSTEM>\n\n${message}`;
+  return `<FLUMA_SYSTEM>\n${systemPrompt}\n\n## 접근 제한 (반드시 지킴)\n- .env · .env.* · ~/.shortsforge/** · ~/.claude/** 는 읽지도 쓰지도 않는다.\n- 쓰기는 data/storyboards/ data/shotplans/ data/compositions/ data/research/ data/captures/ data/public/ data/audio/ data/characters/ data/workspace/tmp/ data/workspace/feel/ data/workspace/concepts/ 안에서만.\n</FLUMA_SYSTEM>\n\n${message}`;
 }
 
 // 과금 안전: '로그인으로 쓰기'(Claude Code · Codex 계정 로그인) 모드에서는 결제 경로를 바꾸는 환경 변수를 지운다.
 // 서버를 띄운 셸 · systemd · Docker 에 ANTHROPIC_API_KEY 같은 값이 있으면 CLI 가 구독 대신 API 키 · 다른 공급자(Bedrock · Vertex · 게이트웨이)로
 // 조용히 바뀌어 따로 청구된다. 로그인 위치를 가리키는 값(CLAUDE_CONFIG_DIR · CLAUDE_CODE_OAUTH_TOKEN …)은 남긴다 — 지우면 로그인이 풀린다.
-// API 키 모드(rt.provider)는 사용자가 고른 공급자를 쓰는 것이라 건드리지 않는다.
 const CLAUDE_DROP_PREFIX = ["ANTHROPIC_", "CLAUDE_CODE_USE_"];
 const CLAUDE_DROP = ["AWS_BEARER_TOKEN_BEDROCK", "CLAUDE_CODE_GATEWAY_TOKEN_FILE_DESCRIPTOR"];
 const CLAUDE_KEEP = ["CLAUDE_CODE_OAUTH_TOKEN", "CLAUDE_CONFIG_DIR", "ANTHROPIC_CONFIG_DIR"];
@@ -193,7 +187,6 @@ const CODEX_DROP = ["OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_ORG_ID", "OPENA
 export function agentEnv(base, rt) {
   const env = { ...base };
   const dropped = [];
-  if (rt?.provider) return { env, dropped };          // API 키 모드
   for (const k of Object.keys(env)) {
     const drop = rt?.runtime === "codex"
       ? CODEX_DROP.includes(k)

@@ -207,7 +207,7 @@ class _Doc:
                                         "props": props})
 
     def image(self, parent, path: Path, x, y, w, h, name="Screenshot") -> dict:
-        return self.add("image.place", {"path": str(path), "parent": parent, "x": x, "y": y, "width": w, "height": h,
+        return self.add("image.place", {"path": str(Path(path).resolve()), "parent": parent, "x": x, "y": y, "width": w, "height": h,
                                         "name": name, "mode": "fill"})
 
 
@@ -215,9 +215,10 @@ def _fig_run(doc: _Doc, work: Path, oid: str, node: str, out: Path, scale: float
     """스크립트 실행 → <oid>.figcraft(사람이 고칠 파일) → node 하나만 투명 PNG 로"""
     from ..materials import cli
     exe = cli("figcraft")
-    sf = work / f"{oid}.fig.json"
+    sf = (work / f"{oid}.fig.json").resolve()
     sf.write_text(json.dumps(doc.steps, ensure_ascii=False, indent=1), "utf-8")
-    fc = work / f"{oid}.figcraft"
+    fc = (work / f"{oid}.figcraft").resolve()
+    out = out.resolve()
     env = {**os.environ, "DO_NOT_TRACK": "1"}
     try:
         r = subprocess.run([exe, "run", str(sf), "--out", str(fc)], cwd=str(work), text=True, capture_output=True,

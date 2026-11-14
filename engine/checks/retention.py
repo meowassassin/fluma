@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """시청 지속 검사 — 콘티가 시청자를 붙잡을 구조인지 본다. 한 영상의 취향이 아니라 모든 영상에 드는 규칙이다.
 
-  R01 같은 형식이 이어진다 · R02 형식 가짓수가 적다 · R03 한 인물만 나온다 · R04 8초 넘게 새 일이 없다
-  R05 첫 장면에 궁금증이 없다 · R06 사실 영상인데 실제 자료가 없다 · R07 사람이 없다(연기 · 말풍선 없음)
+  R01 같은 형식이 이어진다 · R02 형식 가짓수가 적다 · R04 8초 넘게 새 일이 없다
+  R05 첫 장면에 궁금증이 없다 · R06 사실 영상인데 실제 자료가 없다 · R07 사람이 없다(실제 자료 · 그린 인물 모두 없음)
   R08 닳은 표현 · R09 놀라운 사실(surprise)이 표시되지 않았다
 """
 from __future__ import annotations
@@ -33,7 +33,7 @@ CLIP_FORMATS = ("ranking", "clip")       # 퍼온 클립 모음: 같은 종류(�
 def check(sb: dict) -> list:
     out = check_all(sb)
     if sb.get("format") in CLIP_FORMATS:
-        out = [r for r in out if r[0] not in ("R01", "R02", "R03", "R07")]
+        out = [r for r in out if r[0] not in ("R01", "R02", "R07")]
     return out
 
 
@@ -46,12 +46,9 @@ def check_all(sb: dict) -> list:
             out.append(("R01", i, f"앞 장면과 같은 형식({a}) — 장면마다 형식을 바꾼다"))
     if len(S) >= 4 and len(set(forms)) < round(len(S) * .7):
         out.append(("R02", None, f"형식 {len(set(forms))}가지뿐(장면 {len(S)}개) — 레퍼런스는 장면마다 다르다"))
-    who = [str(m.get("id")).split("_")[0]                                     # 직접 그린 인물(art)은 id 앞부분이 같으면 같은 사람
-           for s in S for m in s.get("materials") or [] if m.get("type") in ("art", "relic")]
-    if len(S) >= 5 and len(set(who)) < 2:
-        out.append(("R03", None, f"인물이 {len(set(who))}명 — 영상이 길수록 다른 사람이 나와야 질리지 않는다"))
-    if len(S) >= 5 and not who:
-        out.append(("R07", None, "사람이 없다 — 시청자는 사람의 반응을 따라간다"))
+    real = [m for s in S for m in s.get("materials") or [] if m.get("type") in ("relic", "video", "stock", "photo", "meme", "clip", "art")]
+    if len(S) >= 5 and not real:
+        out.append(("R07", None, "사람이 없다 — 시청자는 사람의 반응을 따라간다(퍼온 클립 · 사진 · 스톡 · 짤)"))
     for i, s in enumerate(S, 1):
         n = len(s.get("refine") or [])
         if float(s.get("sec") or 0) > 8 and n < 2:

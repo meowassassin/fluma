@@ -17,6 +17,8 @@
   TTS_PROVIDER=silent python engine/voice/assemble_audio.py data/storyboards/<id>.json   # 네트워크 없이
 """
 import hashlib
+import os
+import time
 import json
 import re
 import math
@@ -334,7 +336,7 @@ def main():
     prov, vid = resolve(sb)
     # 말 속도(콘티 voice.speed, 0.8~1.6): 엔진이 직접 빠르게 말한다(합성 뒤 빨리 감기보다 자연스럽다)
     speed = max(0.8, min(1.6, float((sb.get("voice") or {}).get("speed") or 1.0)))
-    style = ((sb.get("voice") or {}).get("style") or "").strip() or None   # 말투 지시(글로 연기를 받는 엔진 — openrouter 의 일부 모델)
+    style = ((sb.get("voice") or {}).get("style") or "").strip() or None
     vopts = voice_opts(sb)
     print(f"[음성] 엔진 {prov} · 목소리 {vid or '기본'}{' · ' + json.dumps(vopts, ensure_ascii=False) if vopts else ''}")
     scenes = sb["scenes"]
@@ -399,8 +401,8 @@ def main():
         fx = sfx_list(sc.get("sfx"))
         if music_on(sb) and not (sb.get("direction") or {}).get("sfx_with_music"):   # 음악이 깔리면 효과음은 빼는 게 기본 — keep: true 만 남긴다
             raw = sc.get("sfx") if isinstance(sc.get("sfx"), list) else []
-            keep = {(x.get("name"), float(x.get("at", 0))) for x in raw if isinstance(x, dict) and x.get("keep")}
-            fx = [x for x in fx if x in keep]
+            keep_fx = {(x.get("name"), float(x.get("at", 0))) for x in raw if isinstance(x, dict) and x.get("keep")}   # 이름을 keep 으로 쓰면 장면 길이 유지(keep) 플래그를 덮어썼다(2026-11-11: 다음 장면부터 음성 27초)
+            fx = [x for x in fx if x in keep_fx]
         if not (sb.get("direction") or {}).get("sfx_dense"):
             fx = [x for x in fx if x[0] != "tick"][:1]
         voice_all += pcm                                   # 나레이션만(효과음 전) — SoundCraft Voice 트랙
@@ -433,6 +435,10 @@ def main():
         if changed or sb.get("duration_sec") != new_dur:
             for sc, s in zip(scenes, secs):
                 sc["sec"] = int(s) if float(s).is_integer() else s
+                if (sc.get("visual") or {}).get("kind") == "footage":
+                    for m in sc.get("materials") or []:
+                        if m.get("type") == "video":
+                            m["out"] = round(float(m.get("in") or 0.0) + float(s), 2)
             sb["duration_sec"] = new_dur
             sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
             print(f"[콘티] 장면 길이를 실측 음성으로 갱신 → 합계 {new_dur}s ({sb_path})")
@@ -445,9 +451,13 @@ def main():
     a = ROOT / "data" / "audio"
     (a / f"{sid}.timing.json").write_text(json.dumps(timing, ensure_ascii=False, indent=2), encoding="utf-8")
     (a / f"{sid}.captions.json").write_text(json.dumps(captions, ensure_ascii=False), encoding="utf-8")
+    # 만든 기록(파이프라인 뷰가 보여 준다 — 나중에 설정을 바꿔도 이 영상의 기록은 그대로)
+    spoken = any((sc.get("narration") or "").strip() for sc in scenes)
+    (a / f"{sid}.voice.meta.json").write_text(json.dumps({"engine": prov if spoken else None, "voice": vid if spoken else None,
+        "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "agent": os.environ.get("FLUMA_AGENT_RUNTIME") or None}, ensure_ascii=False), encoding="utf-8")
     pub = ROOT / "data" / "public" / "audio"
     pub.mkdir(parents=True, exist_ok=True)
-    for ext in (".wav", ".voice.wav", ".sfx.wav", ".sfx.json", ".timing.json", ".captions.json"):
+    for ext in (".wav", ".voice.wav", ".sfx.wav", ".sfx.json", ".timing.json", ".captions.json", ".voice.meta.json"):
         shutil.copy2(a / f"{sid}{ext}", pub / f"{sid}{ext}")
     print(f"\n→ {out_wav} ({duration(out_wav):.2f}s)  단어 {len(captions)}개  복사 → {pub}")
 

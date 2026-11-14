@@ -106,8 +106,12 @@ def visual_units(sc: dict) -> int:
         elif m.get("type") != "overlay":
             together = True
         inner += max(0, len(m.get("cuts") or []) - 1) + max(0, len(m.get("steps") or []) - 1) + (max(0, len(m.get("items") or []) - 1) if m.get("type") == "live" else 0)
-    beats = sum(1 for b in sc.get("beats") or [] if b.get("do") in ("확대", "zoom", "cut", "컷"))
-    return max(1, len(cues) + (1 if together else 0) + inner + beats)
+    beats = sum(1 for b in sc.get("beats") or [] if b.get("do") in ("확대", "zoom", "cut", "컷", "표시", "재료", "글자"))
+    marks = {str(k.get("cue")).strip() for m in sc.get("materials") or [] if m.get("type") == "overlay" for k in m.get("marks") or [] if k.get("cue")}
+    # 감독 샷 기능이 카메라를 움직이는 장면(motion.py: 충격 · 변화 → 당겨 들어감, 디테일 → 다가감)은 확대 박자가 없어도 화면이 한 번 바뀐다
+    auto_cam = 1 if sc.get("shot_fn") in ("충격", "변화", "디테일") and not any(b.get("do") == "확대" for b in sc.get("beats") or []) else 0
+    # 2026-11-11: '표시' · 주석 등장을 세지 않아 감독 스킬('시선 한 곳')과 이 검사가 서로 박자를 넣었다 뺐다 했다
+    return max(1, len(cues) + (1 if together else 0) + inner + beats + len(marks - cues) + auto_cam)
 
 
 def check(sb: dict, t: dict | None = None) -> list:

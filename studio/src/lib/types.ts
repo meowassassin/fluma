@@ -39,6 +39,8 @@ export interface CharMeta { name: string; title: string; base: string; [k: strin
 export interface Settings {
   model: string; effort: string; language: string; voice_engine: string; voice_id: string; voice_auto?: boolean; music_any_license?: boolean;
   agent?: Record<string, unknown>;
+  videogen?: { backend?: string; model?: string; max_attempts?: number; timeout_sec?: number };
+  imagegen?: { backend?: string; model?: string };
 }
 
 // ---------- 에이전트 ----------

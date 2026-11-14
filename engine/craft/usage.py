@@ -110,7 +110,7 @@ def install() -> None:
 
 
 def record(app: str, ids) -> None:
-    """앱 밖에서 쓴 기능을 직접 적는다 — Blender 처럼 <앱>-cli 호출로 잡히지 않는 것"""
+    """앱 밖에서 쓴 기능을 직접 적는다 — <앱>-cli 호출로 잡히지 않는 것"""
     ALL.setdefault(app, set()).update(ids)
     if CUR is not None:
         CUR.setdefault(app, set()).update(ids)

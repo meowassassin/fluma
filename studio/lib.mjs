@@ -122,7 +122,7 @@ export const tail = (s, n = 6) => String(s || "").trim().split("\n").filter(Bool
  *  에이전트가 스스로 한 일은 세지 않는다 — 서버 API 는 사람이 화면에서 누른 것만 지난다 */
 export async function logEffort(root, id, kind, detail = "") {
   try {
-    const dir = path.join(root, "workspace", "effort");
+    const dir = path.join(root, "data", "workspace", "effort");
     await fs.mkdir(dir, { recursive: true });
     await fs.appendFile(path.join(dir, `${id}.jsonl`), JSON.stringify({ at: new Date().toISOString(), kind, detail: String(detail).slice(0, 200) }) + "\n");
   } catch { /* 기록 실패가 작업을 막지 않는다 */ }

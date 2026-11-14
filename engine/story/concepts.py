@@ -55,19 +55,10 @@ def sim(a: str, b: str) -> float:
     return len(x & y) / len(x | y) if x and y else 0.0
 
 
-SIM_EMB = 0.9      # 뜻 비슷함(임베딩 코사인) — 이 이상이면 낱말이 달라도 사실상 같은 말
-
 
 def same(a: str, b: str) -> bool:
-    """사실상 같은 말인가 — 글자가 많이 겹치거나, '찾기 · 임베딩' 모델이 있으면 뜻이 같거나(낱말을 바꿔 쓴 뻔한 구조도 잡는다)"""
-    if sim(a, b) >= SIM_FAIL:
-        return True
-    try:
-        import embed
-        v = embed.similar(a, b)
-    except Exception:  # noqa: BLE001 — 키 없음 · 네트워크
-        v = None
-    return v is not None and v >= SIM_EMB
+    """사실상 같은 말인가 — 글자가 많이 겹치면"""
+    return sim(a, b) >= SIM_FAIL
 
 
 def past() -> list:

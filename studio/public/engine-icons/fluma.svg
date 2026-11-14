@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><!-- Fluma 로고(studio/src/ui/BrandIcons.tsx FlumaGlyph 와 같음) -->
+<rect x="3.6" y="7.6" width="11" height="13" rx="2.9" fill="#5d55f8" transform="rotate(-32 9.1 14.1)"/>
+<rect x="8.7" y="4.6" width="11.6" height="12.6" rx="2.9" fill="#2a2380" opacity=".55" transform="rotate(36 14.5 10.9) translate(-.6 1.2)"/>
+<rect x="8.7" y="4.6" width="11.6" height="12.6" rx="2.9" fill="#f8f0e8" transform="rotate(36 14.5 10.9)"/>
+<rect x="14.6" y="10.7" width="1.3" height="3.1" rx=".65" fill="#202038" transform="rotate(-6 15.25 12.25)"/>
+<rect x="16.9" y="10.55" width="1.3" height="3.1" rx=".65" fill="#202038" transform="rotate(-6 17.55 12.1)"/>
+</svg>

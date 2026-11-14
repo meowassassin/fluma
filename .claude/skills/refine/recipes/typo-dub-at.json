@@ -1,0 +1,32 @@
+{
+ "id": "typo-dub-at",
+ "layer": "typo",
+ "target": "motion",
+ "app": "effectcraft",
+ "title": "더빙 말투 자막 한 덩어리 — 정해진 순간에 톡 놓였다 정해진 순간에 사라진다",
+ "when": "퍼온 클립 위 한국어 더빙 자막(낱말 · 구 단위, 크기 · 위치로 강조) · 검은 화면 글자",
+ "avoid": "문장 전체를 한 번에 · 화면 아래 18% · 위 제목 띠와 겹치기",
+ "vars": {
+  "TEXT": "글",
+  "X": "가운데 x(px)",
+  "Y": "글자 바닥 y(px)",
+  "SIZE": "크기(px)",
+  "T0": "나타나는 초",
+  "T1": "사라지는 초"
+ },
+ "defaults": {
+  "FONT": "Pretendard-Bold",
+  "COLOR": "[1,1,1]",
+  "STROKE": "8",
+  "NM": "Dub",
+  "ROT": "0"
+ },
+ "at": [
+  0.5
+ ],
+ "steps": [
+  {
+   "jsx": "var t=C.layers.addText(\"@TEXT@\");t.name=\"@NM@\";t.moveToBeginning();var S=t.property(\"Source Text\");var d=S.value;d.font=\"@FONT@\";d.fontSize=@SIZE@;d.applyFill=true;d.fillColor=@COLOR@;if(@STROKE@>0){d.applyStroke=true;d.strokeColor=[0,0,0];d.strokeWidth=@STROKE@;d.strokeOverFill=false;}d.justification=ParagraphJustification.CENTER_JUSTIFY;S.setValue(d);var T=t.property(\"Transform\");T.property(\"Position\").setValue([@X@,@Y@]);T.property(\"Rotation\").setValue(@ROT@);var o=T.property(\"Opacity\");K(o,[[@T0@,0],[@T0@+0.05,100]]);var s=T.property(\"Scale\");K(s,[[@T0@,[118,118]],[@T0@+0.16,[100,100]]]);EASE(s,70);t.inPoint=@T0@;t.outPoint=@T1@;"
+  }
+ ]
+}

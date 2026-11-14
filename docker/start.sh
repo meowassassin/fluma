@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 # Fluma 시작(Linux · macOS) — 운영체제 · 하드웨어를 스스로 맞춘다. 사용: sh docker/start.sh [--build]
-#  - Linux 에 GPU 장치(/dev/dri)가 있으면 연결해 3D 렌더(Blender EEVEE)를 GPU 로, 없으면 CPU(Cycles)로 — 설정 파일을 고칠 필요 없음
+#  - Linux 에 GPU 장치(/dev/dri)가 있으면 연결한다(그래픽 가속) — 설정 파일을 고칠 필요 없음
 #  - 내 사용자 번호(uid · gid)를 넘겨 로그인 파일(~/.claude · ~/.codex) 소유자가 바뀌지 않게
 #  - --build: 미리 빌드한 이미지 대신 직접 빌드(약 15분)
 set -e
@@ -12,7 +12,7 @@ if [ "$(uname -s)" = "Linux" ] && [ -e /dev/dri/renderD128 ]; then
   FILES="$FILES -f docker-compose.gpu.yml"
   echo "[fluma] GPU 연결(/dev/dri, render 그룹 $FLUMA_RENDER_GID)"
 else
-  echo "[fluma] GPU 장치 없음 — 3D 렌더는 CPU(Cycles)로 돕니다(느리지만 같은 결과)"
+  echo "[fluma] GPU 장치 없음 — CPU 로 돕니다"
 fi
 if [ "$1" = "--build" ]; then
   docker compose $FILES build

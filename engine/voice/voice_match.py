@@ -10,7 +10,7 @@
 
 순서: pick → tune → apply → assemble_audio.py → verify. 결과는 data/workspace/render/<id>/voice-match.json · voice-check.json.
 샘플은 늘 같은 문장(SAMPLE)이라 목소리 · 조합마다 한 번만 합성하고 data/workspace/cache/voice-samples/ 에 남긴다(다음 영상은 공짜).
-유료 엔진(openrouter · typecast · elevenlabs)은 --max-chars 안에서만 새로 합성한다(글자 수만큼 크레딧).
+유료 엔진(typecast · elevenlabs)은 --max-chars 안에서만 새로 합성한다(글자 수만큼 크레딧).
 """
 from __future__ import annotations
 
@@ -62,7 +62,7 @@ def sample(engine: str, voice: str, speed=1.0, style=None, opts=None, budget: di
     wav, meta = d / f"{key}.wav", d / f"{key}.json"
     if meta.exists():
         return json.loads(meta.read_text(encoding="utf-8"))
-    if budget is not None and engine in ("openrouter", "typecast", "elevenlabs"):
+    if budget is not None and engine in ("typecast", "elevenlabs"):
         if budget["left"] < len(SAMPLE):
             return None
         budget["left"] -= len(SAMPLE); budget["spent"] = budget.get("spent", 0) + len(SAMPLE)
@@ -223,7 +223,7 @@ def cmd_verify(sb, a):
 
 # ---------- 자동(엔진을 가로질러) ----------
 # 한국어 품질 순 — 쓸 수 있는(키 · 설치) 엔진만 후보. silent · espeak 은 나레이션 후보가 아니다
-ENGINE_ORDER = ["typecast", "elevenlabs", "openrouter", "supertonic", "cosyvoice", "melotts", "xtts", "chatterbox", "edge"]
+ENGINE_ORDER = ["typecast", "elevenlabs", "supertonic", "cosyvoice", "melotts", "xtts", "chatterbox", "edge"]
 TARGET_CPS = {"emotional": 5.6, "ad": 6.6, "daily": 7.0}            # 레퍼런스가 없을 때 말 속도(초당 글자) — 쇼츠 설명형 7.0
 
 

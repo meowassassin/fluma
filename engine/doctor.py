@@ -63,6 +63,10 @@ def checks() -> list[tuple[str, bool, str]]:
     out.append(("레퍼런스 분석 패키지(선택)", ok_an, "faster-whisper · rapidocr · onnxruntime · opencv — --profile analysis"))
     ok_chr = vpy().exists() and subprocess.run([str(vpy()), "-c", "from playwright.sync_api import sync_playwright as s\nwith s() as p: p.chromium.launch().close()"], capture_output=True, timeout=120).returncode == 0
     out.append(("Chromium(렌더 · 미리보기)", ok_chr, "playwright install chromium"))
+    gflow_py = ROOT / "tools" / "gflow" / (".venv/Scripts/python.exe" if platform.system() == "Windows" else ".venv/bin/python")
+    if gflow_py.exists():
+        ok_gflow = subprocess.run([str(gflow_py), "-c", "import PIL, gflow_cli"], capture_output=True).returncode == 0
+        out.append(("gflow 영상 생성 환경", ok_gflow, "tools/gflow/.venv (PIL · gflow_cli)"))
     out.append(("웹 앱 npm 패키지", (ROOT / "studio" / "node_modules").exists(), "studio/ 에서 npm install"))
     return out
 
@@ -94,6 +98,13 @@ def fix(profile: str, core: bool = False, crafts: bool = True) -> bool:
     print(f"· 파이썬 패키지 ({profile})")
     ok &= run([uv, "pip", "install", "--python", str(vpy()), "-r", req] if uv else [str(vpy()), "-m", "pip", "install", "-r", req])
     install_hook()
+    gflow_dir = ROOT / "tools" / "gflow" / ".venv"
+    if gflow_dir.exists():
+        for site in gflow_dir.glob("lib/python*/site-packages"):
+            main_site = (VENV / "lib" / site.parent.name / "site-packages").resolve()
+            if main_site.exists():
+                (site / "phantasos_main_venv.pth").write_text(str(main_site) + "\n", "utf-8")
+                print("· gflow 가상환경 연동 (PIL · 공유 패키지)")
     print("· Chromium")
     ok &= run([str(vpy()), "-m", "playwright", "install", "chromium"])
     # Craft 앱(렌더 엔진) — 기본은 전부. --core 면 핵심 7개(나머지는 쓰는 순간 엔진이 설치 — crafts.ensure)

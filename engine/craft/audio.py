@@ -119,7 +119,7 @@ def sfx_clips(sid: str) -> list[tuple[Path, float]] | None:
 
 
 def material_events(sb: dict) -> list[tuple[Path, float]]:
-    """재료가 남긴 순간(Blender F.event) → [(효과음 파일, 영상 시각 초)] — 화면에서 일어난 일에 소리가 저절로 맞는다"""
+    """재료가 남긴 순간(재료 기록의 events) → [(효과음 파일, 영상 시각 초)] — 화면에서 일어난 일에 소리가 저절로 맞는다"""
     out, t = [], 0.0
     base = ROOT / "data" / "compositions" / sb["id"] / "craft" / "materials"
     for n, sc in enumerate(sb.get("scenes") or [], 1):
@@ -171,7 +171,7 @@ def clip_audio(sb: dict, out_dir: Path) -> list[tuple[Path, float]]:
 
 def music_path(sb: dict) -> Path | None:
     src = (sb.get("music") or {}).get("src")
-    if not src:
+    if not src or "music" in ((sb.get("intent") or {}).get("ban") or []):      # 콘티 intent.ban — 음악 금지
         return None
     p = Path(src) if Path(src).is_absolute() else ROOT / src
     return p if p.exists() else None
@@ -227,7 +227,7 @@ def commands(sb: dict, voice: Path, words: list[dict], dur: float, threshold: fl
             gain = sfx_gain_db()
     else:
         clips, gain = [], sfx_gain_db()
-    clips = list(clips) + material_events(sb)               # 재료가 남긴 순간(Blender F.event)
+    clips = list(clips) + material_events(sb)               # 재료가 남긴 순간(재료 기록의 events)
     if clips:
         c.append(_cmd("track.new", {"kind": "audio", "format": "stereo", "name": "SFX"}))
         c += [_cmd("file.import_audio", {"path": str(f), "track": "SFX", "at": {"seconds": round(at, 3)}, "new_tracks": False})
@@ -259,6 +259,20 @@ def commands(sb: dict, voice: Path, words: list[dict], dur: float, threshold: fl
               _cmd("file.import_audio", {"path": str(music), "track": "Music", "at": 0, "new_tracks": False}),
               _cmd("mix.volume", {"tracks": ["Music"], "db": base})]
         c += duck_points(words, base, duck, dur)
+        # 장면 음악 포인트(format-emotional · ad 의 music_cue): up 올림 · calm 낮춤 · drop 장면 첫 0.6초 끊고 다시 · none 그 장면 무음
+        # 2026-11-11 점검: 스키마 · 스킬에만 있고 아무도 안 읽었다
+        try:
+            tm = json.loads((PUBLIC / "audio" / f"{sid}.timing.json").read_text("utf-8"))
+        except (OSError, ValueError, NameError):
+            tm = []
+        for sc, t in zip(sb.get("scenes") or [], tm):
+            cue = sc.get("music_cue")
+            a0, a1 = float(t.get("start", 0)), float(t.get("end", 0))
+            if cue in ("up", "calm", "none") and a1 > a0:
+                v = base + 3 if cue == "up" else base - 5 if cue == "calm" else -60
+                c += [_cmd("automation.write_range", {"track": "Music", "param": "volume", "start": _smp(a0), "end": _smp(a1), "value": v})]
+            elif cue == "drop" and a1 > a0:
+                c += [_cmd("automation.write_range", {"track": "Music", "param": "volume", "start": _smp(a0), "end": _smp(min(a1, a0 + 0.6)), "value": -60})]
     # 새 세션에는 마스터 트랙이 없다 → 만들고 리미터(maximizer)를 건다(마스터는 이름을 받지 않고 'Master 1' 로 생김)
     c += [_cmd("track.new", {"kind": "master", "format": "stereo", "name": "Master"}),
           _cmd("mix.insert", {"track": "Master 1", "plugin": "maximizer", "params": {"threshold": threshold, "ceiling": CEILING_DB, "release": 80}})]

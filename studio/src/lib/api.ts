@@ -87,15 +87,89 @@ export const api = {
   stop: (id: string) => req<{ ok: boolean }>("POST", `/api/projects/${id}/chat/stop`),
   resetChat: (id: string) => req<{ ok: boolean }>("DELETE", `/api/projects/${id}/chat`),
   revert: (id: string, paths?: string[]) => req<{ ok: boolean; files: ChatFile[]; conflicts?: string[] }>("POST", `/api/projects/${id}/revert`, { paths }),
+  // 자막 · 글자 편집(engine/gen/subs.py) — 에이전트와 같은 값
+  subs: (id: string, s?: AbortSignal) => get<SubsModel>(`/api/projects/${id}/subs`, s),
+  saveSubs: (id: string, m: SubsModel) => req<{ ok: boolean }>("PUT", `/api/projects/${id}/subs`, m),
+  // 영상 편집기(VEditor — engine/gen/editor_bridge.py)
+  editorGet: (id: string, s?: AbortSignal) => get<unknown>(`/api/projects/${id}/editor`, s),
+  editorSave: (id: string, doc: unknown) => req<{ ok: boolean; file: string }>("PUT", `/api/projects/${id}/editor`, doc),
+  editorStatus: (id: string, s?: AbortSignal) => get<{ id: string; has_editor_project: boolean; has_exported: boolean; has_final_out: boolean }>(`/api/projects/${id}/editor/status`, s),
+  // 숏폼 생성 파이프라인(engine/gen) — 승인 ① · ② · 샷 검토
+  pipelines: (s?: AbortSignal) => get<{ id: string; topic: string; shots: number; updated: number; thumb?: string | null; style?: string; route?: string }[]>("/api/pipeline", s),
+  pipeline: (id: string, s?: AbortSignal) => get<Pipeline>(`/api/pipeline/${id}`, s),
+  pipelineLive: (id: string, s?: AbortSignal) => get<PipelineLive>(`/api/pipeline/${id}/live`, s),
+  pipelineAct: (id: string, step: string, action: string, body: { name?: string; views?: string; shots?: string; say?: string; candidates?: number; candidate?: number } = {}) =>
+    req<{ ok?: boolean; job?: string }>("POST", `/api/pipeline/${id}/${step}/${action}`, body),
+  keyframeGuideSave: (id: string, shot: number, body: { kind: "mask" | "compose" | "stage"; dataUrl?: string; spec?: unknown; note?: string }) =>
+    req<{ ok: boolean; url: string }>("POST", `/api/pipeline/${id}/keyframe/${shot}/guide`, body),
+  keyframeGuideClear: (id: string, shot: number, kind: "mask" | "compose" | "stage" | "all" = "all") =>
+    req<{ ok: boolean }>("DELETE", `/api/pipeline/${id}/keyframe/${shot}/guide?kind=${kind}`),
 };
 
+export interface PipeShot { n: number; purpose: string; beat?: string; gen_sec: number; final_sec: number; shot_size: string; angle: string; camera_move: string;
+  subject_pos: string; start_state: string; action: string; end_state: string; background: string; ambient: string; characters?: string[]; end_frame?: boolean; keyframe_note?: string }
+/** 파이프라인 뷰 실시간 상태(/api/pipeline/:id/live) */
+export interface PipelineLive {
+  at: number;
+  jobs: { id: string; type: string; label?: string; status: string; progress: number | null; stage?: string; started?: number | null; ended?: number | null; error?: string | null }[];
+  agent: { busy: boolean; tool: string | null; skill: string | null; runtime: "claude" | "codex" | "antigravity" | null; model: string | null; label: string | null };
+  models: { voice: string; video: string; image: string };
+  editor: { project: number; exported: number };
+}
+export interface Pipeline {
+  id: string; next: string; route?: "generate" | "clip" | "material";
+  plan: { topic: string; logline?: string; aspect?: string; style: string; route_why?: string; route_by?: "user" | "default"; handoff?: string; needs_character: boolean; narration?: string; shots: PipeShot[]; characters?: { name: string; identity: string; wardrobe: string }[] };
+  check: { errors: string[]; warnings: string[] };
+  characters: { name: string; state: string; views: string[]; files: Record<string, string> }[];
+  keyframes: {
+    shot: number; purpose: string; state: string; first: string | null; end: string | null;
+    has_mask?: boolean; has_compose?: boolean; has_stage?: boolean;
+    mask_url?: string | null; compose_url?: string | null; stage_url?: string | null;
+    candidates?: string[];
+    candidates_files?: { name: string; num: number; url: string }[];
+  }[];
+  clips: {
+    shot: number; attempts: number; left: number; state: string; backend: string | null; clip_url: string | null; approved: boolean;
+    takes?: { name: string; url: string }[];
+  }[];
+  videogen?: { model: string | null; max_attempts: number };
+  edit: { storyboard: boolean; draft: string | null; final: string | null };
+  /** 단계마다 실제로 만든 기록(status.py provenance) — 지금 설정과 무관 */
+  provenance?: {
+    plan?: { runtime: string | null; model: string | null; at?: string };
+    character?: { model: string; via?: string | null }[];
+    keyframe?: { model: string; via?: string | null }[];
+    video?: { model: string | null; backend: string | null }[];
+    voice?: { engine: string | null; voice?: string | null; at?: string };
+    draft?: string[];
+  };
+}
+
 /** 업로드: 파일 본문을 그대로 보낸다(서버가 디스크로 흘려 씀) */
-export async function uploadFile(projectId: string, f: File) {
-  const r = await fetch(`/api/projects/${projectId}/uploads?name=${encodeURIComponent(f.name)}`, {
+export async function uploadFile(projectId: string, f: File, opts: { frames?: boolean } = {}) {
+  const r = await fetch(`/api/projects/${projectId}/uploads?name=${encodeURIComponent(f.name)}${opts.frames === false ? "&frames=0" : ""}`, {
     method: "POST", headers: { "content-type": "application/octet-stream", "x-fluma-client": CLIENT_ID }, body: f,
   }).catch(() => { throw new ApiError(0, "network", t("서버에 연결할 수 없습니다")); });
   return parse<{ files: unknown[] }>(r);
 }
 
+/** 편집기 내보내기 영상 업로드: 최종본 data/compositions/<id>/editor/exported.mp4 및 data/out/<id>-editor.mp4 */
+export async function uploadExportedVideo(projectId: string, blob: Blob) {
+  const r = await fetch(`/api/projects/${projectId}/editor/export`, {
+    method: "POST", headers: { "content-type": "video/mp4", "x-fluma-client": CLIENT_ID }, body: blob,
+  }).catch(() => { throw new ApiError(0, "network", t("서버에 연결할 수 없습니다")); });
+  return parse<{ ok: boolean; file: string; out: string }>(r);
+}
+
 /** 화면에 보일 오류 글 — 서버가 보낸 한국어 문장도 사전에 있으면 지금 언어로 */
 export const errMsg = (e: unknown) => t(e instanceof ApiError ? e.message : e instanceof Error ? e.message : String(e));
+
+export interface SubItem { id: string; seg: number; t0: number; t1: number; text: string; size: "S" | "M" | "L" | "XL"; x: number; y: number; hot: boolean }
+export interface SubsModel {
+  mode: "dub" | "story"; duration: number; title: string[];
+  segments: { i: number; start: number; sec: number; type: string }[];
+  items: SubItem[];
+  style?: { screen_text_y: number; subs_y: number };
+  editable: { move: boolean; time: boolean; size: boolean; hot: boolean; add: boolean };
+  draft?: string | null;
+}

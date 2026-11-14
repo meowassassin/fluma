@@ -31,6 +31,6 @@ def test_writable_paths_exist_in_this_layout():
     for p in re.findall(r'"([^"]+)"', _list("WRITABLE")):
         q = ROOT / p
         if p.startswith("data/"):
-            assert p.split("/")[1] in {"storyboards", "compositions", "characters", "workspace", "research", "briefs"}, p
+            assert p.split("/")[1] in {"storyboards", "shotplans", "compositions", "characters", "workspace", "research", "briefs"}, p
         else:
             assert q.exists(), p

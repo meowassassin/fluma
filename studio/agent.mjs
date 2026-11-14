@@ -9,14 +9,14 @@ import { spawn, execFile, execFileSync } from "node:child_process";
 import { randomUUID, createHash } from "node:crypto";
 import { promises as fs, existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { resolveRuntime, codexArgs, codexPrompt, makeCodexParser, agentEnv } from "./runtimes.mjs";
+import { resolveRuntime, codexArgs, codexPrompt, makeCodexParser, agyArgs, makeAgyParser, agentEnv } from "./runtimes.mjs";
 import { pythonCmd, spawnTarget } from "./platform.mjs";
 import { atomicWrite, killTree, HttpError } from "./lib.mjs";
-import { runConfig as mcpRunConfig } from "./mcp.mjs";
+import { runConfig as mcpRunConfig, codexArgsFor } from "./mcp.mjs";
 import { createCrafts } from "./crafts.mjs";
 
 // 쓰기 가능: 콘티 · 장면 재료 · Craft 제작 파일(data/compositions/<id>/) · 캐릭터 · 조사 · 메모. 엔진 템플릿은 사람이 관리
-export const WRITABLE = ["data/storyboards", "data/compositions", "data/characters", "data/workspace/tmp", "data/workspace/feel", "data/workspace/concepts", "data/research", "data/briefs", "engine/spec/rules/trends/proposals.md"];   // feel · concepts: 기획 단계에서 에이전트가 쓰는 느낌 안 · 콘셉트 · 뻔함 지도
+export const WRITABLE = ["data/storyboards", "data/shotplans", "data/compositions", "data/workspace/tmp", "data/workspace/feel", "data/workspace/concepts", "data/research", "data/briefs", "engine/spec/rules/trends/proposals.md"];   // feel · concepts: 기획 단계에서 에이전트가 쓰는 느낌 안 · 콘셉트 · 뻔함 지도
 export const TOOLS = [
   "Read", "Glob", "Grep", "WebSearch", "WebFetch", "TodoWrite", "Skill",
   ...WRITABLE.flatMap((p) => {
@@ -78,13 +78,14 @@ const SHOW_RULES = `## 결과는 채팅에 바로 보여 준다
 // 명령 실행 규칙: 오래 걸리는 스크립트는 앞에서 한 번 기다리고, 결과는 정해진 블록만 읽는다(engine/core/result.py).
 // 2026-11-04: 백그라운드로 돌린 분석이 턴과 함께 죽고, 출력을 짐작하며 경로 · 로그를 되읽느라 턴을 썼다(MoneyPrinterTurbo 스킬 규약 참고)
 const RUN_RULES = `## 명령 실행 · 결과 읽기
-- 오래 걸리는 명령(렌더 · 레퍼런스 분석 · 녹화 · 버전 비교 · 재료 만들기)은 **앞에서 한 번** 실행하고 Bash 의 timeout 을 600000(10분)으로. 백그라운드로 돌려 두고 턴을 끝내지 않는다
+- 오래 걸리는 명령(렌더 · 레퍼런스 분석 · 녹화 · 버전 비교 · 재료 만들기 · 캐릭터/키프레임/영상 생성)은 **앞에서 한 번** 실행하고 Bash 의 timeout 을 600000(10분)으로. 백그라운드로 돌려 두고 턴을 끝내지 않는다
+- Antigravity(\`run_command\`) 환경에서 외부 프로세스·네트워크·브라우저를 쓰는 엔진 명령(\`character.py make\`, \`keyframe.py make\`, \`video.py\`, \`produce.py\`, \`trends.py\`, \`analyze_ref.py\`, \`render.py\`)을 실행할 때는 처음부터 \`BypassSandbox: true\`와 \`WaitMsBeforeAsync: 10000\`으로 실행한다(표준 샌드박스로 먼저 실행해 실패한 뒤 재실행하지 않는다)
 - 기다리는 동안 sleep · ls · tail · ps 로 되묻지(폴링) 않는다
 - 끝나면 출력 맨 끝 블록만 읽는다:
   - 종료 0 \`FLUMA_RESULT\` — file · media 등. media= 줄은 그대로 \`\`\`media 블록에 붙여 보여 준다. 성공한 뒤 로그 전체를 다시 읽지 않는다
   - 종료 10 \`FLUMA_NEEDS_INPUT\` — needs 를 한 번에 묶어 사용자에게 **한 번만** 묻는다(how 대로 안내, 키는 채팅에 붙이지 말고 설정 화면에)
   - 종료 11 \`FLUMA_RUNNING\` — 서버에서 아직 도는 중. 같은 명령을 다시 불러 이어서 기다린다
-  - 종료 1 \`FLUMA_ERROR\` — stage · error(짧은 이유)만 보고 고쳐서 한 번 다시. 또 실패하면 어느 단계 · 무슨 이유인지 짧게 알린다
+  - 종료 1 \`FLUMA_ERROR\` — stage · error(짧은 이유)만 보고 고쳐서 한 번 다시. 단, \`429\` · \`RESOURCE_EXHAUSTED\` · \`QUOTA_EXHAUSTED\`(모델 쿼터 소진) 오류는 곧바로 재시도하지 말고 생성된 부분과 쿼터 한도 사유를 즉시 알린다
 - 출력이 잘렸으면 블록의 result_file(data/workspace/results/<스크립트>-latest.json)을 한 번 읽는다`;
 
 export function createAgent({ ROOT, env, onState = () => {} }) {
@@ -171,32 +172,45 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const parts = [];
     parts.push(readIf(path.join(ROOT, "studio", "agent", "system.md")) ?? "");
     parts.push(STYLE_RULES, MEMORY_RULES, SETUP_RULES, SHOW_RULES, RUN_RULES);
-    // 붙어 있는 Craft 앱(MCP) — 그림 · 움직임을 SVG 코드로 직접 짜기 전에 진짜 제작 도구를 먼저 쓴다
+    // 붙어 있는 Craft 앱(MCP) — 5단계 초안 다듬기 및 실제 자료(material) 경로에서 활용
     const cr = createCrafts(ROOT).list().filter((c) => c.agentOn && c.installed?.cli);
     if (cr.length) parts.push(`## 제작 도구 (Craft 앱, MCP: ${cr.map((c) => `mcp__${c.name}`).join(" · ")})\n` +
       cr.map((c) => `- ${c.title} — ${c.kind}: ${c.use}`).join("\n") +
-      "\n캐릭터 · 장면 그림은 illustrate 스킬(.claude/skills/illustrate/SKILL.md)대로 디자이너처럼 그린다: 레퍼런스 그림 문법 연구 → 실루엣 썸네일 3개 → 고르기 → VectorCraft 로 그리고 매 회차 렌더해서 보고 고치기 → 이름 붙은 레이어로 저장. 디테일은 적게, 큰 형태와 보색으로. 렌더는 Craft 엔진(render.py --engine craft) — EffectCraft 장면 · SoundCraft 소리 · FilmCraft 조립 파일이 남는다. 앱은 다듬기에만 MCP 로 쓰고, 결과는 data/compositions/<영상 id>/ 아래에만 쓴다.");
+      "\n생성(generate) 경로에서는 1~4단계(plan · character · keyframe · video)로 캐릭터 시트 · 키 프레임 · 영상을 만들고 5단계(assemble.py)에서 Craft 초안을 조립한다. 실제 자료(material) 경로에서는 실제 자료와 Craft 도구로 장면을 구성한다. 결과는 data/compositions/<영상 id>/ 아래에만 쓴다.");
     if (skill) {
       const body = readIf(path.join(ROOT, ".claude", "skills", skill, "SKILL.md"));
       if (body) parts.push(`## 활성 스킬: ${skill} (.claude/skills/${skill}/SKILL.md)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
     }
-    // 새 영상(콘티 스킬 · 형식 스킬 · 작업 공간)에서는 제작 스킬도 함께 — 콘티만 쓰고 끝내지 않게.
-    // 엔진은 Craft 하나 → produce 스킬(HyperFrames · compose 는 2026-11-06 제거)
+    const shotplanPath = !project.startsWith("_") ? path.join(ROOT, "data", "shotplans", `${project}.json`) : null;
+    const hasShotplan = shotplanPath ? existsSync(shotplanPath) : false;
+    let routeKind = hasShotplan ? "generate" : null;
+    if (hasShotplan) {
+      try { routeKind = JSON.parse(readFileSync(shotplanPath, "utf8")).route || "generate"; } catch { routeKind = "generate"; }
+    }
+    const isGenPipeline = routeKind === "generate" || ["plan", "character-sheet", "keyframes", "video-gen", "edit-shots", "publish"].includes(skill);
+    // 생성 파이프라인 스킬들(프롬프트 조립 · 캐릭터 시트 일관성 · 키 프레임 참조 · i2v 생성 · 5단계 편집)을 함께 주입
+    if (!project.startsWith("_") && isGenPipeline) {
+      for (const n of ["plan", "character-sheet", "keyframes", "video-gen", "edit-shots", "publish"]) {
+        if (n === skill) continue;
+        const body = readIf(path.join(ROOT, ".claude", "skills", n, "SKILL.md"));
+        if (body) parts.push(`## 함께 쓰는 파이프라인 스킬: ${n} (.claude/skills/${n}/SKILL.md)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
+      }
+    }
+    // 실제 자료(material) 경로이거나 storyboard/produce 스킬일 때는 produce · storyboard 스킬을 함께 주입
     const companion = "produce";
-    // 기획(plan)도 함께 — 콘티가 검사를 통과하면 같은 턴에 제작까지(2026-11-09: '제작 시작' 버튼 없앰)
-    if (skill !== companion && (!skill || skill === "plan" || skill === "storyboard" || skill.startsWith("format-") || project.startsWith("_"))) {
+    if (skill !== companion && (routeKind === "material" || skill === "storyboard" || (skill || "").startsWith("format-") || project.startsWith("_"))) {
       const body = readIf(path.join(ROOT, ".claude", "skills", companion, "SKILL.md"));
       if (body) parts.push(`## 함께 쓰는 스킬: ${companion} (.claude/skills/${companion}/SKILL.md)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
     }
-    // 이미 콘티가 있는 영상: 부분 수정(시각 · 장면 · 요소 단위) 규칙도 함께 — "12초 서버 키워 줘"를 그 요소만 고치게
-    // 기획 대화(홈): 콘티 작성 규칙도 함께
-    if (skill === "plan") {
+    if (routeKind === "material" && skill === "plan") {
       const body = readIf(path.join(ROOT, ".claude", "skills", "storyboard", "SKILL.md"));
       if (body) parts.push(`## 함께 쓰는 스킬: storyboard (콘티 작성 규칙)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
     }
-    // 감독 · 작가 스킬은 기획 · 콘티 · 제작 · 장면 고치기에 늘 함께 — '먼저 읽어라'로만 적어 두면 에이전트가 읽지 않았다(2026-11-09: 한 대화 도구 89번 중 0번)
-    if (!project.startsWith("_") && ["plan", "storyboard", "produce", "refine", "scene-edit", undefined, null, ""].includes(skill) || (skill || "").startsWith("format-")) {
-      for (const n of ["director", "writer"]) {
+    // 감독 · 작가 · 디자이너 스킬은 실제 자료(material) 경로의 기획 · 콘티 · 제작 · 장면 고치기 및 5단계(edit-shots)에 함께 주입
+    // (생성 경로 1~4단계에서는 director/designer 의 '그림·영상 생성 모델 금지 · 캐릭터 그리기 금지' 문구가 충돌하므로 writer 만 함께 주입)
+    if (!project.startsWith("_") && (["plan", "storyboard", "produce", "refine", "scene-edit", "edit-shots", undefined, null, ""].includes(skill) || (skill || "").startsWith("format-"))) {
+      const roles = (isGenPipeline && skill !== "edit-shots" && skill !== "refine" && skill !== "scene-edit") ? ["writer"] : ["director", "writer", "designer"];
+      for (const n of roles) {
         const body = readIf(path.join(ROOT, ".claude", "skills", n, "SKILL.md"));
         if (body) parts.push(`## 함께 쓰는 스킬: ${n} (.claude/skills/${n}/SKILL.md — 늘 적용)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
       }
@@ -213,17 +227,18 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         "- 사용자가 지금 보는 화면은 매 메시지의 <FLUMA_CONTEXT> 의 '화면' 줄. 그 화면에서 결과가 보이게 일한다:",
         "  · 트렌드 → `engine/research/trends.py search --queries '…'` (구체 주제는 검색어, 결과가 트렌드 화면에 바로 나타남)",
         "  · 라이브러리 → 캐릭터(.claude/skills/character)",
-        "  · 영상을 만들어 달라고 하면 **어느 화면에서든 바로 만든다**: 새 id(YYYY-MM-DD-<영문짧은이름>-01)로 data/storyboards/<id>.json 을 쓰고 storyboard 스킬 순서(조사 → 콘티 → 검사) 다음 **같은 턴에서** produce 스킬(음성 → 장면 재료 → 검사 → 초안 렌더 → 정지 화면 확인)까지. 콘티에 engine: craft. 끝나면 '홈의 프로젝트 표에서 <제목>'을 열면 된다고 한 줄로 알린다. 홈으로 돌려보내지 않는다.",
         "- 사용자가 선택한 것(선택: …)이 있으면 그것에 대해 말하는 것으로 본다.",
       ].join("\n"));
       return parts.join("\n\n---\n\n");
     }
+    const spRel = `data/shotplans/${project}.json`;
     const sbRel = `data/storyboards/${project}.json`;
     parts.push([
       "## 현재 작업",
       `- 프로젝트 id: ${project}`,
-      `- 콘티 파일: ${sbRel} ${existsSync(path.join(ROOT, sbRel)) ? "(있음 — 읽고 고친다)" : "(아직 없음 — 이 경로에 새로 만든다. id 필드도 이 값)"}`,
-      `- 엔진: Craft — 장면 재료(콘티 materials) → EffectCraft · SoundCraft · FilmCraft. 제작 파일 data/compositions/${project}/craft/, 제작은 produce.py (produce 스킬)`,
+      `- 샷 계획 파일(생성 파이프라인 1~4단계 정본): ${spRel} ${hasShotplan ? `(있음 · 경로: ${routeKind})` : "(아직 없음 — plan.py new 로 생성)"}`,
+      `- 콘티 파일(5단계 조립 / material 경로): ${sbRel} ${existsSync(path.join(ROOT, sbRel)) ? "(있음 — 읽고 고친다)" : "(아직 없음)"}`,
+      `- 파이프라인: 생성(generate) 경로는 plan.py → character.py(승인 ①) → keyframe.py(승인 ②) → video.py → assemble.py → editor_bridge.py 순서와 프롬프트·캐릭터 일관성 규칙을 따른다.`,
       scene != null ? `- 이번 요청은 **장면 ${scene}만** 고친다. 다른 장면과 sec 합계는 건드리지 않는다.` : "",
     ].filter(Boolean).join("\n"));
     return parts.join("\n\n---\n\n");
@@ -322,9 +337,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
   const cfgLang = () => readSettings().language || "korean";
   const STYLE_RULES = [
     "## 답하는 법 (가장 먼저 지킬 것)",
-    "- **사용자에게 보이는 모든 글은 설정한 답변 언어**(FLUMA_CONTEXT 의 '답변 언어', 기본 한국어)로 쓴다. 첫 문장부터 끝까지, 도구 호출 사이의 짧은 진행 문장까지. 다른 언어 문장을 섞지 않는다. 코드 · 파일 경로 · 명령 · 오류 원문만 그대로 둔다. 영상 안의 나레이션 · 자막 언어는 답변 언어와 별개로 콘티(language)를 따른다.",
-    "- 오래 걸리는 일은 시작할 때 무엇을 할지 한 줄로 말하고, 끝나면 결과만 짧게.",
-    "- 막히면(모듈 없음 · 권한 거부 등) 같은 시도를 되풀이하지 말고, 무엇이 없는지와 사용자가 실행할 명령 한 줄을 답변 언어로 알리고 멈춘다.",
+    "- **사용자에게 보이는 모든 글은 설정한 답변 언어**(FLUMA_CONTEXT 의 '답변 언어', 기본 한국어)로 쓴다. 첫 문장부터 끝까지 다른 언어 문장을 섞지 않는다. 코드 · 파일 경로 · 명령 · 오류 원문만 그대로 둔다. 영상 안의 나레이션 · 자막 언어는 답변 언어와 별개로 콘티(language)를 따른다.",
+    "- 도구 호출 전마다 '~를 확인하고 있습니다', '~를 생성합니다', '~를 다시 실행합니다' 같은 중간 진행 독백을 출력하지 않는다(최종 답변에 중간 독백이 여러 줄로 합쳐져 지저분해진다). 도구는 말없이 바로 호출하고, 모든 도구 실행이 끝난 뒤 최종 결과·표·미디어·선택지만 깔끔하게 답한다.",
+    "- 막히면(모듈 없음 · 권한 거부 · 쿼터 초과 등) 같은 시도를 되풀이하지 말고, 무엇이 없는지와 사용자가 실행할 명령 또는 선택지를 답변 언어로 알리고 멈춘다.",
   ].join("\n");
   const MEMORY_RULES = [
     "## Fluma 공유 기억",
@@ -362,7 +377,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     ]);
     const seen = new Set(), mem = [];
     for (const m of [...pinned, ...byQuery]) if (!seen.has(m.id)) { seen.add(m.id); mem.push(m); }
-    const tmp = path.join("workspace", "tmp", project.replace(/[^A-Za-z0-9가-힣_.-]/g, "-"));
+    const tmp = path.join("data", "workspace", "tmp", project.replace(/[^A-Za-z0-9가-힣_.-]/g, "-"));
     const lines = ["<FLUMA_CONTEXT>", `화면: ${MENU_LABEL[menu] || menu}${menu === "studio" ? ` · 프로젝트 ${project}` : ""}`];
     if (context?.selection) lines.push(`선택: ${String(context.selection).slice(0, 600)}`);
     if (context?.note) lines.push(String(context.note).slice(0, 600));
@@ -466,12 +481,21 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     }
     const sys = systemPrompt({ project, look, template, skill, scene });
     let bin, args, stdio;
-    if (rt.runtime === "codex") {
+    if (rt.runtime === "antigravity") {
+      // Antigravity: 시스템 지시는 새 대화의 첫 메시지 앞에(Codex 와 같은 접근 제한 블록), 이후엔 --conversation 으로 이어 간다. Craft MCP 는 아직(agy mcp 는 전역 설정을 바꿔서 — 셸 명령으로 Craft CLI 를 쓴다)
+      const conv = sess.agyConversation || null;
+      const body = `${message}\n\n${ctx.text}`;
+      bin = process.env.SF_AGY_BIN || "agy";
+      args = agyArgs({ cwd: ROOT, conversation: conv, model: model || rt.model, effort: rt.effort, prompt: conv ? body : codexPrompt(sys + "\n\n" + "답변 언어: " + (LANG_LINE[cfg.language] || LANG_LINE.korean), body) });
+      stdio = ["ignore", "pipe", "pipe"];
+    } else if (rt.runtime === "codex") {
       // Codex: 시스템 지시는 새 스레드의 첫 메시지 앞에, 이후엔 같은 스레드를 이어간다. 실행 중 덧붙이기(stdin)는 없음
       const thread = sess.codexThread && sess.codexProvider === (rt.provider || "cli") ? sess.codexThread : null;
       const body = `${message}\n\n${ctx.text}`;
       bin = process.env.SF_CODEX_BIN || "codex";
-      args = codexArgs({ cwd: ROOT, threadId: thread, model: model || rt.model, effort: rt.effort, codexConfig: rt.codexConfig, prompt: thread ? body : codexPrompt(sys + "\n\n" + "답변 언어: " + (LANG_LINE[cfg.language] || LANG_LINE.korean), body) });
+      // Craft 앱 MCP 도 Codex 에 — Claude Code 와 같은 도구(2026-11-12: 전엔 Codex 만 셸 명령으로만 Craft 를 썼다)
+      const cmcp = mcpRunConfig(createCrafts(ROOT).mcpServers());
+      args = codexArgs({ cwd: ROOT, threadId: thread, model: model || rt.model, effort: rt.effort, codexConfig: [...(rt.codexConfig ?? []), ...codexArgsFor(cmcp?.servers)], prompt: thread ? body : codexPrompt(sys + "\n\n" + "답변 언어: " + (LANG_LINE[cfg.language] || LANG_LINE.korean), body) });
       stdio = ["ignore", "pipe", "pipe"];
     } else {
       bin = process.env.SF_CLAUDE_BIN || "claude";
@@ -495,8 +519,10 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const st = spawnTarget(bin);   // Windows 의 npm 설치본(codex.cmd 등)은 셸로 실행
     const safe = agentEnv(env, rt);   // 로그인 모드: 구독 대신 API 과금으로 바뀌게 하는 환경 변수는 지운다(runtimes.mjs)
     if (safe.dropped.length) console.warn(`[agent] 로그인 모드라 결제 경로를 바꾸는 환경 변수를 넘기지 않음: ${safe.dropped.join(", ")}`);
-    const child = spawn(st.cmd, args, { cwd: ROOT, env: { ...safe.env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1", ...rt.env }, stdio, shell: st.shell, detached: process.platform !== "win32" });
-    const run = { project, live: true, child, events: [], clients: clientsOf(project), stdinOpen: rt.runtime !== "codex", text: "", tools: [], todos: null, startedAt: Date.now(), runtime: rt.label, skill: skill || null };
+    // FLUMA_AGENT_*: 엔진 스크립트가 '누가 만들었나'를 결과 파일에 적는다(파이프라인 뷰는 설정이 아니라 이 기록을 보여 준다)
+    const child = spawn(st.cmd, args, { cwd: ROOT, env: { ...safe.env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1", ...rt.env,
+      FLUMA_AGENT_RUNTIME: rt.runtime || "", FLUMA_AGENT_MODEL: (rt.runtime === "claude" ? (model || rt.model || process.env.SF_AGENT_MODEL) : rt.model) || "" }, stdio, shell: st.shell, detached: process.platform !== "win32" });
+    const run = { project, live: true, child, events: [], clients: clientsOf(project), stdinOpen: rt.runtime === "claude", text: "", tools: [], todos: null, startedAt: Date.now(), runtime: rt.label, skill: skill || null };
     runs.set(project, run);
     broadcast(run, { type: "start", user: message, skill: skill || null, scene: scene ?? null, memories: ctx.memories, at: run.startedAt });
     onState(project, true);
@@ -512,7 +538,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       if (ev.type === "result") { run.result = ev; if (run.stdinOpen && child.stdin) { run.stdinOpen = false; child.stdin.end(); } }
       broadcast(run, ev);
     };
-    const parse = rt.runtime === "codex"
+    const parse = rt.runtime === "antigravity"
+      ? makeAgyParser(onEv, { onConversation: (id) => { mutate(project, (s3) => { s3.agyConversation = id; }).catch(() => {}); } })
+      : rt.runtime === "codex"
       ? makeCodexParser(onEv, { rel: (p) => path.relative(ROOT, p) || p, onThread: (id) => { mutate(project, (s3) => { s3.codexThread = id; s3.codexProvider = rt.provider || "cli"; }).catch(() => {}); } })
       : makeParser(onEv, () => run.text);
     let buf = "";

@@ -1,0 +1,45 @@
+/* 영상 목록(VideosPage) — 줄을 누르면 아래로 파이프라인 뷰가 펼쳐진다 */
+.vids-title { display: flex; align-items: baseline; gap: 8px; }
+.vids-title h1 { margin: 0; }
+.vids-seg-item { display: inline-flex; align-items: center; gap: 6px; }
+.vids-seg-cnt { font-style: normal; font-size: 11px; font-family: var(--mono); color: var(--tx-3); }
+.seg button.on .vids-seg-cnt { color: var(--tx-1); }
+
+.vids-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 8px; background: var(--bg-1); border: 1px solid var(--line-2); color: var(--tx-3); min-width: 220px; transition: border-color var(--t-fast); }
+.vids-search:focus-within { border-color: var(--select); color: var(--tx-1); }
+.vids-search input { flex: 1; border: 0; outline: 0; background: transparent; color: var(--tx-1); font-size: var(--fs-sm); min-width: 0; }
+
+.vids-container { max-width: 1240px; margin: 0 auto; width: 100%; }
+
+.vids-empty { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 56px 0; color: var(--tx-3); }
+.vids-empty.is-box { flex-direction: column; border: 1px dashed var(--line-2); border-radius: 14px; }
+.vids-empty p { margin: 0; }
+
+.vids-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.vids-item { border-radius: 14px; background: var(--bg-1); border: 1px solid var(--line-2); transition: border-color .2s, box-shadow .2s; overflow: hidden; }
+.vids-item:hover { border-color: var(--line-3); }
+.vids-item.is-open { border-color: var(--sel-line); box-shadow: 0 10px 40px rgba(0, 0, 0, .35); }
+.vids-item.is-busy { border-color: rgba(210, 153, 34, .5); }
+.vids-row { display: flex; align-items: center; gap: 12px; padding: 8px 10px; cursor: pointer; outline: none; }
+.vids-row:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); border-radius: 14px; }
+.vids-thumb { flex: none; width: 34px; aspect-ratio: 9 / 16; border-radius: 6px; overflow: hidden; display: grid; place-items: center; background: var(--bg-3); color: var(--tx-4); }
+.vids-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.vids-name { flex: 1; min-width: 0; font: 650 15px / 20px var(--display); color: var(--tx-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vids-route { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--brand); }
+.vids-route.r-clip { background: #f5a524; }
+.vids-route.r-material { background: #5aa9ff; }
+.vids-live { display: inline-grid; place-items: center; flex: none; }
+.vids-acts { display: flex; align-items: center; gap: 6px; flex: none; }
+.vids-edit { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; border: 0; background: var(--primary); color: #fff; cursor: pointer; }
+.vids-edit:hover { background: var(--primary-hover); }
+.vids-del { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--tx-3); display: grid; place-items: center; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
+.vids-del:hover { color: #f85149; border-color: rgba(248, 81, 73, .45); background: rgba(248, 81, 73, .12); }
+.vids-chev { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--tx-2); display: grid; place-items: center; cursor: pointer; }
+.vids-chev:hover { background: var(--bg-3); }
+.vids-chev svg { transition: transform .2s; }
+.vids-item.is-open .vids-chev svg { transform: rotate(180deg); }
+.vids-drop { padding: 10px 12px 12px; border-top: 1px solid var(--line-1); }
+@media (max-width: 720px) {
+  .vids-search { min-width: 0; flex: 1; }
+  .vids-row { gap: 8px; }
+}

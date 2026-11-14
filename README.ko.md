@@ -54,11 +54,10 @@ Fluma 는 이 틈새를 노립니다.
 | 필요한 것 | 비용 |
 |---|---|
 | 에이전트 | 이미 쓰는 Claude Code · Codex 로그인 그대로(또는 API 키) |
-| 음성 | 무료 엔진 기본(Edge TTS · 로컬 TTS 6종) — 유료 음성은 오픈라우터 키 하나로(ElevenLabs · Gemini TTS · Fish Audio … 중 설정에서 고름) |
+| 음성 | 무료 엔진 기본(Edge TTS · 로컬 TTS 6종) — 유료 음성은 내 Typecast · ElevenLabs 키로(설정 → 미디어 → 음성) |
 | 실사 자료 | 퍼온 클립(출처 자동 표기) · Pexels · Pixabay 무료 키 · 자료 사진 |
 | 배경 곡 | 같은 분야 쇼츠가 실제로 붙이는 유행 곡을 찾아, 업로드 때 쇼츠 편집기 라이브러리에서 붙임(저작권 · 수익 문제 없음) |
-| 제작 앱 | 오픈소스 [Craft 앱](#craft-앱) 16개 + Blender — 무료 |
-| (선택) 오픈라우터 | 키 하나로 영상 이해(레퍼런스 분석 · 초안 비평) · 음성 · 받아쓰기 · 임베딩. 모델은 설정에서 능력마다 고르고, 영상 한 편 상한(기본 $3)을 넘으면 금액을 보여 주고 묻습니다 |
+| 제작 앱 | 오픈소스 [Craft 앱](#craft-앱) 16개 — 무료 |
 
 ## 하는 일
 
@@ -74,7 +73,6 @@ Fluma 는 이 틈새를 노립니다.
 
 - 🔎 **레퍼런스 먼저, 검사로 강제** — 실제 레퍼런스 쇼츠를 분석해 연결하기 전에는 콘티가 검사(`L30`)를 통과하지 못합니다. 명사로 끝나는 말 · 존댓말 반말 섞임도 실패(`L31`).
 - 🧰 **실제 도구를 전부** — 단계마다 Craft 앱의 프로젝트 파일(`.ecproj` 움직임 · `.scraft` 소리 · `.fcproj` 컷 · `.vectorcraft` 그림 · `.psd` · `.deckcraft` …). 열어서 계속 고칠 수 있고, 사람이 고친 파일은 해시로 알아채 덮어쓰지 않습니다. 정해진 재료 종류로 안 되면 에이전트가 앱 명령을 직접 짭니다(`type: craft`).
-- 👁️ **영상을 직접 보는 눈(VL)** — 오픈라우터 보기 모델이 레퍼런스 쇼츠를 처음부터 끝까지 보고 장면 · 훅 · 반전 · 편집 문법 · 자막 말투 · 붙잡는 장치를 시각과 함께 정리하고, 뻔함 지도 초안 · 클립에서 원하는 순간 찾기 · 초안 비평(몇 초에 무엇이 왜 어색한지)까지 합니다. 에이전트는 영상에 대해 무엇이든 물어볼 수 있습니다(`see.py ask`).
 - 🎞️ **느낌(룩) 고르기** — 현실 다큐 · 몽환 · 필름 같은 느낌을 에이전트가 2~4안 제안하고, 같은 장면에 입힌 시안을 나란히 보여 줍니다(`feel.py`). 고른 느낌은 실제 재료 전부에 같은 색 · 질감으로 입혀집니다.
 - 🎬 **감독 · 작가 스킬** — 쓰기 전에 다섯 기둥(감정 · 모티프 · 기준 물건 · 꺾임 · 끝 그림)과 리듬 계단을 정하고, 샷마다 시선 한 곳 · 카메라(확대) 이유 · 세 가지 구체를 짚습니다. 훅은 화면 · 첫 말 · 화면 글자 세 칸으로, AI 티 나는 문장은 막습니다(smixs/visual-skills · screenwriting-skills · marketingskills 를 옮김).
 - ♻️ **재활용 편집** — 클립 구간 자동 선택(`clip.py --best`), 주인공 추적 세로 리프레이밍(`reframe.py`), 유행 곡 찾기(`trend_music.py`), 업로드 안내(`upload_guide.py`).
@@ -99,7 +97,7 @@ flowchart LR
     P --> DOC[문서<br/>PDFCraft 형광펜<br/>WordCraft 문서 화면]
     P --> DAT[데이터 · 구조도<br/>GridCraft · DeckCraft]
     P --> DES[디자인<br/>VectorCraft · PhotoCraft<br/>FigCraft · DesignCraft · LightCraft]
-    P --> TD[3D · 도면<br/>SolidCraft · TextureCraft · CADCraft<br/>Blender]
+    P --> TD[3D · 도면<br/>SolidCraft · TextureCraft · CADCraft]
   end
   P --> CL[퍼온 클립<br/>다시 본 순간 · 세로 리프레이밍]
   RS & DOC & DAT & DES & TD & CL --> E[EffectCraft<br/>움직임 · 프리셋 · 자막]
@@ -155,7 +153,6 @@ python3 engine/craft/crafts.py install all     # 또는 골라서: install effec
 | FigCraft · DesignCraft | 폰 · 브라우저 목업, 한글 조판 정보 카드 · 썸네일 |
 | LightCraft | 한 영상의 사진들을 같은 톤으로 |
 | SolidCraft · TextureCraft · CADCraft | 3D 제품 돌려 보기 · 분해, 평면도 · 도면 |
-| Blender | 곡면 · 캐릭터 · Cycles 고품질 렌더(영상마다 스크립트). SolidCraft 부품 · 관절과 TextureCraft 재질을 받아 이어서 쓴다(`engine/craft/bridge3d.py`) |
 
 앱마다 전체 명령 목록은 `.claude/skills/crafts/catalog/`(`python3 engine/craft/craft_catalog.py search "곡선 화살표"`), 시험해 본 사용법은 `.claude/skills/crafts/reference/` 에 있습니다. 릴리스는 SHA256SUMS 로 검증해 `tools/crafts/`(git 제외)에 풉니다.
 
@@ -191,7 +188,6 @@ npm --prefix studio run dev                     # → http://localhost:4311
 | `storyboard` | 콘티 JSON: 형식 · 조사 · 장면 · 재료 · 검사 |
 | `produce` | Craft 파이프라인: 음성 → 재료 → 검사 → 초안 → 정지 화면 확인 |
 | `crafts` | 장면마다 어느 Craft 앱 · 기능을 쓸지 — 기능 검색 · 레시피 · 다양성 규칙 |
-| `illustrate` | VectorCraft 로 디자이너처럼 그리기(렌더해서 보고 고치기) |
 | `research` | 출처 URL 있는 사실 모으기 — 5개 미만이면 만들지 않음 |
 | `trends` | 주제 · 해시태그로 쇼츠 찾기 |
 | `voice` · `scene-edit` · `character` | 음성 맞추기 · 장면 하나 고치기 · 립싱크 마스코트 |
@@ -213,7 +209,6 @@ fluma/
 │  ├─ research/            트렌드 · 쇼츠 X-ray · 레퍼런스 스타일 · 채널 카드
 │  ├─ capture/             웹 · 터미널 녹화 · 실행 데모 · 퍼온 클립 · 세로 리프레이밍 · 짤 · 스톡 · 아이콘
 │  ├─ story/               콘티 도우미 — 콘셉트 · 느낌(feel.py) · 디자인 시안(directions.py) · 여러 버전 · 말투 고치기
-│  ├─ providers/           오픈라우터 하나 — 능력별 모델 목록 · 고른 모델 · 비용 관문(예상 → 승인 → 장부)
 │  ├─ checks/              검사 · 템포 · 편집 밀도 · 관문
 │  ├─ publish/             YouTube 업로드
 │  ├─ core/                공용 — 결과 규약 · 엔진 등록 · 마무리 · 정지 화면 · 설치
@@ -245,8 +240,7 @@ fluma/
 - [ ] 수작업 · 성과 숫자를 함께 보여 주는 공개 데모 한 편
 - [x] Linux · macOS · Windows · ARM CI, amd64 · arm64 Docker 이미지
 - [x] 클립 재활용: 다시 본 구간 · 세로 리프레이밍 · 유행 곡 안내
-- [x] 오픈라우터 키 하나로 보기 · 만들기 · 말하기(모델은 설정에서 능력마다) · 비용 관문
-- [x] 뻔함 지도 · 콘셉트 · 느낌(룩) 시안 · 감독 · 작가 스킬 · 기준점(레퍼런스 대조)
+- [x] 뻔함 지도 · 콘셉트 · 느낌(룩) 시안 · 감독 · 작가 스킬
 
 ## 기여하기
 

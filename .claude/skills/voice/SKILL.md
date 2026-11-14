@@ -12,8 +12,7 @@ order: 4
 4. 다시 1~2. 모든 장면이 1.15배 이내가 될 때까지.
 
 제공자는 설정(설정 → 미디어 → 음성) 또는 환경변수 `TTS_PROVIDER`(기본 edge).
-- 유료 음성은 **오픈라우터 하나**(`openrouter` 엔진): 사용자가 설정 → 보기 · 만들기 · 말하기 에서 키를 넣고 '말하기 · 음성' 모델을 고른다(ElevenLabs · Gemini TTS · Fish Audio · Qwen · MiniMax …). 에이전트는 키를 못 읽고 묻지도 않는다. 목소리 이름은 모델마다 다르다(설정의 목소리 칸). `voice.style` 에 말투 지시(글)를 쓰면 받는 모델(Gemini TTS · Fish Audio · gpt-4o-mini-tts)이 그대로 연기한다. 쓴 만큼 크레딧이 나가니 시험은 짧은 문장으로.
-- 업체별 키(Typecast · ElevenLabs · Gemini 직접)는 2026-11-09 에 없앴다.
+- 로컬 및 클라우드 음성 엔진: 기본 Edge TTS(무료, 정밀한 단어 타이밍) 외에 ElevenLabs, Typecast, Supertonic, MeloTTS 등을 설정에서 활성화하여 사용합니다.
 
 ## 레퍼런스 목소리에 맞추기 — 감이 아니라 숫자로 (목소리 복제 아님)
 레퍼런스(채널 카드 > 스타일 카드)의 높이 · 억양 폭 · 말끝 처리 · 세기 변화 · 속도에 가까운 목소리와 조절 값을 고른다.
@@ -26,10 +25,10 @@ order: 4
 - 유료 엔진은 시험마다 크레딧이 든다: 대본 전체를 다시 합성하지 말고 pick · tune 의 샘플(캐시됨)로 고른 뒤 한 번만 전체 합성.
 
 ## 음성 엔진 (렌더 엔진처럼 갈아 끼움)
-- 엔진 목록 · 라이선스: `engine/voice/engines/<엔진>/voice.json` (edge · openrouter · supertonic · espeak · melotts · chatterbox · cosyvoice · xtts · silent). 설치 여부는 설정 화면 또는 `python3 -c "import sys;sys.path.insert(0,'engine');import paths,tts;print({n:tts.engine_available(n) for n in tts.list_voice_engines()})"`.
+- 엔진 목록 · 라이선스: `engine/voice/engines/<엔진>/voice.json` (edge · supertonic · espeak · melotts · chatterbox · cosyvoice · xtts · silent). 설치 여부는 설정 화면 또는 `python3 -c "import sys;sys.path.insert(0,'engine');import paths,tts;print({n:tts.engine_available(n) for n in tts.list_voice_engines()})"`.
 - 기본은 설정(data/workspace/settings.json 의 voice_engine · voice_id). 영상마다 바꾸려면 콘티에 `"voice": {"engine": "supertonic", "id": "F2"}` 를 적고 `assemble_audio.py` 를 다시 돌린다(엔진 · 목소리가 캐시 키라 자동으로 다시 합성).
 - **상업 이용 '불가'(XTTS-v2 등) 엔진은 발행용 영상에 쓰지 않는다.** 사용자가 고르면 라이선스를 한 줄로 알린다.
-- edge 는 단어 타이밍을 정확히 준다. 다른 엔진(openrouter 포함)은 글자 수로 추정하므로 단어 자막이 조금 어긋날 수 있다 — 자막 강조가 중요한 영상이면 알린다.
+- edge 는 단어 타이밍을 정확히 준다. 일부 다른 엔진은 글자 수로 추정하므로 단어 자막이 조금 어긋날 수 있다 — 자막 강조가 중요한 영상이면 알린다.
 
 ## 어느 목소리로 읽나(우선순위)
 설정(설정 → 미디어 → 음성)이 **자동**(기본)이면 `voice_match.py auto` 가 콘티에 적은 목소리(source: auto — 엔진을 가로질러 레퍼런스와 가장 닮은 목소리 · 말 속도)를 쓴다. 설정에서 '이 목소리로 고정'했으면 그 목소리가 기본이고 도구가 적은 목소리는 말 속도 · 감정 값만 쓰인다.

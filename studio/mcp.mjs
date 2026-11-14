@@ -69,7 +69,24 @@ export function runConfig(extra = {}) {
     ? { type: "http", url: s.url, ...(Object.keys(s.headers ?? {}).length ? { headers: s.headers } : {}) }
     : { type: "stdio", command: s.command, args: s.args ?? [], ...(Object.keys(s.env ?? {}).length ? { env: s.env } : {}) }]));
   writeSecret(RUN_FILE, { mcpServers });
-  return { file: RUN_FILE, tools: on.map(([n]) => `mcp__${n}`), names: on.map(([n]) => n) };
+  return { file: RUN_FILE, tools: on.map(([n]) => `mcp__${n}`), names: on.map(([n]) => n), servers: mcpServers };
+}
+
+/** Codex 용 — 같은 MCP 서버(사용자 MCP + Craft 앱)를 `-c mcp_servers.<이름>.…` 설정 덮어쓰기로(파일 · 전역 설정을 건드리지 않음).
+ *  값은 TOML 이고, 문자열 · 문자열 배열은 JSON 표기와 같다. 비밀 값(env · headers)은 명령줄에 싣지 않는다 — 그런 서버는 건너뛴다 */
+export function codexArgsFor(servers = {}) {
+  const out = [];
+  for (const [n, s] of Object.entries(servers)) {
+    if (!NAME_RE.test(n)) continue;
+    if (s.type === "http") {
+      if (Object.keys(s.headers ?? {}).length) continue;
+      out.push(`mcp_servers.${n}.url=${JSON.stringify(s.url)}`);
+    } else {
+      if (Object.keys(s.env ?? {}).length) continue;
+      out.push(`mcp_servers.${n}.command=${JSON.stringify(s.command)}`, `mcp_servers.${n}.args=${JSON.stringify(s.args ?? [])}`);
+    }
+  }
+  return out;
 }
 
 const INIT = { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "fluma", version: "1" } } };

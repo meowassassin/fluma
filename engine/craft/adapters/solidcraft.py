@@ -348,4 +348,4 @@ def model3d(m: dict, out: Path, work: Path) -> dict:
     return info
 
 
-ADAPTERS = {"model3d@solidcraft": model3d}             # 기본 방법은 Blender(adapters/blender.py) — 모양은 design() 을 그대로 쓴다
+ADAPTERS = {"model3d": model3d, "model3d@solidcraft": model3d}   # 3D 제품은 SolidCraft 모양 → TextureCraft 재질 · 렌더(Blender 는 2026-11-11 제거)

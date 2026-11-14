@@ -432,9 +432,14 @@ const Choices: React.FC<{ items: string[] }> = ({ items }) => {
   const send = () => { const v = (other ?? "").trim(); if (v && choose) { choose(v); setOther(null); } };
   return (
     <div className="choices" role="group" aria-label={t("선택지")}>
-      {items.map((it) => <button key={it} className="choice" disabled={!choose} onClick={() => choose?.(it)}><Icon n="chevron" s={12} />{inline(it)}</button>)}
+      {items.map((it) => (
+        <button key={it} className="choice" disabled={!choose} onClick={() => choose?.(it)}>
+          <span className="choice-ic"><Icon n="chevron" s={12} /></span>
+          <span className="choice-txt">{inline(it)}</span>
+        </button>
+      ))}
       {other == null
-        ? <button className="choice choice-other" disabled={!choose} onClick={() => setOther("")}><Icon n="pen" s={12} />{t("직접 입력 — 다른 요구사항 쓰기")}</button>
+        ? <button className="choice choice-other" disabled={!choose} onClick={() => setOther("")}><span className="choice-ic"><Icon n="pen" s={12} /></span><span className="choice-txt">{t("직접 입력 — 다른 요구사항 쓰기")}</span></button>
         : <div className="choice-in">
             <textarea autoFocus rows={2} className="in ta" value={other} onChange={(e) => setOther(e.target.value)} placeholder={t("원하는 것을 직접 써 주세요")} aria-label={t("다른 요구사항")}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !composing(e)) { e.preventDefault(); send(); } if (e.key === "Escape") setOther(null); }} />

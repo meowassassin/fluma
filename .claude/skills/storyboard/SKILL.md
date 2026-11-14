@@ -22,22 +22,18 @@ order: 1
    - 본문 장면마다 숫자 또는 고유명사 하나 (L11). 툴·현장·광고 형식은 본문 절반 이상이 실제 화면 (L12: screenshot/still/footage/price_tag/audio_demo).
    - 자막 28자·2줄 이하, 명사형·구어체. 나레이션은 초당 4~7자(공백 제외) — 3초 장면이면 12~18자.
    - 마지막 장면이 훅의 핵심어를 다시 말한다 (L08 루프).
-   - **분위기**(예: "전문적이고 세련된")는 장면 구성 · 움직임 · 색 선택의 기준으로 `constraints` 에 한 줄 남긴다 → direct.py · 움직임 단계가 따른다.
+   - **개념 사다리**(writer 0.3): 콘티 맨 위 `concepts_order` 에 시청자가 모르는 개념을 나오는 순서대로 적고, 장면마다 새 개념은 하나만 소개한 뒤 쓴다. 제작 때 시청자 시뮬레이션이 대상 시청자로 따라가 보고, 장면을 더해야 풀리는 문제가 있으면 제작을 멈춘다.
+   - **화면 다양성**: 이어지는 장면이 같은 그림 · 영상을 쓰거나, 같은 화면 종류 · 재료 구성이 세 장면 연달아면 lint L58 실패. 한 대상(예: QR 한 장)을 계속 보여 줘야 하면 실사 · 확대 해부 · 도식 · 실험 화면 · 비교로 보는 방식을 바꾼다.
+   - **분위기**(예: "전문적이고 세련된")는 `constraints` 에 한 줄 남긴다(사람 · 비평용 — 엔진은 글을 해석하지 않는다). **엔진이 꼭 지켜야 하는 금지**는 `intent.ban` 에 값으로: `number_punch`(숫자 크게 덧씌우기) · `sfx` · `music` · `bg_motion`.
+   - 화면 글자 `caption` 은 나레이션이 있어도 위쪽 띠에 강조색으로 따로 나온다(훅 세 칸의 '화면 글자' — 말을 받아 적지 않는다). 끄려면 `direction.screen_text: false`.
    - **엔진은 Craft 하나** — `engine: "craft"`. 장면에 보일 것은 아래 '장면 재료(materials)' 칸으로 적고, 제작은 produce 스킬이 한다(HyperFrames · Manim 은 제거).
-   - **장면 설계 = 무엇을 어떤 순서로 보여 줄지**: 장면마다 필요한 재료를 주제에 맞게 설계한다(템플릿 고르기 아님). 로고는 `icon`(engine/capture/icons.py), 정밀 도표는 `chart` · `diagram`, 3D 제품은 `model3d`(곡면 · 캐릭터 · 영화 품질은 `"method": "blender"`, crafts 스킬). 실사 장면은 실제 자료(퍼온 클립 `clip.py` · 무료 스톡 `stock` · 자료 사진 `relic`)로.
+   - **장면 설계 = 무엇을 어떤 순서로 보여 줄지**: 장면마다 필요한 재료를 주제에 맞게 설계한다(템플릿 고르기 아님). 로고는 `icon`(engine/capture/icons.py), 정밀 도표는 `chart` · `diagram`, 3D 제품은 `model3d`(SolidCraft 제품 형태 — crafts 스킬). 실사 장면은 실제 자료(퍼온 클립 `clip.py` · 무료 스톡 `stock` · 자료 사진 `relic`)로.
      · `cue` 는 그 요소가 나타나거나 움직이는 **나레이션 단어**. 화면은 이 단어 시각에 맞춰 움직인다(음성이 기준).
 4. **검사**: `python3 engine/checks/lint.py data/storyboards/<id>.json` → 실패한 칸만 고친다. 통과할 때까지.
 5. **음성 길이**(선택): `python3 engine/voice/assemble_audio.py data/storyboards/<id>.json` 후 다시 lint (L14).
 
-## 레퍼런스가 없으면 — 형식 프리셋(사람이 편집한 실제 쇼츠에서 잰 숫자)
-링크가 없어도 손으로 정한 기본값(가운데 판 · 고정 자막 · 직접 그린 표)으로 짜지 않는다 — 그게 'AI 틀'이다.
-1. `python3 engine/research/format_presets.py pick data/storyboards/<id>.json` — 주제 낱말로 형식(it-explainer · cooking · news · science · review)을 고르고 콘티 `preset` 에 숫자를 적는다. 맞지 않으면 `--format <형식>`.
-2. 프리셋을 따른다: 장면 구성은 `preset.roles`(역할 비율) · `preset.screens`(화면 종류 비율), 컷 길이는 `preset.rhythm.shot_sec`, 말 주도인지 음악 주도인지는 `preset.lead`, 문장 끝은 `preset.tone.endings`.
-3. 장면 `screen` 은 프리셋 화면 비율에 가깝게(T21 · T25). 그래픽(도표 · 글자 카드)은 프리셋에 그 비율이 있을 때만.
-4. `direct.py --write` 는 프리셋에서 배치 · 바탕 · 자막 · 움직임을 정한다(무작위 아님). 검사 T27 = 프리셋 없음.
-
 ## 레퍼런스(참고 쇼츠 링크)가 있으면 — 구성 · 박자 · 말투는 레퍼런스 '채널', 내용은 사용자의 주제 (어떤 형식이든)
-1. `python3 engine/research/analyze_ref.py <id>` — 빠른 분해 → VL 이해 → 스타일을 서버 작업으로 이어 돌린다(편당 1분 안팎 · 턴이 끝나도 계속 · 끝난 단계는 건너뜀). 채널 말투 카드가 필요할 때만 `--channel 3`.
+1. `python3 engine/research/analyze_ref.py <id>` — 빠른 분해 → 스타일을 서버 작업으로 이어 돌린다(편당 1분 안팎 · 턴이 끝나도 계속 · 끝난 단계는 건너뜀). 채널 말투 카드가 필요할 때만 `--channel 3`.
    (채널 카드는 같은 채널 쇼츠 여러 편 — 한 편 통계보다 이쪽이 기준. 스크립트를 직접 백그라운드로 돌리지 않는다)
 2. **채널 카드** `data/public/trends/channels/<채널>/channel.md` 를 끝까지 읽는다. 형식을 가정하지 않는다 — 카드 맨 위 **형식** 줄(말 주도 / 음악 · 화면 주도, 주된 화면 종류, 컷 길이, 음악 박자)이 기준이다: 구성 · 구조(문장마다 역할[화면] 뼈대, 화면 종류 비율, 문장당 컷) ·
    문장 끝 비율 · 이음말 · 첫 · 끝 문장 · 영상별 대사. 대사 시트(`lines-<영상>.jpg`, #번호 = 대사 번호)를 **직접 보고**
@@ -63,11 +59,6 @@ order: 1
 - 기술 낱말은 실무자가 부르는 이름 그대로(member · getMember() · fetch join), 풀이는 괄호로 한 번만
 - 다 쓰면 화면 글만 모아 소리 내 읽어 본다 — 한 줄이라도 사람이 안 할 말이면 고친다. 고정 제목은 24자 이내
 
-## 말투만 고쳐 달라고 하면 — 내용은 잠근다
-"말투만 · 어미만 · 톤만" 요청은 문장을 새로 쓰지 않는다. 바꿀 글을 json(`{"4": "…"}`)으로 써서
-`python3 engine/story/tone_edit.py data/storyboards/<id>.json <json>` → 내용 낱말이 바뀌면 거절된다(어미 · 이음말 · 문장부호만 통과).
-통과하면 `--apply`, 출력되는 전 · 후 표를 그대로 보여 준다. 사용자가 문장을 직접 불러 줬으면 `--apply --user-text`.
-
 ## 좋은 콘티의 기준 (engine/spec/rules/rulebook.md 4-2)
 - 현장이 증거다. 숫자는 하나, 크게. 감정이 숫자를 운반한다. 제품이 스스로 증명하게.
 - 한 편에 포인트 하나.
@@ -75,50 +66,5 @@ order: 1
 ## 끝나면
 바꾼 내용 한 줄 + 검사 결과 + 남은 결정(에셋 없음, 수치 미확인)을 질문 하나로.
 
-## 화면은 영상마다 새로 (필수 — 콘티만 쓰고 끝내지 않는다)
-
-콘티가 검사를 통과하면 **같은 턴에서 바로** produce 스킬로 이어간다:
-1. `python3 engine/story/direct.py data/storyboards/<id>.json --write` — 디자인 방향(최근 영상과 다르게 · 레퍼런스 톤).
-2. `python3 engine/produce.py data/storyboards/<id>.json` — 음성 → 검사 → 초안 → 장면별 정지 화면. 정지 화면을 보고 고칠 곳만 고친다.
-
-## 사용자가 올린 사진 · 영상이 있으면
-
-<FLUMA_CONTEXT> 의 '올린 파일'을 먼저 본다. 실사 영상 · 사진이 있으면 그것을 증거 장면(L12)으로 쓴다: visual `kind: footage|still`, `asset: uploads/<id>/<파일>`, 영상은 `clip_start`(초)로 쓸 구간. 재료(`video` · `photo` · `image`, 이름에 재료 id)로 넣는다.
-
-## 마무리 — 유튜브 제목 · 설명 후보
-콘티를 다 쓰고 검사를 통과하면, 답 끝에 화면이 버튼으로 바꿔 주는 두 블록을 붙인다(사용자가 눌러 콘티의 title · caption · hashtags 에 적용):
-```titles 안에 제목 3안(서로 다른 아이디어 — `concept.cliches` 의 제목 패턴을 피하고 이 영상의 한 방이 보이게, 40자 이하, 해시태그 없이, 과장 금지) · ```desc 안에 설명(300자 이하, 첫 줄 한 줄 요약, 끝 줄 해시태그 3~5개).
-
-## 장면 재료(materials) — Craft 엔진
-장면에 '무엇이 필요한가'만 적는다. 툴 이름 · 좌표는 쓰지 않는다. 어느 Craft 앱이 만들지는 `engine/craft/apps/*/craft.json` 의 provides 로 엔진이 정한다(`engine/craft/materials.py`).
-| type | 필드 | 만드는 앱 |
-|---|---|---|
-| chart | labels · values 또는 csv/xlsx(+range) · percent · kind(bar·line·pie) · title | GridCraft(데이터 · 계산) → 움직임 단계가 화풍 팔레트로 그림 |
-| doc_quote | pdf · find(찾을 문장) | PdfCraft(문장 위치 + 페이지) → 확대 · 형광펜 |
-| illustration | src(.svg — illustrate 스킬로 그린 것) · place | VectorCraft |
-| photo | src · cutout | PhotoCraft(누끼) |
-| screen · video · image | src | 그대로 |
-| web | src(data/public/elements/<id>/<이름> — webrec.py · termrec.py 녹화) · holds(상태별 초) · start(나레이션 없을 때 시작 초) | 그대로(실제 화면) |
-| stock | query(영어 검색어) · min_sec · pick · trim | Pexels → Pixabay 무료 스톡 영상(실제 촬영) — 일상 · 감성 · 광고의 바탕. 키는 설정 → API 키. 기술 설명에는 쓰지 않는다(실제 화면 우선) |
-| overlay | target(같은 장면의 **앞선** 그림 · 화면 재료 id) · marks[{kind: box·arrow·label, box:[x,y,w,h] 0~1(대상 기준), from/to(화살표), text, cue}] · style(clean·hand) · color | VectorCraft(투명 주석 층) → 대상 위 제자리에 cue 마다 하나씩 |
-| ui_mock | src(실제 캡처) · device(phone·browser, 생략하면 모양으로) · url. 캡처가 없을 때만 screen{…} + **mock: true** | FigCraft(폰 · 브라우저 틀 + 그림자) |
-| diagram | kind(steps·compare·cycle·hierarchy·pyramid·timeline·list) · items(탭=하위) · title · cues(항목별 낱말) | DeckCraft(SmartArt, 항목 층이 차례로 등장) |
-| document | src(.docx·.md·.txt …) 또는 title + text · highlight[문장] · track{from,to}(바뀐 부분) · comments[{at,text}] | WordCraft(9:16 문서 화면 · 진짜 형광펜 · 변경 추적) |
-| photo_grade | src · look(warm·film·clean·mono) · crop(9:16) · focus[x,y] · credit | LightCraft(현상 · 톤 통일 · 세로 자르기) |
-| info_card | kicker · title · body · points[] · source (또는 rows[] · csv + row) · frame(card·full) · theme | DesignCraft(정보 카드, 여러 장 병합) |
-| template_card | template(.vectorcraft, 없으면 기본 틀) · csv 또는 values{머리글: 값} · row | VectorCraft(변수 + CSV 일괄 — 매일 같은 틀) |
-| thumbnail | (비우면 콘티 title · badge · hook_number) · title · hook · emphasis · src(false 면 글자만) | DesignCraft(세로 1080×1920 + 가로 1280×720). **영상 화면이 아니라 표지용** — 마지막 장면에 두고 화면에는 거의 안 보이게 |
-| model3d | shape(case·phone·bottle·tumbler·puck) + size(mm) 또는 commands 또는 src(.step·.stl·.obj …) · material(metal·plastic·wood·#색·{부품:재질}) · color · logo · turntable 또는 exploded · sec | SolidCraft(형태 · 분해도) + TextureCraft(재질 · 로고 · 렌더) — 9:16 화면 전체(배경 포함) |
-| live | src(실사 영상) · cuts{이름: {strokes[{frame, kind: fg\|bg, points(이어진 한 획), radius}], span, recolor{hue, sat, light}, remove, frame, grow}} · items[{id, kind: model3d(script · at · frame · height · shadow · light · behind)\|text(text · follow · offset · size · color · behind)\|image(file · follow · offset · scale · behind)}] — follow 는 {at, frame}(장면 고정) · {at, frame, moving}(움직이는 무늬) · {cut, at: top\|center}(분리한 물체). 3D 스크립트는 `L = F.live(ctx)` 로 시작하고 `L["at"]` · `ctx.args["height"] * L["unit"]` 로 놓는다. 끝나면 `cuts.check.png` 로 매트를 본다 — 완전히 가려지면 분리가 끊기므로 가려졌다 나오는 물체는 나온 직후 프레임에 획을 더한다. |
-| archive | 실제 사진 · 그림 — `title`("File:…", `engine/capture/commons.py search` 로 찾아 보고 고른다) · fit(cover\|contain). 출처는 자동으로 sources 에 들어간다. 실제 자료가 있는 사실은 재현하지 말고 진짜를 쓴다 |
-| relic | 실제 유물 · 조각 자체가 이야기일 때만 — 그래픽 장면 위 인물 대용으로 쓰지 않는다(사진이 겉돈다). — 실제 조각 · 흉상 · 도기 사진을 오린 컷아웃. `src`(archive 로 받은 파일) · `crop` · `cut`(matte · shard: PhotoCraft 작업, 레이어 PSD 가 남음 / ink 도기 안료 / none) · `matte:"ai"`(배경이 복잡해 Select Subject 가 옆 인물까지 잡을 때) · `keep` · `erase` · `jaw`(poly: 수염 · 턱 결을 따라 / mouth: 입술 틈 / hinge) · `width` · `show: false`. 말하는 인물은 id 하나에 `jaw` 를 적고 motion-relic 레시피(S0 · S1 말 구간, 경첩 · 목 px)로 놓는다. 그림 확대 격자로 poly 를 잡고 렌더해서 본다. 말하지 않는 인물은 `<인물>_<자세><번호>` 로 motion-cast |
-| art | 직접 그린 인물 · 소품 — `svg`(illustrate 스킬로 그린 파일) · `hide`(지울 표정 그룹) · `show: false`. 표정마다 재료 하나, id 는 `<인물>_<자세><번호>`. 화면에는 motion-cast 레시피 |
-| drawing | src(.dxf·.dwg) 또는 cmd[…] 또는 model(앞선 model3d id 또는 형태 칸) · views · title · paper(dark·white) · mark[[x0,y0,x1,y1]](빨간 구름) | CADCraft(투영도 · 치수 · 평면도) — 9:16 화면 전체 |
-
-### 다양한 화면 — 레시피 · craft 재료 (편향 금지)
-- 장면마다 `python3 engine/craft/craft_variety.py suggest "<장면 용도>"` 로 고른다(★ = 최근 영상에 안 쓴 것 먼저). 자세한 규칙: crafts 스킬 0절.
-- 고정 종류로 안 되면 `{"type":"craft","app":…,"steps":[…]}` — 명령은 `python3 engine/craft/craft_catalog.py search "<하고 싶은 일>"`.
-- 레시피: `{"id":"m1","recipe":"vertical-process","fill":{…}}`. 다 쓰면 `craft_variety.py check data/storyboards/<id>.json` 로 반복을 본다.
-
-- 다른 브랜드 광고 · 영상의 장면 · 문구를 그대로 따라 쓰지 않는다 — 구성 · 리듬만 빌린다.
-
+## 더 보기(필요할 때만 읽는다)
+`.claude/skills/storyboard/reference.md` — **장면 재료(materials) 칸 · 예시 JSON**(재료를 처음 쓰거나 칸이 헷갈릴 때), 레퍼런스가 없을 때 형식 프리셋, 말투만 고치기, 사용자 사진 · 영상, 유튜브 제목 · 설명.

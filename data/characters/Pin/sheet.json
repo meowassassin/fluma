@@ -1,0 +1,26 @@
+{
+  "views": {
+    "front": {
+      "size": [768, 1376],
+      "aspect_asked": "9:16"
+    },
+    "back": {
+      "size": [768, 1376],
+      "aspect_asked": "9:16"
+    },
+    "left": {
+      "size": [768, 1376],
+      "aspect_asked": "9:16"
+    },
+    "right": {
+      "size": [768, 1376],
+      "aspect_asked": "9:16"
+    }
+  },
+  "candidates": [],
+  "approval": {
+    "status": "approved",
+    "hash": "d8a8b256f6ff936f",
+    "at": "2026-11-13T20:18:32"
+  }
+}

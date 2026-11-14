@@ -14,7 +14,7 @@ Fluma 는 로컬에서 돕니다: 웹 스튜디오(Node) + 파이썬 파이프�
 | Fluma 자체를 고치기 | 설치 후 `npm --prefix studio run dev` 와 [시험](#확인--문제-해결) | — |
 
 어느 쪽이든 에이전트가 필요합니다: 내 컴퓨터에 로그인된 **Claude Code** 나 **Codex**(Docker 도 그 로그인을 그대로 씀),
-또는 API 키(Anthropic · OpenAI · OpenRouter · Gemini · 로컬 Ollama)를 **설정 → 모델 · 공급자**에 넣습니다.
+또는 API 키(Anthropic · OpenAI · Gemini · 로컬 Ollama)를 **설정 → 모델 · 공급자**에 넣습니다.
 
 ### 컴퓨터 사양
 
@@ -35,7 +35,7 @@ Fluma 는 로컬에서 돕니다: 웹 스튜디오(Node) + 파이썬 파이프�
 | Node.js | 20+ | [nodejs.org](https://nodejs.org) |
 | ffmpeg | 최근 버전 | `sudo apt install ffmpeg` · `sudo dnf install ffmpeg` · `brew install ffmpeg` · `winget install ffmpeg` |
 
-에이전트도 필요합니다: 로그인된 **Claude Code** 또는 **Codex** CLI, 또는 API 키(Anthropic · OpenAI · OpenRouter ·
+에이전트도 필요합니다: 로그인된 **Claude Code** 또는 **Codex** CLI, 또는 API 키(Anthropic · OpenAI ·
 Gemini · 로컬 Ollama) — 나중에 **설정 → 모델 · 공급자**에 넣습니다.
 
 ## 2. 설치
@@ -85,12 +85,11 @@ python3 engine/doctor.py --fix                   # 바로 설치: 새 패키지 
 (cd docker && docker compose pull && docker compose up -d)   # Docker: 작업물은 볼륨에 그대로
 ```
 
-## 3-1. 오픈라우터 키(선택)
+## 3-1. API 키(선택)
 
-없어도 처음부터 끝까지 영상이 나옵니다(무료 · 로컬 경로). 키를 넣으면 **설정 → 보기 · 만들기 · 말하기** 에서 능력마다 모델을 고릅니다:
-레퍼런스 영상 이해 · 초안 비평(키가 있으면 기본으로 켜짐) · 유료 음성 · 받아쓰기 · 임베딩. 그림 · 영상 생성은 없습니다(화면은 완전 로컬). 목록과 가격은 오픈라우터에서 받아 옵니다.
-영상 한 편 상한(기본 $3) 안에서는 묻지 않고, 넘거나 값을 미리 알 수 없으면 에이전트가 금액을 보여 주고 묻습니다. 쓴 돈은 같은 화면에.
-에이전트 설정(모델 · 공급자)에 넣은 오픈라우터 키가 있으면 그 키를 같이 씁니다.
+없어도 처음부터 끝까지 영상이 나옵니다(무료 · 로컬 경로). 유료 음성(Typecast · ElevenLabs)은 **설정 → 미디어 → 음성**,
+무료 스톡 영상 키(Pexels · Pixabay)는 **설정 → 미디어 → 스톡 영상**, 유행 음악 찾기용 YouTube Data API 키는 **설정 → 미디어 → 음악**에 넣습니다.
+키는 `~/.shortsforge/api-keys.json`(0600)에 저장되고 에이전트는 읽지 못합니다.
 
 ## 4. YouTube 연결(선택)
 

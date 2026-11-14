@@ -15,6 +15,7 @@
                "vignette": 0.3, "mono": false}}],
    "preview_images": ["data/public/uploads/<id>/a.jpg"]   # (선택) 시안에 쓸 그림 — 없으면 올린 그림 · 재료 · 레퍼런스 장면에서 고른다
   }
+palette: {"bg": "#F4EEE2", "surface": "#FFFFFF", "text": "#1E1A17", "muted": "#7A726A", "accent": "#D63A3A"} — 고르면 화면 색(direction.color_*)이 된다
 grade 범위: temp -1(차갑게)~1(따뜻하게) · contrast 0.6~1.6 · saturation 0~2 · brightness -0.3~0.3 · lift 0~1(검정 띄우기 · 필름) ·
            grain 0~1 · bloom 0~1(번짐 · 몽환) · vignette 0~1 · mono
 고른 느낌은 실제 재료(영상 · 스톡 · 사진)에 같은 색 · 질감으로 입혀진다(materials.py). 그림 · 영상 생성은 2026-11-09 에 없앴다.
@@ -23,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -97,6 +99,9 @@ def check(d: dict) -> tuple[list, list]:
         if n in names:
             bad.append(f"이름 '{n}' 이 겹침")
         names.add(n)
+        pal = o.get("palette")                                  # 화면 색(배경 · 면 · 글자 · 흐린 글자 · 강조) — 고르면 콘티 direction.color_* 가 된다
+        if not isinstance(pal, dict) or not all(re.fullmatch(r"#[0-9A-Fa-f]{6}", str(pal.get(k, ""))) for k in ("bg", "surface", "text", "accent")):
+            bad.append(f"{n}: palette 에 bg · surface · text · accent(#RRGGBB) 가 있어야 함(muted 는 선택) — 이 색이 화면 색이 된다")
         g = o.get("grade")
         if not isinstance(g, dict):
             bad.append(f"{n}: grade 가 없음")
@@ -235,7 +240,10 @@ def main() -> int:
     sp = sp if sp.is_absolute() else ROOT / sp
     sb = json.loads(sp.read_text("utf-8"))
     dr = sb.setdefault("direction", {})
-    dr["feel"] = {k: o.get(k) for k in (*TEXT, "grade")}
+    dr["feel"] = {k: o.get(k) for k in (*TEXT, "grade", "palette") if o.get(k) is not None}
+    for k, v in (o.get("palette") or {}).items():               # 화면 색은 고른 느낌을 따른다(바탕 · 면 · 글자 · 흐린 글자 · 강조)
+        if k in ("bg", "surface", "text", "muted", "accent"):
+            dr[f"color_{k}"] = v
     sp.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", "utf-8")
     ok("feel", picked=o["name"])
     return 0

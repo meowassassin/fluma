@@ -11,6 +11,7 @@ render: 그 출력을 터미널 화면에 차례로 찍는 페이지를 만들�
   (webrec 와 같은 요소 폴더 형식 — 재료 {"type": "web", "src": …} 로 그대로 쓴다)
   --line-ms: 줄 사이 간격(실제로는 몇 ms 안에 쏟아지는 출력을 눈으로 따라갈 수 있게 늘린다 — meta 에 원래 실행 시간을 같이 남김)
   --mark: 강조할 줄(정규식) — 노란 배경. 맨 끝 줄은 늘 굵게
+  --typed: 명령을 이미 친 상태로 시작(결과 줄부터) — 3초 안팎 장면은 이걸로
 """
 from __future__ import annotations
 
@@ -122,6 +123,8 @@ def cmd_render(a) -> int:
     FPS = 30
     t_type0, type_ms = 0.5, min(0.038, 1.2 / max(1, len(cmd_text)))
     t_out0 = t_type0 + len(cmd_text) * type_ms + 0.45
+    if a.typed:      # 명령을 이미 친 상태에서 결과 줄부터(director: 장면은 행동 중간에서 시작 — 2026-11-11 QR: 2초 장면이 타이핑만 하다 끝났다)
+        t_type0, t_out0 = -1.0, 0.15
     dur = round(t_out0 + len(lines) * a.line_ms / 1000 + a.hold, 2)
     vw, vh = (int(x) for x in a.viewport.split("x"))
     dst = ROOT / "data" / "public" / "elements" / a.id / a.name
@@ -171,7 +174,7 @@ def main() -> int:
     c = sub.add_parser("capture"); c.add_argument("id"); c.add_argument("name"); c.add_argument("--cwd"); c.add_argument("--prompt"); c.add_argument("--drop", action="append"); c.set_defaults(cmd=[])
     i = sub.add_parser("import"); i.add_argument("id"); i.add_argument("name"); i.add_argument("--log", required=True); i.add_argument("--prompt"); i.add_argument("--drop", action="append")
     r = sub.add_parser("render"); r.add_argument("id"); r.add_argument("name")
-    r.add_argument("--line-ms", type=int, default=35); r.add_argument("--hold", type=float, default=2.5); r.add_argument("--mark", action="append")
+    r.add_argument("--line-ms", type=int, default=35); r.add_argument("--typed", action="store_true", help="명령을 이미 친 상태로 시작 — 결과 줄이 바로 나온다(짧은 장면)"); r.add_argument("--hold", type=float, default=2.5); r.add_argument("--mark", action="append")
     r.add_argument("--title"); r.add_argument("--font", type=float, default=14, help="글자 크기(px, 390 폭 기준 — 14 면 세로 화면에서 약 42px). 2026-11-09: 10.5 는 세로 화면에서 읽히지 않았다"); r.add_argument("--viewport", default="390x620", help="영상에서 위 제목 띠 아래 영역(1080×1718)과 같은 비율 — 세로로 길면 아래(새 줄이 찍히는 곳)가 잘린다"); r.add_argument("--scale", type=int, default=3)
     argv = sys.argv[1:]
     cmd = argv[argv.index("--") + 1:] if "--" in argv else []

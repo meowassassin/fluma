@@ -16,7 +16,7 @@
 
 화면 문법은 콘티 grammar(previz.py grammar 가 참고 쇼츠에서 잰 값)를 쓴다. 없으면 direction 의 기본값.
 
-엔진 내장 기능(JSX 안 app.run — 실패하면 예전 손 키프레임으로 대신한다). 기본값은 절제(실제 화면 > 효과):
+엔진 내장 기능(JSX 안 app.run — 실패하면 예전 손 키프레임으로 대신한다). 기본값은 옅게(재료가 주인공):
   배경        형식별 프리셋(BG_PRESET: 설명형 blueprintGrid · 감성 bokehDrift · 광고 pulseRings · 당일 softGradientDrift),
               색은 prop.set 으로 콘티 바탕 · 팔레트에. direction.bg_preset(id | false) 로 바꾸거나 끈다
   재료 등장   종류별 전환 프리셋(ENTER: 실제 화면 wipeInFromRight · 문서 wipeInFromTop), 0.6초로 줄임. 재료 enter · exit(id | false),
@@ -169,6 +169,12 @@ def grammar(sb: dict) -> dict:
     for k in ("subs", "title"):                     # 디자인 방향(시안 · 사용자)이 자막 · 제목 모양을 바꾼다
         if isinstance(d.get(k), dict):
             g[k] = {**g[k], **d[k]}
+    # 안전 영역(designer 스킬 2장 5): 위 8% 는 상태 표시줄 — 고정 제목 · 알약이 그 안에 그려졌다(2026-11-11 정지 화면 검토가 찾음)
+    for k in ("pill", "title"):
+        if isinstance(g.get(k), dict) and "y" in g[k]:
+            g[k]["y"] = max(float(g[k]["y"]), 0.08 + float(g[k].get("h", 0.03)) * 0.6 + 0.01)
+    if isinstance(g.get("subs"), dict) and "y" in g["subs"]:     # 아래 18% 는 쇼츠 제목 · 버튼
+        g["subs"]["y"] = min(float(g["subs"]["y"]), 0.80)
     return g
 
 
@@ -261,7 +267,7 @@ PLACE = {"full": (0.5, 0.5, 1.0, 1.0), "center": (0.5, 0.47, 0.82, 0.5), "left":
          "right": (0.7, 0.55, 0.5, 0.45), "top": (0.5, 0.3, 0.86, 0.32), "bottom": (0.5, 0.66, 0.86, 0.32)}
 
 
-KNOWN_TYPES = {"physics", "chart", "stat", "text", "illustration", "icon", "doc_quote", "image", "photo", "screen", "video", "web", "stock", "overlay"}
+KNOWN_TYPES = {"chart", "stat", "text", "illustration", "icon", "doc_quote", "image", "photo", "screen", "video", "web", "stock", "overlay"}
 VIDEO_EXT = (".mp4", ".mov", ".webm", ".mkv", ".m4v")
 SCREENS = ("screen", "video", "web", "stock")      # 실제 화면(캡처 · 녹화)
 
@@ -350,6 +356,7 @@ def is_full(rec: dict, layout: str = "card", W: int = 1080, H: int = 1920) -> bo
 ENTER = {"screen": "wipeInFromRight", "web": "wipeInFromRight", "video": "wipeInFromRight", "stock": "fadeIn", "doc_quote": "wipeInFromTop"}
 from . import design as _design  # noqa: E402
 DZ: dict = _design.resolve({})     # build_jsx 가 콘티마다 다시 정한다
+THEME: dict = {"panel": "[0.055, 0.063, 0.086]", "ink": "[1, 1, 1]", "dim": "[0, 0, 0]", "dim_op": 68, "accent": "[1, 0.84, 0.04]", "ink_stroke": "[0.02, 0.02, 0.05]", "label_stroke": "[0.02, 0.02, 0.05]"}   # 차트 패널 · 글자 색 — build_jsx 가 콘티 색(느낌 팔레트)으로 다시 정한다(2026-11-11: 크림 영상에 차트만 검은 판)
 PRESET_SEC = 0.6     # 전환 프리셋 길이 — 엔진 값(fadeIn 0.5초 · 닦기 1초)을 이 안으로 줄인다
 
 
@@ -362,7 +369,7 @@ def enter_preset(rec: dict, direction: dict | None = None) -> str | None:
 
 
 # 배경 프리셋(엔진 내장, 표현식으로 계속 움직임) — 형식별 기본값. direction.bg_preset(id 또는 false) > 이 표 > 예전 dressBg.
-# 기본은 절제: 격자 · 빛 · 고리 모두 옅게(실제 화면 > 효과)
+# 기본은 절제: 격자 · 빛 · 고리 모두 옅게(재료가 주인공)
 BG_PRESET = {"concept": "blueprintGrid", "mythbust": "blueprintGrid", "fix": "blueprintGrid", "compare": "blueprintGrid",
              "countdown": "blueprintGrid", "series": "blueprintGrid", "emotional": "bokehDrift", "ad": "pulseRings", "daily": "softGradientDrift"}
 
@@ -409,11 +416,9 @@ SUB_PRESET = {"emotional": "fadeUpCharacters"}     # 형식별 자막 기본값 
 
 
 def is_over(rec: dict, mats: list[dict]) -> bool:
-    """이 재료를 앞 재료 위에 겹치나 — 지정(layer: over) 또는 투명 배경 Blender 재료(재료가 둘 이상일 때)"""
+    """이 재료를 앞 재료 위에 겹치나 — 지정(layer: over 또는 keep: true)"""
     sp = rec.get("spec") or {}
-    if sp.get("layer") == "over":
-        return True
-    return len(mats) > 1 and rec.get("app") == "blender" and sp.get("transparent", True) is not False
+    return sp.get("layer") == "over" or bool(sp.get("keep")) or bool(rec.get("keep"))
 
 
 def scene_materials(sid: str, n: int, sc: dict | None = None) -> list[dict]:
@@ -484,90 +489,38 @@ def _hex01(c, default):
     return default
 
 
-def physics_proj(rec: dict, W: int, H: int, bottom: float = 0.74) -> dict | None:
-    """physics 재료의 계산 결과를 화면 평면으로 — view: {"width": 화면 폭에 든 세상 너비 m, "x": 원점 가로 비율, "ground": 바닥 세로 비율}"""
-    if rec.get("_proj") is not None:
-        return rec["_proj"]
-    f = ROOT / str(rec.get("file") or "")
-    if not rec.get("file") or not f.is_file():
-        return None
-    from . import physics as _phys
-    res = json.loads(f.read_text("utf-8"))
-    v = (rec.get("spec") or {}).get("view") or {}
-    pr = _phys.project2d(res, W, H, float(v.get("width", 3.6)), float(v.get("x", 0.5)), float(v.get("ground", bottom)))
-    pr["fps"], pr["shapes"] = res.get("fps", 30), res.get("shapes") or {}
-    rec["_proj"] = pr
-    return pr
-
-
-def physics_jsx(J, rec: dict, t0: float, t_out: float | None, sec: float, W: int, H: int, font: str, bottom: float) -> None:
-    """물리로 움직이는 2D 요소(engine/craft/physics.py) — 물체마다 레이어 하나, 프레임마다 위치 · 회전 키(계산이 이미 부드러워 손 키 · 이징 없음).
-    bind: {"이름 또는 패턴(coin*)": "그림 파일(svg · png)" | {"text": "글", "size": 120, "color": "#fff", "file": …, "w": px} | false(그리지 않음)}
-    bind 가 없거나 짝이 없는 물체는 MuJoCo 모양(상자 · 공 · 캡슐) 그대로 그 색으로 그린다. 계산 0초 = 재료가 나오는 시각(cue)"""
-    import fnmatch
-    pr = physics_proj(rec, W, H, bottom)
-    mid = rec["id"]
-    if not pr:
-        J(f"// physics {mid}: 계산 결과 없음")
-        return
-    sp = rec.get("spec") or {}
-    bind = sp.get("bind") or {}
-    fps, ppm = pr["fps"], pr["ppm"]
-    stride = 1 if sum(len(v) for v in pr["bodies"].values()) <= 24000 else 2
-    t_end = t_out if t_out is not None else sec
-    for name, rows in pr["bodies"].items():
-        b = next((bind[k] for k in bind if fnmatch.fnmatchcase(name, k)), None) if bind else None
-        if b is False or b == "hide":
-            continue
-        shp = pr["shapes"].get(name)
-        if b is None and not shp:
-            continue                                              # 모양 없는 body(관절 묶음 등)는 그리지 않는다
-        b = {"file": b} if isinstance(b, str) else (b or {})
-        kind, size = (shp or {}).get("type", "box"), (shp or {}).get("size", [0.1, 0.1, 0.1])
-        w_px = 2 * size[0] * ppm
-        h_px = 2 * (size[2] if kind in ("box", "ellipsoid") else size[0]) * ppm
-        if kind == "capsule":
-            h_px = 2 * (size[0] + size[1]) * ppm
-        ln = f"Phys {mid} {name}"
-        col = _hex01(b.get("color"), (shp or {}).get("rgba", [0.6, 0.6, 0.7])[:3])
-        if b.get("file"):
-            fp = ROOT / str(b["file"])
-            J(f"var pf = app.project.importFile(new ImportOptions(new File({js(str(fp))}))); var L = c.layers.add(pf); L.name = {js(ln)}; "
-              f"var pk = {float(b.get('w') or w_px):.1f} / L.source.width * 100; L.property('Transform').property('Scale').setValue([pk, pk]);")
-        elif b.get("text") is not None:
-            J(f"var L = txt(c, {js(ln)}, {js(str(b['text']))}, {js(b.get('font') or font)}, {int(b.get('size') or max(24, h_px * 0.8))}, {js(col if b.get('color') else [1, 1, 1])}, null, 0, [{W / 2}, {H / 2}]); "
-              f"L.property('Transform').property('Anchor Point').expression = 'var r = sourceRectAtTime(0, false); [r.left + r.width / 2, r.top + r.height / 2]';")
-        elif kind in ("sphere", "ellipsoid", "cylinder") and kind != "box":
-            J(f"var L = c.layers.addShape(); L.name = {js(ln)}; var pg = L.property('Contents').addProperty('ADBE Vector Group'); "
-              f"pg.property('Contents').addProperty('ADBE Vector Shape - Ellipse').property('Size').setValue([{w_px:.1f}, {w_px:.1f}]); "
-              f"pg.property('Contents').addProperty('ADBE Vector Graphic - Fill').property('Color').setValue({js(col)});")
-        else:
-            rnd = w_px / 2 if kind == "capsule" else float(b.get("round", min(w_px, h_px) * 0.12))
-            J(f"var L = card(c, {js(ln)}, {w_px:.1f}, {h_px:.1f}, {js(col)}, {rnd:.1f});")
-        flat = []
-        for i in range(0, len(rows), stride):
-            t = t0 + i / fps
-            if t > t_end + 1e-6:
-                break
-            flat += rows[i]
-        J(f"(function () {{ var d = {json.dumps(flat, separators=(',', ':'))}; var P = L.property('Transform').property('Position'), R = L.property('Transform').property('Rotation'); "
-          f"for (var i = 0; i < d.length / 3; i++) {{ var t = {t0:.3f} + i * {stride / fps:.5f}; P.setValueAtTime(t, [d[3 * i], d[3 * i + 1]]); R.setValueAtTime(t, d[3 * i + 2]); }} }})();")
-        J(f"var Lo = L.property('Transform').property('Opacity'); Lo.setValueAtTime(0, 0); Lo.setValueAtTime({max(0.0, t0 - 0.01):.3f}, 0); Lo.setValueAtTime({t0:.3f}, 100);"
-          + (f" Lo.setValueAtTime({max(t0, t_end - 0.18):.3f}, 100); Lo.setValueAtTime({t_end:.3f}, 0);" if t_out is not None and t_out < sec - 0.05 else ""))
-        if sp.get("camera", True) is not False:
-            J("try { L.parent = cam; } catch (e) {}")
+def spring_follow(targets: list, fps: int = 30, sec: float | None = None, stiffness: float = 60.0, damping: float = 0.75) -> list:
+    """카메라를 목표에 스프링으로 매단다 — targets: [(초, x, y, 확대), …](그 시각부터 그 목표). 결과: 프레임마다 [x, y, 확대].
+    stiffness: 단단함(클수록 빨리 붙음, 30~150) · damping: 1 이면 출렁임 없이 멈춤, 0.5 쯤이면 살짝 지나쳤다 돌아옴"""
+    import math
+    targets = sorted(targets, key=lambda t: t[0])
+    sec = sec if sec is not None else targets[-1][0] + 1.5
+    w0 = math.sqrt(stiffness)
+    sub = 8
+    dt = 1.0 / (fps * sub)
+    pos = list(targets[0][1:4])
+    vel = [0.0, 0.0, 0.0]
+    out = []
+    for f in range(int(round(sec * fps)) + 1):
+        t = f / fps
+        out.append([round(pos[0], 2), round(pos[1], 2), round(pos[2], 4)])
+        goal = [v for tt, *v in targets if tt <= t + 1e-9][-1] if any(tt <= t + 1e-9 for tt, *_ in targets) else targets[0][1:4]
+        for _ in range(sub):
+            for k in range(3):
+                a = w0 * w0 * (goal[k] - pos[k]) - 2 * damping * w0 * vel[k]
+                vel[k] += a * dt
+                pos[k] += vel[k] * dt
+    return out
 
 
 def camera_follow_jsx(J, sc: dict, mats: list[dict], slots: dict, words: list[dict], start: float, end: float, sec: float, fps: int, W: int, H: int, bottom: float) -> bool:
-    """물리 카메라: 장면 camera.follow 의 목표를 스프링으로 따라간다(늦게 붙고 부드럽게 멈춤). 목표 하나 =
-    {"t": 초 | "at": "낱말", "x": 0.5, "y": 0.5, "zoom": 1.2} 또는 {"t"|"at", "body": "ball", "material": "<physics 재료 id>", "zoom": 1.3}(그 물체를 계속 따라감).
+    """스프링 카메라: 장면 camera.follow 의 목표를 스프링으로 따라간다(늦게 붙고 부드럽게 멈춤). 목표 하나 =
+    {"t": 초 | "at": "낱말", "x": 0.5, "y": 0.5, "zoom": 1.2}.
     camera.stiffness(단단함, 기본 60) · camera.damping(1 = 출렁임 없음, 기본 0.7). 정해 두면 '확대' · 천천히 밀기 대신 이것만 쓴다"""
     cf = (sc.get("camera") or {}) if isinstance(sc.get("camera"), dict) else {}
     follow = cf.get("follow")
     if not follow:
         return False
-    from . import physics as _phys
-    by_id = {r["id"]: r for r in mats}
     pts = []        # (초, 화면 x px, y px, 확대) — 물체를 따라가는 구간은 프레임마다
     marks = []
     for e in follow:
@@ -577,23 +530,10 @@ def camera_follow_jsx(J, sc: dict, mats: list[dict], slots: dict, words: list[di
     for k, (t, e) in enumerate(marks):
         t_next = marks[k + 1][0] if k + 1 < len(marks) else sec
         z = float(e.get("zoom", 1.0))
-        if e.get("body"):
-            r = by_id.get(e.get("material")) or next((m for m in mats if m.get("type") == "physics"), None)
-            pr = physics_proj(r, W, H, bottom) if r else None
-            rows = (pr or {}).get("bodies", {}).get(e["body"])
-            if not rows:
-                continue
-            t0 = (slots.get(r["id"]) or (0.0, None))[0] or 0.0
-            tt = t
-            while tt < t_next - 1e-6:
-                i = min(len(rows) - 1, max(0, int(round((tt - t0) * pr["fps"]))))
-                pts.append((tt, rows[i][0], rows[i][1], z))
-                tt += 1.0 / fps
-        else:
-            pts.append((t, float(e.get("x", 0.5)) * W, float(e.get("y", 0.5)) * H, z))
+        pts.append((t, float(e.get("x", 0.5)) * W, float(e.get("y", 0.5)) * H, z))
     if not pts:
         return False
-    seq = _phys.spring_follow(pts, fps, sec, float(cf.get("stiffness", 60)), float(cf.get("damping", 0.7)))
+    seq = spring_follow(pts, fps, sec, float(cf.get("stiffness", 60)), float(cf.get("damping", 0.7)))
     cx, cy = W / 2, H / 2
     flat = []
     for x, y, z in seq:
@@ -612,9 +552,6 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
     t0 = 0.0 if t0 is None else t0
     mid = rec["id"]
     typ = rec["type"]
-    if typ == "physics":
-        physics_jsx(J, rec, t0, t_out, sec, W, H, font, bottom)
-        return
     if typ == "chart" and rec.get("as") != "image":
         # 막대 차트: 깨끗한 바탕(장면 배경 톤이 비치지 않게) · 옅은 눈금 · 기준선 · 항목 아이콘(Lucide) · 값 세기 · 배수 배지
         # 2026-11-04: 흐린 갈색 배경 위 막대만 있어 밋밋하다는 지적
@@ -632,21 +569,21 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
         best = vals.index(max(vals)) if vals else -1
         t_end = t_out if t_out is not None else sec
         tag = f" {mid}"
-        J(f"var cpn = c.layers.addSolid([0.055, 0.063, 0.086], {js('Panel' + tag)}, {W}, {H}, 1); var cpo = cpn.property('Transform').property('Opacity'); cpo.setValueAtTime({max(0.0, t0 - 0.12):.2f}, 0); cpo.setValueAtTime({t0 + 0.12:.2f}, 94);")
+        J(f"var cpn = c.layers.addSolid({THEME['panel']}, {js('Panel' + tag)}, {W}, {H}, 1); var cpo = cpn.property('Transform').property('Opacity'); cpo.setValueAtTime({max(0.0, t0 - 0.12):.2f}, 0); cpo.setValueAtTime({t0 + 0.12:.2f}, 94);")
         for gi in range(1, 5):                                       # 옅은 눈금
             gy = base - hmax * gi / 4
-            J(f"var gl = card(c, {js(f'Grid{tag} {gi}')}, {x1 - x0 + 60:.0f}, 2, [1, 1, 1], 0); gl.property('Transform').property('Position').setValue([{W / 2}, {gy:.0f}]); gl.property('Transform').property('Opacity').setValueAtTime({t0:.2f}, 0); gl.property('Transform').property('Opacity').setValueAtTime({t0 + 0.3:.2f}, 7);")
-        J(f"var bl = card(c, {js('Baseline' + tag)}, {x1 - x0 + 60:.0f}, 5, [1, 1, 1], 2); bl.property('Transform').property('Position').setValue([{W / 2}, {base + 2:.0f}]); var blo = bl.property('Transform').property('Opacity'); blo.setValueAtTime({t0:.2f}, 0); blo.setValueAtTime({t0 + 0.2:.2f}, 40);")
+            J(f"var gl = card(c, {js(f'Grid{tag} {gi}')}, {x1 - x0 + 60:.0f}, 2, {THEME['ink']}, 0); gl.property('Transform').property('Position').setValue([{W / 2}, {gy:.0f}]); gl.property('Transform').property('Opacity').setValueAtTime({t0:.2f}, 0); gl.property('Transform').property('Opacity').setValueAtTime({t0 + 0.3:.2f}, 7);")
+        J(f"var bl = card(c, {js('Baseline' + tag)}, {x1 - x0 + 60:.0f}, 5, {THEME['ink']}, 2); bl.property('Transform').property('Position').setValue([{W / 2}, {base + 2:.0f}]); var blo = bl.property('Transform').property('Opacity'); blo.setValueAtTime({t0:.2f}, 0); blo.setValueAtTime({t0 + 0.2:.2f}, 40);")
         if data.get("title"):
-            J(f"var ct = txt(c, {js('Chart title' + tag)}, {js(data['title'])}, {js(font)}, 64, [1, 1, 1], null, 0, [{W / 2}, {(top + 0.035) * H:.0f}]); popIn(ct, {max(0.0, t0 - 0.05):.2f}, 0.18);")
+            J(f"var ct = txt(c, {js('Chart title' + tag)}, {js(data['title'])}, {js(font)}, 64, {THEME['ink']}, null, 0, [{W / 2}, {(top + 0.035) * H:.0f}]); popIn(ct, {max(0.0, t0 - 0.05):.2f}, 0.18);")
         for i, (v, lab) in enumerate(zip(vals, labs)):
             cx = x0 + (x1 - x0) * (i + 0.5) / n
             hh = max(14.0, hmax * v / vmax)
-            col = colors[i % len(colors)] if i == best else [0.42, 0.46, 0.56]      # 가장 큰 값만 강조색, 나머지는 차분하게
+            col = json.loads(THEME['accent']) if i == best else [0.42, 0.46, 0.56]      # 가장 큰 값만 콘티 강조색(느낌 팔레트) — 순서대로 고르다 청록이 됐다(2026-11-11), 나머지는 차분하게
             ti = t0 + 0.15 + i * 0.35
             J(f"var b = card(c, {js(f'Bar{tag} {i}')}, {bw:.0f}, {hh:.0f}, {js(col)}, 14); b.property('Transform').property('Anchor Point').setValue([0, {hh / 2:.0f}]); b.property('Transform').property('Position').setValue([{cx:.0f}, {base:.0f}]);")
             J(f"var bs = b.property('Transform').property('Scale'); bs.setValueAtTime({ti:.2f}, [100, 0]); bs.setValueAtTime({ti + 0.6:.2f}, [100, 100]); ease(bs, 85);")
-            J(f"var vt = txt(c, {js(f'Value{tag} {i}')}, '0', {js(font)}, {96 if i == best else 70}, {js([1, 0.84, 0.04] if i == best else [0.92, 0.93, 0.96])}, null, 0, [{cx:.0f}, {base - hh - 34:.0f}]);")
+            J(f"var vt = txt(c, {js(f'Value{tag} {i}')}, '0', {js(font)}, {96 if i == best else 70}, {js(json.loads(THEME['accent']) if i == best else json.loads(THEME['ink']))}, null, 0, [{cx:.0f}, {base - hh - 34:.0f}]);")
             J(f"vt.property('Source Text').expression = 'var v = linear(time, {ti:.2f}, {ti + 0.6:.2f}, 0, {v}); (Math.round(v * 10) / 10) + {js(unit)}';")
             J(f"vt.property('Transform').property('Opacity').setValueAtTime({max(0.0, ti - 0.01):.2f}, 0); vt.property('Transform').property('Opacity').setValueAtTime({ti + 0.1:.2f}, 100);")
             ly = base + 62
@@ -658,7 +595,7 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
                     J(f"var io_ = {L}.property('Transform').property('Opacity'); var iv_ = io_.value; io_.setValueAtTime({max(0.0, ti - 0.12):.2f}, 0); io_.setValueAtTime({ti + 0.08:.2f}, iv_);")
                 J(f"var ics = icl.property('Transform').property('Scale'); ics.setValueAtTime({max(0.0, ti - 0.12):.2f}, [ick * 0.6, ick * 0.6]); ics.setValueAtTime({ti + 0.1:.2f}, [ick * 1.1, ick * 1.1]); ics.setValueAtTime({ti + 0.2:.2f}, [ick, ick]);")
                 ly = base + 200
-            J(f"var lb = txt(c, {js(f'Label{tag} {i}')}, {js(str(lab))}, {js(font)}, 48, [0.92, 0.92, 0.95], null, 0, [{cx:.0f}, {ly:.0f}]); var lbo = lb.property('Transform').property('Opacity'); lbo.setValueAtTime({max(0.0, ti - 0.01):.2f}, 0); lbo.setValueAtTime({ti + 0.2:.2f}, 100);")
+            J(f"var lb = txt(c, {js(f'Label{tag} {i}')}, {js(str(lab))}, {js(font)}, 48, {THEME['ink']}, null, 0, [{cx:.0f}, {ly:.0f}]); var lbo = lb.property('Transform').property('Opacity'); lbo.setValueAtTime({max(0.0, ti - 0.01):.2f}, 0); lbo.setValueAtTime({ti + 0.2:.2f}, 100);")
         # 배수 배지: 둘 이상 차이가 크면(5배 이상) 가장 큰 막대 옆에 '×100' — 숫자 차이를 한눈에
         pos = [v for v in vals if v > 0]
         if len(pos) >= 2 and vmax / min(pos) >= 5 and best >= 0:
@@ -684,16 +621,17 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
         mnum = re.match(r"\s*([+\-]?)([\d.,]+)(.*)$", val)
         cy = (top + bottom) / 2 * H
         t1 = t_out if t_out is not None else sec
-        J(f"var sd0 = c.layers.addSolid([0, 0, 0], {js('Dim ' + mid)}, {W}, {H}, 1); var sdo = sd0.property('Transform').property('Opacity');")
-        J(f"sdo.setValueAtTime(0, 0); sdo.setValueAtTime({max(0.0, t0 - 0.01):.2f}, 0); sdo.setValueAtTime({t0 + 0.1:.2f}, 68); sdo.setValueAtTime({max(t0 + 0.15, t1 - 0.15):.2f}, 68); sdo.setValueAtTime({t1:.2f}, 0);")
+        # 덮개는 화면 전체 고정 — 이름에 재료 id 를 띄어 쓰면 adjust(위치 옮기기)가 덮개까지 옮겨 화면 위쪽을 덮었다(2026-11-11) · 색은 영상 바탕색(밝은 느낌이면 종이로 흐리게)
+        J(f"var sd0 = c.layers.addSolid({THEME['dim']}, {js('Dim-' + mid)}, {W}, {H}, 1); var sdo = sd0.property('Transform').property('Opacity');")
+        J(f"sdo.setValueAtTime(0, 0); sdo.setValueAtTime({max(0.0, t0 - 0.01):.2f}, 0); sdo.setValueAtTime({t0 + 0.1:.2f}, {THEME['dim_op']}); sdo.setValueAtTime({max(t0 + 0.15, t1 - 0.15):.2f}, {THEME['dim_op']}); sdo.setValueAtTime({t1:.2f}, 0);")
         size = min(300, int(W * 1.0 / max(2.5, len(val))))
-        J(f"var sv0 = txt(c, {js('Value ' + mid)}, {js(val)}, {js(font)}, {size}, [1, 0.84, 0.04], [0.02, 0.02, 0.05], {max(12, size // 9)}, [{W / 2}, {cy + size * 0.2:.0f}]);")
+        J(f"var sv0 = txt(c, {js('Value ' + mid)}, {js(val)}, {js(font)}, {size}, {THEME['accent']}, {THEME['ink_stroke']}, {max(12, size // 9)}, [{W / 2}, {cy + size * 0.2:.0f}]);")
         # 등장: 크게 → 제자리(쿵) — 모든 재료가 같은 '살짝 커지기'로 나오지 않게
         J(f"var svs = sv0.property('Transform').property('Scale'); svs.setValueAtTime({max(0.0, t0 - 0.01):.2f}, [150, 150]); svs.setValueAtTime({t0 + 0.12:.2f}, [96, 96]); svs.setValueAtTime({t0 + 0.2:.2f}, [100, 100]);")
         if sp.get("label"):
             lab = str(sp["label"])
             lsz = max(44, min(72, int(W * 0.86 / max(1, len(lab)) * 1.1)))
-            J(f"var sl0 = txt(c, {js('Label ' + mid)}, {js(lab)}, {js(font)}, {lsz}, [1, 1, 1], [0.02, 0.02, 0.05], {max(6, lsz // 7)}, [{W / 2}, {cy - size * 0.55:.0f}]);")
+            J(f"var sl0 = txt(c, {js('Label ' + mid)}, {js(lab)}, {js(font)}, {lsz}, {THEME['ink']}, {THEME['label_stroke']}, {0 if THEME['label_stroke'] == 'null' else max(6, lsz // 7)}, [{W / 2}, {cy - size * 0.55:.0f}]);")
             J(f"var sls = sl0.property('Transform').property('Position'); sls.setValueAtTime({t0:.2f}, [{W / 2 - 60}, {cy - size * 0.55:.0f}]); sls.setValueAtTime({t0 + 0.2:.2f}, [{W / 2}, {cy - size * 0.55:.0f}]); ease(sls, 80);")
         for L in ("sv0",) + (("sl0",) if sp.get("label") else ()):
             J(f"var lo_ = {L}.property('Transform').property('Opacity'); lo_.setValueAtTime(0, 0); lo_.setValueAtTime({max(0.0, t0 - 0.01):.2f}, 0); lo_.setValueAtTime({t0 + 0.06:.2f}, 100); lo_.setValueAtTime({max(t0 + 0.1, t1 - 0.12):.2f}, 100); lo_.setValueAtTime({t1:.2f}, 0);")
@@ -709,7 +647,7 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
             except ValueError:
                 pass
         return
-    # 관절 인형은 콘티에 동작(action)을 적은 캐릭터만 — 사물 · 장면 그림(메뉴판 · 폰 · 문서)은 통째로 한 장(글자까지 그대로)
+    # 관절 인형은 콘티에 동작(action)을 적은 캐릭터만 — 사물 · 자료(메뉴판 · 폰 · 문서)는 통째로 한 장(글자까지 그대로)
     if typ == "illustration" and rec.get("rig") and sp.get("action") and sp.get("action") != "still":
         # 부품 레이어 인형: 남은 세로 구간 안에 발을 붙이고 동작(idle · walk · wave · bounce)
         fig = {"name": mid, "at": sp.get("at", sp.get("place", "center")), "to": sp.get("to"), "action": sp.get("action", "idle"),
@@ -1200,6 +1138,17 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
               font: str = "Pretendard-Black") -> str:
     """콘티 → JSX(EffectCraft 스크립트). 실행하면 out_project 에 .ecproj 가 저장된다"""
     sid = sb["id"]
+    _design.apply_art(sb)             # 고른 느낌 · 디자인 팔레트를 색 칸에(정의만 있고 아무도 안 불렀다 — 2026-11-11 점검)
+    global THEME
+    _dd = sb.get("direction") or {}
+    _pan = rgb(_dd.get("color_surface") or _dd.get("color_bg") or "#0e1016")
+    _light = sum(_pan) / 3 > 0.5
+    _v = lambda t: f"[{t[0]:.3f}, {t[1]:.3f}, {t[2]:.3f}]"
+    _bgc = rgb(_dd.get("color_bg") or "#0e1016"); _bg_light = sum(_bgc) / 3 > 0.5
+    THEME = {"panel": _v(_pan), "ink": _v(rgb(_dd.get("color_text") or ("#1E1A17" if _light else "#FFFFFF"))),
+             "dim": _v(_bgc) if _bg_light else "[0, 0, 0]", "dim_op": 82 if _bg_light else 68,      # 밝은 느낌: 종이로 흐리게(검은 판이 무거웠다)
+             "accent": _v(rgb(_dd.get("color_accent") or "#FFD60A")), "ink_stroke": "[1, 1, 1]" if _bg_light else "[0.02, 0.02, 0.05]",
+             "label_stroke": "null" if _bg_light else "[0.02, 0.02, 0.05]"}
     g = grammar(sb)
     d = sb.get("direction") or {}
     global DZ
@@ -1256,8 +1205,26 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 break
         J("var zs = cam.property('Transform').property('Scale');")
         cam_follow = isinstance(sc.get("camera"), dict) and bool(sc["camera"].get("follow"))
+        fn = str(sc.get("shot_fn") or "")                 # 감독 샷 기능(director 스킬 2장) → 카메라. 2026-11-11 점검: 적어도 아무도 안 읽었다
         if cam_follow:
-            pass                                     # 물리 카메라 — 재료를 그린 뒤 camera_follow_jsx 가 키를 넣는다
+            pass                                     # 스프링 카메라 — 재료를 그린 뒤 camera_follow_jsx 가 키를 넣는다
+        elif zoom_at is None and (sc.get("visual") or {}).get("motion") in ("kenburns_in", "kenburns_out", "pan_left", "pan_right"):
+            # 스틸 움직임(format-emotional: 장면마다 visual.motion 을 다르게) — 2026-11-11 점검: 스키마에만 있고 Craft 경로가 안 읽었다
+            vm = sc["visual"]["motion"]
+            if vm == "kenburns_in":
+                J(f"zs.setValueAtTime(0, [100, 100]); zs.setValueAtTime({sec}, [109, 109]); ease(zs, 30);")
+            elif vm == "kenburns_out":
+                J(f"zs.setValueAtTime(0, [109, 109]); zs.setValueAtTime({sec}, [100, 100]); ease(zs, 30);")
+            else:
+                dxp = -1 if vm == "pan_left" else 1
+                J(f"zs.setValue([106, 106]); var cps = cam.property('Transform').property('Position'); cps.setValueAtTime(0, [{W / 2 - dxp * W * 0.025:.0f}, {H / 2}]); cps.setValueAtTime({sec}, [{W / 2 + dxp * W * 0.025:.0f}, {H / 2}]); ease(cps, 30);")
+        elif fn in ("여운", "끝", "자리 잡기"):
+            pass                                     # 고정 — 무엇이 바뀌지 않으면 카메라도 움직이지 않는다(director 4장)
+        elif zoom_at is None and fn in ("충격", "변화"):
+            zp = round(sec * 0.35, 3)                 # 꺾임 순간 빠르게 당겨 들어가 멈춤
+            J(f"zs.setValueAtTime(0, [100, 100]); zs.setValueAtTime({zp}, [100, 100]); zs.setValueAtTime({min(sec, zp + 0.18)}, [114, 114]); zs.setValueAtTime({sec}, [116, 116]); ease(zs, 85);")
+        elif zoom_at is None and fn == "디테일":
+            J(f"zs.setValueAtTime(0, [100, 100]); zs.setValueAtTime({sec}, [110, 110]); ease(zs, 40);")
         elif zoom_at is not None:
             J(f"zs.setValueAtTime(0, [100, 100]); zs.setValueAtTime({zoom_at}, [104, 104]); zs.setValueAtTime({min(sec, zoom_at + 0.6)}, [122, 122]); zs.setValueAtTime({sec}, [126, 126]); ease(zs, 75);")
         elif DZ["cam_push"] > 1.0:   # 장면 내내 천천히 밀기 — 방향이 정했을 때만
@@ -1284,7 +1251,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             nl = len(quoted(te0.get("what", ""))) if te0 else 0
             top = (g["title"]["y"] + nl * g["title"]["h"] * 1.6 * 1.25 + 0.02) if nl else 0.2
             # 한 장면에 보이는 재료가 여럿이면 겹치지 않게 차례로: 각자 cue 낱말 시각부터 다음 재료가 나올 때까지(cue 가 없으면 장면을 나눠)
-            # 겹치기: layer "over" 는 앞 재료 위에 얹는다. 투명 배경 Blender 재료는 다른 재료가 있으면 저절로 겹친다
+            # 겹치기: layer "over" 는 앞 재료 위에 얹는다.
             over = [r for r in mats if is_over(r, mats)]
             seqs = [r for r in mats if r.get("type") not in ("text", "stat") and r not in over]   # 차트도 차례에 넣는다(안 넣으면 그림과 겹침) · 숫자(stat)는 덧씌우기
             for r in over:
@@ -1391,6 +1358,14 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         # 화면 글자(caption) — 나레이션이 없으면 자막이 말소리에서 나오지 않는다. 그래도 콘티에 적은 화면 글자는 보여야 한다
         # 2026-11-09: 음악 없이 효과음만 쓰는 브랜드 필름에서 '아이디어를,' · 슬로건이 전부 빠졌다(자막은 말에서만 만들었음)
         cap = str(sc.get("caption") or "").strip()
+        if cap and (words or lines) and d.get("screen_text", True):
+            # 훅 세 칸(writer 스킬)의 '화면 글자' — 말 자막과 따로, 위쪽 띠에 강조색으로. 2026-11-11 점검: 나레이션이 있으면 caption 을 아예 안 그려 화면 글자 칸이 사라졌다
+            st_size = int(H * (0.05 if len(cap) <= 8 else 0.042 if len(cap) <= 14 else 0.034))
+            st_y = float(d.get("screen_text_y", 0.17)) * H
+            st_col = rgb(d.get("color_accent") or "#ff5a36")
+            J(f"var stx = txt(c, 'Screen text', {js(cap)}, {js(title_font)}, {st_size}, {js(st_col)}, null, 0, [{W / 2}, {st_y:.0f}]);"
+              f" var sto = stx.property('Transform').property('Opacity'); sto.setValueAtTime(0, 0); sto.setValueAtTime(0.15, 0); sto.setValueAtTime(0.45, 100);"
+              f" sto.setValueAtTime({max(0.5, sec - 0.25):.3f}, 100); sto.setValueAtTime({sec:.3f}, 0); ease(sto, 60);")
         if cap and not words and not lines:
             gt = g["title"]
             ed = bool(gt.get("editorial"))
@@ -1422,7 +1397,9 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         # 숫자 펀치: 나레이션이 숫자를 말하는 순간 화면을 살짝 어둡게 하고 큰 숫자를 0.9초 — 장면마다 한 번(제목 상자에 같은 숫자가 있으면 건너뜀)
         title_txt = " ".join(quoted((element(sc, "훅 제목", "제목") or {}).get("what", "")))
         has_num_mat = any(m.get("type") in ("stat", "chart") for m in sc.get("materials") or [])
-        if d.get("number_punch", True) and not has_num_mat:     # 숫자 재료가 있는 장면은 그 재료가 숫자를 보여 준다
+        _ban = " ".join(map(str, ((sb.get("intent") or {}).get("must_not") or []) + list(sb.get("constraints") or [])))
+        _no_fx = "number_punch" in ((sb.get("intent") or {}).get("ban") or []) or bool(re.search(r"효과|배지|큰 숫자|숫자 펀치|덧씌우", _ban))      # 의도 · 제약이 효과를 막으면 엔진도 얹지 않는다(2026-11-11: 금지라고 적었는데 큰 숫자가 붙었다)
+        if d.get("number_punch", not _no_fx) and not has_num_mat:     # 숫자 재료가 있는 장면은 그 재료가 숫자를 보여 준다
             cands = []
             shown_nums = set()
             for m in sc.get("materials") or []:
@@ -1474,9 +1451,9 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 J(adjust_jsx(str(m["id"]), m["adjust"], W, H))
         J(f"var sl = main.layers.add(c); sl.startTime = {start:.3f};")
         # 끝 장면이 영상 없이 그림 · 로고 · 글자만이면 멈춘 화면이 된다(2026-11-09: 로고 4초 정지) → 천천히 다가오며 나타남
-        if oi == len(allsc) - 1 and not any((m or {}).get("type") in ("video", "web", "screen", "stock") for m in sc.get("materials") or [] if isinstance(m, dict)):
-            J(f"var eS = sl.property('Transform').property('Scale'); eS.setValueAtTime({start:.3f}, [93, 93]); eS.setValueAtTime({start + sec:.3f}, [100, 100]); ease(eS, 50);"
-              f" var eO = sl.property('Transform').property('Opacity'); eO.setValueAtTime({start:.3f}, 0); eO.setValueAtTime({start + 0.6:.3f}, 100);")
+        # 2026-11-11: 93→100 으로 키우니 화면이 줄어 네 가장자리에 검은 테두리가 생겼고, 감독이 '끝'(고정)으로 정한 것도 무시했다 → 고정 기능이면 그대로, 아니면 100→106 으로 다가감
+        if oi == len(allsc) - 1 and str(sc.get("shot_fn") or "") not in ("끝", "여운", "자리 잡기") and not any((m or {}).get("type") in ("video", "web", "screen", "stock") for m in sc.get("materials") or [] if isinstance(m, dict)):
+            J(f"var eS = sl.property('Transform').property('Scale'); eS.setValueAtTime({start:.3f}, [100, 100]); eS.setValueAtTime({start + sec:.3f}, [106, 106]); ease(eS, 50);")
         # 장면 사이 '들어가기' 전환(direction.transition: zoom · 장면 transition: zoom) — 앞 장면은 끝 0.35초에 화면 속으로 빨려 들고, 다음 장면은 크게 시작해 자리를 잡는다
         # 2026-11-09: 기획은 '화면 속으로 끊김 없이' 였는데 조립은 컷만 있어 클립이 툭툭 붙었다
         tr = str(sc.get("transition") or d.get("transition") or "")

@@ -89,7 +89,7 @@
     },
     "duration_sec": {
       "type": "integer",
-      "minimum": 15,
+      "minimum": 5,
       "maximum": 60
     },
     "title": {
@@ -112,7 +112,7 @@
     "scenes": {
       "type": "array",
       "minItems": 3,
-      "maxItems": 8,
+      "maxItems": 14,
       "items": {
         "$ref": "#/$defs/scene"
       }
@@ -371,7 +371,7 @@
         },
         "anchors": {
           "type": "object",
-          "description": "감독의 다섯 기둥(director 스킬) — 감정 · 모티프 · 기준 물건 · 꺾임 · 끝 그림",
+          "description": "감독의 다섯 기둥(director 스킬) — emotion(감정) · motif(모티프) · object(기준 물건) · break(꺾임) · final_image(끝 그림). 키 이름 그대로",
           "properties": {
             "emotion": {
               "type": "string"
@@ -424,7 +424,7 @@
         "style": {
           "type": "string",
           "maxLength": 400,
-          "description": "말투 지시(글). 오픈라우터 음성 중 연기 지시(instructions)를 받는 모델에 넘긴다 — 예: 친구한테 소식 전하듯 빠르고 가볍게"
+          "description": "말투 지시(글). 연기 지시(instructions)를 받는 음성 엔진에 넘긴다 — 예: 친구한테 소식 전하듯 빠르고 가볍게"
         },
         "continuous": {
           "type": "boolean",
@@ -511,6 +511,24 @@
         "confirmed": {
           "type": "boolean",
           "description": "사용자가 의도 카드를 확인했는지(gate.py intent 로만 켠다)"
+        },
+        "ban": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "number_punch",
+              "sfx",
+              "music",
+              "bg_motion"
+            ]
+          },
+          "uniqueItems": true,
+          "description": "엔진이 넣지 말 것(must_not 을 엔진이 지키는 칸): number_punch = 나레이션 숫자를 크게 덧씌우기 · sfx = 효과음 · music = 배경 음악 · bg_motion = 움직이는 배경"
+        },
+        "density_ok": {
+          "type": "boolean",
+          "description": "편집 밀도 경고를 알고도 그대로(render.py 가 읽음)"
         }
       }
     },
@@ -691,7 +709,10 @@
           "description": "이 곡을 쓴 쇼츠 id(조회수 높은 순)"
         },
         "start_hint": {
-          "type": "string",
+          "type": [
+            "string",
+            "number"
+          ],
           "description": "곡의 어디부터 쓸지(예: '드롭 직전부터', '처음부터')"
         },
         "why": {
@@ -702,6 +723,29 @@
     "script": {
       "type": "string",
       "description": "대본 한 덩어리 — 장면이 바뀌는 곳에만 ' / '. 엔진이 말하는 장면 narration 에 차례로 나눠 넣는다(engine/story/script.py). 문장이 장면을 넘어가도 된다"
+    },
+    "concepts_order": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "concept": {
+            "type": "string"
+          },
+          "scene": {
+            "type": "integer"
+          },
+          "plain": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "concept",
+          "scene",
+          "plain"
+        ]
+      },
+      "description": "개념 사다리(writer 0.3) — 시청자가 모르는 개념을 나오는 순서대로: 개념 · 처음 소개하는 장면 · 쉬운 말 한 줄"
     }
   },
   "$defs": {
@@ -969,11 +1013,10 @@
         "beats": {
           "type": "array",
           "maxItems": 12,
-          "description": "장면 안에서 화면이 바뀌는 순간(사람 편집처럼 한 문장 안에서도 재료를 바꾼다). 재료 전환이 10초에 약 2.5번 이상이어야 한다(engine/spec/presets/density.json, lint L29). at = 나레이션 속 단어",
+          "description": "장면 안에서 화면이 바뀌는 순간(사람 편집처럼 한 문장 안에서도 재료를 바꾼다). 재료 전환이 10초에 약 2.5번 이상이어야 한다(engine/spec/presets/density.json, lint L29). at = 나레이션 속 단어 · t = 장면 안 초(at 대신)",
           "items": {
             "type": "object",
             "required": [
-              "at",
               "do"
             ],
             "additionalProperties": false,
@@ -1033,8 +1076,25 @@
                   "cover",
                   "contain"
                 ]
+              },
+              "t": {
+                "type": "number",
+                "minimum": 0,
+                "description": "장면 시작부터 몇 초(나레이션이 없거나 낱말 대신 시각으로 짚을 때 — director 스킬 '확대' 박자). at 과 t 중 하나"
               }
-            }
+            },
+            "anyOf": [
+              {
+                "required": [
+                  "at"
+                ]
+              },
+              {
+                "required": [
+                  "t"
+                ]
+              }
+            ]
           }
         },
         "view": {
@@ -1655,7 +1715,7 @@
               },
               "args": {
                 "type": "object",
-                "description": "스크립트 재료(Blender · EffectCraft)가 읽는 바꿀 값 — 숫자를 코드에 박지 않고 여기에(knob.py 로 조정)"
+                "description": "스크립트 재료(EffectCraft)가 읽는 바꿀 값 — 숫자를 코드에 박지 않고 여기에(knob.py 로 조정)"
               }
             }
           }
@@ -1712,6 +1772,15 @@
         "say": {
           "type": "boolean",
           "description": "false = 말 없는 장면(대본 조각을 받지 않음)"
+        },
+        "long_take": {
+          "type": "string",
+          "minLength": 4,
+          "description": "일부러 길게 잡는 원테이크의 이유 — 있으면 L50(화면 변화 간격)이 권고(T51)로 바뀐다"
+        },
+        "camera": {
+          "type": "object",
+          "description": "물리 카메라 — follow: [{t|at, x, y, zoom} | {t|at, body, material, zoom}], stiffness, damping (engine/craft/motion.py camera_follow_jsx)"
         }
       }
     },

@@ -10,6 +10,8 @@ allowed-tools: Read Write Edit Grep Glob AskUserQuestion
 
 # humanizer: 한국어 AI 작문 패턴 감지 및 교정기
 
+> **파이프라인 적용(2026-11-11)**: writer 단계(`skill_pass.py writer`)가 이 문서를 함께 읽는다.
+
 ## 소개
 
 당신은 AI가 생성한 텍스트의 특징적인 패턴을 감지하고 교정하는 한국어 글쓰기 분석 전문가입니다. 당신의 전문성은 과학적 언어학 연구, 특히 KatFishNet 논문(ArXiv 2503.00032v4)에 기반하고 있으며, 이 논문은 인간이 작성한 텍스트와 LLM이 생성한 한국어 텍스트 사이의 측정 가능한 차이를 식별했습니다.

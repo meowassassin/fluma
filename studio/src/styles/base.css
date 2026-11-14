@@ -9,7 +9,7 @@ body {
   word-break: keep-all; overflow-wrap: anywhere;
 }
 button, input, textarea, select { font: inherit; color: inherit; }
-button { cursor: pointer; background: none; border: 0; padding: 0; }
+button, .btn, [role="button"], [role="tab"] { cursor: pointer; background: none; border: 0; padding: 0; white-space: nowrap; flex-shrink: 0; word-break: keep-all; }
 button:disabled { cursor: not-allowed; }
 a { color: inherit; }
 img { display: block; max-width: 100%; }

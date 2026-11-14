@@ -17,34 +17,26 @@ async function call<T>(method: string, url: string, body?: unknown, signal?: Abo
 }
 
 export interface AgentInfo { id: string; title: string; vendor: string; runs: boolean; tagline: string; installed: boolean | null; version: string | null; auth: string | null; path: string | null }
-export interface Provider { id: string; title: string; protocol: "anthropic" | "responses"; baseUrl: string; models: string[]; keyHint: string; console?: string; note?: string; local?: boolean; custom?: boolean; hasKey: boolean; keyMasked: string }
-export interface AgentsResp { agents: AgentInfo[]; models: { claude: { id: string; label: string }[]; codex: { id: string; label: string; efforts?: string[] }[] }; providers: Provider[]; active: string | null; problem: string | null }
+export interface AgentsResp { agents: AgentInfo[]; models: { claude: { id: string; label: string }[]; codex: { id: string; label: string; efforts?: string[] }[]; antigravity?: { id: string; label: string }[] }; active: string | null; problem: string | null }
 export interface Voice {
   name: string; title: string; vendor: string; kind: "cloud" | "local" | "api"; runtime: string; status: string;
   license: { code: string; model: string; commercial: string; note: string; url: string };
   korean: boolean; words: boolean; speed: string; quality: string; size: string; voices?: { id: string; title: string; gender: string }[];
   install?: string; summary: string; available: boolean | null; icon: string | null;
 }
-/** 생성 · 음성 API 키(공급자 하나 = 키 하나). 키가 있으면 그 공급자의 모델 · 목소리를 에이전트가 알아서 고른다 */
+/** 생성 · 음성 API 키(공급자 하나 = 키 하나) */
 export interface GenKey { id: string; ready?: boolean; env: string; title: string; icon?: string | null; what: string; caps: string[]; keyHint: string; console: string; docs?: string; paid?: boolean; testable: boolean; hasKey: boolean; keyMasked: string; source: "env" | "saved" | "agent" | "env.local" | null }
-/** 능력(보기 · 만들기 · 말하기)마다 고른 모델 — engine/providers/catalog.py */
-export interface CapRow { cap: string; title: string; local: string; chosen: string | null; set?: string | null; default_on: boolean; key: boolean }
-export interface CapsResp { caps: CapRow[]; key: boolean; cap_usd: number; month: number }
-export interface ModelRow { id: string; name: string; free: boolean; price_label: string; supports: string[]; ok: boolean }
 export interface Mem { id: string; type: string; scope: string; title: string; body: string; status: string; created?: string; provenance?: { menu?: string }; stats?: { recallCount?: number } }
 
 export const sapi = {
   agents: (s?: AbortSignal) => call<AgentsResp>("GET", "/api/agents", undefined, s),
-  saveKey: (id: string, key: string) => call<{ ok: boolean; keyMasked: string }>("PUT", `/api/agent-keys/${id}`, { key }),
-  testAgent: (id: string, baseUrl: string, protocol: string) => call<{ ok: boolean; status?: number; models?: number | null; error?: string | null }>("POST", `/api/agent-test/${id}`, { baseUrl, protocol }),
+  gflowStatus: (s?: AbortSignal) => call<{ available: boolean; msg?: string }>("GET", "/api/gflow/status", undefined, s),
+  gflowLogin: () => call<{ ok: boolean; error?: string | null }>("POST", "/api/gflow/login"),
   voices: (s?: AbortSignal) => call<Voice[]>("GET", "/api/voices", undefined, s),
   previewVoice: (name: string, voice: string) => call<{ ok: boolean; url: string }>("POST", `/api/voices/${name}/preview`, { voice }),
   genKeys: (s?: AbortSignal) => call<GenKey[]>("GET", "/api/gen-keys", undefined, s),
   testGenKey: (id: string) => call<{ ok: boolean | null; status?: number; msg: string }>("POST", `/api/gen-keys/${id}/test`, {}),
   saveGenKey: (id: string, key: string) => call<{ ok: boolean; keyMasked: string }>("PUT", `/api/gen-keys/${id}`, { key }),
-  caps: (s?: AbortSignal) => call<CapsResp>("GET", "/api/models/caps", undefined, s),
-  capModels: (cap: string, refresh = false, s?: AbortSignal) => call<ModelRow[]>("GET", `/api/models/list/${cap}${refresh ? "?refresh=1" : ""}`, undefined, s),
-  saveChoice: (body: { models?: Record<string, string>; budget?: { per_video: number } }) => call<{ ok: boolean }>("PUT", "/api/models/choice", body),
   memory: (s?: AbortSignal) => call<Mem[]>("GET", "/api/memory", undefined, s),
   forget: (id: string) => call<{ ok: boolean }>("DELETE", `/api/memory/${id}`),
   install: (kind: "engines" | "voices", name: string) => call<{ job: string; jobId: string }>("POST", `/api/install/${kind}/${name}`),

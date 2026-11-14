@@ -11,12 +11,46 @@
     "noEmit": true,
     "lib": [
       "ES2020",
+      "ES2021.String",
       "DOM",
       "DOM.Iterable"
     ],
     "types": [
       "vite/client"
-    ]
+    ],
+    "paths": {
+      "@storyteller/api": ["./src/vendor/artcraft/_shims/api/index.ts"],
+      "@storyteller/api-enums": ["./src/vendor/artcraft/api-enums/src/index.ts"],
+      "@storyteller/common": ["./src/vendor/artcraft/common/src/index.ts"],
+      "@storyteller/icons": ["./src/vendor/artcraft/icons/src/index.ts"],
+      "@storyteller/keybinds": ["./src/vendor/artcraft/keybinds/src/index.ts"],
+      "@storyteller/model-list": ["./src/vendor/artcraft/_shims/model-list/src/index.ts"],
+      "@storyteller/tauri-api": ["./src/vendor/artcraft/_shims/tauri-api/index.ts"],
+      "@storyteller/tauri-utils": ["./src/vendor/artcraft/_shims/tauri-utils/index.ts"],
+      "@storyteller/ui-action-reminder-modal": ["./src/vendor/artcraft/action-reminder-modal/src/index.ts"],
+      "@storyteller/ui-badge": ["./src/vendor/artcraft/badge/src/index.ts"],
+      "@storyteller/ui-button": ["./src/vendor/artcraft/button/src/index.ts"],
+      "@storyteller/ui-button-dropdown": ["./src/vendor/artcraft/button-dropdown/src/index.ts"],
+      "@storyteller/ui-button-icon": ["./src/vendor/artcraft/button-icon/src/index.ts"],
+      "@storyteller/ui-button-icon-select": ["./src/vendor/artcraft/button-icon-select/src/index.ts"],
+      "@storyteller/ui-checkbox": ["./src/vendor/artcraft/checkbox/src/index.ts"],
+      "@storyteller/ui-close-button": ["./src/vendor/artcraft/close-button/src/index.ts"],
+      "@storyteller/ui-gallery-modal": ["./src/vendor/artcraft/_shims/ui-gallery-modal/index.ts"],
+      "@storyteller/ui-help-menu": ["./src/vendor/artcraft/_shims/ui-help-menu/index.tsx"],
+      "@storyteller/ui-input": ["./src/vendor/artcraft/input/src/index.ts"],
+      "@storyteller/ui-label": ["./src/vendor/artcraft/label/src/index.ts"],
+      "@storyteller/ui-loading": ["./src/vendor/artcraft/loading/src/index.ts"],
+      "@storyteller/ui-loading-spinner": ["./src/vendor/artcraft/loading-spinner/src/index.ts"],
+      "@storyteller/ui-modal": ["./src/vendor/artcraft/modal/src/index.ts"],
+      "@storyteller/ui-model-selector": ["./src/vendor/artcraft/_shims/ui-model-selector/index.tsx"],
+      "@storyteller/ui-popover": ["./src/vendor/artcraft/popover/src/index.ts"],
+      "@storyteller/ui-pricing-modal": ["./src/vendor/artcraft/_shims/ui-pricing-modal/index.tsx"],
+      "@storyteller/ui-promptbox": ["./src/vendor/artcraft/_shims/ui-promptbox/index.tsx"],
+      "@storyteller/ui-select": ["./src/vendor/artcraft/select/src/index.ts"],
+      "@storyteller/ui-sliderv2": ["./src/vendor/artcraft/slider-v2/src/index.ts"],
+      "@storyteller/ui-tab-selector": ["./src/vendor/artcraft/tab-selector/src/index.ts"],
+      "@storyteller/ui-tooltip": ["./src/vendor/artcraft/tooltip/src/index.ts"]
+    }
   },
   "include": [
     "src"

@@ -45,19 +45,10 @@ def test_art_problems_and_apply():
     assert sb["scenes"][0]["materials"][0]["accent"] == "#ff5500" and sb["scenes"][0]["materials"][1]["accent"] == "#000000"
 
 
-def test_usage_record_counts_blender(tmp_path, monkeypatch):
+def test_usage_record_counts_features(tmp_path, monkeypatch):
     monkeypatch.setattr(usage, "ALL", {})
-    usage.record("blender", {"loft", "render.eevee"})
-    assert usage.ALL["blender"] == {"loft", "render.eevee"}
-
-
-def test_blender_script_features_are_recorded(tmp_path, monkeypatch):
-    from craft.adapters import blender
-    monkeypatch.setattr(usage, "ALL", {})
-    f = tmp_path / "x.py"
-    f.write_text("import bpy\nimport fluma3d as F\ndef build(ctx):\n    F.loft([])\n    bpy.ops.mesh.primitive_plane_add()\n")
-    blender._note_features(f, {"engine": "eevee"})
-    assert {"render.eevee", "loft", "bpy.ops.mesh.primitive_plane_add"} <= usage.ALL["blender"]
+    usage.record("effectcraft", {"text.add", "render"})
+    assert usage.ALL["effectcraft"] == {"text.add", "render"}
 
 
 def test_fonts_install_copies_repo_fonts(tmp_path):

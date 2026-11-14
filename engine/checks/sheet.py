@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""초안 · 레퍼런스 나란히 보기 — VL 없이 에이전트(Claude Code)가 Read 로 직접 보는 프레임 모음 한 장.
+"""초안 · 레퍼런스 나란히 보기 — 에이전트(Claude Code)가 Read 로 직접 보는 프레임 모음 한 장.
 위 줄: 내 초안(같은 간격 12장, 시각 · 장면 번호) · 아래 줄: 레퍼런스(같은 비율 시각의 프레임, X-ray 원본에서).
-리듬(언제 화면이 바뀌나) · 구도(피사체 크기 · 여백) · 글자 크기 · 색을 같은 자리에서 견준다. VL 은 강제하지 않는다(2026-11-10 사용자 결정).
+리듬(언제 화면이 바뀌나) · 구도(피사체 크기 · 여백) · 글자 크기 · 색을 같은 자리에서 견준다.
 
   python3 engine/checks/sheet.py <초안.mp4> data/storyboards/<id>.json [--n 12]
 → data/compositions/<id>/craft/review/sheet.png

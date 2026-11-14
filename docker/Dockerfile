@@ -16,7 +16,7 @@ ARG MODELS=1
 # Chromium 은 /ms-playwright 에(node 사용자도 쓰게) · CLI 자동 업데이트는 끈다(이미지를 다시 빌드하면 최신)
 ENV DEBIAN_FRONTEND=noninteractive PYTHONUNBUFFERED=1 FLUMA_HOST=0.0.0.0 FLUMA_CODEX_SANDBOX=danger-full-access \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright DISABLE_AUTOUPDATER=1 FLUMA_IN_DOCKER=1
-# Blender EEVEE 는 GPU 드라이버가 필요하다. bookworm 의 Mesa 22 는 최신 Intel GPU(Lunar Lake)를 몰라 CPU 렌더로 떨어진다(프레임당 24초) → 백포트 Mesa 25
+# Craft 앱의 GL 렌더용 그래픽 라이브러리. bookworm 의 Mesa 22 는 최신 Intel GPU(Lunar Lake)를 몰라 → 백포트 Mesa 25
 RUN echo "deb http://deb.debian.org/debian bookworm-backports main" > /etc/apt/sources.list.d/backports.list \
     && apt-get update && apt-get install -y --no-install-recommends python3 python3-venv python3-pip ffmpeg fonts-noto-cjk \
     libegl1 libgl1 libgles2 libxi6 libxxf86vm1 libxfixes3 libxrender1 libxkbcommon0 libsm6 \
@@ -29,12 +29,10 @@ COPY . .
 # .venv · Chromium(+ 시스템 의존성) · npm 패키지
 RUN python3 -m venv .venv \
     && .venv/bin/pip install --no-cache-dir -r engine/$( [ "$PROFILE" = lite ] && echo requirements.txt || echo requirements-$PROFILE.txt ) \
-    && .venv/bin/pip install --no-cache-dir --no-deps "dm_control>=1.0.20" \
     && .venv/bin/python engine/doctor.py --hook \
     && .venv/bin/python engine/craft/crafts.py install $( [ "$CRAFTS" = core ] && echo effectcraft soundcraft filmcraft vectorcraft gridcraft pdfcraft photocraft || echo $CRAFTS ) --no-web \
     && .venv/bin/python -m playwright install --with-deps chromium \
     && npm --prefix studio ci --no-audit --no-fund \
-    && npm --prefix tools/ui-scenes ci --no-audit --no-fund \
     && mkdir -p data/storyboards data/compositions data/audio data/public/audio data/public/uploads data/public/elements data/public/trends data/research data/characters data/briefs data/scenes data/out data/workspace data/cache data/public/clips \
     && mkdir -p /home/node/.shortsforge /home/node/.claude /home/node/.codex \
     && chown -R node:node /app /ms-playwright /home/node   # node = uid 1000(볼륨도 처음 만들 때 이 소유자를 따른다)

@@ -122,7 +122,7 @@ vectorcraft-cli run --in still.png --cmd select.all --cmd imageTrace.makeAndExpa
 - 쓰임
   - 감성 형식: 사용자 현장 사진을 평면 일러스트 톤으로 만든다.
   - 로고 · 사용자 PNG 를 벡터화해 확대해도 깨지지 않게 한다.
-  - illustrate 스킬에서 레퍼런스 실루엣을 뽑는다.
+  - 레퍼런스 실루엣을 뽑는다.
   - 실사 생성이 아니라 사용자 소재의 양식화다.
 - 주의
   - 1500px 이 넘으면 느리다는 경고가 나온다(그래도 처리된다).
@@ -193,7 +193,7 @@ vectorcraft-cli run --in art.vectorcraft --cmd select.all --cmd recolor.colors -
 - `convert a.svg b.png --scale N`: illustration · 아이콘 PNG (`engine/craft/materials.py` `illustration()`, `chart()` 아이콘).
 - `convert a.svg b.vectorcraft`: 사람이 고칠 편집 파일. 해시로 사람이 고쳤는지 감지해, 고쳤으면 그 파일을 SVG 로 다시 바꿔 원본으로 쓴다.
 - rig 분리 (`engine/craft/rig.py`): VectorCraft 가 전체를 `Layer_1` 로 감싸므로 그 안의 부품 그룹을 본다.
-- illustrate 스킬의 "렌더해서 보기"는 `convert --scale 1`, MCP 로 붙어 있으면 `render_preview`.
+- `convert --scale 1`: SVG 렌더 확인, MCP 로 붙어 있으면 `render_preview`.
 - 확인할 만한 것: `vectorcraft-cli info FILE`(아트보드 · 개체 수 · 글꼴 · 가져오기 경고 JSON). 사용자가 넘긴 .ai/.svg 를 검사할 때 쓴다(미확인).
 
 ## 4. 전체 명령 분류 요약 (911개)

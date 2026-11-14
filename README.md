@@ -54,11 +54,10 @@ That is the niche Fluma is built for.
 | You need | Cost |
 |---|---|
 | Agent | The Claude Code or Codex login you already have (or an API key) |
-| Voice | Free engines by default (Edge TTS, six local TTS engines); paid voices come through the one OpenRouter key (ElevenLabs, Gemini TTS, Fish Audio … picked in Settings) |
+| Voice | Free engines by default (Edge TTS, six local TTS engines); paid voices with your own Typecast or ElevenLabs key (Settings → Media → Voice) |
 | Footage | Sourced clips (credited automatically), free Pexels and Pixabay keys, reference photos |
 | Music | Finds the trending song Shorts in the same niche actually use, to attach from the Shorts editor's library at upload (licensed by YouTube) |
-| Creative apps | 16 open-source [Craft apps](#the-craft-apps) plus Blender — free |
-| (Optional) OpenRouter | One key for video understanding (reference analysis, draft critique), voice, transcription and embeddings. Pick a model per capability in Settings; above the per-video cap (default $3) the agent shows the amount and asks |
+| Creative apps | 16 open-source [Craft apps](#the-craft-apps) — free |
 
 ## What it does
 
@@ -74,7 +73,6 @@ That is the niche Fluma is built for.
 
 - 🔎 **References first, enforced** — a storyboard can't pass lint (`L30`) until real reference Shorts are analyzed and linked. Noun-ending lines and mixed politeness fail too (`L31`).
 - 🧰 **The whole real toolset** — every stage leaves a Craft project file (`.ecproj` motion, `.scraft` sound, `.fcproj` cut, `.vectorcraft` drawing, `.psd`, `.deckcraft` …). Keep editing them; hand-edited files are detected by hash and never overwritten. When no material type fits, the agent writes app commands directly (`type: craft`).
-- 👁️ **Eyes that watch video (VL)** — an OpenRouter vision model watches reference Shorts end to end and maps scenes, hooks, twists, editing grammar, caption tone and retention devices with timestamps; it also drafts the cliché map, finds the moment you want in a clip, critiques the draft (what feels off at which second, and why) and checks generated shots. The agent can ask it anything about any video (`see.py ask`).
 - 🎞️ **Pick the feel** — the agent proposes 2–4 looks (documentary, dreamy, film …) and renders them side by side on the same scenes (`feel.py`). The chosen look is applied to all real footage.
 - 🎬 **Director and writer skills** — before writing, the agent fixes five anchors (emotion, motif, anchor object, break, final image) and a rhythm ladder; every shot gets one focal point, a reason for each zoom, and three concrete details. Hooks are written as three parts (visual, first line, on-screen text) and AI-sounding copy is blocked (adapted from smixs/visual-skills, screenwriting-skills, marketingskills).
 - ♻️ **Reuse editing** — automatic clip-moment picking (`clip.py --best`), subject-tracking vertical reframing (`reframe.py`), trending-song finder (`trend_music.py`), upload guide (`upload_guide.py`).
@@ -99,7 +97,7 @@ flowchart LR
     P --> DOC[Documents<br/>PDFCraft highlights<br/>WordCraft pages]
     P --> DAT[Data · diagrams<br/>GridCraft · DeckCraft]
     P --> DES[Design<br/>VectorCraft · PhotoCraft<br/>FigCraft · DesignCraft · LightCraft]
-    P --> TD[3D · drawings<br/>SolidCraft · TextureCraft · CADCraft<br/>Blender]
+    P --> TD[3D · drawings<br/>SolidCraft · TextureCraft · CADCraft]
   end
   P --> CL[Sourced clips<br/>most-replayed moment · vertical reframe]
   RS & DOC & DAT & DES & TD & CL --> E[EffectCraft<br/>motion · presets · captions]
@@ -155,7 +153,6 @@ python3 engine/craft/crafts.py install all     # or pick: install effectcraft so
 | FigCraft · DesignCraft | phone / browser mock-ups; info cards and thumbnails with Korean typesetting |
 | LightCraft | one look across all stills of a video |
 | SolidCraft · TextureCraft · CADCraft | 3D product turntables and exploded views; floor plans and drawings |
-| Blender | organic 3D shapes, characters and film-quality Cycles renders, scripted per video; SolidCraft parts, joints and TextureCraft materials flow into it (`engine/craft/bridge3d.py`) |
 
 Every app's full command list is in `.claude/skills/crafts/catalog/` (`python3 engine/craft/craft_catalog.py search "curved arrow"`), with tested notes in `.claude/skills/crafts/reference/`. Releases are verified against their SHA256SUMS and unpacked into `tools/crafts/` (git-ignored).
 
@@ -191,7 +188,6 @@ npm --prefix studio run dev                     # → http://localhost:4311
 | `storyboard` | writes the storyboard JSON: format, research, scenes, materials, lint loop |
 | `produce` | Craft pipeline: voice → scene materials → lint → draft render → still-frame check |
 | `crafts` | which Craft app and feature to use for a scene; catalog search, recipes, variety rules |
-| `illustrate` | draws characters / props as a designer in VectorCraft, render-and-fix loop |
 | `research` | collects facts with source URLs; fewer than five sources → the topic is dropped |
 | `trends` | finds Shorts by topic or hashtag for the Trends screen |
 | `voice` · `scene-edit` · `character` | narration fitting, one-scene edits, lip-synced mascot |
@@ -213,7 +209,6 @@ fluma/
 │  ├─ research/            trends · Shorts X-ray · reference style & channel cards
 │  ├─ capture/             web / terminal recording · demo runs · sourced clips · vertical reframing · memes · stock · icons
 │  ├─ story/               storyboard helpers — concepts · feel (feel.py) · design drafts (directions.py) · variants · tone edit
-│  ├─ providers/           one OpenRouter key — models per capability · chosen model · cost gate (estimate → approve → ledger)
 │  ├─ checks/              lint · tempo · edit density · gates
 │  ├─ publish/             YouTube upload
 │  ├─ core/                shared — results protocol · engines registry · finish · stills · install
@@ -245,8 +240,7 @@ fluma/
 - [ ] One complete public demo with its hand-work and performance numbers
 - [x] Linux, macOS, Windows and ARM CI; amd64 and arm64 Docker images
 - [x] Clip reuse: most-replayed moments, vertical reframing, trending-song guide
-- [x] One OpenRouter key for see · make · speak (a model per capability in Settings) with a cost gate
-- [x] Cliché map, concepts, feel (look) previews, director and writer skills, anchor (reference matching)
+- [x] Cliché map, concepts, feel (look) previews, director and writer skills
 
 ## Contributing
 

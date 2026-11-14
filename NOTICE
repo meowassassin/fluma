@@ -20,19 +20,6 @@ Installed by npm / pip (not bundled)
 - CLIP ViT-B/32 (OpenAI, MIT) via Xenova ONNX export — downloaded on first use
 - MobileSAM — Apache-2.0 — downloaded on first use
 - ONNX Runtime — MIT
-- MuJoCo (physics for 2D/3D motion, engine/craft/physics.py) — Apache-2.0 — https://github.com/google-deepmind/mujoco
-- dm_control (scene assembly, mjcf) — Apache-2.0 — https://github.com/google-deepmind/dm_control
-- Gymnasium (MuJoCo environments for learning explainers) — MIT — https://github.com/Farama-Foundation/Gymnasium
-- myo_sim / MyoSuite (human hand musculoskeletal model) — Apache-2.0 — https://github.com/MyoHub/myo_sim
-- 3D assets (engine/craft/assets3d.py): Poly Haven and ambientCG (CC0) are downloaded on request into data/ and never bundled;
-  user-imported packs keep their license in CREDIT.txt. Blender demo files are downloaded only for study (settings summary), not used in videos.
-- mink (inverse kinematics for pose keys) — Apache-2.0 — https://github.com/kevinzakka/mink
-- Trained policies (engine/craft/physics.py policy, e.g. farama-minari Ant-v5 SAC) are downloaded on request into data/
-  and never bundled; repositories without a stated license are fetched only with --checked-license.
-- The goal planner in engine/craft/physics.py (plan) reimplements the Predictive Sampling method of
-  google-deepmind/mujoco_mpc (Apache-2.0, https://github.com/google-deepmind/mujoco_mpc) in Python; no code is copied.
-- MuJoCo Menagerie models (engine/craft/physics.py fetch) are downloaded per model on request, only when the model
-  folder's license allows commercial use; each keeps its own license (CREDIT.txt next to the model).
 - Astryx design system (@astryxdesign/*, UI screens inside videos, tools/ui-scenes) — MIT — https://github.com/meta/astryx
   with StyleX (MIT) and React (MIT)
 - Playwright / Chromium — Apache-2.0 / BSD-style
@@ -40,12 +27,11 @@ Installed by npm / pip (not bundled)
   Microsoft online service whose commercial terms are not stated)
 
 Optional engines (installed from Settings → Media)
-- Manim (MIT), Blender (GPL — run as a separate program), voice engines listed under
+- Manim (MIT), voice engines listed under
   engine/voice/engines/*/voice.json, each with its own license and commercial-use note shown in the app.
 
-Paid models (video understanding, voice, transcription, embeddings) are reached
-only through OpenRouter with a key the user supplies, under OpenRouter's and each model provider's
-terms. Free stock footage (Pexels, Pixabay) uses the user's own free keys.
+Paid voices (Typecast, ElevenLabs) are reached only with a key the user supplies, under each
+provider's terms. Free stock footage (Pexels, Pixabay) uses the user's own free keys.
 
 The writer skill (.claude/skills/writer) adapts jtydhr88/screenwriting-skills (MIT, sw-dialogue) and
 coreyhaines31/marketingskills (MIT, copywriting, ai-tells, ad-creative hook system). Shot-design rules in the
@@ -64,3 +50,8 @@ summarizes its Korean AI-style patterns (KatFishNet, arXiv 2503.00032).
 Sound effects in engine/assets/sfx are CC0 (public domain): Kenney "Interface Sounds" (kenney.nl), rubberduck "100 CC0 SFX"
 and pyranostudios "Air Whoosh" (opengameart.org) — see engine/assets/sfx/CREDITS.txt. Background music is chosen per video
 from free-library uploads on YouTube; commercial songs are only suggested for attaching in the Shorts editor at upload.
+
+Model icons in studio/public/engine-icons: nanobanana.svg, antigravity.svg and deepmind.svg (shown for Veo · Omni · Imagen) are from LobeHub Icons
+(@lobehub/icons-static-svg 1.102.0, MIT, https://github.com/lobehub/lobe-icons); craft-*.png are rendered from the
+Craft apps' own icons (storytold, MIT OR Apache-2.0).
+Product names and marks belong to their owners and are shown only to identify which model runs a step.

@@ -1,0 +1,125 @@
+/* 파이프라인 뷰 — GitHub Actions 워크플로 그래프 스타일(PipelineGraph.tsx). 글자 최소: 상태 아이콘 · 단계 이름 · 모델 아이콘 */
+.pgx { --ok: #3fb950; --run: #d29922; --err: #f85149; --wait: #d29922; --todo: #6e7681;
+  display: flex; flex-direction: column; gap: 10px; min-width: 0; color: var(--tx-2); font-size: 13px; }
+.pgx-loading, .pgx-err { display: flex; justify-content: center; padding: 28px 0; color: var(--tx-3); }
+.pgx-err { color: #ff9a9d; }
+
+/* 위 막대: 단계마다 칸 하나 + n/m + 도는 모델 */
+.pgx-bar { display: flex; align-items: center; gap: 8px; min-height: 22px; }
+.pgx-meter { display: inline-flex; gap: 3px; }
+.pgx-meter i { width: 14px; height: 6px; border-radius: 2px; background: var(--bg-3); }
+.pgx-meter i.s-done { background: var(--ok); }
+.pgx-meter i.s-running { background: var(--run); animation: pgx-blink 1.2s ease-in-out infinite; }
+.pgx-meter i.s-waiting { background: color-mix(in srgb, var(--wait) 55%, var(--bg-3)); }
+.pgx-meter i.s-error { background: var(--err); }
+.pgx-count { font: 600 12px var(--mono); color: var(--tx-3); }
+
+/* 그래프 판 */
+.pgx-scroll { overflow-x: auto; border-radius: 10px; border: 1px solid var(--line-2);
+  background-color: var(--bg-0); background-image: radial-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px); background-size: 16px 16px; }
+.pgx-graph { position: relative; margin: 0 auto; }
+.pgx-edges { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.pgx-edge path { fill: none; stroke: var(--line-3); stroke-width: 1.5; }
+.pgx-edge circle { fill: var(--bg-0); stroke: var(--line-3); stroke-width: 1.5; }
+.pgx-edge.is-done path, .pgx-edge.is-done circle { stroke: #4a5361; }
+.pgx-edge.is-flow path { stroke: var(--run); stroke-dasharray: 5 4; animation: pgx-dash .7s linear infinite; }
+.pgx-edge.is-flow circle { stroke: var(--run); }
+
+/* 단계 상자(GitHub 잡 상자) */
+.pgx-job { position: absolute; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; border-radius: 6px; overflow: hidden;
+  background: var(--bg-2); border: 1px solid var(--line-2); color: var(--tx-1); font: 600 13px var(--font); cursor: pointer; text-align: left;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .25); transition: border-color .15s, background .15s; }
+.pgx-job:hover { border-color: var(--line-3); background: var(--bg-3); }
+.pgx-job.is-sel { border-color: var(--select); box-shadow: 0 0 0 1px var(--select); }
+.pgx-job.s-running { border-color: color-mix(in srgb, var(--run) 60%, var(--line-2)); }
+.pgx-job.s-todo .pgx-name { color: var(--tx-3); }
+.pgx-name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pgx-models { display: inline-flex; gap: 3px; flex: none; }
+.pgx-prog { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--run); transition: width .4s; }
+
+/* 상태 아이콘 */
+.pgx-si { display: inline-grid; place-items: center; flex: none; }
+.pgx-si svg { width: 100%; height: 100%; overflow: visible; }
+.pgx-si.s-done circle { fill: var(--ok); } .pgx-si.s-done path { fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pgx-si.s-error circle { fill: var(--err); } .pgx-si.s-error path { fill: none; stroke: #fff; stroke-width: 1.8; stroke-linecap: round; }
+.pgx-si.s-waiting circle { fill: none; stroke: var(--wait); stroke-width: 1.6; } .pgx-si.s-waiting path { fill: none; stroke: var(--wait); stroke-width: 1.6; stroke-linecap: round; }
+.pgx-si.s-todo circle { fill: none; stroke: var(--todo); stroke-width: 1.5; stroke-dasharray: 2.2 2.2; }
+.pgx-si.s-running .trk { fill: none; stroke: color-mix(in srgb, var(--run) 30%, transparent); stroke-width: 2; }
+.pgx-si.s-running .arc { fill: none; stroke: var(--run); stroke-width: 2; stroke-linecap: round; }
+.pgx-si.s-running svg { animation: pgx-spin .9s linear infinite; }
+
+/* 모델 아이콘 */
+.pgx-mi { position: relative; display: inline-grid; place-items: center; flex: none; }
+.pgx-mi .eicon { border-radius: 4px; }
+.pgx-mi.is-dark .eicon.img { background: #26262c; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
+.pgx-mi.is-planned { opacity: .4; filter: grayscale(.6); }
+.pgx-unk { display: inline-grid; place-items: center; border-radius: 4px; border: 1px dashed var(--line-3); color: var(--tx-4); font: 700 11px var(--mono); }
+.pgx-tile { display: block; border-radius: 4px; object-fit: cover; }
+.pgx-glyph { display: inline-grid; place-items: center; border-radius: 4px; background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-2); }
+.pgx-mi.is-spin::after { content: ""; position: absolute; inset: -3px; border-radius: 7px; border: 1.5px solid transparent; border-top-color: var(--run); border-right-color: var(--run); animation: pgx-spin 1s linear infinite; }
+
+/* 세로 목록(편집기 옆 패널) */
+.pgx-list { list-style: none; margin: 0; padding: 0; position: relative; display: flex; flex-direction: column; gap: 6px; }
+.pgx-list::before { content: ""; position: absolute; left: 17px; top: 14px; bottom: 14px; width: 1.5px; background: var(--line-2); }
+.pgx-li { position: relative; display: flex; align-items: center; gap: 8px; width: 100%; height: 34px; padding: 0 8px 0 10px; border-radius: 6px;
+  border: 1px solid var(--line-2); background: var(--bg-2); color: var(--tx-1); font: 600 13px var(--font); cursor: pointer; text-align: left; }
+.pgx-li:hover { background: var(--bg-3); }
+.pgx-li.is-sel { border-color: var(--select); }
+.pgx-li.s-todo .pgx-name { color: var(--tx-3); }
+
+/* 상세 */
+.pgx-detail { border: 1px solid var(--line-2); border-radius: 10px; background: var(--bg-1); padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; animation: pgx-in .15s ease; }
+.pgx-detail header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pgx-detail header b { font: 700 14px var(--font); color: var(--tx-1); }
+.pgx-mtag { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 2px; border-radius: 99px; background: var(--bg-2); font-size: 12px; color: var(--tx-3); }
+.pgx-sp { flex: 1; }
+.pgx-x { width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--tx-3); cursor: pointer; }
+.pgx-x:hover { background: var(--bg-3); color: var(--tx-1); }
+.pgx-errline { margin: 0; color: #ff9a9d; font-size: 12.5px; }
+.pgx-faint { color: var(--tx-4); font-size: 12px; }
+.pgx-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.pgx-btns { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.pgx-btn { height: 28px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--tx-1); font: 600 12.5px var(--font); cursor: pointer; }
+.pgx-btn:hover:not(:disabled) { background: var(--bg-3); }
+.pgx-btn:disabled { opacity: .45; cursor: default; }
+.pgx-btn.is-primary { background: #238636; border-color: #2ea043; color: #fff; }
+.pgx-btn.is-primary:hover:not(:disabled) { background: #2ea043; }
+.pgx-btn.is-xs { height: 22px; padding: 0 8px; font-size: 11px; }
+.pgx-thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
+.pgx-thumbs img, .pgx-thumbs video, .pgx-ph { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; background: var(--bg-3); display: block; }
+.pgx-thumbs.is-tall img, .pgx-thumbs.is-tall video, .pgx-thumbs.is-tall .pgx-ph { width: 54px; height: 96px; }
+.pgx-thumbs figure { margin: 0; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.pgx-preview { width: 150px; aspect-ratio: 9 / 16; border-radius: 8px; background: #000; }
+.pgx-shots { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 12.5px; }
+.pgx-shots li { display: flex; gap: 8px; align-items: center; }
+.pgx-shots b { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; background: var(--bg-3); font-size: 11px; }
+.pgx-shots em { font-style: normal; color: var(--tx-4); margin-left: auto; font-family: var(--mono); font-size: 11.5px; }
+.pgx-panel .pgx-detail { padding: 8px; }
+.pgx-panel .pgx-btns { margin-left: 0; }
+
+/* 세로 모드 2D 파이프라인 그래프 (패널 및 사이드바 전용) */
+.pgx-vert { width: 100%; }
+.pgx-scroll-vert {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 10px 0;
+  border-radius: 10px;
+  border: 1px solid var(--line-2);
+  background-color: var(--bg-0);
+  background-image: radial-gradient(rgba(255, 255, 255, .05) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.pgx-graph-vert { margin: 0 auto; }
+
+@keyframes pgx-spin { to { transform: rotate(360deg); } }
+@keyframes pgx-dash { to { stroke-dashoffset: -18; } }
+@keyframes pgx-blink { 50% { opacity: .45; } }
+@keyframes pgx-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pgx *, .pgx *::after { animation: none !important; } }
+
+.pgx-revise { display: flex; gap: 4px; width: 100%; }
+.pgx-revise input { flex: 1; min-width: 0; height: 22px; padding: 0 6px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--bg-0); color: var(--tx-1); font: 11px var(--font); }
+.pgx-thumbs.is-tall figure { width: 120px; }

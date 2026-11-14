@@ -8,7 +8,7 @@
 경로 — 장면 · 요소 · 전체 값
   s4.sec · s4.caption · s4.transition         장면 4의 칸
   route2d.adjust.dx                           요소(재료 id)의 칸 — 어느 장면이든 id 로 찾는다. 'sN.<id>.…' 로 장면을 밝혀도 된다
-  route2d.args.gap                            새로 만든 요소(Blender · EffectCraft 스크립트)가 밝혀 둔 값(args)
+  route2d.args.gap                            새로 만든 요소(EffectCraft 스크립트)가 밝혀 둔 값(args)
   voice.speed · voice.id · music.gain_db · music.use · direction.transition · script
 값 — JSON(숫자 · 참/거짓 · 문자열 · 목록), 또는 상대값 *0.7 · +0.5 · -0.2(지금 숫자에 곱하기 · 더하기). 지우기: <경로>=null
 조정 값(adjust, 모든 요소 공통): dx · dy(화면 비율) · scale(배수) · rot(도) · opacity(0~1) · delay(초) · hide

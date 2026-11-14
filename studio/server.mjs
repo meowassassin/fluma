@@ -7,6 +7,7 @@
 //  - 오래 걸리는 일은 작업(jobs.mjs) — 대기열 · 진행률 · 취소 · 시간 제한.
 //  - 파일 감시는 콘텐츠 폴더만, (종류, 영상) 단위로 모아 300ms 뒤 한 번.
 import express from "express";
+import compression from "compression";
 import { promises as fs, existsSync, readFileSync, statSync, watch, createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { Transform } from "node:stream";
@@ -21,7 +22,7 @@ import { createCrafts } from "./crafts.mjs";
 import { zip, unzip } from "./zipstore.mjs";
 import { createYoutube } from "./youtube.mjs";
 import { pythonCmd, venvBin } from "./platform.mjs";
-import { AGENTS, PROVIDERS, CLAUDE_MODELS, detectAgents, refreshAgents, codexModels, readKeys, writeKey, mask, resolveRuntime } from "./runtimes.mjs";
+import { AGENTS, CLAUDE_MODELS, AGY_MODELS, detectAgents, refreshAgents, codexModels, resolveRuntime } from "./runtimes.mjs";
 import { HttpError, bad, notFound, conflict, ah, sendError, isId, checkId, within, atomicWrite, readJson, run, requestSignal, tail, logEffort } from "./lib.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +41,14 @@ const PORT = Number(process.env.PORT || 4310);
 const VENV_BIN = venvBin(ROOT);
 if (existsSync(VENV_BIN)) process.env.PATH = `${VENV_BIN}${path.delimiter}${process.env.PATH}`;
 
+// 데몬 / 비로그인 환경에서 누락될 수 있는 표준 실행 경로 보강
+const userHome = os.homedir();
+for (const p of [path.join(userHome, ".local", "bin"), path.join(userHome, ".npm-global", "bin"), "/usr/local/bin"]) {
+  if (existsSync(p) && !(process.env.PATH || "").split(path.delimiter).includes(p)) {
+    process.env.PATH = `${p}${path.delimiter}${process.env.PATH}`;
+  }
+}
+
 process.on("unhandledRejection", (e) => console.error("[api] 처리되지 않은 거부:", e));
 process.on("uncaughtException", (e) => { console.error("[api] 처리되지 않은 예외 — 종료 (systemd 가 다시 띄움):", e); process.exit(1); });
 
@@ -48,6 +57,14 @@ const jobs = createJobs({ onChange: (j) => publish({ kind: "job", id: j.project 
 
 const app = express();
 app.disable("x-powered-by");
+// SSE 스트림은 버퍼링되지 않도록 제외하고, 정적 파일 및 JSON 응답은 Gzip 압축 전송(12MB -> 3MB 절감)
+app.use(compression({
+  filter: (req, res) => {
+    if (req.headers["x-no-compression"] || req.path.endsWith("/events") || req.path.endsWith("/chat/events")) return false;
+    return compression.filter(req, res);
+  },
+  threshold: 1024,
+}));
 
 // ---------- 접근 제한: 이 컴퓨터의 Fluma 화면만 ----------
 const PORTS = [String(PORT), "4311"];
@@ -138,7 +155,17 @@ const renderedFile = (r) => {
 };
 
 // ---------- 콘티 ----------
+let storyboardsCache = { at: 0, stamp: "", data: [] };
+const storyboardsStamp = () => {
+  const st = (p) => { try { return Math.round(statSync(p).mtimeMs); } catch { return 0; } };
+  return `${st(STORY)}:${st(SESS)}:${st(OUT)}`;
+};
+
 app.get("/api/storyboards", ah(async (_req, res) => {
+  const curStamp = storyboardsStamp();
+  if (storyboardsCache.stamp === curStamp && Date.now() - storyboardsCache.at < 3000) {
+    return res.json(storyboardsCache.data);
+  }
   const files = existsSync(STORY) ? (await fs.readdir(STORY)).filter((f) => f.endsWith(".json") && isId(f.slice(0, -5))) : [];
   const ids = await knownIds();
   const outs = new Map();
@@ -166,6 +193,7 @@ app.get("/api/storyboards", ah(async (_req, res) => {
     list.push({ id, title: id, format: "", audience: null, brand: null, duration_sec: 0, template: false, draft: true, updated: st.mtime.toISOString(), running: agent.running(id) });
   }
   list.sort((a, b) => (a.updated < b.updated ? 1 : -1));
+  storyboardsCache = { at: Date.now(), stamp: curStamp, data: list };
   res.json(list);
 }));
 
@@ -195,6 +223,7 @@ async function lintOf(id) {
 const hardOf = (lint) => lint.filter((l) => l.code && !l.code.startsWith("T") && l.message !== "통과");
 
 app.put("/api/storyboards/:id", ah(async (req, res) => {
+  storyboardsCache.at = 0;
   const p = sbPath(req.params.id);
   const b = req.body;
   if (!b || typeof b !== "object" || Array.isArray(b) || !Array.isArray(b.scenes)) throw bad("콘티 형식이 올바르지 않습니다 (scenes 가 필요)", "bad_storyboard");
@@ -240,14 +269,13 @@ app.get("/api/engines", ah(async (_req, res) => {
 }));
 app.get("/api/templates", ah(async (_req, res) => res.json((await engineList() || []).flatMap((e) => e.templates))));
 app.use("/api/engine-icons", express.static(path.join(ROOT, "studio", "public", "engine-icons"), { maxAge: "1d" }));
+app.use("/fonts", express.static(path.join(ROOT, "studio", "public", "fonts"), { maxAge: "7d" }));
 
-// ---------- 생성 · 음성 API 키 (에이전트의 OpenRouter 처럼 키만 넣으면 그 공급자의 모델 · 목소리를 쓴다) ----------
+// ---------- 생성 · 음성 API 키 (키를 넣으면 해당 공급자의 모델 · 서비스를 쓴다) ----------
 // 저장: ~/.shortsforge/api-keys.json (0600, 에이전트는 못 읽음). 스크립트는 engine/core/apikeys.py 로 환경 변수 → 이 파일 → .env.local 순서로 읽는다
 const API_KEY_FILE = path.join(os.homedir(), ".shortsforge", "api-keys.json");
-// 오픈라우터 하나(보기 · 만들기 · 말하기) + 무료 스톡 영상. 업체별 키(Typecast · ElevenLabs · Gemini)는 2026-11-09 에 없앴다
+// 음성 · 스톡 영상 API 키
 const GEN_KEYS = [
-  { id: "openrouter", ready: true, env: "OPENROUTER_API_KEY", title: "OpenRouter", what: "키 하나로 보기(영상 이해) · 그리기 · 영상 생성 · 음성 · 받아쓰기 — 모델은 아래에서 능력마다 고른다. 쓴 만큼 크레딧에서 나간다", caps: ["모델"], keyHint: "sk-or-…", console: "https://openrouter.ai/settings/keys", docs: "https://openrouter.ai/docs", paid: true,
-    test: { url: "https://openrouter.ai/api/v1/key", auth: "bearer" } },
   { id: "typecast", ready: true, env: "TYPECAST_API_KEY", title: "Typecast", what: "한국어 성우 음성 — 감정 · 단어 시각", caps: ["음성"], keyHint: "Typecast API 키", console: "https://typecast.ai/developers/api", docs: "https://typecast.ai/docs", paid: true,
     test: { url: "https://api.typecast.ai/v3/voices?model=ssfm-v31", auth: "x-api-key" } },
   { id: "elevenlabs", ready: true, env: "ELEVENLABS_API_KEY", title: "ElevenLabs", what: "다국어 음성 · 목소리 복제", caps: ["음성"], keyHint: "sk_…", console: "https://elevenlabs.io/app/settings/api-keys", docs: "https://elevenlabs.io/docs", paid: true,
@@ -260,7 +288,8 @@ const GEN_KEYS = [
     test: { url: "https://pixabay.com/api/videos/?q=city&per_page=3", auth: "query:key" } },
 ];
 
-const genKeyValue = (k) => process.env[k.env] || readApiKeys()[k.env] || (k.id === "openrouter" ? readKeys().openrouter : "") || envLocalKeys()[k.env] || "";   // 오픈라우터는 에이전트 설정의 키도 같은 키로
+const genKeyValue = (k) => process.env[k.env] || readApiKeys()[k.env] || envLocalKeys()[k.env] || "";
+const mask = (s) => (s && s.length > 8 ? `${s.slice(0, 4)}••••${s.slice(-4)}` : s ? "••••••••" : "");
 const readApiKeys = () => { try { return JSON.parse(readFileSync(API_KEY_FILE, "utf8")); } catch { return {}; } };
 /** .env.local 에 있는 키 이름만(값은 가리기만) — 예전 방식으로 넣은 키도 '있음'으로 보인다 */
 const envLocalKeys = () => {
@@ -282,12 +311,11 @@ app.post("/api/gen-keys/:id/test", ah(async (req, res) => {
 }));
 app.get("/api/gen-keys", ah(async (_req, res) => {
   const saved = readApiKeys(), local = envLocalKeys();
-  const ICON = { pexels: "pexels", pixabay: "pixabay", youtube: "youtube", openrouter: "prov-openrouter", typecast: "typecast", elevenlabs: "elevenlabs" };
-  const byok = readKeys();
-  res.json(GEN_KEYS.map(({ test, ...k }) => { const agentKey = k.id === "openrouter" ? byok.openrouter || "" : "";
-    const v = process.env[k.env] || saved[k.env] || agentKey || local[k.env] || "";
+  const ICON = { pexels: "pexels", pixabay: "pixabay", youtube: "youtube", typecast: "typecast", elevenlabs: "elevenlabs" };
+  res.json(GEN_KEYS.map(({ test, ...k }) => {
+    const v = process.env[k.env] || saved[k.env] || local[k.env] || "";
     return { ...k, icon: iconUrl(ICON[k.id] || k.id), testable: !!test, hasKey: !!v, keyMasked: mask(v),
-      source: process.env[k.env] ? "env" : saved[k.env] ? "saved" : agentKey ? "agent" : local[k.env] ? "env.local" : null }; }));
+      source: process.env[k.env] ? "env" : saved[k.env] ? "saved" : local[k.env] ? "env.local" : null }; }));
 }));
 app.put("/api/gen-keys/:id", ah(async (req, res) => {
   const k = GEN_KEYS.find((x) => x.id === req.params.id); if (!k) throw notFound("공급자가 없습니다");
@@ -315,7 +343,7 @@ app.get("/api/voices", ah(async (_req, res) => {
     const v = await readJson(path.join(VOICES, n, "voice.json")); if (!v) continue;
     // 목록을 API 로 받는 엔진(dynamic_voices): tts.py 가 받아 둔 data/workspace/cache/<이름>-voices.json
     if (v.dynamic_voices && avail?.[n]) v.voices = (await readJson(path.join(ROOT, "data", "workspace", "cache", `${n}-voices.json`))) || [];
-    list.push({ ...v, name: v.name || n, available: avail ? !!avail[n] : null, icon: iconUrl(n === "openrouter" ? "prov-openrouter" : n) });
+    list.push({ ...v, name: v.name || n, available: avail ? !!avail[n] : null, icon: iconUrl(n) });
   }
   const order = { builtin: 0, adapter: 1, planned: 2 };
   // 사용 가능 → 무료(내 컴퓨터 · 온라인) → 유료 API → 준비 중, 시험용 무음은 맨 끝
@@ -353,7 +381,7 @@ app.post("/api/trends/xray/:vid", ah(async (req, res) => {
     // 이미 끝난 단계는 건너뛴다(force 면 다시) — 에이전트 · 사용자가 같은 영상을 다시 불러도 몇 초 안에 끝나게
     const force = !!req.body?.force, dir = path.join(XRAY, vid);
     const fast = !!req.body?.fast;     // 빠른 분석: 같은 채널은 2편만 · 가벼운 받아쓰기(base) — 원클릭 도구와 견줄 속도가 필요할 때
-    // deep=false(에이전트 레퍼런스 분석 기본): 누끼 · 음원 분리를 건너뛴다 — 이해는 VL 이 맡고, 레이어는 분해도 화면을 열 때만(deep)
+    // deep=false(에이전트 레퍼런스 분석 기본): 누끼 · 음원 분리를 건너뛴다 — 레이어는 분해도 화면을 열 때만(deep)
     const deep = req.body?.deep !== false;
     const prev = await fs.readFile(path.join(dir, "xray.json"), "utf8").then(JSON.parse).catch(() => null);
     if (force || !prev || !existsSync(path.join(dir, "src.mp4")) || (deep && prev.quick)) {
@@ -361,15 +389,15 @@ app.post("/api/trends/xray/:vid", ah(async (req, res) => {
       if (r.timedOut || r.canceled) return r;
       if (r.code !== 0) return { error: "분해 분석에 실패했습니다", detail: tail(r.err || r.out) };
     }
-    // 이어서 VL 이해(보기 모델이 있으면 — 장면 · 훅 · 반전 · 편집 문법 · 자막 말투 · 붙잡는 장치). 키가 없거나 실패해도 측정 결과는 남는다
-    // VL 이해와 스타일 카드를 동시에(2026-11-09: 차례로 돌려 VL 대기 동안 아무것도 안 함). VL 은 4분이 넘으면 끊는다 — 측정 결과는 남는다
-    h.progress(0.7, "VL 로 보기 · 스타일 카드");
-    const [u, s] = await Promise.all([
-      h.run(PY, ["engine/providers/see.py", "ref", vid, ...(force ? ["--force"] : [])], { cwd: ROOT, timeout: 4 * 60e3 }),
-      // 스타일 카드(매초 글자 인식 — 편당 2분)는 분해도 화면(deep)에서만. 에이전트의 빠른 분석은 건너뛰고 제작(produce.py)이 필요한 레퍼런스만 만든다(2026-11-09)
-      (!force && existsSync(path.join(dir, "style", "style.json"))) || !deep ? Promise.resolve({ code: 0 }) : h.run(PY, ["engine/research/ref_style.py", vid], { cwd: ROOT, timeout: 20 * 60e3 }),
-    ]);
-    if (u.code !== 0 && u.code !== 10) h.log?.(`VL 이해 건너뜀: ${tail(u.out || u.err)}`);
+    // 스타일 카드(자막 위치 · 크기 · 색 — 디자이너 스킬이 그대로 쓴다). 채팅 분석(빠른 분석)에서도 만든다(2026-11-12: 빠지면 레퍼런스대로 맞출 근거가 비었다)
+    h.progress(0.66, "스타일 카드");
+    if (force || !existsSync(path.join(dir, "style", "style.json"))) {
+      await h.run(PY, ["engine/research/ref_style.py", vid], { cwd: ROOT, timeout: 20 * 60e3 });
+    }
+    // 레퍼런스 이해 — 설정된 에이전트(Claude Code · Codex · Antigravity)가 프레임 모음 · 대사를 보고 xray.json 의 understanding 을 쓴다(engine/look, 유료 보기 API 없음).
+    // 에이전트가 로그인 안 됐거나 실패해도 분석은 남는다(이해만 빠짐)
+    h.progress(0.72, "레퍼런스 이해");
+    await h.run(PY, ["engine/look/look.py", "ref", vid, ...(force ? ["--force"] : [])], { cwd: ROOT, timeout: 10 * 60e3 });
     // 이어서 채널 말투 카드(같은 채널 쇼츠 여러 편 — 말투 · 구성 · 농담 · 목소리). 실패해도 스타일 카드는 남는다
     const c = req.body?.channel === false ? null : await h.run(PY, ["engine/research/ref_channel.py", vid, "--n", String(fast ? 2 : Math.max(2, Math.min(10, Number(req.body?.n) || 5))), ...(fast ? ["--whisper", "base"] : []), ...(force ? ["--fresh"] : [])], { cwd: ROOT, timeout: 40 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.8 + Number(m[1]) * 0.2, `채널 말투 · ${m[2]}`); } });
     const ch = c && c.code === 0 ? lastJson(c) : null;
@@ -472,6 +500,412 @@ app.post("/api/projects/:id/gate/:kind", ah(async (req, res) => {
   if (r.code !== 0) throw new HttpError(422, "gate", tail(r.err || r.out).split("\n").pop() || "확인하지 못했습니다");
   logEffort(ROOT, id, "approve", kind);
   res.json(lastJson(r) || { ok: true });   // 콘티 intent.confirmed 가 바뀌면 파일 감시가 화면에 알린다
+}));
+
+// ---------- 자막 · 글자 편집(engine/gen/subs.py) — 사람 화면과 에이전트가 같은 값을 고친다(엔진은 Craft 하나) ----------
+app.get("/api/projects/:id/subs", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const r = await py(["engine/gen/subs.py", "get", id], { timeout: 30e3 });
+  const v = lastJson(r); if (!v) throw new HttpError(422, "subs", tail(r.err || r.out).split("\n").pop() || "자막을 읽지 못했습니다");
+  const out = path.join(ROOT, "data", "out");
+  const drafts = (await fs.readdir(out).catch(() => [])).filter((f) => f.startsWith(`${id}-`) && f.endsWith(".mp4") && f.includes("draft"));
+  let draft = null, mt = 0;
+  for (const f of drafts) { const m = (await fs.stat(path.join(out, f))).mtimeMs; if (m > mt) { mt = m; draft = f; } }
+  res.json({ ...v, draft: draft ? `/api/out/${draft}?v=${Math.round(mt)}` : null });
+}));
+app.put("/api/projects/:id/subs", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const body = req.body || {};
+  if (!Array.isArray(body.items) || body.items.length > 400) throw bad("자막 목록이 올바르지 않습니다");
+  const tmp = path.join(ROOT, "data", "workspace", "tmp", `subs-${id}-${Date.now()}.json`);
+  await fs.mkdir(path.dirname(tmp), { recursive: true });
+  await fs.writeFile(tmp, JSON.stringify(body));
+  const r = await py(["engine/gen/subs.py", "put", id, tmp, "user"], { timeout: 60e3 });
+  await fs.unlink(tmp).catch(() => {});
+  const msg = (r.out + r.err).match(/^error=(.*)$/m)?.[1];
+  if (r.code !== 0) throw new HttpError(422, "subs", msg || tail(r.err || r.out));
+  logEffort(ROOT, id, "edit", "자막 · 제목(화면)");
+  res.json({ ok: true });
+}));
+
+// ---------- 영상 편집기(VEditor — 엔진 2) 타임라인 연동 ----------
+// 1. 프로젝트 저장 위치: data/compositions/<id>/editor/project.json
+// 2. 없으면 engine/gen/editor_bridge.py convert <id> 로 Craft 초안에서 타임라인 자동 변환
+// 3. 내보낸 MP4: data/compositions/<id>/editor/exported.mp4 및 data/out/<id>-editor.mp4
+app.get("/api/projects/:id/editor", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const edDir = path.join(ROOT, "data", "compositions", id, "editor");
+  const pPath = path.join(edDir, "project.json");
+  if (!existsSync(pPath)) {
+    const r = await py(["engine/gen/editor_bridge.py", "convert", id], { timeout: 60e3 });
+    if (r.code !== 0 || !existsSync(pPath)) {
+      throw new HttpError(422, "editor_bridge", tail(r.err || r.out) || "편집기 타임라인을 만들지 못했습니다");
+    }
+  }
+  const text = await fs.readFile(pPath, "utf8");
+  // 저장본에서 빠진 미디어 항목 되살리기: 타임라인 요소가 가리키는 mediaId 가 media 목록에 없으면
+  // (예전 자동 저장이 불러오기에 실패한 미디어를 목록에서 떨어뜨림) 변환기(editor_bridge media)가 아는 항목으로 채워서 보낸다.
+  // 파일은 고치지 않는다 — 편집기가 다음에 저장할 때 함께 남는다.
+  let doc = null;
+  try { doc = JSON.parse(text); } catch { /* 그대로 보낸다 */ }
+  const missing = doc ? editorMissingMediaIds(doc) : [];
+  if (missing.length) {
+    const r = await py(["engine/gen/editor_bridge.py", "media", id], { timeout: 60e3 });
+    let fresh = [];
+    try { fresh = JSON.parse(r.out); } catch { fresh = []; }
+    const add = Array.isArray(fresh) ? fresh.filter((m) => m && missing.includes(m.id)) : [];
+    if (add.length) {
+      doc.media = [...(Array.isArray(doc.media) ? doc.media : []), ...add];
+      return res.json(doc);
+    }
+  }
+  res.type("application/json").send(text);
+}));
+
+/** 편집기 문서에서 요소가 가리키지만 media 목록에 없는 mediaId */
+function editorMissingMediaIds(doc) {
+  const have = new Set((Array.isArray(doc.media) ? doc.media : []).map((m) => m && m.id));
+  const miss = new Set();
+  for (const sc of doc.project?.scenes ?? []) {
+    const t = sc?.tracks ?? {};
+    for (const tr of [...(t.overlay ?? []), t.main, ...(t.audio ?? [])]) {
+      for (const el of tr?.elements ?? []) if (el?.mediaId && !have.has(el.mediaId)) miss.add(el.mediaId);
+    }
+  }
+  return [...miss];
+}
+
+app.put("/api/projects/:id/editor", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const body = req.body;
+  if (!body || typeof body !== "object") throw bad("프로젝트 데이터가 올바르지 않습니다");
+  const edDir = path.join(ROOT, "data", "compositions", id, "editor");
+  await fs.mkdir(edDir, { recursive: true });
+  const pPath = path.join(edDir, "project.json");
+  await atomicWrite(pPath, JSON.stringify(body, null, 2));
+  res.json({ ok: true, file: path.relative(ROOT, pPath) });
+}));
+
+app.post("/api/projects/:id/editor/export", express.raw({ type: "*/*", limit: "1000mb" }), ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const body = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || "");
+  if (!body.length) throw bad("내보낸 영상 데이터가 비어 있습니다");
+  const edDir = path.join(ROOT, "data", "compositions", id, "editor");
+  await fs.mkdir(edDir, { recursive: true });
+  const expPath = path.join(edDir, "exported.mp4");
+  await atomicWrite(expPath, body);
+
+  // 2-엔진 규칙: 편집기에서 내보낸 것이 최종본 -> data/out/<id>-editor.mp4 로도 저장
+  await fs.mkdir(OUT, { recursive: true });
+  const outPath = path.join(OUT, `${id}-editor.mp4`);
+  await fs.copyFile(expPath, outPath);
+
+  res.json({ ok: true, file: path.relative(ROOT, expPath), out: path.relative(ROOT, outPath) });
+}));
+
+// ---------- 편집기 효과 모듈(Craft) — 효과 · 애니메이션 프리셋 · Fluma 레시피를 EffectCraft 로 렌더한 투명 층 (engine/craft/fxlayer.py) ----------
+let fxListCache = new Map();
+app.get("/api/craft-fx", ah(async (req, res) => {
+  const target = ["text", "video", "image"].includes(String(req.query.target)) ? String(req.query.target) : "video";
+  if (!fxListCache.has(target)) {
+    const r = await py(["engine/craft/fxlayer.py", "list", "--target", target], { timeout: 60e3 });
+    const v = lastJson(r); if (!Array.isArray(v)) throw new HttpError(500, "craft_fx", tail(r.err || r.out));
+    fxListCache.set(target, v);
+  }
+  res.json(fxListCache.get(target));
+}));
+app.get("/api/craft-fx/thumb/:rid", ah(async (req, res) => {
+  const rid = String(req.params.rid); if (!/^[a-z0-9-]{2,64}$/.test(rid)) throw bad("레시피 이름이 올바르지 않습니다");
+  const f = path.join(ROOT, "data", "workspace", "probe", "recipes", rid, "after.png");
+  if (!existsSync(f)) throw notFound("미리보기가 없습니다");
+  res.sendFile(f, { headers: { "Cache-Control": "max-age=86400" } });
+}));
+app.post("/api/projects/:id/editor/craft-fx", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const spec = req.body; if (!spec || typeof spec !== "object" || !spec.effect) throw bad("효과 요청이 올바르지 않습니다");
+  const tmpDir = path.join(ROOT, "data", "workspace", "tmp"); await fs.mkdir(tmpDir, { recursive: true });
+  const tmp = path.join(tmpDir, `fx-${id}-${Date.now()}.json`);
+  await fs.writeFile(tmp, JSON.stringify(spec));
+  const r = await py(["engine/craft/fxlayer.py", "render", id, tmp], { timeout: 15 * 60e3 });
+  await fs.unlink(tmp).catch(() => {});
+  const v = lastJson(r);
+  if (r.code !== 0 || !v?.url) throw new HttpError(422, "craft_fx", tail(r.err || r.out) || "효과를 렌더하지 못했습니다");
+  logEffort(ROOT, id, "edit", `Craft 효과 ${spec.effect.kind}:${spec.effect.id}`);
+  res.json(v);
+}));
+
+app.get("/api/projects/:id/editor/status", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const r = await py(["engine/gen/editor_bridge.py", "status", id], { timeout: 30e3 });
+  const v = lastJson(r);
+  if (!v) throw new HttpError(500, "editor_status", tail(r.err || r.out));
+  res.json(v);
+}));
+
+// 편집기 미디어 갤러리 — 파이프라인 에셋(키 프레임 · 모든 테이크 · 앵커 · 캐릭터 시트 · 나레이션 · 업로드 · Craft 층) 목록
+app.get("/api/projects/:id/editor/gallery", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const compDir = path.join(ROOT, "data", "compositions", id);
+  const items = [];
+  const addItem = (idKey, name, kind, group, url) => items.push({ id: idKey, name, kind, group, url });
+
+  // 1) 키 프레임 (data/compositions/<id>/keyframes/*.png)
+  const kfDir = path.join(compDir, "keyframes");
+  for (const f of existsSync(kfDir) ? (await fs.readdir(kfDir)).sort() : []) {
+    if (!/\.(png|jpg|jpeg|webp)$/i.test(f)) continue;
+    addItem(`gallery:kf:${f}`, `키프레임 · ${f}`, "image", "키 프레임", `/api/pipefiles/${encodeURIComponent(id)}/keyframes/${encodeURIComponent(f)}`);
+  }
+
+  // 2) 샷 클립 & 테이크 (data/compositions/<id>/clips/*.mp4 및 clips/sNN/*.mp4)
+  const clipDir = path.join(compDir, "clips");
+  for (const e of existsSync(clipDir) ? (await fs.readdir(clipDir, { withFileTypes: true })) : []) {
+    if (e.isFile() && /\.(mp4|webm|mov)$/i.test(e.name)) {
+      addItem(`gallery:clip:${e.name}`, `클립 · ${e.name}`, "video", "샷 클립", `/api/pipefiles/${encodeURIComponent(id)}/clips/${encodeURIComponent(e.name)}`);
+    } else if (e.isDirectory() && /^s\d+$/i.test(e.name)) {
+      const sub = path.join(clipDir, e.name);
+      for (const tf of (await fs.readdir(sub)).sort()) {
+        if (!/\.(mp4|webm|mov)$/i.test(tf)) continue;
+        addItem(`gallery:take:${e.name}:${tf}`, `${e.name.toUpperCase()} · ${tf}`, "video", "샷 테이크", `/api/pipefiles/${encodeURIComponent(id)}/clips/${encodeURIComponent(e.name)}/${encodeURIComponent(tf)}`);
+      }
+    }
+  }
+
+  // 3) 앵커 프레임 (data/compositions/<id>/anchor/*)
+  const anchorDir = path.join(compDir, "anchor");
+  for (const f of existsSync(anchorDir) ? (await fs.readdir(anchorDir)).sort() : []) {
+    if (/\.(png|jpg|jpeg|webp)$/i.test(f)) {
+      addItem(`gallery:anchor:${f}`, `앵커 · ${f}`, "image", "앵커 · 레퍼런스", `/api/pipefiles/${encodeURIComponent(id)}/anchor/${encodeURIComponent(f)}`);
+    } else if (/\.(mp4|webm|mov)$/i.test(f)) {
+      addItem(`gallery:anchor:${f}`, `앵커 영상 · ${f}`, "video", "앵커 · 레퍼런스", `/api/pipefiles/${encodeURIComponent(id)}/anchor/${encodeURIComponent(f)}`);
+    }
+  }
+
+  // 4) 캐릭터 시트 (data/characters/<Char>/*.png)
+  const plan = await readJson(path.join(ROOT, "data", "shotplans", `${id}.json`), null);
+  const charDir = path.join(ROOT, "data", "characters");
+  const charNames = Array.isArray(plan?.characters)
+    ? plan.characters.map((c) => c?.name).filter(Boolean)
+    : existsSync(charDir) ? await fs.readdir(charDir) : [];
+  for (const cn of charNames) {
+    const cd = path.join(charDir, cn);
+    if (!existsSync(cd)) continue;
+    for (const f of (await fs.readdir(cd)).sort()) {
+      if (!/\.(png|jpg|jpeg|webp)$/i.test(f)) continue;
+      addItem(`gallery:char:${cn}:${f}`, `캐릭터(${cn}) · ${f}`, "image", "캐릭터 시트", `/api/charfiles/${encodeURIComponent(cn)}/${encodeURIComponent(f)}`);
+    }
+  }
+
+  // 5) Craft 효과 층 및 모션 결과 (data/compositions/<id>/editor/fx/*.webm)
+  const fxDir = path.join(compDir, "editor", "fx");
+  for (const f of existsSync(fxDir) ? (await fs.readdir(fxDir)).sort() : []) {
+    if (!/\.(webm|mp4|png)$/i.test(f)) continue;
+    const k = f.endsWith(".png") ? "image" : "video";
+    addItem(`gallery:fx:${f}`, `Craft 효과 · ${f}`, k, "Craft 레이어", `/api/pipefiles/${encodeURIComponent(id)}/editor/fx/${encodeURIComponent(f)}`);
+  }
+
+  // 6) 오디오 (나레이션 · 믹스 · 효과음)
+  for (const [label, rel] of [
+    ["나레이션 음성", `data/public/audio/${id}.voice.wav`],
+    ["효과음 트랙", `data/public/audio/${id}.sfx.wav`],
+    ["전체 오디오", `data/audio/${id}.wav`],
+  ]) {
+    if (existsSync(path.join(ROOT, rel))) {
+      addItem(`gallery:aud:${path.basename(rel)}`, `${label} (${path.basename(rel)})`, "audio", "오디오", `/api/projects/${encodeURIComponent(id)}/studio-file?p=${encodeURIComponent(rel)}`);
+    }
+  }
+
+  // 7) 업로드된 파일 (data/public/uploads/<id>/*)
+  for (const u of await uploadList(id)) {
+    addItem(`gallery:up:${u.name}`, `업로드 · ${u.name}`, u.kind, "업로드 파일", u.url);
+  }
+
+  res.json(items);
+}));
+
+// ---------- 숏폼 생성 파이프라인 — 승인 ① · ② · 샷 검토 화면 (engine/gen/*) ----------
+// 승인은 사람만 누른다(에이전트는 화면을 보여 주고 묻는다). 생성 · 재생성은 시간이 걸려 작업 큐(generate)로.
+app.use("/api/sfx", express.static(path.join(ROOT, "assets", "sfx"), { maxAge: 0 }));
+app.get("/api/sfx-list", ah(async (_req, res) => {
+  const sfxDir = path.join(ROOT, "assets", "sfx");
+  const files = existsSync(sfxDir) ? await fs.readdir(sfxDir) : [];
+  const wavs = files.filter((f) => f.endsWith(".wav"));
+  const items = wavs.map((f, idx) => ({
+    id: idx + 1,
+    name: f.replace(/\.wav$/, "").toUpperCase(),
+    duration: 1.0,
+    previewUrl: `/api/sfx/${f}`,
+    downloadUrl: `/api/sfx/${f}`,
+  }));
+  res.json(items);
+}));
+app.use("/api/pipefiles", express.static(path.join(ROOT, "data", "compositions"), { maxAge: 0 }));
+
+// 파이프라인 상태 인메모리 캐시 — 파일 mtime 이 같으면 파이썬 서브프로세스를 다시 띄우지 않고 메모리에서 즉각 반환
+const pipeCache = new Map();
+function pipeStamp(id) {
+  const st = (p) => { try { return Math.round(statSync(p).mtimeMs); } catch { return 0; } };
+  const sp = path.join(ROOT, "data", "shotplans", `${id}.json`);
+  const comp = path.join(ROOT, "data", "compositions", id);
+  return `${st(sp)}:${st(comp)}:${st(path.join(comp, "craft"))}:${st(path.join(comp, "keyframes"))}:${st(path.join(comp, "clips"))}`;
+}
+let pipeListCache = { at: 0, stamp: "", data: [] };
+
+app.get("/api/pipeline", ah(async (_req, res) => {
+  const spDir = path.join(ROOT, "data", "shotplans");
+  const st = (p) => { try { return Math.round(statSync(p).mtimeMs); } catch { return 0; } };
+  const stamp = String(st(spDir));
+  if (pipeListCache.stamp === stamp && Date.now() - pipeListCache.at < 5000) {
+    return res.json(pipeListCache.data);
+  }
+  const r = await py(["engine/gen/status.py", "--list"], { timeout: 30e3 });
+  const data = lastJson(r) || [];
+  pipeListCache = { at: Date.now(), stamp, data };
+  res.json(data);
+}));
+app.get("/api/pipeline/:id", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const sp = path.join(ROOT, "data", "shotplans", `${id}.json`);
+  if (!existsSync(sp)) throw notFound("샷 계획이 없습니다");
+  const stamp = pipeStamp(id);
+  const cached = pipeCache.get(id);
+  if (cached && cached.stamp === stamp && Date.now() - cached.at < 10000) {
+    return res.json(cached.data);
+  }
+  const r = await py(["engine/gen/status.py", id], { timeout: 60e3 });
+  const v = lastJson(r); if (!v) throw new HttpError(500, "pipeline", tail(r.err || r.out));
+  pipeCache.set(id, { stamp, data: v, at: Date.now() });
+  res.json(v);
+}));
+// 파이프라인 뷰(2.5D 그래프)의 실시간 상태 — 파이썬을 부르지 않는 가벼운 응답이라 자주 불러도 된다.
+// 지금 도는 작업 · 에이전트(어느 도구를 쓰는 중인지) · 단계별 실제 모델 · 편집기(엔진 2) 상태
+app.get("/api/pipeline/:id/live", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const s = await readJson(SETTINGS, {}) || {};
+  let rt = null; try { rt = resolveRuntime(s); } catch { /* 에이전트 미설정 */ }
+  const act = agent.active().find((a) => a.id === id) || null;
+  const ed = path.join(ROOT, "data", "compositions", id, "editor");
+  const st = (p) => { try { return Math.round(statSync(p).mtimeMs); } catch { return 0; } };
+  res.json({
+    at: Date.now(),
+    jobs: jobs.list({ project: id }).map((j) => ({ id: j.id, type: j.type, label: j.label, status: j.status, progress: j.progress, stage: j.stage, started: j.started, ended: j.ended, error: j.error })),
+    agent: { busy: !!act, tool: act?.tool?.name ?? null, skill: act?.skill ?? null, runtime: rt?.runtime ?? null, model: rt?.model || null, label: rt?.label ?? null },
+    models: { voice: s.voice_engine || "edge", video: s.videogen?.model || "veo_3_1_lite", image: s.agent?.agyModel || "" },
+    editor: { project: st(path.join(ed, "project.json")), exported: st(path.join(ed, "exported.mp4")) },
+  });
+}));
+const PIPE_NUM = (x) => String(x || "").split(",").map((s) => s.trim()).filter((s) => /^\d{1,2}$/.test(s)).join(",");
+const PIPE_NAME = (x) => { const s = String(x || ""); if (!/^[A-Za-z][A-Za-z0-9]{0,31}$/.test(s)) throw bad("캐릭터 이름이 올바르지 않습니다"); return s; };
+const PIPE_VIEWS = (x) => { const s = String(x || "all"); if (!/^(all|(front|back|left|right)(,(front|back|left|right))*)$/.test(s)) throw bad("방향이 올바르지 않습니다"); return s; };
+app.post("/api/pipeline/:id/:step/:action", ah(async (req, res) => {
+  const id = checkId(req.params.id); const { step, action } = req.params; const b = req.body || {};
+  pipeCache.delete(id); pipeListCache.at = 0;
+  const shots = PIPE_NUM(b.shots);
+  const quick = {   // 바로 끝나는 것(승인 · 후보 선택)
+    "character/approve": () => ["engine/gen/character.py", "approve", id, PIPE_NAME(b.name)],
+    "keyframe/approve": () => ["engine/gen/keyframe.py", "approve", id, ...(shots ? ["--shots", shots] : [])],
+    "keyframe/auto-stage": () => ["engine/gen/keyframe.py", "auto-stage", id, ...(shots ? ["--shots", shots] : [])],
+    "keyframe/pick": () => {
+      if (!shots || !b.candidate) throw bad("샷 번호와 후보 번호가 필요합니다");
+      return ["engine/gen/keyframe.py", "pick", id, shots.split(",")[0], String(Number(b.candidate) || 1)];
+    },
+    "video/approve": () => { if (!shots) throw bad("샷 번호가 필요합니다"); return ["engine/gen/video.py", "approve", id, "--shots", shots]; },
+    // 말로 고치기 — 고칠 점(영어)을 그 샷 프롬프트 끝에 붙인다. 다음 '생성'에 반영
+    "video/revise": () => { if (!shots) throw bad("샷 번호가 필요합니다"); const say = String(b.say || "").trim().slice(0, 300); if (!say) throw bad("고칠 점을 적어 주세요"); return ["engine/gen/video.py", "revise", id, "--shots", shots, "--say", say]; },
+  };
+  const slow = {    // 생성 · 재생성 · 편집 — 작업 큐
+    "character/make": () => ["engine/gen/character.py", "make", id, PIPE_NAME(b.name), "--views", PIPE_VIEWS(b.views)],
+    "keyframe/make": () => [
+      "engine/gen/keyframe.py",
+      "make",
+      id,
+      ...(shots ? ["--shots", shots] : []),
+      ...(b.candidates && Number(b.candidates) > 1 ? ["--candidates", String(Math.min(4, Number(b.candidates)))] : []),
+    ],
+    "video/run": () => ["engine/gen/video.py", "run", id, ...(shots ? ["--shots", shots] : [])],
+    "edit/build": () => ["engine/gen/assemble.py", "build", id],
+    "publish/final": () => ["engine/gen/publish.py", "final", id],
+    "dub/build": () => ["engine/gen/dub.py", "build", id],                       // 실제 에셋 경로 — 클립 재편집
+    "material/produce": () => ["engine/produce.py", `data/storyboards/${id}.json`],   // 실제 자료 경로 — 기존 콘티 제작
+  };
+  const k = `${step}/${action}`;
+  if (quick[k]) {
+    const r = await py(quick[k](), { timeout: 60e3 });
+    const msg = (r.out + r.err).match(/^error=(.*)$/m)?.[1];
+    if (r.code !== 0) throw new HttpError(422, "pipeline", msg || tail(r.err || r.out));
+    logEffort(ROOT, id, "approve", k);
+    return res.json({ ok: true });
+  }
+  if (!slow[k]) throw bad("알 수 없는 작업입니다");
+  const args = slow[k]();
+  const label = { "character/make": "캐릭터 시트 만들기", "keyframe/make": "키 프레임 만들기", "video/run": "영상 생성", "edit/build": "편집 초안", "publish/final": "최종 렌더", "dub/build": "클립 재편집 초안", "material/produce": "실제 자료 초안" }[k];
+  const j = jobs.create({ type: k === "publish/final" ? "render" : "generate", project: id, key: `pipe:${id}:${k}:${shots}:${b.name || ""}`, label, timeout: 60 * 60e3, work: async (h) => {
+    const r = await h.run(PY, args, { cwd: ROOT });
+    if (r.timedOut || r.canceled) return r;
+    const msg = (r.out + r.err).match(/^error=(.*)$/m)?.[1];
+    if (r.code !== 0) return { error: msg || `${label} 실패`, detail: tail(r.err || r.out) };
+    return { ok: true };
+  } });
+  res.status(202).json({ job: j.id });
+}));
+
+// ---------- 키 프레임 2D 캔버스 마스크/합성 & 3D 스테이지 프리비즈 가이드 ----------
+app.post("/api/pipeline/:id/keyframe/:shot/guide", express.json({ limit: "25mb" }), ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const shot = Number(req.params.shot);
+  if (!Number.isInteger(shot) || shot < 1 || shot > 99) throw bad("샷 번호가 올바르지 않습니다");
+  const { kind, dataUrl, spec, note } = req.body || {};
+  if (!["mask", "compose", "stage"].includes(kind)) throw bad("가이드 종류(mask · compose · stage)가 올바르지 않습니다");
+
+  const kfDir = path.join(ROOT, "data", "compositions", id, "keyframes");
+  await fs.mkdir(kfDir, { recursive: true });
+  const pad = String(shot).padStart(2, "0");
+
+  if (kind === "stage" && spec && !dataUrl) {
+    const tmp = path.join(ROOT, "data", "workspace", "tmp", `stage3d-${id}-${shot}-${Date.now()}.json`);
+    await fs.mkdir(path.dirname(tmp), { recursive: true });
+    await fs.writeFile(tmp, JSON.stringify(spec));
+    const r = await py(["engine/gen/keyframe.py", "stage3d", id, String(shot), "--spec", tmp], { timeout: 60e3 });
+    await fs.unlink(tmp).catch(() => {});
+    if (r.code !== 0) throw new HttpError(422, "stage3d", tail(r.err || r.out));
+  } else {
+    const m = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ""));
+    if (!m) throw bad("이미지 데이터(dataUrl)가 올바르지 않습니다");
+    const buf = Buffer.from(m[2], "base64");
+    await atomicWrite(path.join(kfDir, `s${pad}_${kind}.png`), buf);
+    if (spec && typeof spec === "object") {
+      await atomicWrite(path.join(kfDir, `s${pad}_${kind}.json`), JSON.stringify(spec, null, 1));
+    }
+  }
+
+  // 노트(keyframe_note)가 함께 오면 shotplan 의 해당 샷에 반영
+  if (typeof note === "string") {
+    const spFile = path.join(ROOT, "data", "shotplans", `${id}.json`);
+    const sb = await readJson(spFile, null);
+    if (sb && Array.isArray(sb.shots)) {
+      const targetShot = sb.shots.find((s) => s.n === shot);
+      if (targetShot) {
+        if (note.trim()) targetShot.keyframe_note = note.trim();
+        else delete targetShot.keyframe_note;
+        await atomicWrite(spFile, JSON.stringify(sb, null, 2));
+      }
+    }
+  }
+
+  logEffort(ROOT, id, "edit", `키프레임 가이드 (${kind} · 샷 ${shot})`);
+  res.json({
+    ok: true,
+    url: `/api/pipefiles/${encodeURIComponent(id)}/keyframes/s${pad}_${kind}.png?t=${Date.now()}`,
+  });
+}));
+
+app.delete("/api/pipeline/:id/keyframe/:shot/guide", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const shot = Number(req.params.shot);
+  if (!Number.isInteger(shot) || shot < 1 || shot > 99) throw bad("샷 번호가 올바르지 않습니다");
+  const kind = ["mask", "compose", "stage", "all"].includes(String(req.query.kind)) ? String(req.query.kind) : "all";
+  const r = await py(["engine/gen/keyframe.py", "clear-guide", id, String(shot), "--kind", kind], { timeout: 30e3 });
+  if (r.code !== 0) throw new HttpError(422, "clear_guide", tail(r.err || r.out));
+  res.json({ ok: true });
 }));
 
 // ---------- Craft 앱 (ArtCraft 오픈소스 Photoshop · Illustrator · After Effects 류) ----------
@@ -1209,85 +1643,60 @@ const EFFORTS = ["", "low", "medium", "high", "xhigh", "max"];
 function sanitizeAgent(a = {}) {
   const str = (x, n = 120) => (typeof x === "string" ? x.trim().slice(0, n) : "");
   return {
-    mode: a.mode === "api" ? "api" : "cli",
     cli: AGENTS.some((x) => x.id === a.cli && x.runs) ? a.cli : "claude",
-    claudeModel: str(a.claudeModel), codexModel: str(a.codexModel),
+    claudeModel: str(a.claudeModel), codexModel: str(a.codexModel), agyModel: str(a.agyModel),
     effort: EFFORTS.includes(a.effort) ? a.effort : "",
-    provider: PROVIDERS.some((x) => x.id === a.provider) ? a.provider : "anthropic",
-    apiModel: str(a.apiModel), baseUrl: /^https?:\/\//.test(str(a.baseUrl, 300)) ? str(a.baseUrl, 300) : "",
-    protocol: a.protocol === "responses" ? "responses" : "anthropic",
   };
 }
 app.get("/api/agents", ah(async (_req, res) => {
-  const keys = readKeys();
   const s = await readJson(SETTINGS, {}) || {};
   let active = null, problem = null;
   try { active = resolveRuntime(s).label; } catch (e) { problem = e.message; }
-  res.json({ agents: detectAgents(), models: { claude: CLAUDE_MODELS, codex: codexModels() },
-    providers: PROVIDERS.map((p) => ({ ...p, hasKey: !!keys[p.id] || !!p.local, keyMasked: mask(keys[p.id]) })), active, problem });
-}));
-app.put("/api/agent-keys/:id", ah(async (req, res) => {
-  const { id } = req.params;
-  if (!PROVIDERS.some((p) => p.id === id)) throw notFound("제공자가 없습니다");
-  const key = String(req.body?.key ?? "").trim();
-  if (key.length > 400 || /\s/.test(key)) throw bad("키 형식이 올바르지 않습니다", "bad_key");
-  writeKey(id, key);
-  res.json({ ok: true, keyMasked: mask(key) });
-}));
-// 연결 시험: 저장된(또는 제공자 기본) 주소로만 — 요청이 준 주소로 키를 보내지 않는다
-app.post("/api/agent-test/:id", ah(async (req, res) => {
-  const p = PROVIDERS.find((x) => x.id === req.params.id); if (!p) throw notFound("제공자가 없습니다");
-  const s = (await readJson(SETTINGS, {})) || {};
-  const stored = s.agent?.provider === p.id ? String(s.agent?.baseUrl || "") : "";
-  let base = String(p.baseUrl || stored || "").replace(/\/+$/, "");
-  const asked = String(req.body?.baseUrl || "").replace(/\/+$/, "");
-  if (asked && base) { try { if (new URL(asked).host === new URL(base).host) base = asked; } catch { /* 무시 */ } }
-  if (!base) throw bad("주소가 없습니다 — 설정에서 Base URL 을 먼저 저장하세요", "no_base_url");
-  const key = readKeys()[p.id] || (p.local ? "ollama" : "");
-  const protocol = p.custom ? (s.agent?.protocol === "responses" ? "responses" : "anthropic") : p.protocol;
-  const url = protocol === "anthropic" ? `${base}${/\/v1$/.test(base) ? "" : "/v1"}/models` : `${base}/models`;
-  const headers = p.auth === "x-api-key" ? { "x-api-key": key, "anthropic-version": "2023-06-01" } : p.auth === "api-key" ? { "api-key": key } : { authorization: `Bearer ${key}` };
-  try {
-    const r = await fetch(url, { headers, signal: AbortSignal.timeout(12000), redirect: "error" });
-    const txt = await r.text();
-    let n = null; try { const d = JSON.parse(txt); n = (d.data || d.models || []).length; } catch { /* 형식 다름 */ }
-    res.json({ ok: r.ok, status: r.status, models: n, error: r.ok ? null : `응답 ${r.status}` });
-  } catch (e) { res.json({ ok: false, error: e?.name === "TimeoutError" ? "응답이 없습니다 (12초)" : "연결하지 못했습니다" }); }
+  // 고른 에이전트가 로그인 안 된 상태면 위 상태 줄에 알린다(Codex: 결제 · 로그인 전에는 실행이 401 로 실패)
+  const cur = detectAgents().find((x) => x.id === resolveRuntime(s).runtime);
+  if (!problem && cur?.auth && /not logged in/i.test(cur.auth)) problem = `${cur.title} 로그인이 필요합니다 — 터미널에서 '${cur.id} login' 후 사용할 수 있어요`;
+  res.json({ agents: detectAgents(), models: { claude: CLAUDE_MODELS, codex: codexModels(), antigravity: AGY_MODELS }, active, problem });
 }));
 
-// ---------- 능력별 모델(보기 · 만들기 · 말하기 — 오픈라우터) · 비용 상한 ----------
-// 목록 · 가격은 engine/providers/catalog.py 가 오픈라우터 공개 목록에서(하루 한 번 캐시). 모델은 사용자가 고른다 — 코드에 박지 않는다
-const CAPS = ["see.video", "voice.tts", "voice.stt", "make.sound", "embed"];   // 그림 · 영상 생성은 없앴다(2026-11-09) — 화면은 완전 로컬
-function sanitizeModels(m = {}) {
-  const o = {};
-  for (const c of CAPS) { const v = typeof m?.[c] === "string" ? m[c].trim() : ""; if (v === "local" || /^[a-z0-9._-]+\/[a-z0-9._:-]+$/i.test(v)) o[c] = v; }
-  return o;
+// ---------- gflow 자동 로그인 및 상태 ----------
+app.get("/api/gflow/status", ah(async (_req, res) => {
+  const r = await py(["engine/gen/video.py", "check"]);
+  const d = lastJson(r) || { available: false, msg: tail(r.err) };
+  res.json(d);
+}));
+app.post("/api/gflow/login", ah(async (_req, res) => {
+  const r = await py(["engine/gen/video.py", "login"], { timeout: 180e3 });
+  const ok = r.code === 0;
+  res.json({ ok, error: ok ? null : (tail(r.err) || tail(r.out) || "로그인에 실패했습니다") });
+}));
+
+// ---------- 영상 생성 설정(videogen) ----------
+function sanitizeVideogen(v = {}) {
+  const backend = ["gflow", "antigravity", "mock"].includes(v.backend) ? v.backend : "gflow";
+  const defModel = backend === "antigravity" ? "gemini" : backend === "mock" ? "mock" : "veo_3_1_lite";
+  const model = typeof v.model === "string" && v.model.trim() ? v.model.trim() : defModel;
+  const max_attempts = Number.isInteger(v.max_attempts) && v.max_attempts >= 1 && v.max_attempts <= 10 ? v.max_attempts : 3;
+  return { backend, model, max_attempts };
 }
-function sanitizeBudget(b = {}) {
-  const n = Number(b?.per_video);
-  return { per_video: Number.isFinite(n) && n >= 0 && n <= 500 ? Math.round(n * 100) / 100 : 3 };
+
+function sanitizeImagegen(v = {}) {
+  const backend = ["gflow", "agy", "mock"].includes(v.backend) ? v.backend : "agy";
+  const model = typeof v.model === "string" && v.model.trim() ? v.model.trim() : (backend === "gflow" ? "nano-pro" : "flash");
+  return { backend, model };
 }
-app.get("/api/models/caps", ah(async (_req, res) => {
-  const r = await py(["engine/providers/catalog.py", "caps", "--json"], { timeout: 90e3 });
-  const v = lastJson(r); if (!v) throw new Error(tail(r.err)); res.json(v);
-}));
-app.get("/api/models/list/:cap", ah(async (req, res) => {
-  if (!CAPS.includes(req.params.cap)) throw notFound("그런 능력이 없습니다");
-  const r = await py(["engine/providers/catalog.py", "list", req.params.cap, "--json", ...(req.query.refresh ? ["--refresh"] : [])], { timeout: 120e3 });
-  const v = lastJson(r); if (!v) throw new Error(tail(r.err) || "모델 목록을 받지 못했습니다"); res.json(v);
-}));
-app.put("/api/models/choice", ah(async (req, res) => {
-  const prev = (await readJson(SETTINGS, {})) || {};
-  const s = { ...prev, models: sanitizeModels({ ...(prev.models || {}), ...(req.body?.models || {}) }), budget: sanitizeBudget(req.body?.budget ?? prev.budget) };
-  markEcho(SETTINGS, clientOf(req));
-  await atomicWrite(SETTINGS, JSON.stringify(s, null, 1));
-  invalidate("voices:avail");
-  res.json({ ok: true, models: s.models, budget: s.budget });
-}));
 
 app.get("/api/settings", ah(async (_req, res) => {
   const s = (await readJson(SETTINGS, {})) || {};
-  res.json({ settings: { model: "", effort: "", language: "korean", voice_engine: "edge", voice_id: "", voice_auto: true, music_any_license: false, ...s }, models: MODELS, efforts: EFFORTS });
+  res.json({
+    settings: {
+      model: "", effort: "", language: "korean", voice_engine: "edge", voice_id: "", voice_auto: true, music_any_license: false,
+      videogen: { backend: "gflow", model: "veo_3_1_lite", max_attempts: 3 },
+      imagegen: { backend: "agy", model: "flash" },
+      ...s,
+    },
+    models: MODELS,
+    efforts: EFFORTS,
+  });
 }));
 app.put("/api/settings", ah(async (req, res) => {
   const b = req.body || {};
@@ -1298,16 +1707,18 @@ app.put("/api/settings", ah(async (req, res) => {
   const okVoice = (v) => /^[a-z0-9_-]+$/.test(v) && existsSync(path.join(ROOT, "engine", "voice", "engines", v, "voice.json"));
   let ve = String(b.voice_engine ?? prev.voice_engine ?? "edge");
   if (!okVoice(ve)) {
-    // 없어진 엔진(예: 2026-11-09 에 뺀 Gemini 음성)이 예전 설정에 남아 있으면 Edge 로 — 다른 설정 저장을 막지 않게
     if (b.voice_engine !== undefined && b.voice_engine !== prev.voice_engine) throw bad("음성 엔진이 올바르지 않습니다");
     ve = "edge";
   }
-  const s = { model, effort: b.effort || "", language: ["english", "chinese"].includes(b.language) ? b.language : "korean",
+  const s = {
+    model, effort: b.effort || "", language: ["english", "chinese"].includes(b.language) ? b.language : "korean",
     voice_engine: ve, voice_id: String(b.voice_id ?? prev.voice_id ?? "").slice(0, 80),
-    voice_auto: (b.voice_auto ?? prev.voice_auto ?? true) !== false,                 // 자동: 영상마다 레퍼런스에 맞춰 목소리 · 말 속도를 고름(voice_match auto)
-    music_any_license: (b.music_any_license ?? prev.music_any_license ?? false) === true, // 상업 유행곡도 영상에 직접 넣기(권리 위험을 사용자가 알고 켬)
+    voice_auto: (b.voice_auto ?? prev.voice_auto ?? true) !== false,
+    music_any_license: (b.music_any_license ?? prev.music_any_license ?? false) === true,
     agent: sanitizeAgent(b.agent ?? prev.agent ?? {}),
-    models: sanitizeModels(b.models ?? prev.models), budget: sanitizeBudget(b.budget ?? prev.budget) };
+    videogen: sanitizeVideogen(b.videogen ?? prev.videogen ?? {}),
+    imagegen: sanitizeImagegen(b.imagegen ?? prev.imagegen ?? {}),
+  };
   markEcho(SETTINGS, clientOf(req));
   await atomicWrite(SETTINGS, JSON.stringify(s, null, 1));
   res.json({ ok: true, settings: s });
@@ -1377,7 +1788,7 @@ app.post("/api/projects/:id/uploads", ah(async (req, res) => {
   markEcho(file, clientOf(req));
   await fs.rename(part, file);
   let jobId = null;
-  if (VID_EXT.includes(ext)) {
+  if (VID_EXT.includes(ext) && req.query.frames !== "0") {   // 편집기에서 가져온 파일(frames=0)은 프레임을 풀지 않는다
     // 30fps · 폭 1080 이하 JPG 프레임 (K.seq 가 시간으로 고름 → 렌더에서도 프레임 정확)
     const stem = name.slice(0, -ext.length); const fdir = path.join(dir, stem);
     const j = jobs.create({ type: "upload", project: id, key: `upload:${id}:${name}`, label: `영상 프레임 풀기 · ${name}`, work: async (h) => {
@@ -1431,8 +1842,8 @@ async function moveFile(src, dst) {
 async function projectFiles(id) {
   // 이 영상만의 파일: 이름이 id 이거나 id. · id- 로 시작하면서 더 긴 다른 영상 id 의 것이 아닌 것. data/research/ 는 여러 영상이 같이 씀
   // 2026-11-09: 폴더가 data/ 아래로 옮겨진 뒤에도 옛 이름(storyboards · compositions · out …)을 보고 있어 콘티 · 렌더가 휴지통으로 안 갔다
-  const dirs = ["data/storyboards", "data/compositions", "data/public/audio", "data/public/uploads", "data/public/elements", "data/public/archive", "data/audio", "data/out",
-    "data/workspace/sessions", "data/workspace/render", "data/workspace/covers", "data/workspace/stills", "data/workspace/tmp", "data/workspace/feel", "data/workspace/concepts", "data/workspace/critique", "data/briefs"];
+  const dirs = ["data/storyboards", "data/shotplans", "data/compositions", "data/public/audio", "data/public/uploads", "data/public/elements", "data/public/archive", "data/audio", "data/out",
+    "data/workspace/sessions", "data/workspace/render", "data/workspace/covers", "data/workspace/stills", "data/workspace/tmp", "data/workspace/feel", "data/workspace/concepts", "data/briefs"];
   const out = [];
   for (const d of dirs) {
     const abs = path.join(ROOT, d); if (!existsSync(abs)) continue;
@@ -1446,7 +1857,7 @@ app.delete("/api/projects/:id", ah(async (req, res) => {
   if (jobs.active(id).length) throw conflict("이 영상의 작업(렌더 등)이 진행 중입니다 — 끝나거나 취소한 뒤 지우세요", "busy");
   const files = await projectFiles(id);
   if (!files.length) throw notFound("지울 파일이 없습니다");
-  const title = (await readJson(path.join(STORY, `${id}.json`)))?.title || id;
+  const title = (await readJson(path.join(STORY, `${id}.json`)))?.title || (await readJson(path.join(ROOT, "data", "shotplans", `${id}.json`)))?.topic || id;
   const name = `${new Date().toISOString().replace(/[:.]/g, "-")}__${id}`;
   const dst = path.join(TRASH, name);
   for (const f of files) await moveFile(path.join(ROOT, f), path.join(dst, f));
@@ -1504,6 +1915,424 @@ app.delete("/api/memory/:id", ah(async (req, res) => {
   if (r.code !== 0) throw new HttpError(500, "memory_failed", "기억을 지우지 못했습니다");
   invalidate("memory"); await memoryList();
   res.json({ ok: true });
+}));
+
+// ---------- 라이브러리 (Library) & 자동화 (Automation) API ----------
+const CHAR_DIR = path.join(ROOT, "data", "characters");
+const PRESETS_FILE = path.join(ROOT, "data", "workspace", "presets.json");
+const AUTO_HIST_FILE = path.join(ROOT, "data", "workspace", "automation-history.json");
+
+app.get("/api/library/characters", ah(async (_req, res) => {
+  const out = [];
+  if (existsSync(CHAR_DIR)) {
+    for (const d of await fs.readdir(CHAR_DIR)) {
+      const cdir = path.join(CHAR_DIR, d);
+      const st = await fs.stat(cdir).catch(() => null);
+      if (!st || !st.isDirectory()) continue;
+      const meta = (await readJson(path.join(cdir, "meta.json"), null)) || {};
+      const sheet = (await readJson(path.join(cdir, "sheet.json"), null)) || {};
+      const hasFront = existsSync(path.join(cdir, "front.png"));
+      out.push({
+        name: d,
+        identity: meta.identity || "",
+        wardrobe: meta.wardrobe || "",
+        props: meta.props || "",
+        style: meta.style || "",
+        created_at: meta.created_at || (st ? st.mtime.toISOString() : ""),
+        hasFront,
+        front: hasFront ? `/api/charfiles/${d}/front.png` : null,
+        back: existsSync(path.join(cdir, "back.png")) ? `/api/charfiles/${d}/back.png` : null,
+        left: existsSync(path.join(cdir, "left.png")) ? `/api/charfiles/${d}/left.png` : null,
+        right: existsSync(path.join(cdir, "right.png")) ? `/api/charfiles/${d}/right.png` : null,
+        sheet: existsSync(path.join(cdir, "sheet.png")) ? `/api/charfiles/${d}/sheet.png` : null,
+        approved: sheet.approval?.status === "approved" || true,
+      });
+    }
+  }
+  res.json(out);
+}));
+
+app.post("/api/library/characters/import", ah(async (req, res) => {
+  const { projectId, charName } = req.body || {};
+  if (!projectId || !charName) throw bad("projectId 와 charName 이 필요합니다");
+  const srcDir = path.join(ROOT, "data", "compositions", projectId, "characters", charName);
+  if (!existsSync(srcDir)) throw notFound("프로젝트에 해당 캐릭터 폴더가 없습니다");
+  const dstDir = path.join(CHAR_DIR, charName);
+  await fs.mkdir(dstDir, { recursive: true });
+  for (const f of await fs.readdir(srcDir)) {
+    await fs.copyFile(path.join(srcDir, f), path.join(dstDir, f));
+  }
+  const plan = (await readJson(path.join(ROOT, "data", "shotplans", `${projectId}.json`), null)) || {};
+  const cMeta = (plan.characters || []).find((c) => c.name === charName) || {};
+  const meta = {
+    name: charName,
+    identity: cMeta.identity || "",
+    wardrobe: cMeta.wardrobe || "",
+    props: cMeta.props || "",
+    style: plan.style || "",
+    created_at: new Date().toISOString(),
+    source_project: projectId,
+  };
+  await atomicWrite(path.join(dstDir, "meta.json"), JSON.stringify(meta, null, 2));
+  publish({ kind: "characters" });
+  res.json({ ok: true, character: meta });
+}));
+
+app.get("/api/library/presets", ah(async (_req, res) => {
+  const presets = (await readJson(PRESETS_FILE, [])) || [];
+  res.json(presets);
+}));
+
+app.post("/api/library/presets", ah(async (req, res) => {
+  const p = req.body;
+  if (!p || !p.name) throw bad("프리셋 이름이 필요합니다");
+  const presets = (await readJson(PRESETS_FILE, [])) || [];
+  const id = p.id || `preset-${Date.now().toString(36)}`;
+  const idx = presets.findIndex((x) => x.id === id);
+  const entry = { ...p, id, updated_at: new Date().toISOString() };
+  if (idx >= 0) presets[idx] = entry;
+  else presets.push(entry);
+  await atomicWrite(PRESETS_FILE, JSON.stringify(presets, null, 2));
+  res.json({ ok: true, preset: entry });
+}));
+
+app.delete("/api/library/presets/:id", ah(async (req, res) => {
+  const id = req.params.id;
+  let presets = (await readJson(PRESETS_FILE, [])) || [];
+  presets = presets.filter((x) => x.id !== id);
+  await atomicWrite(PRESETS_FILE, JSON.stringify(presets, null, 2));
+  res.json({ ok: true });
+}));
+
+// ---------- 자동화 (Automation) API ----------
+app.post("/api/automation/verify", ah(async (req, res) => {
+  const { count = 1, route = "generate", presetId } = req.body || {};
+  const n = Math.max(1, Math.min(20, Number(count) || 1));
+  const s = (await readJson(SETTINGS, {})) || {};
+  const veoPerVideo = 4;
+  const veoNeeded = n * veoPerVideo;
+  const dailyUploadQuotaUnits = 10000;
+  const costPerUpload = 1600;
+  let todayUsedUnits = 0;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const history = (await readJson(AUTO_HIST_FILE, [])) || [];
+  for (const h of history) {
+    if (h.date?.startsWith(todayStr) && h.uploads) todayUsedUnits += h.uploads * costPerUpload;
+  }
+  const remainingUploadUnits = Math.max(0, dailyUploadQuotaUnits - todayUsedUnits);
+  const maxByYt = Math.floor(remainingUploadUnits / costPerUpload);
+  const tokensNeeded = n * 15000;
+  const maxViable = Math.min(n, Math.max(1, maxByYt));
+
+  const warnings = [];
+  if (n > maxByYt) {
+    warnings.push(`유튜브 일일 업로드 쿼터(10,000점) 제한으로 안전한 생성 권장 편수는 최대 ${Math.max(1, maxByYt)}편입니다.`);
+  }
+
+  res.json({
+    ok: true,
+    requestedCount: n,
+    maxViable,
+    feasible: n <= maxViable,
+    breakdown: {
+      veoCredits: {
+        needed: veoNeeded,
+        available: 100,
+        ok: true,
+      },
+      antigravityTokens: {
+        needed: tokensNeeded,
+        available: 1000000,
+        ok: true,
+      },
+      youtubeDailyQuota: {
+        neededUnits: n * costPerUpload,
+        dailyLimit: dailyUploadQuotaUnits,
+        costPerVideo: costPerUpload,
+        maxVideosPerDay: maxByYt,
+        ok: n <= maxByYt,
+      },
+      hasYouTubeToken: existsSync(path.join(ROOT, "data", "workspace", "youtube_tokens.json")),
+    },
+    warnings,
+  });
+}));
+
+app.get("/api/automation/history", ah(async (_req, res) => {
+  const history = (await readJson(AUTO_HIST_FILE, [])) || [];
+  const list = history.slice(-50).reverse();
+  res.json({ history: list, list });
+}));
+
+app.delete("/api/automation/history", ah(async (_req, res) => {
+  await atomicWrite(AUTO_HIST_FILE, "[]");
+  res.json({ ok: true });
+}));
+
+app.post("/api/automation/trigger-n8n", ah(async (req, res) => {
+  const { n8nWebhookUrl, batchId, presetId, topics = [], count = 1, schedule = {}, autopilot = true } = req.body || {};
+  const bId = batchId || `batch-${Date.now().toString(36)}`;
+  const nowIso = new Date().toISOString();
+  const finalCount = Math.min(topics.length || count, count);
+  const payload = {
+    batchId: bId,
+    timestamp: nowIso,
+    presetId: presetId || null,
+    topics,
+    count: finalCount,
+    autopilot: !!autopilot,
+    schedule: {
+      startDate: schedule.startDate || nowIso.slice(0, 10),
+      interval: schedule.interval || "1h",
+      publishTime: schedule.publishTime || schedule.preferredTime || "18:00",
+      autoPublish: !!schedule.autoPublish,
+    },
+    phantasosApiUrl: `http://localhost:${PORT}/api`,
+  };
+
+  let webhookResult = null;
+  if (n8nWebhookUrl && /^https?:\/\//.test(n8nWebhookUrl)) {
+    try {
+      const r = await fetch(n8nWebhookUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(4000),
+      });
+      webhookResult = { status: r.status, ok: r.ok };
+    } catch (e) {
+      webhookResult = { error: String(e.message || e) };
+    }
+  }
+
+  const history = (await readJson(AUTO_HIST_FILE, [])) || [];
+  history.push({
+    id: bId,
+    batchId: bId,
+    date: nowIso,
+    triggeredAt: nowIso,
+    videoCount: finalCount,
+    topicsCount: finalCount,
+    topics,
+    presetId,
+    autopilot,
+    schedule: payload.schedule,
+    webhookSent: !!n8nWebhookUrl,
+    webhookResult,
+    status: webhookResult?.ok ? "in_progress" : "queued",
+  });
+  await atomicWrite(AUTO_HIST_FILE, JSON.stringify(history, null, 2));
+
+  res.json({ ok: true, batchId: bId, payload, webhookResult });
+}));
+
+// ---------- n8n 양방향 실시간 동기화 (Bi-directional Live Sync) API ----------
+const N8N_CONFIG_FILE = path.join(ROOT, "data", "workspace", "n8n_config.json");
+
+app.get("/api/n8n/config", ah(async (_req, res) => {
+  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
+  res.json({
+    host: conf.host || "http://localhost:5678",
+    hasApiKey: !!conf.apiKey,
+    workflowId: conf.workflowId || "",
+    active: !!conf.active,
+    schedule: conf.schedule || null,
+  });
+}));
+
+app.post("/api/n8n/config", ah(async (req, res) => {
+  const { host = "http://localhost:5678", apiKey, workflowId } = req.body || {};
+  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
+  conf.host = host.replace(/\/+$/, "");
+  if (apiKey !== undefined) conf.apiKey = apiKey;
+  if (workflowId !== undefined) conf.workflowId = workflowId;
+  await atomicWrite(N8N_CONFIG_FILE, JSON.stringify(conf, null, 2));
+  res.json({ ok: true, host: conf.host, workflowId: conf.workflowId });
+}));
+
+app.get("/api/n8n/status", ah(async (_req, res) => {
+  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
+  const host = conf.host || "http://localhost:5678";
+  const apiKey = conf.apiKey;
+
+  try {
+    const headers = {};
+    if (apiKey) headers["X-N8N-API-KEY"] = apiKey;
+    const r = await fetch(`${host}/api/v1/workflows?limit=10`, { headers, signal: AbortSignal.timeout(3000) });
+    if (!r.ok) {
+      return res.json({ connected: false, status: r.status, error: `n8n 인증 실패 또는 응답 오류 (HTTP ${r.status})` });
+    }
+    const data = await r.json();
+    let currentWorkflow = null;
+    if (conf.workflowId && data?.data) {
+      currentWorkflow = data.data.find((w) => w.id === conf.workflowId) || null;
+    }
+    res.json({
+      connected: true,
+      host,
+      workflowsCount: data?.data?.length || 0,
+      workflow: currentWorkflow,
+      active: currentWorkflow ? currentWorkflow.active : conf.active,
+    });
+  } catch (err) {
+    res.json({ connected: false, host, error: `n8n 서버에 연결할 수 없습니다 (${err.message || "연결 거부"})` });
+  }
+}));
+
+app.post("/api/n8n/deploy", ah(async (req, res) => {
+  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
+  const host = conf.host || "http://localhost:5678";
+  const apiKey = conf.apiKey;
+  const { workflowName = "Phantasos 유튜브 쇼츠 자동화" } = req.body || {};
+
+  // Phantasos 표준 n8n 워크플로 템플릿
+  const workflowTemplate = {
+    name: workflowName,
+    nodes: [
+      {
+        parameters: { rule: { interval: [{ field: "hours", hoursInterval: 1 }] } },
+        name: "Schedule Trigger",
+        type: "n8n-nodes-base.scheduleTrigger",
+        typeVersion: 1.1,
+        position: [240, 300],
+      },
+      {
+        parameters: {
+          method: "POST",
+          url: `http://localhost:${PORT}/api/automation/verify`,
+          options: {},
+        },
+        name: "Phantasos Quota Verify",
+        type: "n8n-nodes-base.httpRequest",
+        typeVersion: 4.1,
+        position: [460, 300],
+      },
+      {
+        parameters: {
+          method: "POST",
+          url: `http://localhost:${PORT}/api/automation/trigger-n8n`,
+          options: {},
+        },
+        name: "Phantasos Video Pipeline",
+        type: "n8n-nodes-base.httpRequest",
+        typeVersion: 4.1,
+        position: [680, 300],
+      },
+    ],
+    connections: {
+      "Schedule Trigger": {
+        main: [[{ node: "Phantasos Quota Verify", type: "main", index: 0 }]],
+      },
+      "Phantasos Quota Verify": {
+        main: [[{ node: "Phantasos Video Pipeline", type: "main", index: 0 }]],
+      },
+    },
+    settings: { executionOrder: "v1" },
+  };
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (apiKey) headers["X-N8N-API-KEY"] = apiKey;
+    const r = await fetch(`${host}/api/v1/workflows`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(workflowTemplate),
+    });
+    if (!r.ok) {
+      const errTxt = await r.text();
+      return sendError(res, r.status, "deploy_failed", `n8n 워크플로 생성 실패: ${errTxt}`);
+    }
+    const created = await r.json();
+    conf.workflowId = created.id;
+    await atomicWrite(N8N_CONFIG_FILE, JSON.stringify(conf, null, 2));
+    res.json({ ok: true, workflowId: created.id, workflow: created });
+  } catch (err) {
+    sendError(res, 500, "deploy_error", `n8n 배포 중 오류: ${err.message}`);
+  }
+}));
+
+app.post("/api/n8n/sync", ah(async (req, res) => {
+  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
+  const host = conf.host || "http://localhost:5678";
+  const apiKey = conf.apiKey;
+  const { workflowId = conf.workflowId, schedule = {} } = req.body || {};
+
+  conf.schedule = schedule;
+  if (workflowId) conf.workflowId = workflowId;
+  await atomicWrite(N8N_CONFIG_FILE, JSON.stringify(conf, null, 2));
+
+  if (!workflowId) {
+    return res.json({ ok: true, localOnly: true, message: "로컬 스케줄 설정이 저장되었습니다. (n8n 워크플로 배포 시 원격 동기화됩니다)" });
+  }
+
+  try {
+    const headers = { "Content-Type": "application/json" };
+    if (apiKey) headers["X-N8N-API-KEY"] = apiKey;
+
+    const updatePayload = {
+      settings: {
+        phantasosSchedule: schedule,
+      },
+    };
+
+    const r = await fetch(`${host}/api/v1/workflows/${workflowId}`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify(updatePayload),
+      signal: AbortSignal.timeout(4000),
+    });
+    const updated = await r.json().catch(() => ({}));
+    res.json({ ok: r.ok, workflow: updated });
+  } catch (err) {
+    res.json({ ok: true, localOnly: true, warning: err.message });
+  }
+}));
+
+app.post("/api/n8n/activate", ah(async (req, res) => {
+  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
+  const host = conf.host || "http://localhost:5678";
+  const apiKey = conf.apiKey;
+  const { workflowId = conf.workflowId, active = true } = req.body || {};
+
+  conf.active = active;
+  await atomicWrite(N8N_CONFIG_FILE, JSON.stringify(conf, null, 2));
+
+  if (!workflowId) {
+    return res.json({ ok: true, active, localOnly: true });
+  }
+
+  try {
+    const headers = {};
+    if (apiKey) headers["X-N8N-API-KEY"] = apiKey;
+    const action = active ? "activate" : "deactivate";
+    const r = await fetch(`${host}/api/v1/workflows/${workflowId}/${action}`, {
+      method: "POST",
+      headers,
+      signal: AbortSignal.timeout(4000),
+    });
+    const data = await r.json().catch(() => ({}));
+    res.json({ ok: r.ok, active, data });
+  } catch (err) {
+    res.json({ ok: true, active, localOnly: true, warning: err.message });
+  }
+}));
+
+app.get("/api/n8n/executions", ah(async (_req, res) => {
+  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
+  const host = conf.host || "http://localhost:5678";
+  const apiKey = conf.apiKey;
+  if (!conf.workflowId) return res.json({ executions: [] });
+
+  try {
+    const headers = {};
+    if (apiKey) headers["X-N8N-API-KEY"] = apiKey;
+    const r = await fetch(`${host}/api/v1/executions?workflowId=${conf.workflowId}&limit=10`, { headers });
+    if (!r.ok) return res.json({ executions: [] });
+    const data = await r.json();
+    res.json({ executions: data?.data || [] });
+  } catch {
+    res.json({ executions: [] });
+  }
 }));
 
 // ---------- 캐릭터 ----------
@@ -1634,9 +2463,16 @@ for (const [dir, days] of [[path.join(ROOT, "data", "workspace", "tmp"), 7], [pa
   }
 }
 
-// 빌드된 정적 파일 (npm run build 후)
+// 빌드된 정적 파일 (npm run build 후: 해시가 붙은 JS/CSS/에셋은 7일 캐시, index.html 은 no-cache)
 const dist = path.join(__dirname, "dist");
-if (existsSync(dist)) app.use(express.static(dist));
+if (existsSync(dist)) {
+  app.use(express.static(dist, {
+    maxAge: "7d",
+    setHeaders: (res, p) => {
+      if (p.endsWith("index.html")) res.setHeader("Cache-Control", "no-cache");
+    },
+  }));
+}
 
 // 없는 /api 주소 · 오류 → 같은 모양 {error:{code,message}}
 app.use("/api", (_req, res) => sendError(res, 404, "not_found", "없는 주소입니다"));

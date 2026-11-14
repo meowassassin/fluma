@@ -3,6 +3,12 @@
 
 ## Unreleased
 
+- 오픈라우터 제거: 오픈라우터 키 · 보기(VL 영상 이해 · 초안 비평 · 순간 찾기 · 기준점) · 듣기(원격 받아쓰기) · 찾기(임베딩) · 비용 관문을 없앰. 초안 검토는 수치 검사 + 에이전트가 프레임 모음을 직접 보기, 받아쓰기는 로컬 faster-whisper, 화면 분류는 로컬 CLIP. 음성(Typecast · ElevenLabs) · 스톡(Pexels · Pixabay) · 음악 찾기(YouTube Data API) 키는 그대로 / Removed OpenRouter: the key, VL see/critique/moments/anchor, remote transcription, embeddings and the cost gate; voice, stock and music-search keys are unchanged
+- 숏폼 생성 파이프라인(스펙 리버전): 1 기획(트렌드 → 추천 → 8초 이하 샷 칸, 조사 기반 프롬프트 조립 · 검사) → 2 캐릭터 시트 · 승인 ①(나노 바나나 via agy, 4방향 개별) → 3 키 프레임 · 승인 ② → 4 영상 생성(VideoGenerator: gflow-cli MCP / Antigravity / mock, 영상 단위 크레딧 판단, 샷당 3회) → 5 Craft 편집(TTS 나레이션 · 자막) → 6 렌더 · 업로드 · 분석 되먹임(`engine/gen/`) / Shot-based generation pipeline: plan → character sheet → keyframes → video generation → Craft edit → publish & analytics feedback
+- 그리기 · 생성 정리: 인물 · 장면을 직접 그리는 경로(vcdraw · vectorize · 장면 그림 · illustrate · character · scene-art 스킬)와 Blender 스킬 팩을 archive/ 로 옮기고, 영상 생성 재료(gen_video · make.video)를 없앰 — 화면은 실제 자료 · 목업 · 도표 / Moved drawing paths and Blender skills to archive/, removed video-generation materials
+- 영상 디자이너 스킬(`designer`): 그림 대신 레이아웃 · 자막 타이포 · 색 · 안전 영역 · 실제 화면 앉히기를 레퍼런스 실측(쇼츠 28편)으로 정한다 · 감독 · 작가와 함께 늘 적용 / Designer skill grounded in measured reference shorts
+- 속도: 스킬 본문을 핵심만 남기고 상세는 필요할 때 읽는 reference.md 로(매 턴 프롬프트 약 40% 줄임) · 콘티는 한 번에 쓰고 값은 knob 으로 · 사람 · 캐릭터는 그리지 않음(유지 검사 R03 삭제, R07 은 실제 자료 기준) / Leaner per-turn skill prompts; no drawn people
+- Blender · MuJoCo(물리) 제거 — 2D(실제 화면 · 그림 · 디자인 · 실제 자료)에 집중: 3D 장면 스크립트 · 에셋 라이브러리 · 모캡 · 물리 계산 · Blender 스킬 팩을 빼고, 3D 제품(`model3d`)은 SolidCraft · TextureCraft 로, 실사 합성(`live`)은 글자 · 그림만 / Removed Blender and MuJoCo physics to focus on 2D; `model3d` now renders via SolidCraft + TextureCraft, `live` overlays text and images only
 - 대화창: 도구 호출을 제작 단계(레퍼런스 분석 · 사실 조사 · 기획 · 콘티 · 목소리 · 음악 · 장면 · 값 조정 · 초안 · 최종 렌더)로 묶고, 결과(값 조정 · 음악 · 목소리 · 소리)는 칩으로 · 누르면 명령 · 경로 펼침 / Chat groups tool calls into production stages with result chips
 - 고침: 바뀐 조립 프로젝트를 '사람이 고친 것'으로 계속 써서 화면이 검게 · 멈춰 나오던 문제(백업하고 다시 지음, 잠그려면 edit.keep) · 이어 말하기가 숫자 읽기 · 문장부호 차이로 장면 경계를 밀던 문제(다음 장면 첫 낱말 · 쉼으로 경계, 어긋나면 장면별 합성) · 에이전트의 `cd … && …` 명령이 막히던 문제 / Fixed stale FilmCraft reuse (black/frozen output), continuous-voice scene split drift, blocked `cd` in agent commands
 - 실제 화면 기반 UI 애니메이션(`engine/capture/uianim.py`): 디자인으로 다시 그린 화면을 시간표대로 프레임마다 그려 데모 영상 · GIF / UI animation renderer for product demos

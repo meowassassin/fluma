@@ -22,7 +22,7 @@ app_tc = pytest.mark.skipif(not (HAS("solidcraft") and HAS("texturecraft")), rea
 def test_plugin_registered():
     ad, _ = materials.plugins()
     assert ad["model3d@solidcraft"] is sc.model3d
-    assert materials.registry().get("model3d") == "blender"          # 기본은 Blender, SolidCraft 는 method 로
+    assert ad["model3d"] is sc.model3d                               # 기본도 SolidCraft(Blender 는 2026-11-11 제거)
 
 
 def test_builtin_shapes_and_aliases():

@@ -118,6 +118,7 @@ def main() -> int:
     ap.add_argument("--aspect", choices=["9:16", "16:9", "1:1"])
     ap.add_argument("--no-audio", action="store_true", help="음성을 다시 만들지 않는다(대사가 그대로일 때)")
     ap.add_argument("--keep-going", action="store_true", help="검사 실패(L)가 있어도 초안까지")
+    ap.add_argument("--no-skills", action="store_true", help="스킬 단계(각본가 · 감독 · 디자이너)를 건너뛴다")
     a = ap.parse_args()
     sp = Path(a.storyboard)
     sp = sp if sp.is_absolute() else ROOT / sp
@@ -138,6 +139,19 @@ def main() -> int:
     for rid in sb.get("reference") or []:
         if (xr / str(rid) / "xray.json").exists() and (xr / str(rid) / "src.mp4").exists() and not (xr / str(rid) / "style" / "style.json").exists():
             step(f"style:{rid}", [PY, "engine/research/ref_style.py", str(rid)], timeout=1200)
+
+    # 0.3) 스킬 단계 — 각본가(writer + humanizer-ko) → 감독(director) → 디자이너(designer + Astryx)를 콘티에 실제로 적용하고,
+    #      검사가 막은 것은 담당 단계로 되돌려 고친다(engine/story/skill_pass.py). 콘티가 그대로면 다시 부르지 않는다(기록의 입력 해시).
+    #      2026-11-11: 스킬은 에이전트가 읽기만 했고 엔진은 그 칸을 거의 안 읽었다 — 권고 대신 파이프라인 단계로
+    if not a.no_skills:
+        r = step("skills", [PY, "engine/story/skill_pass.py", "all", rel], timeout=3600)
+        print("\n".join(ln for ln in (r.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
+        if r.returncode != 0:
+            if "stage=story" in (r.stdout or ""):    # 시청자 시뮬레이션: 장면을 더하거나 순서를 바꿔야 풀리는 이해 문제 — 콘티를 다시 써야 한다(대사 다듬기로는 안 됨)
+                save_times(sid)
+                fail("produce", stage="story", error=(block(r.stdout).get("error") or ["콘티 구조를 다시 써야 함"])[0], time=[f"{k}:{v}" for k, v in TIMES.items()])
+            print(f"[제작] 스킬 단계 실패(콘티 그대로 진행): {(r.stderr or r.stdout).strip()[-300:]}", flush=True)
+        sb = json.loads(sp.read_text("utf-8"))
 
     # 0.5) 배경 음악 — 넣을지 정하고 요즘 쓰이는 곡 중 맞는 것(무료 판)을 고른다 · 목소리 — 레퍼런스 화자와 닮은 목소리 · 말 속도(설정 '자동'일 때)
     #      음악 결정이 음성보다 먼저다: 음악이 깔리면 효과음을 빼는 규칙이 음성 단계에서 쓰인다
@@ -162,6 +176,12 @@ def main() -> int:
 
     # 2) 검사 — 실패(L)면 렌더하지 않는다. 사용자만 줄 수 있는 것(L36 녹화 · L38 키)은 입력 요청으로
     r = step("lint", [PY, "engine/checks/lint.py", rel])
+    # 음성을 만든 뒤에야 드러나는 대사 문제(실측 길이 L05 · L14, 대사 길이)는 각본가 단계로 한 번 되돌려 고치고 음성을 다시 만든다
+    if r.returncode != 0 and not a.no_skills and not a.no_audio and re.search(r"^(L05|L14|L04) |/narration", r.stdout or "", re.M):
+        print("[제작] 음성 뒤 검사: 대사 문제 — 각본가 단계로 되돌림", flush=True)
+        step("skills", [PY, "engine/story/skill_pass.py", "writer", rel, "--force"], timeout=1800)
+        step("audio", [PY, "engine/voice/assemble_audio.py", rel])
+        r = step("lint", [PY, "engine/checks/lint.py", rel])
     rows = lint_rows(r.stdout)
     hard = [(c, m) for c, m in rows if c.startswith("L")]
     soft = [(c, m) for c, m in rows if c.startswith(("T", "V", "D"))]
@@ -218,6 +238,28 @@ def main() -> int:
         save_times(sid)
         fail("produce", stage="render", error=(b.get("error") or [(r.stderr or r.stdout).strip()[-300:]])[0], time=[f"{k}:{v}" for k, v in TIMES.items()])
     video = ROOT / b["file"][0]
+
+    # 3.5) 디자이너 정지 화면 검토(skill_pass review) — 장면마다 정지 화면을 열어 겹침 · 잘림 · 작은 주인공을 값으로 고치고, 바뀌면 한 번 더 렌더
+    #      2026-11-11: 디자인 값을 정해 놓고 결과를 안 봐서 터미널이 잘리고 숫자가 글자와 겹쳤다
+    if not a.no_skills and not a.scenes:
+        rr = step("review", [PY, "engine/story/skill_pass.py", "review", rel], timeout=2400)
+        print("\n".join(ln for ln in (rr.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
+        if rr.returncode == 0 and '"changed": [' in (rr.stdout or "") and '"changed": []' not in (rr.stdout or ""):
+            sb = json.loads(sp.read_text("utf-8"))
+            r = step("render", cmd)
+            b = block(r.stdout)
+            if r.returncode != 0 or b.get("head") != "FLUMA_RESULT":
+                save_times(sid)
+                fail("produce", stage="render", error=(b.get("error") or [(r.stderr or r.stdout).strip()[-300:]])[0], time=[f"{k}:{v}" for k, v in TIMES.items()])
+            video = ROOT / b["file"][0]
+        # 3.6) refine 스킬 — 검토가 값으로 못 고친 문제를 장면 다듬기(session.py try → 보기 → keep)로. 남긴 게 있으면 다시 렌더
+        rf = step("refine", [PY, "engine/story/skill_pass.py", "refine", rel], timeout=2700)
+        print("\n".join(ln for ln in (rf.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
+        if rf.returncode == 0 and '"kept": [{' in (rf.stdout or ""):
+            r = step("render", cmd)
+            b = block(r.stdout)
+            if r.returncode == 0 and b.get("head") == "FLUMA_RESULT":
+                video = ROOT / b["file"][0]
     # 렌더가 찍은 편집 밀도 · 템포 문제(✗ 실패 · △ 권고)
     warns = [ln.strip() for ln in r.stdout.splitlines() if re.match(r"^\s*[✗△]", ln)]
     # 레퍼런스 대조(engine/checks/refmatch.py): 재료가 만들어진 뒤에 본다 — 맨 앞에 둬야 잘리지 않는다
@@ -234,7 +276,7 @@ def main() -> int:
     # 4) 장면별 정지 화면
     t0 = time.time()
     media = [f"{b['file'][0]} | 초안"] + (stills(video, sb, sid) if not a.scenes else []) + (extras(sid) if not a.scenes else [])
-    if not a.scenes:                              # 초안 · 레퍼런스 나란히(프레임 12장씩) — VL 없이 에이전트가 직접 본다(engine/checks/sheet.py)
+    if not a.scenes:                              # 초안 · 레퍼런스 나란히(프레임 12장씩) — 에이전트가 직접 본다(engine/checks/sheet.py)
         try:
             import sheet as _sheet
             media.insert(1, f"{_sheet.make(video, sb).relative_to(ROOT)} | 초안 · 레퍼런스 나란히")

@@ -22,7 +22,7 @@
  "provides": [
   {
    "material": "illustration",
-   "in": "svg · pdf · ai (에이전트가 illustrate 스킬로 그린 것 또는 사용자 파일)",
+   "in": "svg · pdf · ai (벡터 그래픽 또는 사용자 파일)",
    "out": "png · svg · .vectorcraft"
   },
   {

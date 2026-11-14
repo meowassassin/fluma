@@ -1,18 +1,79 @@
 // 운영체제 차이를 한곳에서 (Node 쪽). Linux · macOS · Windows 에서 같은 서버가 돌게.
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
+import os from "node:os";
 
 export const OS = process.platform === "win32" ? "windows" : process.platform === "darwin" ? "mac" : "linux";
 
-/** PATH 에서 실행 파일 찾기 (bash 없이). Windows 는 PATHEXT(.exe .cmd …)까지 */
+/** 알려진 일반적인 CLI 설치 경로 후보 (PATH 누락 환경 대비 fallback) */
+function getStandardPaths() {
+  const home = os.homedir();
+  const dirs = [];
+  if (OS === "windows") {
+    if (process.env.APPDATA) dirs.push(path.join(process.env.APPDATA, "npm"));
+    if (process.env.LOCALAPPDATA) dirs.push(path.join(process.env.LOCALAPPDATA, "Programs"));
+  } else {
+    dirs.push(
+      path.join(home, ".local", "bin"),
+      path.join(home, ".npm-global", "bin"),
+      path.join(home, ".cargo", "bin"),
+      "/usr/local/bin",
+      "/usr/bin",
+      "/bin"
+    );
+    // fnm / nvm 경로 자동 보강
+    const fnmCurrent = path.join(home, ".local", "share", "fnm", "current", "bin");
+    if (existsSync(fnmCurrent)) dirs.push(fnmCurrent);
+  }
+  return dirs;
+}
+
+/** PATH 에서 실행 파일 찾기 (bash 없이). Windows 는 PATHEXT(.exe .cmd …)까지. 누락 시 표준 설치 경로 자동 fallback */
 export function which(name) {
   const exts = OS === "windows" ? (process.env.PATHEXT || ".EXE;.CMD;.BAT").split(";").map((e) => e.toLowerCase()) : [""];
-  for (const dir of (process.env.PATH || "").split(path.delimiter)) {
+  const searchDirs = [
+    ...(process.env.PATH || "").split(path.delimiter),
+    ...getStandardPaths()
+  ].filter(Boolean);
+
+  const seen = new Set();
+  for (const dir of searchDirs) {
+    if (seen.has(dir)) continue;
+    seen.add(dir);
     for (const e of exts) {
       const p = path.join(dir, name + e);
-      if (dir && existsSync(p)) return p;
+      try {
+        if (existsSync(p)) {
+          if (OS !== "windows") {
+            try {
+              const st = statSync(p);
+              if (st.isFile()) return p;
+            } catch {
+              continue;
+            }
+          }
+          return p;
+        }
+      } catch {}
     }
   }
+
+  // Claude 특화 fallback: ~/.local/share/claude/versions 최신 버전 탐색
+  if (name === "claude" && OS !== "windows") {
+    const versionsDir = path.join(os.homedir(), ".local", "share", "claude", "versions");
+    try {
+      if (existsSync(versionsDir)) {
+        const files = readdirSync(versionsDir).sort().reverse();
+        for (const file of files) {
+          const p = path.join(versionsDir, file);
+          try {
+            if (statSync(p).isFile()) return p;
+          } catch {}
+        }
+      }
+    } catch {}
+  }
+
   return null;
 }
 

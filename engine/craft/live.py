@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""실사 합성 — 실사 · 생성 영상에서 카메라 · 바닥을 풀어 3D · 2D 요소가 그 공간에 붙게 한다.
+"""실사 합성 — 실사 · 생성 영상에서 카메라 · 바닥을 풀어 글자 · 그림이 그 공간에 붙게 한다.
 
   python3 engine/craft/live.py solve <영상> --out <폴더> [--aov 도]   # 카메라 추적 → solve.json
 
-solve.json: w · h · fps · frames · aov(가로 시야각) · vfov(세로) · cams(프레임마다 Blender 카메라 4×4) · ground(바닥 찾은 정도) · follow_px(광학 흐름으로 잰 독립 오차) · points(바닥 좌표계 3D 점) · tried(시야각 후보별 결과)
+solve.json: w · h · fps · frames · aov(가로 시야각) · vfov(세로) · cams(프레임마다 카메라 4×4, OpenGL 식 -Z 시선) · ground(바닥 찾은 정도) · follow_px(광학 흐름으로 잰 독립 오차) · points(바닥 좌표계 3D 점) · tried(시야각 후보별 결과)
 바닥 좌표계: z = 위(바닥 면이 z=0), 첫 프레임 화면 가운데 근처가 원점, 첫 프레임 카메라까지 거리 20 단위.
 EffectCraft 3D Camera Tracker 를 쓴다(GPU 필요 없음, 영상 4초 · 후보 하나에 약 6초). 카메라 움직임이 없거나 무늬가 없으면 풀리지 않는다.
 """
@@ -116,7 +116,7 @@ def to_scene(pos0, R0, center, normal):
 
 
 def cam_matrix(pos, ori, B, O, k):
-    """프레임 카메라 → Blender 4×4(카메라는 -Z 를 보고 Y 가 위)"""
+    """프레임 카메라 → 4×4(OpenGL 식 — 카메라는 -Z 를 보고 Y 가 위)"""
     R = rot_ae(ori)
     col = lambda j: mv(B, [R[0][j], R[1][j], R[2][j]])  # noqa: E731
     r, d, f = col(0), col(1), col(2)
@@ -134,7 +134,7 @@ def _probe(video: Path) -> dict:
 
 
 def to_pixel(cam, p, f, w, h):
-    """바닥 좌표계 점 → 화면 픽셀(Blender 카메라 행렬, 카메라는 -Z 를 본다)"""
+    """바닥 좌표계 점 → 화면 픽셀(카메라 행렬, 카메라는 -Z 를 본다)"""
     d = [p[i] - cam[i][3] for i in range(3)]
     x, y, z = [sum(cam[r][c] * d[r] for r in range(3)) for c in range(3)]
     if z >= -1e-6:
@@ -544,32 +544,10 @@ def _jstr(x) -> str:
     return json.dumps(x, ensure_ascii=False)
 
 
-def render_item(it: dict, s: dict, solve_path: Path, work: Path) -> list:
-    """3D 하나 → [그림자 .mov, 물체 .mov] (투명). 카메라 · 바닥이 맞춰진 두 패스"""
-    from craft.adapters import blender as b
-    w, h = s["w"], s["h"]
-    fl = h / 2 / math.tan(math.radians(s["vfov"]) / 2)
-    k = int(it.get("frame", 0))
-    p = ground_hit(s["cams"][k], it["at"][0], it["at"][1], fl, w, h)
-    if p is None:
-        raise RuntimeError(f"{it['id']}: at 이 바닥 위 점이 아닙니다: {it['at']}")
-    unit = height_unit(s["cams"][k], p, fl, h)
-    fps = max(1, round(s["fps"]))
-    out = []
-    for name in (("shadow", "beauty") if it.get("shadow", True) else ("beauty",)):
-        m = {"id": it["id"], "script": it["script"], "sec": s["frames"] / fps, "fps": fps, "width": w, "height": h, "quality": it.get("quality", "fast"), "transparent": True,
-             "args": {**(it.get("args") or {}), "solve": str(solve_path), "at": p, "unit": unit, "height": it.get("height", 0.2), "pass": name, "light": it.get("light") or {}, "shadow": it.get("shadow_amount", 0.62)}}
-        f = work / f"{it['id']}.{name}.png"
-        info = b.model3d(m, f, work)
-        out.append(f.with_suffix(info.get("file_suffix") or ".png"))
-    return out
-
-
 def compose(spec: dict, work: Path) -> dict:
     """실사 한 컷 합성 — 맨 아래부터: 영상 · 뒤 요소 · 잘라 낸 물체(앞 가림 · 색 바꿈) · 앞 요소. EffectCraft 프로젝트로 남아 refine 으로 고칠 수 있다.
     spec: {src, aov?, cuts: {이름: {strokes: [{frame, kind: fg|bg, points, radius?}], span?: [시작, 끝 프레임](물체가 보이는 구간), recolor?: {hue, sat, light}, remove?: true(정지한 물체, frame = 가리는 것 없는 프레임), grow?: 윤곽 넓히기(¼ 픽셀)}},
-           items: [{id, kind: model3d|text|image, behind?: 이름, ...}]}
-      model3d: script · at(바닥 픽셀) · frame · height(화면 높이 비율) · shadow · light{az, el, strength, color, soft}
+           items: [{id, kind: text|image, behind?: 이름, ...}]}
       text: text · follow{at, frame, moving?} 또는 {cut: 이름, at: top|center} · offset · size · color · font
       image: file · follow · offset · scale
     strokes 의 points 는 이어진 한 획이다 — 점을 흩뿌리거나 둘레를 한 번에 돌면 물체를 가로지른다. 가장자리마다 획을 나눈다.
@@ -604,10 +582,8 @@ var pl=c.layers.add(src);pl.name='Plate';"""]
     later = []                                   # 물체를 따라가는 2D — 분리가 끝나야 경로를 안다
 
     def add(it):
-        if it["kind"] == "model3d":
-            for f, nm in zip(render_item(it, s, sp, work), ("그림자", "") if it.get("shadow", True) else ("",)):
-                js.append(f"(function(){{var l=clip({_jstr(str(f))});l.name={_jstr((it['id'] + ' ' + nm).strip())};}})();")
-            return
+        if it["kind"] not in ("text", "image"):
+            raise RuntimeError(f"{it.get('id')}: live 요소는 text · image 만 됩니다(3D 는 2026-11-11 제거)")
         off = it.get("offset") or [0, 0]
         f = it["follow"]
         if f.get("cut"):

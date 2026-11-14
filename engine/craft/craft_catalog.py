@@ -244,21 +244,6 @@ def search(q: str, app: str | None = None, n: int = 15) -> list[tuple[float, dic
                 s += best
         if hit:
             scored.append((s, r))
-    rows = load(app)
-    try:                                       # '찾기 · 임베딩' 모델이 있으면 뜻이 가까운 기능도(낱말이 달라도 — "번쩍이는 효과" → glow · flash)
-        import embed
-        sem = embed.search(q, [f"{r['label']} — {r['menu']} — {r['summary']}" for r in rows], n=60)
-    except Exception:  # noqa: BLE001
-        sem = None
-    if sem:
-        have = {id(r): k for k, (_s, r) in enumerate(scored)}
-        for cos, i in sem:
-            r = rows[i]
-            if id(r) in have:
-                k = have[id(r)]
-                scored[k] = (scored[k][0] + 8 * cos, r)
-            elif cos >= 0.35:
-                scored.append((8 * cos, r))
     scored.sort(key=lambda x: (-x[0], x[1]["kind"] != "command", x[1]["app"], x[1]["id"]))
     return scored[:n]
 

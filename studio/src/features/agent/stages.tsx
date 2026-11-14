@@ -30,7 +30,7 @@ export function stageOf(x: Pick<ChatTool, "name" | "input">): StageKey {
   if (/render\.py/.test(s)) return "final";
   if (/concepts\.py|feel\.py|decide\.py|gate\.py|data\/workspace\/(concepts|feel)\//.test(s)) return "plan";
   if (/data\/storyboards\/|lint\.py|script\.py|direct\.py/.test(s)) return "story";
-  if (/\/art\/|\/src\/[^ ]*\.py|materials|crafts\.py|blender|craft_script|illustrat|\.svg|^mcp__/.test(s) || x.name.startsWith("mcp__")) return "scene";
+  if (/\/src\/[^ ]*\.py|materials|crafts\.py|craft_script|\.svg|^mcp__/.test(s) || x.name.startsWith("mcp__")) return "scene";
   // 정지 화면 보기 · 엔진 코드 찾기 · 결과 파일 열기 · ls 같은 나머지는 '확인 · 준비' 한 줄(흐리게, 맨 뒤)
   return "look";
 }

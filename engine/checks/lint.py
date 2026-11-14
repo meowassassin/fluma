@@ -264,7 +264,9 @@ def material_spec_checks(sb: dict) -> list:
                 for k, v in (m.get("uses") or {}).items():
                     if v not in ids[:ids.index(m.get("id"))] if m.get("id") in ids else True:
                         out.append(("L39", i, f"{tag}: uses '{k}' 의 재료 {v} 가 같은 장면 앞쪽에 없습니다"))
-                need("script", "shape", "commands", "src", what="Blender 스크립트 · 내장 형태 · SolidCraft 명령 · STEP/STL 원본"); exists("src"); exists("script")
+                need("shape", "commands", "src", what="내장 형태 · SolidCraft 명령 · STEP/STL 원본"); exists("src")
+                if m.get("method") == "blender" or m.get("script"):
+                    out.append(("L39", i, f"{tag}: Blender 는 2026-11-11 제거 — shape · commands · src(SolidCraft)로"))
                 if m.get("turntable") and m.get("exploded"):
                     out.append(("L39", i, f"{tag}: turntable 과 exploded 는 하나만(재료 하나 = 영상 하나)"))
             elif t == "drawing":
@@ -423,12 +425,7 @@ def lint(sb: dict, recent_titles=None) -> list:
 
     # L10 최근 제목과 중복
     for t in recent_titles or []:
-        try:                                   # '찾기 · 임베딩' 모델이 있으면 뜻으로도(낱말만 바꾼 같은 제목)
-            import embed
-            emb = embed.similar(sb.get("title", ""), t)
-        except Exception:  # noqa: BLE001
-            emb = None
-        if difflib.SequenceMatcher(None, sb.get("title", ""), t).ratio() >= 0.8 or (emb is not None and emb >= 0.92):
+        if difflib.SequenceMatcher(None, sb.get("title", ""), t).ratio() >= 0.8:
             fails.append(("L10", None, f"최근 제목과 유사: '{t}'"))
             break
 
@@ -437,7 +434,9 @@ def lint(sb: dict, recent_titles=None) -> list:
 
     # L32 · T32~T34 템포: 마지막 렌더를 잰 결과(engine/checks/tempo_check.py, render.py 가 남김). 피드에서 넘기지 않게 하는 기본기
     tp = ROOT / "data" / "workspace" / "render" / sb.get("id", "") / "tempo.json"
-    if sb.get("id") and tp.exists():
+    _sbp = ROOT / "data" / "storyboards" / f"{sb.get('id', '')}.json"
+    _stale = tp.exists() and _sbp.exists() and _sbp.stat().st_mtime > tp.stat().st_mtime   # 콘티를 고친 뒤면 지난 렌더로 막지 않는다(2026-11-11: 고친 훅이 렌더되기 전에 예전 렌더 때문에 계속 막혔다)
+    if sb.get("id") and tp.exists() and not _stale:
         try:
             import tempo_check
             for code, msg in tempo_check.problems(json.loads(tp.read_text("utf-8")), any(str(x.get("narration") or "").strip() for x in sb.get("scenes") or []), sb):
@@ -461,6 +460,44 @@ def lint(sb: dict, recent_titles=None) -> list:
     except ImportError:
         from checks.refnorm import check as _refnorm
     fails += _refnorm(sb)
+    # L58 같은 화면 반복 — 이어지는 장면이 같은 그림 · 영상 파일을 쓰거나, 같은 화면 종류 · 같은 주재료 종류가 세 장면 연달아면 실패
+    # (2026-11-11 QR 영상: 8장면 중 6장면이 '크림 바탕 + QR 한 장' — "디자인 · 구성이 다 비슷비슷하다". R01 · V42 는 경고뿐이라 막지 못했다)
+    _sig = []
+    for _sc in sb.get("scenes") or []:
+        _ms = [m for m in _sc.get("materials") or [] if m.get("type") not in ("overlay", "stat", "text")]
+        _src = {Path(str(m.get("src"))).stem.split("_")[0] for m in _ms if m.get("src")}
+        _sig.append((str(_sc.get("screen") or ""), tuple(sorted(m.get("type") for m in _ms)), _src))
+    for _i in range(1, len(_sig)):
+        if _sig[_i][2] and _sig[_i][2] & _sig[_i - 1][2]:
+            fails.append(("L58", _i, f"{_i}·{_i + 1}장면이 같은 그림 · 영상({', '.join(sorted(_sig[_i][2] & _sig[_i - 1][2]))})을 씀 — 다른 자료 · 구도로(확대 · 해부 · 실사 · 도식)"))
+        if _i >= 2 and _sig[_i][:2] == _sig[_i - 1][:2] == _sig[_i - 2][:2]:
+            fails.append(("L58", _i, f"{_i - 1}~{_i + 1}장면이 같은 화면 종류({_sig[_i][0]}) · 같은 재료 구성 — 장면마다 화면 종류를 바꾼다(director 7장)"))
+    # L56 근거 — research 스킬 '출처 있는 사실이 5개 미만이면 만들지 않는다'(형식이 고객 수치 · 퍼온 클립 위주인 것은 빼고)
+    if sb.get("format") not in ("ad", "clip", "ranking", "emotional", "daily") and sb.get("scenes"):
+        _src = set(sb.get("sources") or [])
+        _n = 0
+        for _rf in (ROOT / "data" / "research").glob("*.json"):
+            try:
+                _fs = json.loads(_rf.read_text("utf-8")).get("facts") or []
+            except (OSError, ValueError):
+                continue
+            if any(x.get("source") in _src for x in _fs):
+                _n += sum(1 for x in _fs if x.get("source"))
+        if _n < 5:
+            fails.append(("L56", None, f"출처 있는 사실 {_n}개 — 5개 이상이어야 만든다(research 스킬: data/research/<주제>.json 의 facts 에 source, 콘티 sources 에 그 URL)"))
+    # L55 AI 티 문형(writer 스킬 3장 · humanizer-ko) — 각본가 단계(skill_pass writer)가 고치고, 남으면 여기서 막는다
+    try:
+        import aitell as _ait
+    except ImportError:
+        from checks import aitell as _ait
+    for _f in _ait.find(sb):
+        if _f["severity"] == "high":
+            fails.append(("L55", None, f"AI 티 · {_f['rule']}: {_f['where']} '{_f['match']}' — {_f['fix']}(writer 스킬 3장)"))
+    # L54 감독 다섯 기둥 — director 스킬 0장 '못 정하면 콘티를 쓰지 않는다'. 2026-11-11 점검: 스킬에만 있고 아무도 확인하지 않았다(direct.py 가 지워도 몰랐다)
+    _anc = (sb.get("direction") or {}).get("anchors") or {}
+    _miss = [k for k in ("emotion", "motif", "object", "break", "final_image") if not str(_anc.get(k) or "").strip()]
+    if _miss and sb.get("scenes"):
+        fails.append(("L54", None, f"감독 다섯 기둥 빠짐: direction.anchors.{', '.join(_miss)} — director 스킬 0장(emotion 감정 · motif 모티프 · object 기준 물건 · break 꺾임 · final_image 끝 그림)"))
     # L41 감독 없음 — 나레이션이 없으면 강조(확대 · 멈춤)가 저절로 생기지 않는다. 화면 녹화 장면에 감독이 짚은 곳이 하나도 없으면 같은 구도의 같은 창이 이어진다(2026-11-09 git 영상: 슬롭)
     if not any(str(x.get("narration") or "").strip() for x in sb.get("scenes") or []):
         flat = []

@@ -90,16 +90,16 @@ def build(job) -> Path:
     if rsteps:
         rf = job.work / "refine.motion.json"
         rf.write_text(json.dumps(rsteps, ensure_ascii=False, indent=1), "utf-8")
-        try:
-            import subprocess
-            r = subprocess.run([str(x) for x in (_cli(), "run", "--commands", rf, "--project", proj, "--save")], cwd=str(job.work), env=_env(), capture_output=True, text=True, timeout=600)
-            bad = refine.script_failures(r.stdout)
-            if r.returncode != 0 or bad:
-                print("[craft] 다듬기 실패: " + (" / ".join(bad[:6]) or (r.stderr or r.stdout)[-400:]), file=sys.stderr)
-                raise SystemExit("effectcraft 다듬기 실패: " + (" / ".join(bad[:3]) or (r.stderr or r.stdout)[-300:]))
-        except SystemExit:
-            proj.unlink(missing_ok=True)    # 반쯤 만든 프로젝트를 남기면 다음 실행이 '사람이 고친 파일'로 알고 그대로 쓴다
-            raise
+        import shutil
+        import subprocess
+        bak = proj.with_suffix(proj.suffix + ".pre-refine")
+        shutil.copy2(proj, bak)             # 다듬기 기록 하나가 깨져도(레이어 이름이 바뀜 등) 초벌 프로젝트로 돌아가 렌더는 계속한다(2026-11-11)
+        r = subprocess.run([str(x) for x in (_cli(), "run", "--commands", rf, "--project", proj, "--save")], cwd=str(job.work), env=_env(), capture_output=True, text=True, timeout=600)
+        bad = refine.script_failures(r.stdout)
+        if r.returncode != 0 or bad:
+            print("[craft] 다듬기 기록을 적용하지 못해 건너뜀(초벌로 렌더): " + (" / ".join(bad[:6]) or (r.stderr or r.stdout)[-400:]), file=sys.stderr)
+            shutil.copy2(bak, proj)
+        bak.unlink(missing_ok=True)
     man[mkey] = {"file": str(proj.relative_to(ROOT)), "hash": _sha(proj), "source": src_key, "app": "effectcraft"}
     man_p.write_text(json.dumps(man, ensure_ascii=False, indent=1), "utf-8")
     return proj

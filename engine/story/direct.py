@@ -86,19 +86,16 @@ AXES: dict[str, list[tuple[str, str, str]]] = {
         ("none", "자막 대신 화면 타이포가 말함", 'captions:{style:"none"}'),
     ],
     "device": [
-        ("character", "캐릭터 · 의인화(사물이 얼굴을 가짐)", "K.actor / 직접 그린 SVG 얼굴"),
-        ("object", "실물 사물 일러스트(폰 · 벽 · 기계)", "K.box/K.shape 로 사물을 그림"),
         ("chart", "데이터 차트 · 막대 · 링", "K.bars / K.ring / K.counter"),
         ("ui", "실제 앱 · 웹 화면(캡처) 카드", "K.frame browser/phone + data/captures/"),
         ("map", "지도 · 경로 · 이동", "K.draw 경로 + 점"),
-        ("pixel", "픽셀아트", "K.pixel"),
         ("collage", "사진 오려 붙인 콜라주", "K.image 여러 장 기울여 겹침"),
     ],
 }
 
 # 주제 낱말 → 어울리는 선택(가중치)
 HINTS = {
-    "게임": {"device": ["pixel", "character"], "background": ["scan", "solid"], "palette": ["neon", "pop"]},
+    "게임": {"device": ["ui", "collage"], "background": ["scan", "solid"], "palette": ["neon", "pop"]},
     "우주": {"background": ["sky", "solid"], "palette": ["neon", "duotone"]},
     "역사": {"background": ["paper", "halftone"], "palette": ["paper-ink", "earth"], "type": ["editorial"]},
     "돈": {"device": ["chart"], "type": ["giant-number"]},
@@ -106,7 +103,7 @@ HINTS = {
     "속도": {"device": ["chart"], "motion": ["snappy"]},
     "코드": {"type": ["typewriter"], "device": ["ui"], "background": ["blueprint", "scan"]},
     "개발": {"type": ["typewriter"], "device": ["ui"], "background": ["blueprint"]},
-    "와이파이": {"device": ["object", "map"], "layout": ["diagram"]},
+    "와이파이": {"device": ["map"], "layout": ["diagram"]},
     "음식": {"background": ["photo", "solid"], "palette": ["earth"], "device": ["collage"]},
     "여행": {"background": ["photo", "sky"], "device": ["map"]},
     "밈": {"type": ["boxed", "kinetic"], "palette": ["pop"], "device": ["collage"]},
@@ -114,11 +111,11 @@ HINTS = {
 
 # 공유 기억에서 "싫다 · 별로 · 금지"와 함께 나온 낱말 → 그 선택은 뽑지 않는다
 AVOID_WORDS = {
-    ("palette", "neon"): ["네온", "형광색"], ("palette", "pop"): ["원색"], ("device", "pixel"): ["픽셀"],
+    ("palette", "neon"): ["네온", "형광색"], ("palette", "pop"): ["원색"],
     ("background", "stage"): ["검은 무대", "검정 무대", "어두운 무대", "검은 바탕"], ("background", "scan"): ["주사선", "브라운관"],
     ("motion", "bouncy"): ["통통", "탄력"],
     ("captions", "highlight"): ["굵은 테두리 자막", "검은 테두리", "두꺼운 테두리", "외곽선 자막"], ("captions", "pop"): ["한 단어씩"],
-    ("type", "boxed"): ["상자 라벨", "색 상자"], ("transition", "glitch"): ["글리치"], ("device", "character"): ["캐릭터"],
+    ("type", "boxed"): ["상자 라벨", "색 상자"], ("transition", "glitch"): ["글리치"],
 }
 NEG = ["싫", "별로", "금지", "빼 ", "빼고", "티가", "티 나", "말 것", "말라", "피하", "유치", "촌스", "어색"]
 
@@ -380,8 +377,12 @@ def main():
             print(Path(ROOT / "data" / "public" / "trends" / "channels" / card["channel"] / "channel.md").read_text(encoding="utf-8").split("## 영상별 대사")[0])
             print(f"(영상별 대사 · 대사 시트: data/public/trends/channels/{card['channel']}/channel.md)")
         if a.write:
+            prev = sb.get("direction") or {}
+            fp = (prev.get("feel") or {}).get("palette") or {}
+            col.update({f"color_{k}": v for k, v in fp.items() if k in ("bg", "surface", "text", "muted", "accent")})   # 고른 느낌의 색이 레퍼런스 색보다 앞선다(배치 · 리듬은 레퍼런스)
             sb["direction"] = {**{k: v for k, v in d.items() if not k.startswith("caption_")}, **col, "style_card": f"data/public/trends/xray/{card['id']}/style/style.json",
-                               **({"channel_card": f"data/public/trends/channels/{card['channel']}/channel.json"} if card.get("channel_card") else {})}
+                               **({"channel_card": f"data/public/trends/channels/{card['channel']}/channel.json"} if card.get("channel_card") else {}),
+                               **{k: prev[k] for k in ("anchors", "feel", "methods", "subs", "art", "number_punch") if k in prev}}   # 직접 적은 칸 보존
             if not sb.get("voice"):   # 목소리도 카드에서: 가장 자연스러운 엔진 · 레퍼런스 말 속도 · 이어 말하기 · 말투 지시
                 sb["voice"] = voice_from_card(card)
                 print(f"[기록] 목소리: {sb['voice']}")
@@ -412,7 +413,12 @@ def main():
     print(brief(sb, res, engines))
     if a.write:
         seed = int(hashlib.sha1(f"{sb.get('id')}:{a.reroll}".encode()).hexdigest(), 16)
-        sb["direction"] = {**res["pick"], "reference": (res["ref"] or {}).get("id"), **colors(res["pick"], res["ref"], seed)}
+        prev = sb.get("direction") or {}
+        keep = {k: prev[k] for k in ("anchors", "feel", "methods", "subs", "art", "number_punch") if k in prev}   # 감독 기둥 · 고른 느낌 등 직접 적은 칸은 지우지 않는다(2026-11-11: 통째로 덮어 anchors 가 사라졌다)
+        col = colors(res["pick"], res["ref"], seed)
+        fp = (prev.get("feel") or {}).get("palette") or {}
+        col.update({f"color_{k}": v for k, v in fp.items() if k in ("bg", "surface", "text", "muted", "accent")})   # 고른 느낌의 색이 무작위 팔레트보다 앞선다
+        sb["direction"] = {**res["pick"], "reference": (res["ref"] or {}).get("id"), **col, **keep}
         if sb.get("template") == "Composed":
             sb.pop("template", None)
         sb.pop("engine", None)

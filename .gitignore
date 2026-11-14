@@ -5,6 +5,11 @@ engine/spec/rules/trends/*.raw.txt
 data/*
 !data/README.md
 !data/queue.md
+!data/characters/
+!data/characters/**
+!data/workspace/
+data/workspace/*
+!data/workspace/presets.json
 .env
 __pycache__/
 engine/*/renderer/node_modules/
@@ -21,17 +26,9 @@ engine/*/renderer/.venv/
 # Craft 앱 설치본 (engine/craft/crafts.py)
 tools/crafts/
 tools/toolchains/
+tools/python313/
+tools/flow_probe/
+tools/gflow/.venv/
+tools/gflow/**/.venv/
 
-# ---- 사용 데이터: 영상 · 조사 · 업로드 · 기록은 저장소에 올리지 않는다(사람마다 다름 · 개인 정보) ----
-styles/*
-!styles/.gitkeep
-library/*
-!library/.gitkeep
-library3d/s3-bucket/
-.nimbalyst/
-.pytest_cache/
-.claude/settings.local.json
-.claude/scheduled_tasks.lock
-*.fcproj.lock
 tools/ui-scenes/.build/
-MUJOCO_LOG.TXT

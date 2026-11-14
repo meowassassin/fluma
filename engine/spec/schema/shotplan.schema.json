@@ -1,0 +1,420 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "title": "Fluma 샷 계획 (파이프라인 1단계 출력)",
+ "description": "기획 결과 — 영상 생성이 한 번에 끝나도록 카메라 · 배경 · 동작을 확정한 8초 이하 샷 목록. 프롬프트는 칸에서 engine/gen/plan.py 가 조립한다(모델에는 글로). 2단계(캐릭터 시트) · 3단계(키 프레임) · 4단계(영상 생성)가 이 파일을 읽고 sheet · keyframe · clip 칸을 채운다. 칸 근거: 볼트 02 Architecture/숏폼 생성 파이프라인 — 프롬프트 · 구조 조사 (2026-11-11).",
+ "type": "object",
+ "required": [
+  "id",
+  "topic",
+  "aspect",
+  "shots"
+ ],
+ "additionalProperties": false,
+ "$defs": {
+  "en": {
+   "type": "string",
+   "description": "영어(생성 모델 입력)"
+  }
+ },
+ "properties": {
+  "id": {
+   "type": "string",
+   "pattern": "^[a-z0-9][a-z0-9-]{2,63}$"
+  },
+  "topic": {
+   "type": "string",
+   "minLength": 2
+  },
+  "aspect": {
+   "enum": [
+    "9:16",
+    "16:9"
+   ],
+   "description": "쇼츠는 9:16 — 이미지 · 영상 생성 모두 파라미터로 넘긴다(프롬프트 글로 정하지 않음)"
+  },
+  "trend": {
+   "type": "object",
+   "description": "1단계 입력이 된 기존 트렌드 분석 — 어떤 추천 선택지에서 왔나",
+   "additionalProperties": false,
+   "properties": {
+    "request": {
+     "type": "string"
+    },
+    "refs": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "option": {
+     "type": "string",
+     "description": "사용자가 고른(또는 말한) 추천 선택지"
+    },
+    "why": {
+     "type": "string"
+    }
+   }
+  },
+  "logline": {
+   "type": "string"
+  },
+  "style": {
+   "$ref": "#/$defs/en",
+   "minLength": 0,
+   "description": "영상 전체 화풍 · 색 · 빛 한 문장(영어) — 모든 키 프레임에 글자 그대로. cinematic · 35mm · 4k 같은 말은 쓰지 않는다"
+  },
+  "needs_character": {
+   "type": "boolean",
+   "description": "D1 — 여러 샷에 같은 인물 · 생물 · 마스코트가 나오면 true(2단계 캐릭터 시트), 아니면 3단계로"
+  },
+  "characters": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "name",
+     "identity",
+     "wardrobe"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9]*$",
+      "description": "영어 이름 하나(프롬프트에서 부르는 이름)"
+     },
+     "identity": {
+      "$ref": "#/$defs/en",
+      "minLength": 20,
+      "description": "바뀌지 않는 정체 표식을 하나씩: 체형 · 머리 모양과 색 · 얼굴 · 눈 · 표식(점 · 흉터 · 반지). '같은 사람' 같은 말 대신 구체적으로"
+     },
+     "wardrobe": {
+      "$ref": "#/$defs/en",
+      "minLength": 5,
+      "description": "옷 · 색 한 줄 — 얼굴보다 잘 흔들려서 모든 프롬프트에 글자 그대로"
+     },
+     "props": {
+      "$ref": "#/$defs/en",
+      "description": "늘 지니는 소품(손에 든 것은 따로 참조 그림이 좋다)"
+     },
+     "voice": {
+      "type": "string",
+      "description": "대사가 있을 때 목소리 · 말투"
+     },
+     "sheet": {
+      "type": "object",
+      "description": "2단계가 채움: front · back · left · right 파일과 승인(입력 해시)"
+     }
+    }
+   }
+  },
+  "narration": {
+   "type": "string",
+   "description": "나레이션 대본(있으면) — 5단계에서 공급자 TTS(typecast 등)로 입힌다. 샷 경계는 ' / '. 생성 영상에는 대사를 넣지 않는다"
+  },
+  "shots": {
+   "type": "array",
+   "minItems": 0,
+   "maxItems": 24,
+   "items": {
+    "type": "object",
+    "required": [
+     "n",
+     "purpose",
+     "gen_sec",
+     "final_sec",
+     "shot_size",
+     "angle",
+     "camera_move",
+     "subject_pos",
+     "start_state",
+     "action",
+     "end_state",
+     "background",
+     "ambient"
+    ],
+    "additionalProperties": false,
+    "properties": {
+     "n": {
+      "type": "integer",
+      "minimum": 1
+     },
+     "purpose": {
+      "enum": [
+       "hook",
+       "build",
+       "turn",
+       "payoff",
+       "cta"
+      ],
+      "description": "이 샷이 맡는 일"
+     },
+     "beat": {
+      "type": "string",
+      "description": "이야기 속 역할 한 줄(한국어 가능)"
+     },
+     "gen_sec": {
+      "type": "integer",
+      "minimum": 3,
+      "maximum": 15,
+      "description": "생성 길이 — 모델마다 고를 수 있는 값이 다르다(Veo 4·6·8 · Omni Flash 4·6·8·10 · Omni 1.2 Flash 3~15). plan.py check 가 설정 모델로 검사"
+     },
+     "final_sec": {
+      "type": "number",
+      "minimum": 2,
+      "maximum": 15,
+      "description": "편집에서 쓸 길이(2초 이상 · gen_sec 이하) — 편집 엔진의 장면 최소 2초. 생성분은 골라 잘라 쓰는 재료"
+     },
+     "characters": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "등장 캐릭터 name"
+     },
+     "shot_size": {
+      "enum": [
+       "extreme close-up",
+       "close-up",
+       "medium close-up",
+       "medium shot",
+       "medium wide shot",
+       "wide shot",
+       "extreme wide shot"
+      ]
+     },
+     "angle": {
+      "enum": [
+       "eye-level",
+       "low-angle",
+       "high-angle",
+       "bird's-eye",
+       "worm's-eye",
+       "over-the-shoulder",
+       "POV",
+       "Dutch angle"
+      ]
+     },
+     "camera_move": {
+      "enum": [
+       "locked-off",
+       "slow push-in",
+       "slow pull-out",
+       "pan left",
+       "pan right",
+       "tilt up",
+       "tilt down",
+       "dolly in",
+       "dolly out",
+       "truck left",
+       "truck right",
+       "pedestal up",
+       "pedestal down",
+       "crane up",
+       "crane down",
+       "arc left",
+       "arc right",
+       "handheld follow",
+       "whip pan"
+      ],
+      "description": "카메라 움직임 하나"
+     },
+     "camera_intent": {
+      "$ref": "#/$defs/en",
+      "description": "움직임의 이유(예: builds tension, reveals the room)"
+     },
+     "subject_pos": {
+      "$ref": "#/$defs/en",
+      "description": "9:16 화면 안 피사체 위치와 시선(예: center third, facing camera-left)"
+     },
+     "start_state": {
+      "$ref": "#/$defs/en",
+      "description": "샷 시작 순간의 자세 · 상태 = 키 프레임(시작 프레임)에 그려질 모습"
+     },
+     "action": {
+      "$ref": "#/$defs/en",
+      "description": "동작 하나와 속도(예: slowly lifts the phone toward the camera)"
+     },
+     "env_motion": {
+      "$ref": "#/$defs/en",
+      "description": "환경 움직임 하나(먼지 · 김 · 빛 · 바람), 없으면 비움"
+     },
+     "end_state": {
+      "$ref": "#/$defs/en",
+      "description": "샷 끝 순간의 모습"
+     },
+     "background": {
+      "$ref": "#/$defs/en",
+      "description": "장소 · 시간 · 환경(글자를 품은 물건은 피한다)"
+     },
+     "lighting": {
+      "$ref": "#/$defs/en"
+     },
+     "ambient": {
+      "$ref": "#/$defs/en",
+      "description": "주변음(침묵이라도 적는다: 'quiet room tone')"
+     },
+     "sfx": {
+      "$ref": "#/$defs/en",
+      "description": "효과음 하나"
+     },
+     "dialogue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+       "speaker",
+       "line"
+      ],
+      "description": "생성 영상 안의 대사(드묾 — 나레이션은 narration). 8초에 18단어 이하",
+      "properties": {
+       "speaker": {
+        "type": "string"
+       },
+       "delivery": {
+        "type": "string"
+       },
+       "line": {
+        "type": "string"
+       }
+      }
+     },
+     "end_frame": {
+      "type": "boolean",
+      "description": "끝 프레임도 만들어 처음 · 끝 프레임으로 생성(구도가 정확히 끝나야 하는 샷만, 바뀌는 것 하나)"
+     },
+     "avoid": {
+      "$ref": "#/$defs/en",
+      "description": "빼고 싶은 것 — 명사로(text, watermark, extra fingers)"
+     },
+     "keyframe_note": {
+      "$ref": "#/$defs/en",
+      "description": "키 프레임에만 더할 디테일"
+     },
+     "regen_criteria": {
+      "type": "string",
+      "description": "샷 검토에서 재생성할 조건(한국어 가능)"
+     },
+     "keyframe": {
+      "type": "object",
+      "description": "3단계가 채움"
+     },
+     "clip": {
+      "type": "object",
+      "description": "4단계가 채움: 경로 · 모델 · 시도 횟수"
+     },
+     "trim_in": {
+      "type": "number",
+      "minimum": 0,
+      "description": "5단계: 생성 클립에서 쓸 구간 시작(초, 기본 0)"
+     },
+     "kind": {
+      "enum": [
+       "live",
+       "motion"
+      ],
+      "default": "live",
+      "description": "live = 키 프레임(시작 그림) → 영상 · motion = 모션그래픽(키네틱 타이포 · 콜라주 · 도해) — 키 프레임 없이 레퍼런스 그림으로(r2v)"
+     },
+     "on_screen_text": {
+      "type": "string",
+      "maxLength": 60,
+      "description": "motion 샷 화면 글자(정확히 이대로, 6단어 이하). 한글은 깨질 수 있어 편집기에서 다시 얹는 경우가 있다"
+     },
+     "transition_out": {
+      "type": "string",
+      "description": "다음 샷으로 넘어가는 전환(영어) — 예: torn-paper wipe to the next scene"
+     },
+     "music_mood": {
+      "type": "string",
+      "description": "음악 느낌(영어) — motion 샷 소리 칸에"
+     },
+     "revisions": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "말로 고치기 기록(영어, 오래된 순) — video.py revise 가 붙인다. 프롬프트 끝에 반영"
+     }
+    }
+   }
+  },
+  "title": {
+   "type": "string",
+   "maxLength": 40,
+   "description": "영상 제목(업로드 · 화면 제목)"
+  },
+  "cta": {
+   "type": "string",
+   "maxLength": 20
+  },
+  "format": {
+   "enum": [
+    "concept",
+    "mythbust",
+    "compare",
+    "countdown",
+    "fix",
+    "series",
+    "ad",
+    "emotional",
+    "daily",
+    "ranking",
+    "clip"
+   ],
+   "description": "편집 엔진 형식(기본 concept)"
+  },
+  "route": {
+   "enum": [
+    "generate",
+    "clip",
+    "material"
+   ],
+   "description": "1단계 경로 — generate 생성 · clip 클립 재편집(dub.py) · material 실제 자료 편집(produce.py). 없으면 generate"
+  },
+  "route_why": {
+   "type": "string",
+   "description": "그 경로를 고른 이유 한 줄(사용자에게 보인 것)"
+  },
+  "handoff": {
+   "type": "string",
+   "description": "생성이 아닌 경로에서 이어 갈 파일(dub.json 또는 콘티)"
+  },
+  "route_by": {
+   "enum": [
+    "user",
+    "default"
+   ],
+   "description": "경로를 누가 정했나 — user 사용자가 고름 · default 사용자가 '알아서'라고 해 에이전트 추천대로"
+  },
+  "made_by": {
+   "type": "object",
+   "description": "기획한 에이전트(실행 기록 — FLUMA_AGENT_RUNTIME · MODEL). 설정이 바뀌어도 이 기록은 그대로",
+   "properties": {
+    "runtime": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "model": {
+     "type": [
+      "string",
+      "null"
+     ]
+    },
+    "at": {
+     "type": "string"
+    }
+   },
+   "additionalProperties": false
+  },
+  "style_ref": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "maxItems": 3,
+   "description": "모션그래픽(kind=motion) 샷이 따를 레퍼런스 쇼츠 id(분해해 둔 것). 생성할 때마다 그 대표 프레임을 그림 레퍼런스로 붙인다 — 안 붙이면 모델이 자기 스타일로 만든다"
+  }
+ }
+}

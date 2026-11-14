@@ -5,6 +5,8 @@ description: 초안 뒤 장면마다 디테일을 다듬는다 — 장면을 열
 
 # 다듬기 (작업 세션)
 
+> **파이프라인 적용(2026-11-11)**: `produce.py` 가 정지 화면 검토 뒤 `skill_pass.py refine` 으로 '값으로 못 고친 문제'를 최대 두 장면 이 순서(try → 그림 보기 → keep)로 다듬고 다시 렌더한다.
+
 고정 어댑터 · 움직임 JSX 는 **초벌**이다 — 앱 기능 몇 개만 쓴다. 디테일은 여기서 넣는다.
 다듬은 것은 콘티에 기록으로 남고(`engine/craft/refine.py`), 제작할 때마다 초벌 위에 다시 적용된다 — 다시 만들어도 사라지지 않는다.
 
@@ -27,7 +29,7 @@ python3 engine/craft/session.py coverage <콘티>                 # 앱 × 층 �
    **효과 · 필터 · 프리셋을 고를 때는 견본 판부터 본다** — `.claude/skills/crafts/probe/<앱>.md` 의 판 목록(EffectCraft 효과 분류별 · 프리셋 세 시점 띠 · PhotoCraft 필터 메뉴별).
    문법은 `.claude/skills/crafts/reference/<앱>.md`.
 4. **시도 → 보기 → 고치기** — `try` 가 전 · 후 PNG(소리는 WAV)를 준다. **반드시 열어서 본다.** 기본값 그대로의 효과는 대개 거칠다 — 세기 · 위치 · 타이밍(키프레임)을 고쳐 다시 `try`. 두세 번은 기본.
-   움직임 · 타이밍은 정지 그림으로 안 보인다 — 보기(VL) 모델이 있으면 장면을 짧게 렌더해 `python3 engine/providers/see.py ask <장면 mp4> --q "등장 타이밍이 말과 맞나 · 거칠게 튀는 곳은?"` 로 움직임까지 본다. 어디를 다듬을지 모르겠으면 `see.py critique <콘티>` 의 issues 부터.
+   움직임 · 타이밍은 정지 그림으로 안 보인다 — 장면을 짧게 렌더해 `python3 engine/look/look.py sheet <장면 mp4>`(시각이 적힌 프레임 모음)를 열어 움직임과 싱크를 본다.
 5. **남기기** — `keep`(layer · why 필수). 다음 장면으로. 끝나면 `coverage` 로 앱 · 층이 한쪽에 몰리지 않았는지 본다.
 6. 전체 초안 다시(produce) → 이어 보기에서 장면 사이가 튀지 않는지.
 
@@ -84,6 +86,6 @@ python3 engine/craft/session.py try  <콘티> 6 --material card --recipe materia
 
 ## 새 레시피 (실제 영상에서 검증)
 `motion-speed-ramp` 결정적 순간 슬로모션(길이 유지) · `color-act-shift` 막마다 색온도 · `transition-pan-smear` 카메라 이동 번짐 · `light-impact-flash` 충돌 순간 빛 · `composition-slow-push` 끝말로 다가가기 · `typo-source-credit` 끝 출처.
-앱을 잇는 재료는 콘티에 `craft` 재료로 차례로 적는다(VectorCraft → PhotoCraft · DesignCraft → PhotoCraft → Blender `uses`). 다른 재료의 입력이 된 재료는 화면에 저절로 나오지 않는다.
+앱을 잇는 재료는 콘티에 `craft` 재료로 차례로 적는다(VectorCraft → PhotoCraft · DesignCraft → PhotoCraft). 다른 재료의 입력이 된 재료는 화면에 저절로 나오지 않는다.
 `session try` 는 마지막으로 만든 프로젝트를 쓴다 — 재료 구성을 바꿨으면 먼저 `render.py --draft` 로 다시 만들고 본다.
 

@@ -20,8 +20,6 @@
                   {"at": 5.0, "dur": 0.6, "do": "pulse", "sel": ".sb-scenes > li:nth-child(4)"} ],
         "camera": [ {"at": 0, "sel": "textarea", "zoom": 1.35}, {"at": 3.2, "dur": 1.0, "sel": ".dock-log", "zoom": 1.1} ],
         "focus":  [ {"at": 5.0, "dur": 0.6, "sel": ".sb-scenes > li:nth-child(4)", "amount": 1}, {"at": 7.0, "dur": 0.6, "amount": 0} ] } ] }
-  물리 행동: {"at": 1.0, "do": "physics", "physics": "data/compositions/<id>/src/x.mjcf.xml", "bind": {"body 이름": "선택자"}, "sec": 3}
-  — 페이지의 요소(알림 카드 · 버튼 · 글자)를 제자리에서 떨어뜨리고 부딪히게 한다(engine/craft/physics.py).
   등장 행동(pop · stream · fade)이 붙은 요소는 그 시각 전까지 보이지 않는다. 장면 사이는 0.45초 흐림 섞기.
 """
 from __future__ import annotations
@@ -115,13 +113,8 @@ FX.seek = (t) => {
   const W = innerWidth, H = innerHeight;
   // 등장 · 글자
   for (const a of FX.acts) {
-    const e = a.sel ? FX.q(a.sel) : null; if (!e && a.do !== 'cursor' && a.do !== 'physics') continue;
+    const e = a.sel ? FX.q(a.sel) : null; if (!e && a.do !== 'cursor') continue;
     const u = (t - a.at) / (a.dur || .4);
-    if (a.do === 'physics') { /* 물리(MuJoCo) — 요소마다 처음 자리에서 계산된 만큼 옮기고 돌린다. a.tracks: {선택자: [[dx, dy, 도], …]} */
-      const fr = Math.max(0, Math.round((t - a.at) * (a.fps || 30)));
-      for (const [sel, tr] of Object.entries(a.tracks || {})) { const el = FX.q(sel); if (!el || !tr.length) continue; const v = tr[Math.min(tr.length - 1, fr)];
-        el.style.transform = `translate(${v[0]}px, ${v[1]}px) rotate(${v[2]}deg)`; el.style.willChange = 'transform'; }
-      continue; }
     if (a.do === 'pop') { const k = eout(u); e.style.opacity = t < a.at ? '0' : String(k); e.style.transform = `translateY(${(1 - k) * 16}px) scale(${.97 + .03 * k})`; }
     else if (a.do === 'fade') { e.style.opacity = t < a.at ? '0' : String(eout(u)); }
     else if (a.do === 'stream') { const k = Math.min(1, Math.max(0, u)); e.style.opacity = t < a.at ? '0' : '1'; e.style.clipPath = `inset(0 0 ${(1 - eout(k)) * 100}% 0)`; }
@@ -178,27 +171,6 @@ FX.seek = (t) => {
 """
 
 
-def physics_tracks(shot: dict, vw: int, vh: int, fps: int) -> dict:
-    """행동 {"do": "physics", "at": 초, "physics": "장면(.mjcf.xml | .py)", "bind": {"body": "선택자"}, "args": {…}, "sec": 3,
-    "view": {"width": 세상 너비 m, "x": 0.5, "ground": 0.9}} → 요소마다 처음 자리 기준 이동 · 회전(픽셀 · 도). 페이지 배치가 출발점"""
-    acts = []
-    for a in shot.get("acts") or []:
-        if a.get("do") == "physics" and a.get("physics") and "tracks" not in a:
-            from craft import physics as _phys
-            res = _phys.simulate(ROOT / a["physics"], float(a.get("sec", 3)), fps, {k: v for k, v in (a.get("args") or {}).items() if not isinstance(v, (dict, list))})
-            v = a.get("view") or {}
-            pr = _phys.project2d(res, vw, vh, float(v.get("width", 3.6)), float(v.get("x", 0.5)), float(v.get("ground", 0.9)))
-            tracks = {}
-            for body, sel in (a.get("bind") or {}).items():
-                rows = pr["bodies"].get(body)
-                if rows:
-                    x0, y0, r0 = rows[0]
-                    tracks[sel] = [[round(x - x0, 1), round(y - y0, 1), round(r - r0, 2)] for x, y, r in rows]
-            a = {**a, "tracks": tracks, "fps": fps}
-        acts.append(a)
-    return {**shot, "acts": acts}
-
-
 def render(plan: dict, out: Path, fps: int, gif: bool) -> Path:
     import cv2
     import numpy as np
@@ -225,7 +197,6 @@ def render(plan: dict, out: Path, fps: int, gif: bool) -> Path:
             page.goto(plan["base"].rstrip("/") + shot["url"], wait_until="networkidle", timeout=60000)
             page.wait_for_timeout(int(shot.get("settle_ms", 1200)))
             page.evaluate(RUNTIME)
-            shot = physics_tracks(shot, vw, vh, fps)
             n = page.evaluate("(s) => FX.setup(s)", shot)
             page.wait_for_timeout(300)
             frames = int(float(shot["dur"]) * fps)

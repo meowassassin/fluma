@@ -87,7 +87,7 @@
 - 더 세밀하게: `layer.addTextAnimator {properties:[opacity,scale,blur,fillColor…]}` + `layer.addTextSelector {kind: range|wiggly|expression}` — 속성 28종(`text.animatorProperties`). ❔
 
 ### 3-5. 실제 화면(스크린샷 · 녹화) 다듬기 ✅ (높음)
-"실제 화면 > 효과" 원칙에 가장 직접 도움. 캡처를 넣고, 둥근 모서리 · 그림자 · 기울기 · 카메라 밀기 · 빛 쓸기.
+증거 화면을 다듬을 때. 캡처를 넣고, 둥근 모서리 · 그림자 · 기울기 · 카메라 밀기 · 빛 쓸기.
 ```json
 {"command":"file.import","params":{"paths":["/abs/screen.png","/abs/voice.wav"]}},
 {"command":"layer.addItem","params":{"item":"screen.png","position":[540,960]}},
