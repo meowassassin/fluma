@@ -138,6 +138,7 @@ class FlowMCP:
         self.out_dir = out_dir
         self.no_spend = no_spend
         self.p = None
+        self.agent_p = None
         self.i = 0
 
     def _login(self) -> tuple[bool, str]:
@@ -228,28 +229,86 @@ class FlowMCP:
 
     agent_only = False   # 이 계정이 Flow 의 agent-only 화면(#799)이면 i2v 는 flow_agent_i2v.py 로(gflow 0.98 은 거절, #1220)
 
-    def _agent_i2v(self, req: GenRequest, timeout: int) -> GenResult:
-        """agent-only 계정의 i2v — 채팅 칸에 시작 프레임을 붙이고 에이전트에게 시킨다(engine/gen/flow_agent_i2v.py, gflow 부품 재사용).
-        MCP 가 프로필을 잡고 있으면 브라우저를 못 여니 먼저 닫는다. Veo 3.1 Lite 첫 프레임 i2v 는 8초만 된다(측정)."""
-        self.close()
-        project = req.project or default_flow_project()
-        if not project:
-            return GenResult(False, backend=self.name, error="Flow 프로젝트가 없다 — `gflow project list` 로 하나 만들거나 설정 videogen.flow_project", kind="broken")
-        sec = 8 if req.model.startswith("veo_3_1_lite") else req.sec
+    def _close_mcp(self):
+        if not self.p:
+            return
+        try:
+            self.p.terminate()
+            self.p.wait(timeout=5)
+        except Exception:  # noqa: BLE001
+            self.p.kill()
+            try:
+                self.p.wait(timeout=5)
+            except Exception:  # noqa: BLE001
+                pass
+        finally:
+            self.p = None
+
+    def _close_agent(self):
+        if not self.agent_p:
+            return
+        try:
+            if self.agent_p.stdin:
+                self.agent_p.stdin.close()
+            self.agent_p.wait(timeout=8)
+        except Exception:  # noqa: BLE001
+            self.agent_p.terminate()
+            try:
+                self.agent_p.wait(timeout=5)
+            except Exception:  # noqa: BLE001
+                self.agent_p.kill()
+                try:
+                    self.agent_p.wait(timeout=5)
+                except Exception:  # noqa: BLE001
+                    pass
+        finally:
+            self.agent_p = None
+
+    def _start_agent(self):
+        if self.agent_p and self.agent_p.poll() is None:
+            return
+        self._close_agent()
         py = GFLOW.parent / ("python.exe" if os.name == "nt" else "python")
-        cmd = [str(py), str(ROOT / "engine" / "gen" / "flow_agent_i2v.py"), "--project", project, "--image", str(req.start_frame),
-               "--prompt", req.prompt, "--out", str(req.out), "--sec", str(sec), "--model", req.model, "--timeout", str(timeout)]
+        cmd = [str(py), str(ROOT / "engine" / "gen" / "flow_agent_i2v.py"), "--server"]
         cmd, env = _bg_browser_cmd(cmd)
         main_sites = [str(p) for p in (ROOT / ".venv").glob("lib/python*/site-packages")]
         if main_sites:
             curr_py = env.get("PYTHONPATH", "")
             env["PYTHONPATH"] = (main_sites[0] + (os.pathsep + curr_py if curr_py else ""))
+        self.agent_p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=env, cwd=ROOT, bufsize=1)
+
+    def _agent_i2v(self, req: GenRequest, timeout: int) -> GenResult:
+        """agent-only 계정의 i2v — 상주 워커(flow_agent_i2v.py --server)로 샷 간 브라우저를 재사용한다."""
+        self._close_mcp()
+        project = req.project or default_flow_project()
+        if not project:
+            return GenResult(False, backend=self.name, error="Flow 프로젝트가 없다 — `gflow project list` 로 하나 만들거나 설정 videogen.flow_project", kind="broken")
+        sec = 8 if req.model.startswith("veo_3_1_lite") else req.sec
+        payload = {"project": project, "image": str(req.start_frame), "prompt": req.prompt, "out": str(req.out),
+                   "sec": sec, "model": req.model, "timeout": timeout}
+        b = None
         try:
-            r = subprocess.run(cmd, env=env, cwd=ROOT, capture_output=True, text=True, timeout=timeout + 300)
-        except subprocess.TimeoutExpired:
-            return GenResult(False, backend=self.name, error="agent-only i2v 시간 초과", kind="indeterminate", raw={"flow_project_id": project})
-        line = next((x for x in reversed(r.stdout.splitlines()) if x.startswith("FLUMA_AGENT_I2V ")), None)
-        b = json.loads(line.split(" ", 1)[1]) if line else {"ok": False, "stage": "start", "error": (r.stderr or r.stdout)[-400:]}
+            self._start_agent()
+            self.agent_p.stdin.write(json.dumps(payload, ensure_ascii=False) + "\n")
+            self.agent_p.stdin.flush()
+            end = time.time() + timeout + 300
+            while time.time() < end:
+                r, _, _ = select.select([self.agent_p.stdout], [], [], max(0.1, end - time.time()))
+                if not r:
+                    self._close_agent()
+                    return GenResult(False, backend=self.name, error="agent-only i2v 시간 초과", kind="indeterminate", raw={"flow_project_id": project})
+                line = self.agent_p.stdout.readline()
+                if not line:
+                    self._close_agent()
+                    b = {"ok": False, "stage": "start", "error": "agent-only 워커가 종료됨"}
+                    break
+                if line.startswith("FLUMA_AGENT_I2V "):
+                    b = json.loads(line.split(" ", 1)[1])
+                    break
+        except Exception as e:  # noqa: BLE001
+            self._close_agent()
+            b = {"ok": False, "stage": "start", "error": str(e)[:400]}
+        b = b or {"ok": False, "stage": "start", "error": "agent-only i2v 응답 없음"}
         raw = {"flow_project_id": project, "flow_media_id": b.get("media_id"), "agent_only": True, "first_frame_diff": b.get("first_frame_diff")}
         if b.get("ok") and req.out.exists():
             return GenResult(True, req.out, req.model, self.name, raw=raw)
@@ -305,20 +364,9 @@ class FlowMCP:
         return GenResult(True, req.out, req.model, self.name, raw=b)
 
     def close(self):
-        """gflow mcp 를 끝낸다 — terminate 뒤 wait 로 거둬 좀비(<defunct>)를 남기지 않는다, 안 끝나면 kill"""
-        if not self.p:
-            return
-        try:
-            self.p.terminate()
-            self.p.wait(timeout=5)
-        except Exception:  # noqa: BLE001
-            self.p.kill()
-            try:
-                self.p.wait(timeout=5)
-            except Exception:  # noqa: BLE001
-                pass
-        finally:
-            self.p = None
+        """gflow mcp 및 agent-only 워커를 끝낸다 — terminate 뒤 wait 로 좀비(<defunct>)를 남기지 않는다."""
+        self._close_mcp()
+        self._close_agent()
 
 
 # ── 경로 A: Antigravity CLI · Gemini 챗 ──
@@ -522,41 +570,50 @@ def make_backend(name: str, pid: str):
     return {"flow": lambda: FlowMCP(cdir(pid) / "_flow_out"), "antigravity": Antigravity, "mock": Mock}[norm]()
 
 
-def route(pid: str, shots: list[dict], cfg: dict, prefer: str | None) -> dict:
-    """영상 단위 경로 판단 — 생성하지 않는다"""
+def _route_with_backend(pid: str, shots: list[dict], cfg: dict, prefer: str | None) -> tuple[dict, object | None]:
+    """영상 단위 경로 판단 — FlowMCP 를 확인한 뒤 그대로 재사용할 수 있게 인스턴스를 함께 돌려준다."""
     target_backend = prefer or cfg.get("backend") or "gflow"
     if target_backend == "mock":
-        return {"backend": "mock", "need": 0, "balance": None, "why": "시험(mock)"}
+        return {"backend": "mock", "need": 0, "balance": None, "why": "시험(mock)"}, None
     if target_backend == "antigravity":
         a_ok, a_why = Antigravity().available()
         if not a_ok:
-            return {"stop": f"경로 A(Antigravity) 사용 불가 — {a_why}"}
-        return {"backend": "antigravity", "need": 0, "balance": None, "why": "설정된 영상 생성 경로: Antigravity CLI (Gemini)", "notice": True}
+            return {"stop": f"경로 A(Antigravity) 사용 불가 — {a_why}"}, None
+        return {"backend": "antigravity", "need": 0, "balance": None, "why": "설정된 영상 생성 경로: Antigravity CLI (Gemini)", "notice": True}, None
 
     if not cfg["model"]:
-        return {"stop": "영상 생성 모델을 고르지 않았다 — 설정에서 videogen.model 을 고른다(`gflow models` 목록)"}
+        return {"stop": "영상 생성 모델을 고르지 않았다 — 설정에서 videogen.model 을 고른다(`gflow models` 목록)"}, None
     costs = [shot_cost(cfg, cfg["model"], s["gen_sec"]) for s in shots]
     if any(c is None for c in costs):
-        return {"stop": f"모델 {cfg['model']} 의 샷당 크레딧 비용이 설정에 없다 — videogen.credits 에 적는다"}
+        return {"stop": f"모델 {cfg['model']} 의 샷당 크레딧 비용이 설정에 없다 — videogen.credits 에 적는다"}, None
     need = sum(costs)
     flow = make_backend("flow", pid)
     okf, why = flow.available()
     if not okf:
-        return {"stop": f"경로 B(Google Flow) 사용 불가 — {why}"}
+        return {"stop": f"경로 B(Google Flow) 사용 불가 — {why}"}, None
     try:
         bal = flow.credits()
     except Exception as e:  # noqa: BLE001
         flow.close()
-        return {"stop": f"크레딧 조회 실패(경로 B 고장으로 보고 — 자동 전환 없음): {e}"}
-    flow.close()
+        return {"stop": f"크레딧 조회 실패(경로 B 고장으로 보고 — 자동 전환 없음): {e}"}, None
     if bal is None:
-        return {"stop": "크레딧 잔액을 읽지 못했다 — 보고"}
+        flow.close()
+        return {"stop": "크레딧 잔액을 읽지 못했다 — 보고"}, None
     if bal >= need:
-        return {"backend": "flow", "need": need, "balance": bal, "why": f"잔액 {bal} ≥ 필요 {need}"}
+        return {"backend": "flow", "need": need, "balance": bal, "why": f"잔액 {bal} ≥ 필요 {need}"}, flow
+    flow.close()
     a_ok, a_why = Antigravity().available()   # 경로 A 는 요청해 봐야 안다 — 영상이 안 오면 그 샷에서 멈추고 보고
     if not a_ok:
-        return {"stop": f"Flow 크레딧 부족(잔액 {bal} < 필요 {need}) — 경로 A 로 넘겨야 하는데 {a_why}", "need": need, "balance": bal}
-    return {"backend": "antigravity", "need": need, "balance": bal, "why": f"잔액 {bal} < 필요 {need} — 경로 A(사용자에게 알림)", "notice": True}
+        return {"stop": f"Flow 크레딧 부족(잔액 {bal} < 필요 {need}) — 경로 A 로 넘겨야 하는데 {a_why}", "need": need, "balance": bal}, None
+    return {"backend": "antigravity", "need": need, "balance": bal, "why": f"잔액 {bal} < 필요 {need} — 경로 A(사용자에게 알림)", "notice": True}, None
+
+
+def route(pid: str, shots: list[dict], cfg: dict, prefer: str | None) -> dict:
+    """영상 단위 경로 판단 — 생성하지 않는다"""
+    rt, be = _route_with_backend(pid, shots, cfg, prefer)
+    if be and hasattr(be, "close"):
+        be.close()
+    return rt
 
 
 def run(pid: str, sel: list[int] | None, prefer: str | None) -> dict:
@@ -570,10 +627,12 @@ def run(pid: str, sel: list[int] | None, prefer: str | None) -> dict:
     over = [s["n"] for s in shots if used(pid, sb, s) >= cfg["max_attempts"]]
     if over:
         fail("video", stage="video", error=f"재생성 상한({cfg['max_attempts']}회, 두 경로 합산) 도달: 샷 {over} — 더 만들지 않는다. 프롬프트(1단계 샷 칸)나 시작 프레임(3단계)을 사용자와 고치면 다시 생성할 수 있다")
-    rt = route(pid, shots, cfg, prefer)
+    rt, reused_be = _route_with_backend(pid, shots, cfg, prefer)
     if rt.get("stop"):
+        if reused_be and hasattr(reused_be, "close"):
+            reused_be.close()
         fail("video", stage="route", error=rt["stop"])
-    be = make_backend(rt["backend"], pid)
+    be = reused_be or make_backend(rt["backend"], pid)
     model = cfg["model"] or "mock"
     kd = kfmod.kdir(pid)
     proj_id = plan_project_id(pid) if be.name == "flow" else None

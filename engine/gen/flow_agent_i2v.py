@@ -167,57 +167,97 @@ def default_profile() -> str:
     return (tomllib.loads(f.read_text("utf-8")).get("default_profile") if f.exists() else None) or "default"
 
 
-async def run(a) -> dict:
-    out = Path(a.out).resolve(); out.parent.mkdir(parents=True, exist_ok=True)
+async def _run_job(page, state: dict, job: dict) -> dict:
+    """이미 열린 page 에서 단일 i2v 요청 실행 (단발 · 상주 워커 공용)."""
+    cur_stage = {"at": "start"}
+    out = Path(job["out"]).resolve(); out.parent.mkdir(parents=True, exist_ok=True)
     tmp = Path(tempfile.mkdtemp())
-    up = tmp / f"fluma_{time.strftime('%H%M%S')}_{Path(a.image).name}"     # 같은 이름 에셋과 헷갈리지 않게
-    shutil.copy(a.image, up)
-    t = UiAutomationTransport()
-    await t.setup(profile_subdir(default_home(), a.profile or default_profile()))
-    page = t._page  # noqa: SLF001
+    up = tmp / f"fluma_{time.strftime('%H%M%S')}_{Path(job['image']).name}"     # 같은 이름 에셋과 헷갈리지 않게
+    shutil.copy(job["image"], up)
     try:
-        await page.goto(MIGRATED_PROJECT_URL.format(project_id=a.project), wait_until="domcontentloaded", timeout=60_000)
-        kind = await MigratedComposer().ensure_editor_for(page, a.project, needs_classic=False)
-        if kind != "agent_only":
-            return {"ok": False, "error": f"이 계정은 {kind} 화면 — gflow 의 일반 i2v 를 쓴다"}
+        proj = job["project"]
+        if state.get("project") != proj:
+            await page.goto(MIGRATED_PROJECT_URL.format(project_id=proj), wait_until="domcontentloaded", timeout=60_000)
+            kind = await MigratedComposer().ensure_editor_for(page, proj, needs_classic=False)
+            if kind != "agent_only":
+                return {"ok": False, "stage": "start", "error": f"이 계정은 {kind} 화면 — gflow 의 일반 i2v 를 쓴다"}
+            state["project"] = proj
         composer = agent.AgentOnlyComposer()
-        model = VideoModel(a.model)
+        model = VideoModel(job.get("model", "veo_3_1_lite"))
         snap = await composer.apply_defaults(page, section="video", aspect_ligature=ASPECT_LIGATURE[Aspect.PORTRAIT], count=1,
                                              model=VIDEO_MODEL_MENU_MATCHERS[model], confirm=agent._confirm_setting())  # noqa: SLF001
         shots = out.parent / "steps"; shots.mkdir(exist_ok=True)
-        stage["at"] = "attach"
+        cur_stage["at"] = "attach"
         try:
             try:
                 name = await attach(page, up, shots=shots)
             except Exception:
                 await page.screenshot(path=str(shots / "fail.png"))
                 raise
-            if a.dry:                                   # $0 — 붙이기까지만, 제출하지 않는다
+            if job.get("dry"):                                   # $0 — 붙이기까지만, 제출하지 않는다
                 await page.screenshot(path=str(shots / "dry-attached.png"))
                 return {"ok": True, "dry": True, "uploaded": name, "steps": str(shots)}
-            stage["at"] = "generate"
-            (media,) = await composer.generate(page, directive(a.prompt, a.sec, "9:16"), kind="video", count=1, budget_s=a.timeout)
+            cur_stage["at"] = "generate"
+            (media,) = await composer.generate(page, directive(job["prompt"], int(job.get("sec", 4)), "9:16"),
+                                               kind="video", count=1, budget_s=float(job.get("timeout", 900)))
         finally:
             await agent._restore_quietly(composer, page, snap)  # noqa: SLF001
 
-        stage["at"] = "download"
+        cur_stage["at"] = "download"
         async def save(_uuid: str, data: bytes) -> Path:
             out.write_bytes(data)
             return out
         await agent.download_video(page, media.src, media.uuid, save)
-        stage["at"] = "done"
+        cur_stage["at"] = "done"
 
         diff_val = None
         try:
-            diff_val = first_frame_diff(out, Path(a.image))
+            diff_val = first_frame_diff(out, Path(job["image"]))
         except Exception:
             pass
 
-        return {"ok": True, "stage": "done", "path": str(out), "media_id": media.uuid, "project_id": a.project, "uploaded": name,
+        return {"ok": True, "stage": "done", "path": str(out), "media_id": media.uuid, "project_id": proj, "uploaded": name,
                 "first_frame_diff": diff_val}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "stage": cur_stage["at"], "error": f"{type(e).__name__}: {str(e)[:400]}"}
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+async def run(a) -> dict:
+    t = UiAutomationTransport()
+    await t.setup(profile_subdir(default_home(), a.profile or default_profile()))
+    try:
+        return await _run_job(t._page, {}, {  # noqa: SLF001
+            "project": a.project, "image": a.image, "prompt": a.prompt, "out": a.out,
+            "sec": a.sec, "model": a.model, "timeout": a.timeout, "dry": a.dry,
+        })
     finally:
         await t.teardown()
-        shutil.rmtree(tmp, ignore_errors=True)
+
+
+async def serve(profile: str | None) -> None:
+    """상주 워커: stdin JSON 줄마다 브라우저를 재시작하지 않고 순차 실행."""
+    t = UiAutomationTransport()
+    await t.setup(profile_subdir(default_home(), profile or default_profile()))
+    state: dict = {}
+    try:
+        loop = asyncio.get_running_loop()
+        while True:
+            line = await loop.run_in_executor(None, sys.stdin.readline)
+            if not line:
+                break
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                job = json.loads(line)
+                res = await _run_job(t._page, state, job)  # noqa: SLF001
+            except Exception as e:  # noqa: BLE001
+                res = {"ok": False, "stage": "start", "error": f"{type(e).__name__}: {str(e)[:400]}"}
+            print("FLUMA_AGENT_I2V " + json.dumps(res, ensure_ascii=False), flush=True)
+    finally:
+        await t.teardown()
 
 
 def main() -> None:
@@ -232,12 +272,18 @@ def main() -> None:
             os.environ["_FLUMA_IN_XVFB"] = "1"
             os.execvp(xvfb, [xvfb, "-a", "-s", "-screen 0 1920x1080x24", sys.executable, *sys.argv])
     ap = argparse.ArgumentParser()
-    ap.add_argument("--project", required=True); ap.add_argument("--image", required=True)
-    ap.add_argument("--prompt", required=True); ap.add_argument("--out", required=True)
+    ap.add_argument("--server", action="store_true", help="stdin JSONL 상주 워커 모드(샷 간 브라우저 세션 재사용)")
+    ap.add_argument("--project"); ap.add_argument("--image")
+    ap.add_argument("--prompt"); ap.add_argument("--out")
     ap.add_argument("--sec", type=int, default=4); ap.add_argument("--model", default="veo_3_1_lite")
     ap.add_argument("--profile", default=None, help="기본: gflow config.toml 의 default_profile"); ap.add_argument("--timeout", type=float, default=900)
     ap.add_argument("--dry", action="store_true", help="붙이기까지만 하고 제출하지 않는다($0)")
     a = ap.parse_args()
+    if a.server:
+        asyncio.run(serve(a.profile))
+        return
+    if not (a.project and a.image and a.prompt and a.out):
+        ap.error("--project, --image, --prompt, --out 가 필요합니다(--server 제외)")
     try:
         r = asyncio.run(run(a))
     except Exception as e:  # noqa: BLE001

@@ -8,47 +8,54 @@ import atexit
 import json
 import re
 import subprocess
+import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CAT = ROOT / ".claude" / "skills" / "crafts" / "catalog"
 SID: str | None = None                 # materials.build 가 정한다
 ALL: dict[str, set] = {}               # 이 렌더 전체
-CUR: dict[str, set] | None = None      # 지금 만드는 재료 하나(begin ~ take)
+_TLS = threading.local()               # 스레드별 재료 하나(begin ~ take)
+_LOCK = threading.Lock()
 _IDS: dict[str, set] = {}
+_LABELS: dict[str, dict] = {}
 _TOK = re.compile(r"[A-Za-z][\w.\-]{2,80}")
 _orig_run, _orig_popen = subprocess.run, subprocess.Popen
 
 
 def _ids(app: str) -> set:
-    if app not in _IDS:
-        f = CAT / f"{app}.jsonl"
-        s = set()
-        if f.exists():
-            for ln in f.read_text("utf-8").splitlines():
-                try:
-                    i = json.loads(ln)["id"]
-                except (ValueError, KeyError):
-                    continue
-                if len(i) >= 3:
-                    s.add(i)
-        _IDS[app] = s
-    return _IDS[app]
+    with _LOCK:
+        if app not in _IDS:
+            f = CAT / f"{app}.jsonl"
+            s = set()
+            if f.exists():
+                for ln in f.read_text("utf-8").splitlines():
+                    try:
+                        i = json.loads(ln)["id"]
+                    except (ValueError, KeyError):
+                        continue
+                    if len(i) >= 3:
+                        s.add(i)
+            _IDS[app] = s
+        return _IDS[app]
 
 
 def _labels(app: str) -> dict:
     """효과 이름 → id — 스크립트에는 "Add Grain" 처럼 이름으로 적힌다"""
-    f = CAT / f"{app}.jsonl"
-    out = {}
-    if f.exists():
-        for ln in f.read_text("utf-8").splitlines():
-            try:
-                r = json.loads(ln)
-            except ValueError:
-                continue
-            if r.get("kind") == "effect" and r.get("label"):
-                out[r["label"]] = r["id"]
-    return out
+    with _LOCK:
+        if app not in _LABELS:
+            f = CAT / f"{app}.jsonl"
+            out = {}
+            if f.exists():
+                for ln in f.read_text("utf-8").splitlines():
+                    try:
+                        r = json.loads(ln)
+                    except ValueError:
+                        continue
+                    if r.get("kind") == "effect" and r.get("label"):
+                        out[r["label"]] = r["id"]
+            _LABELS[app] = out
+        return _LABELS[app]
 
 
 def _app_of(args) -> str | None:
@@ -83,11 +90,15 @@ def note(args, kw) -> None:
         if not ids:
             return
         found = set()
+        labels = _labels(app)
         for t in _texts(args, kw):
             found |= set(_TOK.findall(t)) & ids
-            found |= {i for lb, i in _labels(app).items() if f'"{lb}"' in t or f'\\"{lb}\\"' in t}
-        for d in (ALL, CUR) if CUR is not None else (ALL,):
-            d.setdefault(app, set()).update(found)
+            found |= {i for lb, i in labels.items() if f'"{lb}"' in t or f'\\"{lb}\\"' in t}
+        with _LOCK:
+            ALL.setdefault(app, set()).update(found)
+        cur = getattr(_TLS, "cur", None)
+        if cur is not None:
+            cur.setdefault(app, set()).update(found)
     except Exception:  # noqa: BLE001  기록은 렌더를 막지 않는다
         pass
 
@@ -111,9 +122,11 @@ def install() -> None:
 
 def record(app: str, ids) -> None:
     """앱 밖에서 쓴 기능을 직접 적는다 — <앱>-cli 호출로 잡히지 않는 것"""
-    ALL.setdefault(app, set()).update(ids)
-    if CUR is not None:
-        CUR.setdefault(app, set()).update(ids)
+    with _LOCK:
+        ALL.setdefault(app, set()).update(ids)
+    cur = getattr(_TLS, "cur", None)
+    if cur is not None:
+        cur.setdefault(app, set()).update(ids)
 
 
 def depth(sid: str) -> str:
@@ -130,28 +143,30 @@ def depth(sid: str) -> str:
 
 
 def begin() -> None:
-    global CUR
-    CUR = {}
+    _TLS.cur = {}
 
 
 def take() -> list[dict]:
-    global CUR
-    cur, CUR = CUR or {}, None
+    cur = getattr(_TLS, "cur", None) or {}
+    _TLS.cur = None
     return [{"app": a, "id": i} for a, s in sorted(cur.items()) for i in sorted(s)]
 
 
 def flush() -> None:
-    if not SID or not ALL:
+    if not SID:
         return
-    f = ROOT / "data" / "compositions" / SID / "craft" / "usage.json"
-    try:
-        old = json.loads(f.read_text("utf-8")) if f.exists() else {}
-        have = {(x["app"], x["id"]) for x in old.get("features") or []}
-        have |= {(a, i) for a, s in ALL.items() for i in s}
-        f.parent.mkdir(parents=True, exist_ok=True)
-        f.write_text(json.dumps({"id": SID, "features": [{"app": a, "id": i} for a, i in sorted(have)]}, ensure_ascii=False, indent=1), "utf-8")
-    except (OSError, ValueError):
-        pass
+    with _LOCK:
+        if not ALL:
+            return
+        f = ROOT / "data" / "compositions" / SID / "craft" / "usage.json"
+        try:
+            old = json.loads(f.read_text("utf-8")) if f.exists() else {}
+            have = {(x["app"], x["id"]) for x in old.get("features") or []}
+            have |= {(a, i) for a, s in ALL.items() for i in s}
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(json.dumps({"id": SID, "features": [{"app": a, "id": i} for a, i in sorted(have)]}, ensure_ascii=False, indent=1), "utf-8")
+        except (OSError, ValueError):
+            pass
 
 
 atexit.register(flush)

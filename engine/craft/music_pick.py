@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
 import math
 import os
@@ -251,13 +252,16 @@ def trending_sounds(sb: dict, n: int = 8) -> list[dict]:
     if not q:
         return []
     import trend_music
+    vids = trend_music.search(f"{q} #shorts", n)[:n]
+    if not vids:
+        return []
+    with ThreadPoolExecutor(max_workers=min(4, len(vids))) as ex:
+        sound_names = list(ex.map(lambda v: trend_music.sound_of(v["id"]), vids))
     songs: dict[str, dict] = {}
-    for v in trend_music.search(f"{q} #shorts", n)[:n]:
-        s = trend_music.sound_of(v["id"])
+    for v, s in zip(vids, sound_names):
         if s and not ORIGINAL.search(s):
             g = songs.setdefault(s, {"sound": s, "shorts": 0, "views": 0})
             g["shorts"] += 1; g["views"] += v.get("views") or 0
-        time.sleep(0.5)
     return sorted(songs.values(), key=lambda s: -s["views"])
 
 
@@ -323,28 +327,48 @@ def pick(sb: dict, ref: dict, mood: str | None, bpm: float | None) -> dict:
         if v and v["id"] not in {c["id"] for c in cands} and (not v.get("sec") or v["sec"] >= min(need, 25)):
             cands.append({**v, "free": is_free(v), "why": why, "bonus": bonus})
 
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        fut_ref = ex.submit(free_version, ref["song"]) if ref.get("song") else None
+        fut_ts = ex.submit(trending_sounds, sb)
+        fut_ch = ex.submit(chart, 15)
+        fut_recent = ex.submit(search, f"{q} no copyright music", 10, True)
+
+        fv_ref = fut_ref.result() if fut_ref else None
+        ts = fut_ts.result()[:5]
+        ch = fut_ch.result()[:5]
+        recent_rows = fut_recent.result()
+
     if ref.get("song"):                                   # ① 레퍼런스가 붙인 곡
-        fv = free_version(ref["song"])
-        if fv:
-            add(fv, f"레퍼런스가 붙인 곡('{ref['song'][:30]}')의 무료 판", 3.0)
+        if fv_ref:
+            add(fv_ref, f"레퍼런스가 붙인 곡('{ref['song'][:30]}')의 무료 판", 3.0)
         else:
             upload.append(ref["song"])
             if any_license:
                 add(next(iter(search(ref["song"], 3)), None), f"레퍼런스가 붙인 곡('{ref['song'][:30]}')", 3.0)
-    for s in trending_sounds(sb)[:5]:                     # ② 비슷한 쇼츠들이 지금 붙이는 곡
-        fv = free_version(s["sound"])
-        if fv:
-            add(fv, f"요즘 비슷한 쇼츠 {s.get('shorts', 1)}편이 붙인 곡", 2.0)
-        else:
-            upload.append(s["sound"])
-            if any_license:
-                add(next(iter(search(s["sound"], 3)), None), f"요즘 비슷한 쇼츠 {s.get('shorts', 1)}편이 붙인 곡", 2.0)
-    for v in chart(15)[:5]:                                # ③ 음악 인기 차트(키가 있을 때) — 상업 곡은 업로드 때 붙일 곡으로
+
+    if ts:
+        with ThreadPoolExecutor(max_workers=min(5, len(ts))) as ex:
+            ts_fvs = list(ex.map(lambda s: free_version(s["sound"]), ts))
+        ts_misses = []
+        for s, fv in zip(ts, ts_fvs):                     # ② 비슷한 쇼츠들이 지금 붙이는 곡
+            if fv:
+                add(fv, f"요즘 비슷한 쇼츠 {s.get('shorts', 1)}편이 붙인 곡", 2.0)
+            else:
+                upload.append(s["sound"])
+                if any_license:
+                    ts_misses.append(s)
+        if ts_misses:
+            with ThreadPoolExecutor(max_workers=min(4, len(ts_misses))) as ex:
+                ts_any = list(ex.map(lambda s: next(iter(search(s["sound"], 3)), None), ts_misses))
+            for s, v in zip(ts_misses, ts_any):
+                add(v, f"요즘 비슷한 쇼츠 {s.get('shorts', 1)}편이 붙인 곡", 2.0)
+
+    for v in ch:                                           # ③ 음악 인기 차트(키가 있을 때) — 상업 곡은 업로드 때 붙일 곡으로
         if is_free(v) or any_license:
             add(v, "유튜브 음악 인기 차트(KR)", 1.5)
         else:
             upload.append(f"{v['title']}")
-    for v in search(f"{q} no copyright music", 10, recent=True):   # ④ 분위기에 맞는 요즘 인기 무료 곡
+    for v in recent_rows:                                  # ④ 분위기에 맞는 요즘 인기 무료 곡
         if is_free(v):
             add(v, f"'{q}' 분위기 · 최근 인기 무료 곡", 0.0)
     if not cands:
@@ -354,17 +378,25 @@ def pick(sb: dict, ref: dict, mood: str | None, bpm: float | None) -> dict:
     for c in cands:
         c["pre"] = c["bonus"] + 0.3 * math.log10(max(10, c.get("views") or 10)) + (1.0 if trusted(c) else 0.0)   # 믿을 만한 무료 곡 채널 먼저
     cands.sort(key=lambda c: -c["pre"])
-    best = None
-    for c in cands[:4]:                                   # 상위 몇 곡만 받아서 잰다(곡당 몇 초)
+    top = cands[:4]
+
+    def _eval(c: dict) -> dict | None:
         p = fetch(c["id"])
         if not p:
-            continue
+            return None
         mm = measure(p, need)
         if mm["sec"] < min(need, 20):
-            continue
+            return None
         c.update(mm, src=str(p.relative_to(ROOT)), score=round(c["pre"] + 3 * bpm_fit(mm["bpm"], target), 2))
-        if not best or c["score"] > best["score"]:
-            best = c
+        return c
+
+    best = None
+    if top:
+        with ThreadPoolExecutor(max_workers=len(top)) as ex:
+            evaluated = list(ex.map(_eval, top))
+        for c in evaluated:
+            if c and (not best or c["score"] > best["score"]):
+                best = c
     seen, up = set(), []
     for u in upload:
         if u.lower() not in seen:

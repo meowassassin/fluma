@@ -203,18 +203,19 @@ def trim(m: dict, file: Path, work: Path, info: dict | None = None) -> dict | No
         clip = res[0]["result"]["clips"][0]
         keys = zoom_keys(zooms, W, H)
         lines = zoom_lines(clip, keys, fps) + blur_lines(clip, blurs, W, H)
-        if lines:
-            res = _script(fc, proj, lines, work, "fx")
+        grade_line = [{"id": "lumetri.applyPreset", "params": {"name": grade, "clips": [clip]}}] if grade else []
+        all_fx = lines + grade_line
+        if all_fx:
+            res = _script(fc, proj, all_fx, work, "fx")
             bad = [r for r in res if not r.get("ok", True)]
             if bad:
+                bad_grade = [r for r in bad if r.get("id") == "lumetri.applyPreset"]
+                if bad_grade and len(bad_grade) == len(bad):
+                    raise RuntimeError(f"FilmCraft 색 프리셋 '{grade}' 실패: {bad_grade} (이름은 lumetri.presets)")
                 raise RuntimeError(f"FilmCraft 줌 · 흐림 실패: {bad[0]}")
             applied = [r["result"]["applied"][0]["index"] for r in res if r.get("id") == "effects.apply"]
             if applied and applied != list(range(3, 3 + len(applied))):
                 raise RuntimeError(f"FilmCraft 흐림 효과 번호가 예상과 다릅니다: {applied}")
-        if grade:   # 색 맞추기: 한 영상의 클립들을 같은 Lumetri 프리셋으로(클립마다 다른 색감을 한 톤으로)
-            res = _script(fc, proj, [{"id": "lumetri.applyPreset", "params": {"name": grade, "clips": [clip]}}], work, "grade")
-            if any(not r.get("ok", True) for r in res):
-                raise RuntimeError(f"FilmCraft 색 프리셋 '{grade}' 실패: {res} (이름은 lumetri.presets)")
         if ranges:
             # 구간 경계에서 자르고(뒤에서부터) → 그 조각만 속도 변경(리플: 뒤 조각이 당겨짐). 줌 · 흐림 키프레임은 조각마다 복사된다
             cuts = sorted({_tk(t, fps) for a, b, _x in ranges for t in (a, b)}, reverse=True)

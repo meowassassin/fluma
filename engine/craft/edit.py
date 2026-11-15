@@ -153,17 +153,19 @@ def assemble(sb: dict, video: Path, audio: Path | None, out: Path, fps: int = 30
         if not edited:
             proj.unlink(missing_ok=True)
             _fc(fc, "--save-as", str(proj), "exec", "file.newSequence", json.dumps({"name": sb.get("title") or sid, "width": width, "height": height, "fps": fps}), cwd=d)
-            vid = _fc(fc, "--project", str(proj), "--save", "import", str(video.resolve()), cwd=d)["items"][0]
-            _fc(fc, "--project", str(proj), "--save", "exec", "timeline.place", json.dumps({"item": vid, "track": "V1", "seconds": 0, "insert": False, "audio": False}), cwd=d)
-            if audio and audio.exists():
-                aid = _fc(fc, "--project", str(proj), "--save", "import", str(audio.resolve()), cwd=d)["items"][0]
-                _fc(fc, "--project", str(proj), "--save", "exec", "timeline.place", json.dumps({"item": aid, "track": "A1", "seconds": 0, "insert": False, "video": False}), cwd=d)
+            has_audio = bool(audio and audio.exists())
+            imp_args = [str(video.resolve())] + ([str(audio.resolve())] if has_audio else [])
+            items = _fc(fc, "--project", str(proj), "--save", "import", *imp_args, cwd=d)["items"]
+            place_and_fx = [{"id": "timeline.place", "params": {"item": items[0], "track": "V1", "seconds": 0, "insert": False, "audio": False}}]
+            if has_audio and len(items) > 1:
+                place_and_fx.append({"id": "timeline.place", "params": {"item": items[1], "track": "A1", "seconds": 0, "insert": False, "video": False}})
             if sb.get("scenes"):
-                _run_script(fc, proj, markers(sb), cwd=d)      # 장면 경계 마커(사람이 고칠 곳 찾기)
+                place_and_fx += markers(sb)                     # 장면 경계 마커(사람이 고칠 곳 찾기)
             from .refine import edit_lines
             rl = edit_lines(sb)                                 # 다듬기(FilmCraft 명령 — 전환 · 색 · 제목 등)
             if rl:
-                _run_script(fc, proj, rl, cwd=d)
+                place_and_fx += rl
+            _run_script(fc, proj, place_and_fx, cwd=d)
             ed = {"file": os.path.relpath(proj, ROOT), "hash": _sha(proj), "app": "filmcraft", "by": "craft"}
         else:
             print(f"[조립] {os.path.relpath(proj, ROOT)} 은 사람이 고쳤습니다 — 그 프로젝트로 내보냅니다")
@@ -239,12 +241,18 @@ def ensure(sid: str) -> Path | None:
             apath = None
     elif src:
         apath = src
-    if vpath:
-        vid = _fc(fc, "--project", str(proj), "--save", "import", str(vpath.resolve()), cwd=ed_dir)["items"][0]
-        _fc(fc, "--project", str(proj), "--save", "exec", "timeline.place", json.dumps({"item": vid, "track": "V1", "seconds": 0, "insert": False, "audio": False}), cwd=ed_dir)
-    if apath:
-        aid = _fc(fc, "--project", str(proj), "--save", "import", str(apath.resolve()), cwd=ed_dir)["items"][0]
-        _fc(fc, "--project", str(proj), "--save", "exec", "timeline.place", json.dumps({"item": aid, "track": "A1", "seconds": 0, "insert": False, "video": False}), cwd=ed_dir)
+    imp_paths = ([str(vpath.resolve())] if vpath else []) + ([str(apath.resolve())] if apath else [])
+    if imp_paths:
+        items = _fc(fc, "--project", str(proj), "--save", "import", *imp_paths, cwd=ed_dir)["items"]
+        places = []
+        idx = 0
+        if vpath and idx < len(items):
+            places.append({"id": "timeline.place", "params": {"item": items[idx], "track": "V1", "seconds": 0, "insert": False, "audio": False}})
+            idx += 1
+        if apath and idx < len(items):
+            places.append({"id": "timeline.place", "params": {"item": items[idx], "track": "A1", "seconds": 0, "insert": False, "video": False}})
+        if places:
+            _run_script(fc, proj, places, cwd=ed_dir)
     man["edit"] = {"file": os.path.relpath(proj, ROOT), "hash": _sha(proj), "app": "filmcraft", "source": want}
     man_p.parent.mkdir(parents=True, exist_ok=True)
     man_p.write_text(json.dumps(man, ensure_ascii=False, indent=1), "utf-8")

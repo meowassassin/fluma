@@ -17,13 +17,27 @@
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import os
 import subprocess
+import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+_CLI_LOCK = threading.Lock()
+_PATH_LOCKS_GUARD = threading.Lock()
+_PATH_LOCKS: dict[Path, threading.Lock] = {}
+
+
+def _path_lock(p: Path) -> threading.Lock:
+    rp = p.resolve()
+    with _PATH_LOCKS_GUARD:
+        lk = _PATH_LOCKS.get(rp)
+        if lk is None:
+            lk = _PATH_LOCKS[rp] = threading.Lock()
+        return lk
 
 
 # ---------------------------------------------------------------- 능력 목록
@@ -59,8 +73,10 @@ def methods() -> dict[str, list[str]]:
 
 def cli(app: str) -> str:
     f = ROOT / "tools" / "crafts" / app / "installed.json"
-    if not f.exists() and not _crafts().ensure(app):          # 없으면 그 자리에서 설치
-        raise RuntimeError(f"Craft 앱 {app} 을 설치하지 못했습니다(이 컴퓨터용 릴리스 · 네트워크 확인: python3 engine/craft/crafts.py install {app})")
+    if not f.exists():
+        with _CLI_LOCK:
+            if not f.exists() and not _crafts().ensure(app):          # 없으면 그 자리에서 설치
+                raise RuntimeError(f"Craft 앱 {app} 을 설치하지 못했습니다(이 컴퓨터용 릴리스 · 네트워크 확인: python3 engine/craft/crafts.py install {app})")
     rel = json.loads(f.read_text("utf-8"))["cli"]
     return str(ROOT / rel)
 
@@ -248,46 +264,47 @@ def find_upload(sid: str, m: dict) -> Path | None:
 def element_video(el: Path, dst: Path, hold: float | list = 1.2, crop: list | None = None) -> bool:
     """도구가 만든 요소 폴더(data/public/elements/<id>/<이름>/) → 영상 하나.
     짤(meme.py): f0001.png … (meta.fps) · 웹 녹화(webrec.py): 상태 화면 s000.png … 을 hold 초씩 + 실제 녹화 구간 r01/f*.jpg"""
-    meta = _load(el / "meta.json")
-    frames = sorted(el.glob("f[0-9]*.png"))
-    states = sorted(el.glob("s[0-9][0-9][0-9].png"))
-    cx, cy_, cw, ch = (crop or [0, 0, 1, 1])
-    cf = f"crop=iw*{cw}:ih*{ch}:iw*{cx}:ih*{cy_}," if crop else ""
-    enc = ["-vf", f"{cf}scale='min(1440,iw)':-2,tpad=stop_mode=clone:stop_duration=20,format=yuv420p", "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", str(dst)]
-    if len(frames) > 1:
-        cmd = ["ffmpeg", "-v", "error", "-y", "-framerate", str(meta.get("fps", 15)), "-i", str(el / "f%04d.png"), *enc]
-    elif frames or states:
-        # 정지 화면 목록 → hold 초씩 이어 붙이기(실제 녹화 구간이 있으면 그 상태 다음에)
-        lst = work_list = el / ".concat.txt"
-        rows = []
-        seq = states or frames
-        if any(el.glob("r[0-9][0-9]")):
-            # 실제 녹화 구간(JPG)과 상태 화면(PNG)을 한 줄로 이으면 ffmpeg concat 이 형식이 달라 실패한다 → 상태 화면도 JPG 로
-            from PIL import Image
-            jd = el / ".jpg"; jd.mkdir(exist_ok=True)
-            conv = []
-            for s0 in seq:
-                j = jd / (s0.stem + ".jpg")
-                if not j.exists() or j.stat().st_mtime < s0.stat().st_mtime:
-                    Image.open(s0).convert("RGB").save(j, quality=95)
-                conv.append(j)
-            seq = conv
-        for i, s in enumerate(seq):
-            h = (hold[i] if i < len(hold) else hold[-1]) if isinstance(hold, list) else hold    # holds: 상태마다 머무는 초(말풍선마다 다르게)
-            rows += [f"file '{s.as_posix()}'", f"duration {h}"]
-            rec = el / f"r{i + 1:02d}"
-            for f in sorted(rec.glob("f*.jpg"))[::1] if rec.exists() else []:
-                rows += [f"file '{f.as_posix()}'", "duration 0.0333"]
-        rows.append(rows[-2])        # concat 규칙: 마지막 파일을 한 번 더
-        work_list.write_text("\n".join(rows) + "\n", "utf-8")
-        cmd = ["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-fps_mode", "cfr", "-r", "30", *enc]
-    else:
-        return False
-    r = subprocess.run(cmd, capture_output=True, text=True)
-    (el / ".concat.txt").unlink(missing_ok=True)
-    if r.returncode != 0:
-        print(f"[재료] {el.name} 영상 만들기 실패: {r.stderr[-300:]}")
-    return r.returncode == 0
+    with _path_lock(el):
+        meta = _load(el / "meta.json")
+        frames = sorted(el.glob("f[0-9]*.png"))
+        states = sorted(el.glob("s[0-9][0-9][0-9].png"))
+        cx, cy_, cw, ch = (crop or [0, 0, 1, 1])
+        cf = f"crop=iw*{cw}:ih*{ch}:iw*{cx}:ih*{cy_}," if crop else ""
+        enc = ["-vf", f"{cf}scale='min(1440,iw)':-2,tpad=stop_mode=clone:stop_duration=20,format=yuv420p", "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", str(dst)]
+        if len(frames) > 1:
+            cmd = ["ffmpeg", "-v", "error", "-y", "-framerate", str(meta.get("fps", 15)), "-i", str(el / "f%04d.png"), *enc]
+        elif frames or states:
+            # 정지 화면 목록 → hold 초씩 이어 붙이기(실제 녹화 구간이 있으면 그 상태 다음에)
+            lst = work_list = el / ".concat.txt"
+            rows = []
+            seq = states or frames
+            if any(el.glob("r[0-9][0-9]")):
+                # 실제 녹화 구간(JPG)과 상태 화면(PNG)을 한 줄로 이으면 ffmpeg concat 이 형식이 달라 실패한다 → 상태 화면도 JPG 로
+                from PIL import Image
+                jd = el / ".jpg"; jd.mkdir(exist_ok=True)
+                conv = []
+                for s0 in seq:
+                    j = jd / (s0.stem + ".jpg")
+                    if not j.exists() or j.stat().st_mtime < s0.stat().st_mtime:
+                        Image.open(s0).convert("RGB").save(j, quality=95)
+                    conv.append(j)
+                seq = conv
+            for i, s in enumerate(seq):
+                h = (hold[i] if i < len(hold) else hold[-1]) if isinstance(hold, list) else hold    # holds: 상태마다 머무는 초(말풍선마다 다르게)
+                rows += [f"file '{s.as_posix()}'", f"duration {h}"]
+                rec = el / f"r{i + 1:02d}"
+                for f in sorted(rec.glob("f*.jpg"))[::1] if rec.exists() else []:
+                    rows += [f"file '{f.as_posix()}'", "duration 0.0333"]
+            rows.append(rows[-2])        # concat 규칙: 마지막 파일을 한 번 더
+            work_list.write_text("\n".join(rows) + "\n", "utf-8")
+            cmd = ["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-fps_mode", "cfr", "-r", "30", *enc]
+        else:
+            return False
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        (el / ".concat.txt").unlink(missing_ok=True)
+        if r.returncode != 0:
+            print(f"[재료] {el.name} 영상 만들기 실패: {r.stderr[-300:]}")
+        return r.returncode == 0
 
 
 def content_box(el: Path, pad: float = 0.03) -> list | None:
@@ -551,6 +568,128 @@ def _files_in(o) -> list[Path]:
 
 
 # ---------------------------------------------------------------- 디스패처
+def _build_one(task: dict, sb: dict, sid: str, base: Path, reg: dict, plug: dict, post: dict, adapters: dict) -> dict:
+    from . import usage
+    n, sc, m, t = task["n"], task["sc"], task["m"], task["t"]
+    d = base / f"s{n:02d}"
+    d.mkdir(parents=True, exist_ok=True)
+    out = d / f"{m['id']}.png"
+    meta_p = d / f"{m['id']}.json"
+    # 열쇠 = 요청 + 원본 파일 내용 + 사람이 고친 편집 파일 → 무엇이든 바뀌면 다시 만든다
+    srcs = [_hash(_abs(m[k])) if not _abs(m[k]).is_dir() else "|".join(f"{f.name}:{f.stat().st_size}" for f in sorted(_abs(m[k]).iterdir()))
+            for k in ("src", "csv", "xlsx", "pdf", "template", "script", "ui") if isinstance(m.get(k), str)]
+    srcs += [_hash(_abs(i[k])) for i in m.get("items") or [] if isinstance(i, dict) for k in ("script", "file") if isinstance(i.get(k), str) and _abs(i[k]).is_file()]   # live 재료의 요소
+    old = _load(meta_p)
+    # 사람이 고친 편집 파일: 기록의 editable_hash(우리가 만든 그대로의 해시)와 다르면 열쇠에 넣는다 → 다시 만들어 그 파일을 쓴다.
+    # editable_hash 를 남기는 어댑터(그림 · 사진 카드 · 화면 다듬기 · 3D · 도면)만 — 고친 파일을 알아보고 덮어쓰지 않는 어댑터들
+    ed_p = _editable(old, d)
+    ed_now = _hash(ed_p) if ed_p else ""
+    hand = bool(old.get("editable_hash") and ed_now and ed_now != old["editable_hash"])
+    srcs.append(ed_now if hand else "")
+    dep = _depends(t, m)              # 대상 재료(캡처 · 3D)가 바뀌면 주석 · 도면도 다시
+    if dep:
+        srcs.append(_load(d / f"{dep}.json").get("key") or "missing")
+    if isinstance(m.get("uses"), dict):   # 다른 재료의 결과를 쓴다(앱을 넘나든다) — 그 재료가 바뀌면 다시
+        got = {}
+        for name, mid in m["uses"].items():
+            u = _load(d / f"{mid}.json")
+            if not u.get("file"):
+                raise RuntimeError(f"재료 {m['id']}: uses '{name}' 의 재료 {mid} 가 없습니다 — 같은 장면에서 먼저 적는다")
+            srcs.append(u.get("key") or "missing")
+            got[name] = str((ROOT / u["file"]).resolve())
+        m = {**m, "_uses": got}
+    if t == "craft":                   # craft 재료: 칸 안의 입력 파일 · 레시피 내용이 바뀌면 다시
+        srcs += [f"{q.relative_to(ROOT)}:{_hash(q)}" for q in _files_in({k: v for k, v in m.items() if k not in ("src", "csv", "xlsx", "pdf")})]
+    if m.get("ask"):                   # 사용자가 올린 파일(이름으로 찾은 것)도 열쇠에 — 새로 올리면 다시 만든다
+        up_f = find_upload(sid, m)
+        srcs.append(f"{up_f.name}:{_hash(up_f)}" if up_f else "missing")
+    feel = ((sb.get("direction") or {}).get("feel") or {}) if t in FEEL_TYPES else {}
+    if feel.get("grade"):              # 고른 느낌(engine/story/feel.py)이 바뀌면 실사 재료를 다시 입힌다
+        srcs.append(json.dumps(feel["grade"], sort_keys=True))
+    if t == "stock":                   # 스톡 영상은 화면 비율대로 잘라 만든다 → 비율이 바뀌면 다시
+        from engines import aspect_of
+        srcs.append(aspect_of(sb))
+    # 열쇠에서 뺀다: adjust(배치 조정 — 움직임 단계가 레이어에 얹음) · cue · enter · place(재료 파일 자체는 같다)
+    # 2026-11-10: 크기만 바꿔도 EffectCraft 원테이크 재료를 9초 동안 다시 렌더했다
+    mk = {k: v for k, v in m.items() if k not in PLACEMENT_ONLY}
+    key = hashlib.sha1(json.dumps([mk, srcs, MAT_VERSION], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
+    # 예전 열쇠(2026-11-10 전: 모든 칸 포함, adjust 는 없었음)로 만든 재료도 그대로 쓰고 새 열쇠로 옮긴다
+    legacy = hashlib.sha1(json.dumps([{k: v for k, v in m.items() if k != "adjust"}, srcs, MAT_VERSION], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
+    if old.get("key") == legacy and legacy != key and (not old.get("file") or (ROOT / old["file"]).exists()):
+        old["key"] = key
+        meta_p.write_text(json.dumps(old, ensure_ascii=False, indent=1), "utf-8")
+    if old.get("key") == key and (not old.get("file") or (ROOT / old["file"]).exists()):
+        # 예전 기록(글자 인식 전)에는 글자 위치가 없다 → 채워 둔다(짚기 · 재료 검사가 쓴다)
+        if "ocr" not in old and old.get("file") and t in ("image", "photo", "screen") and Path(old["file"]).suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+            old["ocr"] = read_text_boxes(ROOT / old["file"])
+            meta_p.write_text(json.dumps(old, ensure_ascii=False, indent=1), "utf-8")
+        return old
+    if t in PASSTHROUGH and m.get("ask") and not find_upload(sid, m):
+        # 사용자 녹화 대기: 자동 브라우저로 못 찍는 화면(로그인 · 측정 결과 · 앱)은 사용자에게 부탁한다(검사 L36).
+        # 그동안 렌더는 이 재료 없이(장면 핵심어 화면으로) 진행한다
+        rec = {"scene": n, "id": m["id"], "type": t, "key": "missing", "spec": m, "file": None, "missing": True, "ask": m["ask"],
+               "upload_hint": f"data/public/uploads/{sid}/ 에 이름에 '{m['id']}' 가 든 파일(예: {m['id']}.mp4)"}
+        meta_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
+        print(f"[재료] {n}장면 {m['id']}: 사용자 녹화 대기 — {m['ask']}")
+        return rec
+    usage.begin()
+    if t in PASSTHROUGH:
+        if m.get("ask"):
+            m = {**m, "src": str(find_upload(sid, m).relative_to(ROOT))}
+        info = passthrough(m, out, d)
+        file = out.with_suffix(info.pop("file_suffix"))
+        if t in post:                      # 앱으로 다듬기(화면 녹화 줌 · 흐림 · 빨리 감기 등)
+            extra = _post(post[t], m, file, d, info) or {}
+            file = Path(extra.pop("file", file))
+            info.update(extra)
+    elif t == "stock":                     # 무료 스톡 영상(실제 촬영) — 키는 설정 화면
+        info = stock(m, out, d, sid)
+        file = out.with_suffix(".mp4")
+    elif t in adapters or any(k.startswith(f"{t}@") for k in adapters):
+        # 같은 재료를 어느 앱으로: 재료 method > direction.methods > 기본(어댑터 '종류@앱' 이 있으면 그 앱의 방법)
+        how = m.get("method")
+        fn = adapters.get(f"{t}@{how}") if how else None
+        if how and not fn and how != reg.get(t):
+            raise RuntimeError(f"'{t}' 재료를 {how} 로 만드는 방법이 없습니다 — 가능한 것: {', '.join([reg.get(t, '?')] + [k.split('@')[1] for k in adapters if k.startswith(t + '@')])}")
+        fn = fn or adapters.get(t)
+        if fn is None:
+            raise RuntimeError(f"'{t}' 재료의 기본 방법이 없습니다 — method 를 적으세요")
+        if fn is ADAPTERS.get(t) and t not in plug and (t if t != "icon" else "illustration") not in reg:
+            raise RuntimeError(f"'{t}' 재료를 만들 Craft 앱이 설치되지 않았습니다(Craft 앱 화면에서 설치)")
+        info = fn(m, out, d)
+        if how:
+            info.setdefault("method", how)
+        suf = info.pop("file_suffix", None)
+        file = out.with_suffix(suf) if suf else out
+        file = file if file.exists() else None
+    elif t in ("stat", "text"):
+        # 숫자 덧씌우기 · 글자는 움직임 단계(motion.py)가 그린다 — 만들 파일 없이 기록만 넘긴다(2026-11-11: 여기서 '모르는 재료'로 멈췄다)
+        info, file = {}, None
+    else:
+        raise RuntimeError(f"모르는 재료 종류: {t} ({' · '.join(sorted({*adapters, *PASSTHROUGH, 'stock', 'text', 'stat'}))})")
+    if file and feel.get("grade") and file.exists():      # 영상 전체 느낌을 실사 재료에 같은 색 · 질감으로
+        from feel import apply as feel_apply
+        file = feel_apply(file, feel["grade"], file.with_name(f"{file.stem}.feel{file.suffix}"))
+        info["feel"] = feel.get("name")
+    rec = {"scene": n, "id": m["id"], "type": t, "key": key, "spec": m, "file": str(file.relative_to(ROOT)) if file else None, **info}
+    if m.get("refine") and file:           # 다듬기: 초벌 위에 앱의 전체 명령으로 디테일(engine/craft/refine.py) — 기록은 콘티의 재료 칸
+        from .refine import apply_material
+        rec = apply_material(rec, m, d)
+    feats = usage.take()
+    if feats and not rec.get("steps_run"):
+        rec["features"] = feats
+    if hand:
+        # 고친 파일을 썼다 — 기준 해시는 처음 만든 그대로 둔다(다음 빌드도 '사람이 고침'으로 알아보고 덮어쓰지 않게)
+        rec["editable_hash"] = old["editable_hash"]
+        rec["edited"] = True
+        print(f"[재료] {n}장면 {m['id']}: 사람이 고친 편집 파일({ed_p.name})로 다시 만들었습니다")
+    # 캡처 · 사진 속 글자 위치(글자 인식) — 움직임 단계가 '말하는 낱말을 화면에서 짚기(확대 · 동그라미)'에 쓴다
+    if file and t in ("image", "photo", "screen") and file.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
+        rec["ocr"] = read_text_boxes(file)
+    meta_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
+    return rec
+
+
 def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
     """콘티의 모든 재료를 만든다(입력이 같으면 다시 만들지 않음) → 재료 목록.
     indices: 장면 일부만 렌더할 때 각 장면의 원래 번호(0부터) — 재료 폴더 s<NN> 이 원래 번호와 맞게"""
@@ -561,7 +700,6 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
     from . import usage
     usage.SID = sid
     base = ROOT / "data" / "compositions" / sid / "craft" / "materials"
-    made = []
     scs = sb.get("scenes") or []
     nums = [i + 1 for i in indices] if indices else list(range(1, len(scs) + 1))
     if not indices and base.exists():   # 전체 빌드: 콘티에 없는 장면 폴더(장면이 줄었을 때)는 지운다
@@ -569,6 +707,7 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             if int(d.name[1:]) > len(scs):
                 import shutil
                 shutil.rmtree(d, ignore_errors=True)
+    tasks = []
     for n, sc in zip(nums, scs):
         # 콘티에서 빠진 재료(기록 · 파일 · 뼈대)는 지운다 — 남겨 두면 움직임 단계가 지운 재료까지 그린다
         d0 = base / f"s{n:02d}"
@@ -593,123 +732,35 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
                 from engines import aspect_size        # 구간 영상: 화면 크기 · 장면 길이에 맞춰 만든다
                 _W, _H = aspect_size(sb)
                 m = {**m, "_clip": True, "_W": _W, "_H": _H, "_sec": float(sc.get("sec") or 0)}
-            d = base / f"s{n:02d}"
-            d.mkdir(parents=True, exist_ok=True)
-            out = d / f"{m['id']}.png"
-            meta_p = d / f"{m['id']}.json"
-            # 열쇠 = 요청 + 원본 파일 내용 + 사람이 고친 편집 파일 → 무엇이든 바뀌면 다시 만든다
-            srcs = [_hash(_abs(m[k])) if not _abs(m[k]).is_dir() else "|".join(f"{f.name}:{f.stat().st_size}" for f in sorted(_abs(m[k]).iterdir()))
-                    for k in ("src", "csv", "xlsx", "pdf", "template", "script", "ui") if isinstance(m.get(k), str)]
-            srcs += [_hash(_abs(i[k])) for i in m.get("items") or [] if isinstance(i, dict) for k in ("script", "file") if isinstance(i.get(k), str) and _abs(i[k]).is_file()]   # live 재료의 요소
-            old = _load(meta_p)
-            # 사람이 고친 편집 파일: 기록의 editable_hash(우리가 만든 그대로의 해시)와 다르면 열쇠에 넣는다 → 다시 만들어 그 파일을 쓴다.
-            # editable_hash 를 남기는 어댑터(그림 · 사진 카드 · 화면 다듬기 · 3D · 도면)만 — 고친 파일을 알아보고 덮어쓰지 않는 어댑터들
-            ed_p = _editable(old, d)
-            ed_now = _hash(ed_p) if ed_p else ""
-            hand = bool(old.get("editable_hash") and ed_now and ed_now != old["editable_hash"])
-            srcs.append(ed_now if hand else "")
-            dep = _depends(t, m)              # 대상 재료(캡처 · 3D)가 바뀌면 주석 · 도면도 다시
-            if dep:
-                srcs.append(_load(d / f"{dep}.json").get("key") or "missing")
-            if isinstance(m.get("uses"), dict):   # 다른 재료의 결과를 쓴다(앱을 넘나든다) — 그 재료가 바뀌면 다시
-                got = {}
-                for name, mid in m["uses"].items():
-                    u = _load(d / f"{mid}.json")
-                    if not u.get("file"):
-                        raise RuntimeError(f"재료 {m['id']}: uses '{name}' 의 재료 {mid} 가 없습니다 — 같은 장면에서 먼저 적는다")
-                    srcs.append(u.get("key") or "missing")
-                    got[name] = str((ROOT / u["file"]).resolve())
-                m = {**m, "_uses": got}
-            if t == "craft":                   # craft 재료: 칸 안의 입력 파일 · 레시피 내용이 바뀌면 다시
-                srcs += [f"{q.relative_to(ROOT)}:{_hash(q)}" for q in _files_in({k: v for k, v in m.items() if k not in ("src", "csv", "xlsx", "pdf")})]
-            if m.get("ask"):                   # 사용자가 올린 파일(이름으로 찾은 것)도 열쇠에 — 새로 올리면 다시 만든다
-                up_f = find_upload(sid, m)
-                srcs.append(f"{up_f.name}:{_hash(up_f)}" if up_f else "missing")
-            feel = ((sb.get("direction") or {}).get("feel") or {}) if t in FEEL_TYPES else {}
-            if feel.get("grade"):              # 고른 느낌(engine/story/feel.py)이 바뀌면 실사 재료를 다시 입힌다
-                srcs.append(json.dumps(feel["grade"], sort_keys=True))
-            if t == "stock":                   # 스톡 영상은 화면 비율대로 잘라 만든다 → 비율이 바뀌면 다시
-                from engines import aspect_of
-                srcs.append(aspect_of(sb))
-            # 열쇠에서 뺀다: adjust(배치 조정 — 움직임 단계가 레이어에 얹음) · cue · enter · place(재료 파일 자체는 같다)
-            # 2026-11-10: 크기만 바꿔도 EffectCraft 원테이크 재료를 9초 동안 다시 렌더했다
-            mk = {k: v for k, v in m.items() if k not in PLACEMENT_ONLY}
-            key = hashlib.sha1(json.dumps([mk, srcs, MAT_VERSION], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
-            # 예전 열쇠(2026-11-10 전: 모든 칸 포함, adjust 는 없었음)로 만든 재료도 그대로 쓰고 새 열쇠로 옮긴다
-            legacy = hashlib.sha1(json.dumps([{k: v for k, v in m.items() if k != "adjust"}, srcs, MAT_VERSION], sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:12]
-            if old.get("key") == legacy and legacy != key and (not old.get("file") or (ROOT / old["file"]).exists()):
-                old["key"] = key
-                meta_p.write_text(json.dumps(old, ensure_ascii=False, indent=1), "utf-8")
-            if old.get("key") == key and (not old.get("file") or (ROOT / old["file"]).exists()):
-                # 예전 기록(글자 인식 전)에는 글자 위치가 없다 → 채워 둔다(짚기 · 재료 검사가 쓴다)
-                if "ocr" not in old and old.get("file") and t in ("image", "photo", "screen") and Path(old["file"]).suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
-                    old["ocr"] = read_text_boxes(ROOT / old["file"])
-                    meta_p.write_text(json.dumps(old, ensure_ascii=False, indent=1), "utf-8")
-                made.append(old)
-                continue
-            if t in PASSTHROUGH and m.get("ask") and not find_upload(sid, m):
-                # 사용자 녹화 대기: 자동 브라우저로 못 찍는 화면(로그인 · 측정 결과 · 앱)은 사용자에게 부탁한다(검사 L36).
-                # 그동안 렌더는 이 재료 없이(장면 핵심어 화면으로) 진행한다
-                rec = {"scene": n, "id": m["id"], "type": t, "key": "missing", "spec": m, "file": None, "missing": True, "ask": m["ask"],
-                       "upload_hint": f"data/public/uploads/{sid}/ 에 이름에 '{m['id']}' 가 든 파일(예: {m['id']}.mp4)"}
-                meta_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
-                made.append(rec)
-                print(f"[재료] {n}장면 {m['id']}: 사용자 녹화 대기 — {m['ask']}")
-                continue
-            usage.begin()
-            if t in PASSTHROUGH:
-                if m.get("ask"):
-                    m = {**m, "src": str(find_upload(sid, m).relative_to(ROOT))}
-                info = passthrough(m, out, d)
-                file = out.with_suffix(info.pop("file_suffix"))
-                if t in post:                      # 앱으로 다듬기(화면 녹화 줌 · 흐림 · 빨리 감기 등)
-                    extra = _post(post[t], m, file, d, info) or {}
-                    file = Path(extra.pop("file", file))
-                    info.update(extra)
-            elif t == "stock":                     # 무료 스톡 영상(실제 촬영) — 키는 설정 화면
-                info = stock(m, out, d, sid)
-                file = out.with_suffix(".mp4")
-            elif t in adapters or any(k.startswith(f"{t}@") for k in adapters):
-                # 같은 재료를 어느 앱으로: 재료 method > direction.methods > 기본(어댑터 '종류@앱' 이 있으면 그 앱의 방법)
-                how = m.get("method")
-                fn = adapters.get(f"{t}@{how}") if how else None
-                if how and not fn and how != reg.get(t):
-                    raise RuntimeError(f"'{t}' 재료를 {how} 로 만드는 방법이 없습니다 — 가능한 것: {', '.join([reg.get(t, '?')] + [k.split('@')[1] for k in adapters if k.startswith(t + '@')])}")
-                fn = fn or adapters.get(t)
-                if fn is None:
-                    raise RuntimeError(f"'{t}' 재료의 기본 방법이 없습니다 — method 를 적으세요")
-                if fn is ADAPTERS.get(t) and t not in plug and (t if t != "icon" else "illustration") not in reg:
-                    raise RuntimeError(f"'{t}' 재료를 만들 Craft 앱이 설치되지 않았습니다(Craft 앱 화면에서 설치)")
-                info = fn(m, out, d)
-                if how:
-                    info.setdefault("method", how)
-                suf = info.pop("file_suffix", None)
-                file = out.with_suffix(suf) if suf else out
-                file = file if file.exists() else None
-            elif t in ("stat", "text"):
-                # 숫자 덧씌우기 · 글자는 움직임 단계(motion.py)가 그린다 — 만들 파일 없이 기록만 넘긴다(2026-11-11: 여기서 '모르는 재료'로 멈췄다)
-                info, file = {}, None
-            else:
-                raise RuntimeError(f"모르는 재료 종류: {t} ({' · '.join(sorted({*adapters, *PASSTHROUGH, 'stock', 'text', 'stat'}))})")
-            if file and feel.get("grade") and file.exists():      # 영상 전체 느낌을 실사 재료에 같은 색 · 질감으로
-                from feel import apply as feel_apply
-                file = feel_apply(file, feel["grade"], file.with_name(f"{file.stem}.feel{file.suffix}"))
-                info["feel"] = feel.get("name")
-            rec = {"scene": n, "id": m["id"], "type": t, "key": key, "spec": m, "file": str(file.relative_to(ROOT)) if file else None, **info}
-            if m.get("refine") and file:           # 다듬기: 초벌 위에 앱의 전체 명령으로 디테일(engine/craft/refine.py) — 기록은 콘티의 재료 칸
-                from .refine import apply_material
-                rec = apply_material(rec, m, d)
-            feats = usage.take()
-            if feats and not rec.get("steps_run"):
-                rec["features"] = feats
-            if hand:
-                # 고친 파일을 썼다 — 기준 해시는 처음 만든 그대로 둔다(다음 빌드도 '사람이 고침'으로 알아보고 덮어쓰지 않게)
-                rec["editable_hash"] = old["editable_hash"]
-                rec["edited"] = True
-                print(f"[재료] {n}장면 {m['id']}: 사람이 고친 편집 파일({ed_p.name})로 다시 만들었습니다")
-            # 캡처 · 사진 속 글자 위치(글자 인식) — 움직임 단계가 '말하는 낱말을 화면에서 짚기(확대 · 동그라미)'에 쓴다
-            if file and t in ("image", "photo", "screen") and file.suffix.lower() in (".png", ".jpg", ".jpeg", ".webp"):
-                rec["ocr"] = read_text_boxes(file)
-            meta_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
-            made.append(rec)
-    return made
+            deps = set()
+            dep = _depends(t, m)
+            if dep and dep in keep and dep != m["id"]:
+                deps.add(dep)
+            if isinstance(m.get("uses"), dict):
+                for mid in m["uses"].values():
+                    if mid in keep and mid != m["id"]:
+                        deps.add(mid)
+            tasks.append({"idx": len(tasks), "n": n, "sc": sc, "m": m, "t": t, "deps": deps})
+
+    results: list[dict | None] = [None] * len(tasks)
+    done_in_scene: set[tuple[int, str]] = set()
+    pending = list(tasks)
+    while pending:
+        wave = [tk for tk in pending if all((tk["n"], dep) in done_in_scene for dep in tk["deps"])]
+        if not wave:   # 순환 등 예외는 남은 순서대로 실행해 기존 오류 메시지를 보존한다
+            for tk in pending:
+                results[tk["idx"]] = _build_one(tk, sb, sid, base, reg, plug, post, adapters)
+            break
+        if len(wave) == 1:
+            tk = wave[0]
+            results[tk["idx"]] = _build_one(tk, sb, sid, base, reg, plug, post, adapters)
+        else:
+            with ThreadPoolExecutor(max_workers=min(4, len(wave))) as ex:
+                futs = [(tk, ex.submit(_build_one, tk, sb, sid, base, reg, plug, post, adapters)) for tk in wave]
+                for tk, fut in futs:
+                    results[tk["idx"]] = fut.result()
+        done_ids = {tk["idx"] for tk in wave}
+        for tk in wave:
+            done_in_scene.add((tk["n"], tk["m"]["id"]))
+        pending = [tk for tk in pending if tk["idx"] not in done_ids]
+    return [r for r in results if r is not None]

@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import json
 import re
 import subprocess
@@ -74,16 +75,24 @@ def stills(video: Path, sb: dict, sid: str) -> list[str]:
     """초안에서 장면마다 가운데 프레임 한 장 — 엔진으로 다시 그리지 않아 빠르다"""
     out_dir = ROOT / "data" / "workspace" / "stills" / sid
     out_dir.mkdir(parents=True, exist_ok=True)
-    rows, t = [], 0.0
+    jobs, t = [], 0.0
     for k, sc in enumerate(sb.get("scenes") or []):
         sec = float(sc.get("sec") or 0)
         mid = t + sec / 2
         t += sec
         f = out_dir / f"draft-s{k + 1:02d}.png"
+        jobs.append((k, mid, f))
+    if not jobs:
+        return []
+
+    def _shot(job: tuple[int, float, Path]) -> str | None:
+        k, mid, f = job
         r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{mid:.2f}", "-i", str(video), "-frames:v", "1", "-vf", "scale=540:-2", str(f)], capture_output=True)
-        if r.returncode == 0 and f.exists():
-            rows.append(f"{f.relative_to(ROOT)} | 장면 {k + 1} · {mid:.1f}초")
-    return rows
+        return f"{f.relative_to(ROOT)} | 장면 {k + 1} · {mid:.1f}초" if r.returncode == 0 and f.exists() else None
+
+    with ThreadPoolExecutor(max_workers=min(4, len(jobs))) as ex:
+        rows = list(ex.map(_shot, jobs))
+    return [r for r in rows if r]
 
 
 def extras(sid: str) -> list[str]:
@@ -300,7 +309,7 @@ def main() -> int:
         sound.append("업로드 때 붙일 수 있는 유행곡(쇼츠 편집기 '사운드 추가'): " + " / ".join(mu["upload_sound"][:3]))
     ok("produce", file=b["file"][0], media=media, warn=warns[:16], lint_soft=len(soft), depth=depth, sound=sound,
        time=[f"{k}:{v}" for k, v in TIMES.items()], next="먼저 '초안 · 레퍼런스 나란히'(sheet.png)를 Read 로 보고 director 검사(화면이 바뀌는 리듬 · 피사체 크기 · 글자 크기 · 시선 한 곳)로 레퍼런스와 견준다. "
-            "그다음 장면 정지 화면으로 글자 겹침 · 잘림 · 빈 화면 · 말과 안 맞는 재료를 고친 뒤 다시 produce")
+            "고칠 장면만 있을 때는 전체 produce 를 반복하지 말고 knob.py set + knob.py preview --scene N(또는 produce.py --scenes N --no-audio) 로 확인한 뒤, 마지막에 한 번만 전체 produce")
 
 
 if __name__ == "__main__":

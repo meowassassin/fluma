@@ -16,7 +16,7 @@ order: 2
 
 ## 한 줄로 돌리기
 재료 칸(materials)까지 적었으면 **`python3 engine/produce.py data/storyboards/<id>.json`** — 레퍼런스 스타일 → **스킬 단계**(writer → director → designer, 검사가 막은 것은 담당 단계로 되먹임) → 음악 · 음성 → 검사 → **장면 구성** → 재료 · 초안 → **정지 화면 검토(designer review) · refine → 다시 렌더** → 장면별 정지 화면(timeout 30분). 스킬 단계 기록 `python3 engine/story/skill_pass.py status <콘티>` · 건너뛰기 `--no-skills`.
-- 종료 0 → media 줄(초안 + 정지 화면)을 채팅에 띄우고, 정지 화면을 Read 로 보고 고칠 곳만 고쳐 다시
+- 종료 0 → media 줄(초안 + 정지 화면)을 채팅에 띄우고, 정지 화면을 Read 로 보고 **일부 장면만 수정 시 `knob.py preview <id> --scene <n>` 또는 `produce.py --scenes <n> --no-audio` 로 확인**(전체 `produce.py`를 여러 번 반복하지 않는다; 대사를 안 바꿨으면 `--no-audio` · 이미 스킬을 통과했으면 `--no-skills`)
 - 종료 1 stage=lint → 걸린 규칙만 고쳐 다시 · stage=render → error 짧은 이유로 고쳐 다시
 - 종료 10 → 사용자 녹화(L36) · 스톡 키(L38)를 한 번에 부탁
 - 장면 몇 개만 `--scenes 1-3`, 대사를 안 바꿨으면 `--no-audio`
