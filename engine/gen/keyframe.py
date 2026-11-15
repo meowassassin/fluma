@@ -89,6 +89,26 @@ def refs_for(pid: str, sb: dict, s: dict) -> list[tuple[Path, str]]:
             f = d / f"{view}.png"
             if f.exists():
                 out.append((f, f"{name}, {view} view from the approved character sheet — identity, hairstyle, wardrobe and colours to preserve"))
+    has_char_sheets = bool(s.get("characters"))
+    role_desc = {
+        "style": "visual art style, colour palette and lighting reference ONLY — apply this aesthetic without copying its characters or layout",
+        "prop": "real-world object / UI shape reference — match accurate physical form and details",
+        "background": "environment & background visual reference — match architecture, colour palette and atmosphere",
+        "character": "visual aesthetic inspiration reference — adapt proportions and feel only",
+    }
+    for r in sb.get("style_refs") or []:
+        if len(out) >= MAX_CHAR_REFS:
+            break
+        role = r.get("role", "style")
+        if has_char_sheets and role == "character":
+            continue
+        rf = ROOT / r["path"]
+        if not rf.exists() or any(p == rf for p, _ in out):
+            continue
+        desc_r = role_desc.get(role, role_desc["style"])
+        if r.get("note"):
+            desc_r = f"{desc_r} ({r['note']})"
+        out.append((rf, desc_r))
     return out[:MAX_CHAR_REFS]
 
 
@@ -176,6 +196,18 @@ def files_of(pid: str, s: dict) -> list[Path]:
     return [d / f"s{s['n']:02d}.png"] + ([d / f"s{s['n']:02d}_end.png"] if s.get("end_frame") else [])
 
 
+def _ref_missing_error(sb: dict, s: dict, rec: dict) -> str | None:
+    """캐릭터가 필요한 샷이 참조(refs) 없이 t2i 로 생성됐는지 검사한다."""
+    if not s.get("characters"):
+        return None
+    first = rec.get("first") or {}
+    if not first:
+        return None
+    if first.get("via") == "gflow:t2i" or first.get("mode") == "t2i" or not (first.get("refs") or []):
+        return "캐릭터 참조 없이(t2i) 생성됨"
+    return None
+
+
 def status(pid: str) -> list[dict]:
     _, sb = planmod.load(pid)
     m = load_meta(pid)
@@ -187,8 +219,20 @@ def status(pid: str) -> list[dict]:
         fs = files_of(pid, s)
         have = all(f.exists() for f in fs)
         ap = rec.get("approval")
+        ref_err = _ref_missing_error(sb, s, rec) if have else None
         cur = shot_hash(sb, s, fs, refs_for(pid, sb, s)) if have else None
-        st = "없음" if not fs[0].exists() else ("승인" if ap and ap.get("hash") == cur else ("승인 무효(입력이 바뀜)" if ap else ("만듦 · 승인 대기" if have else "끝 프레임 없음")))
+        if not fs[0].exists():
+            st = "없음"
+        elif ref_err:
+            st = f"승인 불가({ref_err})"
+        elif ap and ap.get("hash") == cur:
+            st = "승인"
+        elif ap:
+            st = "승인 무효(입력이 바뀜)"
+        elif have:
+            st = "만듦 · 승인 대기"
+        else:
+            st = "끝 프레임 없음"
         rows.append({
             "shot": n,
             "purpose": s["purpose"],
@@ -719,13 +763,19 @@ def main() -> int:
         ok("keyframe", sheet=str(sheet_png(a.pid).relative_to(ROOT))); return 0
     if a.cmd == "approve":
         _, sb = planmod.load(a.pid); m = load_meta(a.pid); done = []
-        for s in live_shots(sb):
-            if sel and s["n"] not in sel:
-                continue
+        target_shots = [s for s in live_shots(sb) if not sel or s["n"] in sel]
+        bad_sheets = check_sheets(a.pid, sb, target_shots)
+        if bad_sheets:
+            fail("keyframe", stage="approve", error=" / ".join(bad_sheets))
+        for s in target_shots:
             fs = files_of(a.pid, s)
             if not all(f.exists() for f in fs):
                 fail("keyframe", stage="keyframe", error=f"샷 {s['n']}: 키 프레임이 아직 없다")
-            m["shots"].setdefault(str(s["n"]), {})["approval"] = {"status": "approved", "hash": shot_hash(sb, s, fs, refs_for(a.pid, sb, s)), "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
+            rec = m["shots"].setdefault(str(s["n"]), {})
+            ref_err = _ref_missing_error(sb, s, rec)
+            if ref_err:
+                fail("keyframe", stage="approve", error=f"샷 {s['n']}: {ref_err} — keyframe.py make {a.pid} --shots {s['n']} --force 로 참조 포함 재생성")
+            rec["approval"] = {"status": "approved", "hash": shot_hash(sb, s, fs, refs_for(a.pid, sb, s)), "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
             done.append(str(s["n"]))
         save_meta(a.pid, m)
         left = [r["shot"] for r in status(a.pid) if r["state"] != "승인"]

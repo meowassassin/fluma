@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -25,6 +26,49 @@ import video as videomod  # noqa: E402
 
 ROLE = {"hook": "hook", "build": "setup", "turn": "reveal", "payoff": "verdict", "cta": "cta"}
 KEEP = ("direction", "subs", "voice", "grammar", "refine", "credits", "hashtags", "caption")   # 편집 단계에서 사람이 만진 칸은 다시 만들 때 남긴다
+
+
+def has_narration(story: dict) -> bool:
+    """콘티에 나레이션(script 또는 장면 narration)이 있는지 확인한다."""
+    if str(story.get("script") or "").strip():
+        return True
+    return any(str(sc.get("narration") or "").strip() for sc in story.get("scenes") or [])
+
+
+def _narr_hash(text: str) -> str:
+    t = str(text or "").strip()
+    return hashlib.sha1(t.encode("utf-8")).hexdigest()[:8] if t else ""
+
+
+def audio_matches_story(pid: str, story: dict) -> bool:
+    """data/public/audio/<pid>.* 가 현재 콘티 대본과 일치하는지 검증한다(이전 주제의 유령 자막·음성 혼입 방지)."""
+    if not has_narration(story):
+        return False
+    timing_p = ROOT / "data" / "public" / "audio" / f"{pid}.timing.json"
+    if timing_p.is_file():
+        try:
+            rows = json.loads(timing_p.read_text("utf-8"))
+        except Exception:
+            return False
+        scenes = story.get("scenes") or []
+        if len(rows) != len(scenes):
+            return False
+        for sc, row in zip(scenes, rows):
+            if row.get("text_hash", "") != _narr_hash(sc.get("narration") or ""):
+                return False
+    return True
+
+
+def clear_stale_audio(pid: str) -> list[str]:
+    """무언극/대본 변경 시 남아 있는 옛 음성·자막·타이밍 캐시 파일을 지운다."""
+    audio_dir = ROOT / "data" / "public" / "audio"
+    removed = []
+    for suf in (".wav", ".voice.wav", ".voice.meta.json", ".captions.json", ".timing.json"):
+        p = audio_dir / f"{pid}{suf}"
+        if p.is_file():
+            p.unlink()
+            removed.append(p.name)
+    return removed
 
 
 def block(out: str) -> dict:
@@ -64,7 +108,6 @@ def split_narration(text: str, n: int) -> list[str]:
 
 
 def to_storyboard(pid: str) -> Path:
-    import hashlib
     _, sb = planmod.load(pid)
     st = {r["shot"]: r for r in videomod.status(pid)}
     missing = [n for n, r in st.items() if not r["approved"]]
@@ -76,6 +119,8 @@ def to_storyboard(pid: str) -> Path:
     # 이미 실측된 음성 타이밍(timing.json)이 있고 대본 해시가 같으면 그 장면 길이를 유지해 싱크 어긋남 방지
     timing_p = ROOT / "data" / "public" / "audio" / f"{pid}.timing.json"
     timing_rows = json.loads(timing_p.read_text("utf-8")) if timing_p.exists() else []
+    use_timing = bool(parts) and len(timing_rows) == len(sb["shots"])
+    chars_map = {c["name"]: (c.get("voice") or "") for c in sb.get("characters") or []}
     scenes = []
     for i, s in enumerate(sb["shots"]):
         clip = Path(st[s["n"]]["clip"])
@@ -84,16 +129,19 @@ def to_storyboard(pid: str) -> Path:
         narr = parts[i] if parts else ""
         if len(narr) > 60:
             fail("assemble", stage="assemble", error=f"샷 {s['n']}: 나레이션 {len(narr)}자 > 60자(편집 엔진 장면 한도) — 줄이거나 샷을 나눈다")
-        th = hashlib.sha1(narr.strip().encode("utf-8")).hexdigest()[:8] if narr else ""
+        th = _narr_hash(narr)
         want_sec = float(s["final_sec"])
-        if i < len(timing_rows) and timing_rows[i].get("text_hash") == th:
+        if use_timing and narr and timing_rows[i].get("text_hash") == th:
             t_sec = round(float(timing_rows[i]["end"]) - float(timing_rows[i]["start"]), 2)
             if t_sec >= 2.0:
                 want_sec = t_sec
         b = a + want_sec
         if (dur - a) < 2 - 1e-6 and want_sec < 2 - 1e-6:
             fail("assemble", stage="assemble", error=f"샷 {s['n']}: 쓸 구간 {b - a:.2f}초 < 2초(클립 {dur:.2f}초, trim_in {a}) — trim_in · final_sec 를 고친다")
+        spk = s.get("speaker") or (s.get("characters", [""])[0] if s.get("characters") else "")
+        vid = s.get("voice_id") or chars_map.get(spk) or ""
         scenes.append({"role": ROLE[s["purpose"]], "sec": round(want_sec, 2), "caption": narr, "narration": narr, "beat": s.get("beat") or "",
+                       "speaker": spk, "voice_id": vid,
                        "visual": {"kind": "footage"},
                        "materials": [{"id": f"s{s['n']:02d}clip", "type": "video", "src": str(clip.relative_to(ROOT)), "in": round(a, 2), "out": round(b, 2),
                                       "audio": True, "volume": 0.28, "full_frame": True, "what": f"생성 샷 {s['n']} — {s.get('beat') or s['action']}"}]})
@@ -109,6 +157,8 @@ def to_storyboard(pid: str) -> Path:
              "scenes": scenes}
     if parts:
         story["script"] = " / ".join(parts)
+    else:
+        clear_stale_audio(pid)
     for k in KEEP:
         if k in old:
             story[k] = old[k]
@@ -147,6 +197,11 @@ def _ass_time(sec: float) -> str:
 def _write_draft_ass(ass_path: Path, pid: str, story: dict, W: int, H: int, total_dur: float) -> bool:
     """상단 고정 제목과 하단 구절 자막(captions.json 또는 장면 caption)을 ASS 자막 파일로 쓴다."""
     import editor_bridge as eb
+    subs_cfg = (story.get("direction") or {}).get("subs") or {}
+    sub_font = int(subs_cfg.get("font_size") or subs_cfg.get("size") or 54)
+    show_speaker = bool(subs_cfg.get("show_speaker", False))
+    title_cfg = (story.get("direction") or {}).get("title") or {}
+    title_font = int(title_cfg.get("font_size") or title_cfg.get("size") or 50)
     lines = [
         "[Script Info]",
         "ScriptType: v4.00+",
@@ -156,39 +211,64 @@ def _write_draft_ass(ass_path: Path, pid: str, story: dict, W: int, H: int, tota
         "",
         "[V4+ Styles]",
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
-        "Style: Sub,Pretendard,68,&H00FFFFFF,&H0000FFFF,&H55000000,&H99000000,-1,0,0,0,100,100,0,0,3,18,0,2,60,60,360,1",
-        "Style: TopTitle,Pretendard,58,&H0000FFFF,&H00FFFFFF,&H55000000,&H99000000,-1,0,0,0,100,100,0,0,3,18,0,8,60,60,170,1",
+        f"Style: Sub,Pretendard,{sub_font},&H00FFFFFF,&H0000FFFF,&H55000000,&H99000000,-1,0,0,0,100,100,0,0,3,10,0,2,80,80,360,1",
+        f"Style: SubAlt,Pretendard,{sub_font},&H00C0FFFF,&H0000FFFF,&H55000000,&H99000000,-1,0,0,0,100,100,0,0,3,10,0,2,80,80,360,1",
+        f"Style: TopTitle,Pretendard,{title_font},&H0000FFFF,&H00FFFFFF,&H55000000,&H99000000,-1,0,0,0,100,100,0,0,3,10,0,8,80,80,170,1",
         "",
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ]
     has_events = False
-    title = str(story.get("title") or "").strip().replace("\n", "\\N")
+    raw_title = str(story.get("title") or "").strip()
+    title = eb.wrap_text_two_lines(raw_title, 13).replace("\n", "\\N") if raw_title else ""
     if title:
         lines.append(f"Dialogue: 1,{_ass_time(0.0)},{_ass_time(total_dur)},TopTitle,,0,0,0,,{title}")
         has_events = True
 
+    scenes = story.get("scenes") or []
+    speaker_styles: dict[str, str] = {}
+    for sc in scenes:
+        sp = str(sc.get("speaker") or sc.get("character") or "").strip().lower()
+        if sp and sp not in speaker_styles:
+            speaker_styles[sp] = "Sub" if len(speaker_styles) % 2 == 0 else "SubAlt"
+
     cap_file = ROOT / "data" / "public" / "audio" / f"{pid}.captions.json"
     phrases = []
-    if cap_file.is_file():
+    if cap_file.is_file() and audio_matches_story(pid, story):
         try:
             words = json.loads(cap_file.read_text("utf-8"))
             phrases = eb.group_words_into_phrases(words)
         except Exception:
             phrases = []
     if phrases:
+        first_phrase_in_scene: set[int] = set()
         for p in phrases:
-            txt = str(p.get("text") or "").strip().replace("\n", "\\N")
+            sc_idx = int(p.get("scene", 0))
+            sc = scenes[sc_idx] if 0 <= sc_idx < len(scenes) else {}
+            speaker = str(sc.get("speaker") or sc.get("character") or "").strip()
+            style_name = speaker_styles.get(speaker.lower(), "Sub")
+
+            raw_txt = str(p.get("text") or "").strip()
+            if show_speaker and speaker and sc_idx not in first_phrase_in_scene:
+                first_phrase_in_scene.add(sc_idx)
+                raw_txt = f"[{speaker}] {raw_txt}"
+
+            txt = eb.wrap_text_two_lines(raw_txt, 14).replace("\n", "\\N") if raw_txt else ""
             if txt:
-                lines.append(f"Dialogue: 2,{_ass_time(p['startSec'])},{_ass_time(p['endSec'])},Sub,,0,0,0,,{txt}")
+                lines.append(f"Dialogue: 2,{_ass_time(p['startSec'])},{_ass_time(p['endSec'])},{style_name},,0,0,0,,{txt}")
                 has_events = True
     else:
         t_acc = 0.0
-        for sc in story.get("scenes") or []:
+        for sc in scenes:
             dur = float(sc.get("sec") or 3.0)
-            txt = str(sc.get("caption") or sc.get("narration") or "").strip().replace("\n", "\\N")
+            speaker = str(sc.get("speaker") or sc.get("character") or "").strip()
+            style_name = speaker_styles.get(speaker.lower(), "Sub")
+            raw_txt = str(sc.get("caption") or sc.get("narration") or "").strip()
+            if show_speaker and speaker and raw_txt and not raw_txt.startswith(f"[{speaker}]"):
+                raw_txt = f"[{speaker}] {raw_txt}"
+            txt = eb.wrap_text_two_lines(raw_txt, 14).replace("\n", "\\N") if raw_txt else ""
             if txt:
-                lines.append(f"Dialogue: 2,{_ass_time(t_acc)},{_ass_time(t_acc + dur)},Sub,,0,0,0,,{txt}")
+                lines.append(f"Dialogue: 2,{_ass_time(t_acc)},{_ass_time(t_acc + dur)},{style_name},,0,0,0,,{txt}")
                 has_events = True
             t_acc += dur
     if not has_events:
@@ -262,7 +342,7 @@ def _fast_draft(pid: str, story: dict) -> Path | None:
         voice_wav = ROOT / "data" / "public" / "audio" / f"{pid}.wav"
         if not voice_wav.is_file():
             voice_wav = ROOT / "data" / "public" / "audio" / f"{pid}.voice.wav"
-        if voice_wav.is_file():
+        if voice_wav.is_file() and audio_matches_story(pid, story):
             cmd = [
                 "ffmpeg", "-y", "-i", str(joined_mp4), "-i", str(voice_wav),
                 *vf_args,
@@ -288,13 +368,15 @@ def build(pid: str, voice: bool, full_craft: bool = False) -> dict:
     rel = str(sbp.relative_to(ROOT))
     story = json.loads(sbp.read_text("utf-8"))
     py = sys.executable
-    if voice and story.get("script"):
+    if voice and has_narration(story):
         r = subprocess.run([py, "engine/voice/assemble_audio.py", rel], cwd=ROOT, capture_output=True, text=True, timeout=1800)
         if r.returncode:
             fail("assemble", stage="voice", error=(r.stderr or r.stdout).strip()[-400:])
         # 음성 단계가 장면 길이(sec)를 말 길이에 맞춰 콘티에 다시 쓴다 — 다시 읽지 않으면 초안은 옛 길이로 붙고
         # 나레이션이 잘리며(-shortest), 새 길이로 만든 편집기 타임라인과 어긋난다(2026-11-14 USB 포코: 14.5초 vs 18초)
         story = json.loads(sbp.read_text("utf-8"))
+    elif not has_narration(story):
+        clear_stale_audio(pid)
 
     # VEditor(웹 편집기) 타임라인 project.json 즉시 생성/갱신
     subprocess.run([py, "engine/gen/editor_bridge.py", "convert", pid], cwd=ROOT, capture_output=True, text=True, timeout=120)

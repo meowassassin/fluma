@@ -79,7 +79,7 @@ const SHOW_RULES = `## 결과는 채팅에 바로 보여 준다
 // 2026-11-04: 백그라운드로 돌린 분석이 턴과 함께 죽고, 출력을 짐작하며 경로 · 로그를 되읽느라 턴을 썼다(MoneyPrinterTurbo 스킬 규약 참고)
 const RUN_RULES = `## 명령 실행 · 결과 읽기
 - 오래 걸리는 명령(렌더 · 레퍼런스 분석 · 녹화 · 버전 비교 · 재료 만들기 · 캐릭터/키프레임/영상 생성)은 **앞에서 한 번** 실행하고 Bash 의 timeout 을 600000(10분)으로. 백그라운드로 돌려 두고 턴을 끝내지 않는다
-- Antigravity(\`run_command\`) 환경에서 외부 프로세스·네트워크·브라우저를 쓰는 엔진 명령(\`character.py make\`, \`keyframe.py make\`, \`video.py\`, \`produce.py\`, \`trends.py\`, \`analyze_ref.py\`, \`render.py\`)을 실행할 때는 처음부터 \`BypassSandbox: true\`와 \`WaitMsBeforeAsync: 10000\`으로 실행한다(표준 샌드박스로 먼저 실행해 실패한 뒤 재실행하지 않는다)
+- Antigravity(\`run_command\`) 환경에서 외부 프로세스·네트워크·브라우저를 쓰는 엔진 명령(\`character.py make\`, \`keyframe.py make\`, \`video.py\`, \`produce.py\`, \`trends.py\`, \`analyze_ref.py\`, \`ref_image.py\`, \`render.py\`)을 실행할 때는 처음부터 \`BypassSandbox: true\`와 \`WaitMsBeforeAsync: 10000\`으로 실행한다(표준 샌드박스로 먼저 실행해 실패한 뒤 재실행하지 않는다)
 - 기다리는 동안 sleep · ls · tail · ps 로 되묻지(폴링) 않는다
 - 끝나면 출력 맨 끝 블록만 읽는다:
   - 종료 0 \`FLUMA_RESULT\` — file · media 등. media= 줄은 그대로 \`\`\`media 블록에 붙여 보여 준다. 성공한 뒤 로그 전체를 다시 읽지 않는다
@@ -188,9 +188,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       try { routeKind = JSON.parse(readFileSync(shotplanPath, "utf8")).route || "generate"; } catch { routeKind = "generate"; }
     }
     const isGenPipeline = routeKind === "generate" || ["plan", "character-sheet", "keyframes", "video-gen", "edit-shots", "publish"].includes(skill);
-    // 생성 파이프라인 스킬들(프롬프트 조립 · 캐릭터 시트 일관성 · 키 프레임 참조 · i2v 생성 · 5단계 편집)을 함께 주입
+    // 생성 파이프라인 스킬들(자료조사 · 프롬프트 조립 · 캐릭터 시트 일관성 · 키 프레임 참조 · i2v 생성 · 5단계 편집)을 함께 주입
     if (!project.startsWith("_") && isGenPipeline) {
-      for (const n of ["plan", "character-sheet", "keyframes", "video-gen", "edit-shots", "publish"]) {
+      for (const n of ["research", "plan", "character-sheet", "keyframes", "video-gen", "edit-shots", "publish"]) {
         if (n === skill) continue;
         const body = readIf(path.join(ROOT, ".claude", "skills", n, "SKILL.md"));
         if (body) parts.push(`## 함께 쓰는 파이프라인 스킬: ${n} (.claude/skills/${n}/SKILL.md)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);

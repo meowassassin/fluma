@@ -154,6 +154,7 @@ export const LibraryPage: React.FC = () => {
       {/* 3. Navigation Tabs */}
       <div className="lib-nav-tabs">
         <Segmented
+          aria-label={t("라이브러리 탭")}
           value={tab}
           onChange={(v) => setTab(v as Tab)}
           options={[

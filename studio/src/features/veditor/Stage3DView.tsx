@@ -46,10 +46,10 @@ export interface Layer2D {
 export interface Stage3DContextType {
   id: string;
   pipeline: Pipeline | null;
-  shotsList: NonNullable<Pipeline["shotplan"]>["shots"];
+  shotsList: NonNullable<Pipeline["plan"]>["shots"];
   shot: number;
   setShot: (s: number) => void;
-  curShot: NonNullable<Pipeline["shotplan"]>["shots"][0] | undefined;
+  curShot: NonNullable<Pipeline["plan"]>["shots"][0] | undefined;
   curKf: NonNullable<Pipeline["keyframes"]>[0] | undefined;
   aspect: "9:16" | "16:9" | "1:1";
   setAspect: (a: "9:16" | "16:9" | "1:1") => void;
@@ -187,7 +187,7 @@ export const Stage3DProvider: React.FC<Stage3DProviderProps> = ({
     return () => { active = false; };
   }, [id]);
 
-  const shotsList = pipeline?.shotplan?.shots || [];
+  const shotsList = pipeline?.plan?.shots || [];
   const curShot = shotsList.find((s) => s.n === shot) || shotsList[0];
   const curKf = pipeline?.keyframes?.find((k) => k.shot === shot);
 

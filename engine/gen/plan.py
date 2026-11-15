@@ -30,6 +30,13 @@ from result import fail, ok  # noqa: E402
 PLANS = ROOT / "data" / "shotplans"
 SCHEMA = ROOT / "engine" / "spec" / "schema" / "shotplan.schema.json"
 TRENDS = ROOT / "data" / "public" / "trends"
+RESEARCH = ROOT / "data" / "research"
+STYLE_REF_CUE = re.compile(
+    r"(?:풍|화풍|스타일|작품|실물|제품|실사)|"
+    r"\b(?:style|aesthetic|ghibli|pixar|arcane|disney|anime|spider-?verse|lego|claymation|pixel\s*art|simpsons|kurzgesagt|retro\s*game)\b|"
+    r"(?:지브리|픽사|아케인|디즈니|레고|클레이|픽셀|심슨|마블|원피스|닌텐도|스파이더버스|쿠르츠게작트|애니메)",
+    re.I,
+)
 
 VIDEO_MAX_CHARS = 1100          # gflow-cli: 1,100~1,400자 넘으면 HTTP 400
 WORDS_PER_SEC = 2.5             # gflow-cli 측정(25편): 8초에 약 18단어
@@ -153,7 +160,10 @@ def keyframe_prompt(sb: dict, s: dict, refs: list[str] | None = None) -> str:
     parts = []
     if refs:
         parts.append(" ".join(f"Image {i + 1}: {r}." for i, r in enumerate(refs)))
-        parts.append("Use the reference images for each character's identity and wardrobe; keep them exactly the same.")
+        if all("character sheet" in r for r in refs):
+            parts.append("Use the reference images for each character's identity and wardrobe; keep them exactly the same.")
+        else:
+            parts.append("Follow each Image label strictly: preserve approved characters' identity and wardrobe, and apply style, palette, lighting or prop references only as labelled.")
     who = [f"{n} ({by[n]['identity']}; wearing {by[n]['wardrobe']})" for n in s.get("characters") or [] if n in by]
     subject = " and ".join(who) if who else "the subject"
     parts.append(f"{_cap(s['shot_size'])}, {s['angle']} view of {subject}: {s['start_state'].rstrip('.')}.")
@@ -367,7 +377,76 @@ def problems(sb: dict) -> tuple[list[str], list[str]]:
         warns.append(f"총 {total:g}초에 샷 {len(shots)}개 — 참고: 15초 ≈ 3 · 30초 ≈ 6 · 60초 ≈ 12샷")
     if sb["aspect"] == "9:16" and total > 60:
         warns.append(f"총 {total:g}초 — 쇼츠 60초 넘음")
+    # Stage 0.5 게이트: 주제 자료조사(research) + 화풍·작품·실물 시각 레퍼런스(style_refs)
+    res = sb.get("research") or {}
+    has_facts = int(res.get("facts_count") or 0) >= 1 and any(str(u).startswith("http") for u in (res.get("sources") or []))
+    if not has_facts and not str(res.get("skip_reason") or "").strip():
+        cand = _find_research_file(sb["id"], sb.get("topic") or "")
+        if cand:
+            errs.append(f"Stage 0.5 자료조사 파일({cand.relative_to(ROOT)})이 있으나 shotplan 에 미연결 — python3 engine/gen/plan.py research {sb['id']}")
+        else:
+            errs.append(f"Stage 0.5 주제 자료조사 없음 — WebSearch/WebFetch 로 {RESEARCH.relative_to(ROOT)}/{sb['id']}.json 저장 후 plan.py research {sb['id']} (창작·비정보성 주제는 --skip \"이유\")")
+    for r in sb.get("style_refs") or []:
+        rp = ROOT / r["path"]
+        if not rp.exists():
+            errs.append(f"시각 레퍼런스 파일 없음: {r['path']} (engine/research/ref_image.py 로 다시 받기)")
+    if STYLE_REF_CUE.search(f"{sb.get('topic', '')} {sb.get('style', '')}") and not (sb.get("style_refs") or sb.get("style_ref") or str(sb.get("style_ref_skip") or "").strip()):
+        errs.append(
+            f"화풍 · 특정 작품 · 실물 언급 감지 — 실제 이미지/영상 레퍼런스 확인 필요: "
+            f"engine/research/ref_image.py search {sb['id']} \"<영문 검색어>\" 후 read_file · pick (생략 사유는 plan.py research {sb['id']} --style-skip \"이유\")"
+        )
     return errs, warns
+
+
+def _topic_slug(s: str) -> str:
+    return re.sub(r"[^0-9A-Za-z가-힣]+", "-", s).strip("-")[:60]
+
+
+def _find_research_file(pid: str, topic: str) -> Path | None:
+    for name in filter(None, [pid, _topic_slug(topic)]):
+        p = RESEARCH / f"{name}.json"
+        if p.exists():
+            return p
+    return None
+
+
+def sync_research(pid: str, src_file: str | None = None, skip_reason: str | None = None, style_skip: str | None = None) -> dict:
+    """data/research/<id>.json (또는 --skip / --style-skip) 을 shotplan.research · style_ref_skip 에 연결한다."""
+    p, sb = load(pid)
+    changed = []
+    if style_skip is not None:
+        sb["style_ref_skip"] = style_skip.strip()
+        changed.append("style_ref_skip")
+    if skip_reason is not None:
+        sb["research"] = {"skip_reason": skip_reason.strip()}
+        changed.append("research.skip_reason")
+    elif src_file is not None or style_skip is None or _find_research_file(pid, sb.get("topic") or ""):
+        rf = Path(src_file) if src_file else _find_research_file(pid, sb.get("topic") or "")
+        if not rf:
+            fail("plan", stage="research", error=f"자료조사 파일 없음: data/research/{pid}.json — WebSearch/WebFetch 로 facts JSON 작성 또는 --skip 지정")
+        if not rf.is_absolute():
+            rf = ROOT / rf
+        if not rf.exists():
+            fail("plan", stage="research", error=f"자료조사 파일 없음: {rf}")
+        data = json.loads(rf.read_text("utf-8"))
+        facts = [f for f in (data.get("facts") or []) if str(f.get("source") or "").startswith("http")]
+        if not facts:
+            fail("plan", stage="research", error=f"{rf.relative_to(ROOT)}: source(http URL)가 있는 fact 가 1개도 없음")
+        sources = list(dict.fromkeys(str(f["source"]) for f in facts))[:12]
+        visual_entities = [str(x).strip() for x in (data.get("visual_entities") or data.get("entities") or []) if str(x).strip()][:12]
+        try:
+            rel = str(rf.relative_to(ROOT))
+        except ValueError:
+            rel = str(rf)
+        sb["research"] = {
+            "file": rel,
+            "facts_count": len(facts),
+            "sources": sources,
+            **({"visual_entities": visual_entities} if visual_entities else {}),
+        }
+        changed.append(f"research({len(facts)} facts)")
+    p.write_text(json.dumps(sb, ensure_ascii=False, indent=1) + "\n", "utf-8")
+    return {"file": str(p.relative_to(ROOT)), "changed": changed, "research": sb.get("research"), "style_ref_skip": sb.get("style_ref_skip")}
 
 
 def made_by() -> dict | None:
@@ -381,6 +460,7 @@ def main() -> int:
     sp = ap.add_subparsers(dest="cmd", required=True)
     t = sp.add_parser("trends"); t.add_argument("--request"); t.add_argument("--label"); t.add_argument("--top", type=int, default=8)
     n = sp.add_parser("new"); n.add_argument("id"); n.add_argument("--topic", required=True); n.add_argument("--aspect", default="9:16")
+    rs = sp.add_parser("research"); rs.add_argument("id"); rs.add_argument("--file"); rs.add_argument("--skip"); rs.add_argument("--style-skip")
     c = sp.add_parser("check"); c.add_argument("id")
     pr = sp.add_parser("prompts"); pr.add_argument("id"); pr.add_argument("--shot", type=int)
     sp.add_parser("guide")
@@ -389,6 +469,12 @@ def main() -> int:
         print(GUIDE); return 0
     if a.cmd == "trends":
         print(json.dumps(trend_brief(a.request, a.label, a.top), ensure_ascii=False, indent=1)); return 0
+    if a.cmd == "research":
+        if a.skip is None and a.style_skip is None and not a.file and not _find_research_file(a.id, load(a.id)[1].get("topic") or ""):
+            fail("plan", stage="research", error=f"data/research/{a.id}.json 이 없음 — 먼저 WebSearch 로 facts JSON 을 저장하거나 --skip \"이유\" 지정")
+        res = sync_research(a.id, src_file=a.file, skip_reason=a.skip, style_skip=a.style_skip)
+        ok("plan", file=res["file"], attached=", ".join(res["changed"]), facts=str((res.get("research") or {}).get("facts_count", 0)))
+        return 0
     if a.cmd == "new":
         p = PLANS / f"{a.id}.json"
         if p.exists():
@@ -399,7 +485,7 @@ def main() -> int:
         if made_by():
             sp["made_by"] = made_by()
         p.write_text(json.dumps(sp, ensure_ascii=False, indent=1) + "\n", "utf-8")
-        ok("plan", file=str(p.relative_to(ROOT)), next="trend · style · shots 를 채우고 plan.py check")
+        ok("plan", file=str(p.relative_to(ROOT)), next="Stage 0.5(research · ref_image) · style · shots 를 채우고 plan.py check")
         return 0
     p, sb = load(a.id)
     errs, warns = problems(sb)

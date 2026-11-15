@@ -59,19 +59,78 @@ def desc(c: dict) -> str:
     return f"{c['identity'].rstrip('.')}; wearing {c['wardrobe'].rstrip('.')}" + (f"; carrying {c['props'].rstrip('.')}" if c.get("props") else "")
 
 
-def prompt_for(sb: dict, c: dict, view: str, with_ref: bool) -> str:
-    head = ("Image 1 is the approved front view of this exact character. Generate the SAME character — preserve the face, hairstyle, "
-            "body proportions, wardrobe, colours and art style exactly as in Image 1; change only the viewing angle. " if with_ref else "")
+def style_refs_for(sb: dict) -> list[tuple[Path, str]]:
+    """Stage 0.5 에서 고른 화풍 · 캐릭터 참조 이미지를 정면 생성용 (경로, 역할) 목록으로 만든다(최대 2장)."""
+    out: list[tuple[Path, str]] = []
+    for r in sb.get("style_refs") or []:
+        if r.get("role") not in ("style", "character"):
+            continue
+        p = ROOT / r["path"]
+        if not p.exists():
+            continue
+        if r["role"] == "style":
+            desc_role = "visual art style, colour palette, shading and lighting reference ONLY — apply this rendering style to our character without copying the original subject or pose"
+        else:
+            desc_role = "visual aesthetic reference — adapt the proportions and rendering feel while keeping our character's unique identity and wardrobe"
+        if r.get("note"):
+            desc_role = f"{desc_role} ({r['note']})"
+        out.append((p, desc_role))
+        if len(out) >= 2:
+            break
+    return out
+
+
+def prompt_for(sb: dict, c: dict, view: str, with_ref: bool, style_refs: list[tuple[Path, str]] | None = None) -> str:
+    if with_ref:
+        head = ("Image 1 is the approved front view of this exact character. Generate the SAME character — preserve the face, hairstyle, "
+                "body proportions, wardrobe, colours and art style exactly as in Image 1; change only the viewing angle. ")
+    elif style_refs:
+        head = " ".join(f"Image {i + 1}: {role}." for i, (_, role) in enumerate(style_refs)) + " "
+    else:
+        head = ""
     return (f"{head}Full-body character reference sheet image, {VIEW_TEXT[view]}. {desc(c)}. {COMMON} "
             f"Style: {sb['style'].rstrip('.')}. Same scale and framing as a standard turnaround.")
 
 
 def input_hash(sb: dict, c: dict, d: Path) -> str:
-    h = hashlib.sha256((desc(c) + "|" + sb["style"]).encode())
+    sref_sig = ",".join(f"{r.get('role')}:{r.get('path')}" for r in (sb.get("style_refs") or []))
+    h = hashlib.sha256((desc(c) + "|" + sb["style"] + "|" + sref_sig).encode())
     for v in VIEWS:
         f = d / f"{v}.png"
         h.update(f.read_bytes() if f.exists() else b"-")
     return h.hexdigest()[:16]
+
+
+def duplicate_views(d: Path) -> list[tuple[str, str]]:
+    """다른 각도 그림이 동일 파일 바이트(복사본)인지 SHA-256 으로 검사한다."""
+    seen: dict[str, str] = {}
+    dups: list[tuple[str, str]] = []
+    for v in VIEWS:
+        f = d / f"{v}.png"
+        if not f.exists():
+            continue
+        digest = hashlib.sha256(f.read_bytes()).hexdigest()
+        if digest in seen:
+            dups.append((seen[digest], v))
+        else:
+            seen[digest] = v
+    return dups
+
+
+def view_integrity_errors(d: Path, m: dict) -> list[str]:
+    """각도 중복 복사 · 메타데이터 불일치(예: back/left/right 에 front 프롬프트 복제)를 검출한다."""
+    errs = [f"{a} 와 {b} 그림 파일 내용이 똑같다(복사본)" for a, b in duplicate_views(d)]
+    views_meta = m.get("views") or {}
+    for v in ("back", "left", "right"):
+        if not (d / f"{v}.png").exists():
+            continue
+        vm = views_meta.get(v) or {}
+        pr = str(vm.get("prompt") or "")
+        if pr and VIEW_TEXT["front"] in pr and VIEW_TEXT[v] not in pr:
+            errs.append(f"{v}: 프롬프트가 정면(front view)으로 기록됨")
+        if vm and not vm.get("refs"):
+            errs.append(f"{v}: 정면 참조(refs) 없이 생성됨")
+    return errs
 
 
 def load_meta(d: Path) -> dict:
@@ -86,10 +145,11 @@ def save_meta(d: Path, m: dict) -> None:
 def sync_plan(pid: str, name: str, m: dict, d: Path) -> None:
     """샷 계획 characters[].sheet 에 경로 · 승인 상태를 적는다(3단계가 읽는다)"""
     p, sb = planmod.load(pid)
+    valid = not view_integrity_errors(d, m)
     for c in sb.get("characters") or []:
         if c["name"] == name:
             c["sheet"] = {v: str((d / f"{v}.png").relative_to(ROOT)) for v in VIEWS if (d / f"{v}.png").exists()}
-            c["sheet"]["approved"] = bool(m.get("approval")) and m["approval"].get("hash") == input_hash(sb, c, d)
+            c["sheet"]["approved"] = valid and bool(m.get("approval")) and m["approval"].get("hash") == input_hash(sb, c, d)
     p.write_text(json.dumps(sb, ensure_ascii=False, indent=1) + "\n", "utf-8")
 
 
@@ -103,9 +163,10 @@ def make(pid: str, name: str, views: list[str], candidates: int, model: str | No
     done, errors = [], []
     if "front" in views:
         outs = [d / ("front.png" if candidates == 1 else f"front_c{i + 1}.png") for i in range(candidates)]
-        pr = prompt_for(sb, c, "front", False)
+        srefs = style_refs_for(sb)
+        pr = prompt_for(sb, c, "front", False, srefs)
         with ThreadPoolExecutor(max_workers=min(3, candidates)) as ex:
-            futs = [ex.submit(imagegen.generate, o, pr, None, "9:16", model, backend) for o in outs]
+            futs = [ex.submit(imagegen.generate, o, pr, srefs or None, "9:16", model, backend) for o in outs]
             for o, f in zip(outs, futs):
                 try:
                     meta = f.result(); done.append(o.name)
@@ -170,7 +231,19 @@ def status(pid: str) -> list[dict]:
         d = cdir(pid, c["name"]); m = load_meta(d)
         have = [v for v in VIEWS if (d / f"{v}.png").exists()]
         ap = m.get("approval")
-        st = "없음" if not have else ("승인" if ap and ap.get("hash") == input_hash(sb, c, d) else ("승인 무효(입력이 바뀜)" if ap else ("만듦 · 승인 대기" if len(have) == 4 else "만드는 중")))
+        bad = view_integrity_errors(d, m) if have else []
+        if not have:
+            st = "없음"
+        elif bad:
+            st = f"승인 불가({bad[0]})"
+        elif ap and ap.get("hash") == input_hash(sb, c, d):
+            st = "승인"
+        elif ap:
+            st = "승인 무효(입력이 바뀜)"
+        elif len(have) == 4:
+            st = "만듦 · 승인 대기"
+        else:
+            st = "만드는 중"
         rows.append({"name": c["name"], "views": have, "candidates": [Path(x["path"]).name for x in m.get("candidates") or []], "state": st})
     return rows
 
@@ -235,6 +308,9 @@ def main() -> int:
         m = load_meta(d)
         if any(x.get("stale") for x in m["views"].values()):
             fail("character", stage="character", error="옛 정면 기준으로 만든 방향이 있다 — 다시 만든 뒤 승인")
+        bad = view_integrity_errors(d, m)
+        if bad:
+            fail("character", stage="character", error=" / ".join(bad) + " — 해당 각도를 --views 로 다시 생성한 뒤 승인")
         m["approval"] = {"status": "approved", "hash": input_hash(sb, c, d), "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
         save_meta(d, m); sync_plan(a.pid, a.name, m, d)
         ok("character", approved=a.name, hash=m["approval"]["hash"]); return 0

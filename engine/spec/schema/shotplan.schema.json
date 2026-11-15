@@ -415,6 +415,71 @@
    },
    "maxItems": 3,
    "description": "모션그래픽(kind=motion) 샷이 따를 레퍼런스 쇼츠 id(분해해 둔 것). 생성할 때마다 그 대표 프레임을 그림 레퍼런스로 붙인다 — 안 붙이면 모델이 자기 스타일로 만든다"
+  },
+  "style_refs": {
+   "type": "array",
+   "maxItems": 4,
+   "description": "Stage 0.5 에서 눈으로 확인해 고른 화풍 · 작품 · 소품 · 배경 참조 이미지(character.py 정면 · keyframe.py 에 자동 전달)",
+   "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+     "path",
+     "role"
+    ],
+    "properties": {
+     "path": {
+      "type": "string"
+     },
+     "role": {
+      "enum": [
+       "style",
+       "character",
+       "prop",
+       "background"
+      ]
+     },
+     "note": {
+      "type": "string"
+     },
+     "source": {
+      "type": "string"
+     }
+    }
+   }
+  },
+  "style_ref_skip": {
+   "type": "string",
+   "description": "외부 시각 레퍼런스 이미지를 쓰지 않는 이유(순수 일반 창작 · 이미 캐릭터 시트/유튜브 레퍼런스 확보 등)"
+  },
+  "research": {
+   "type": "object",
+   "additionalProperties": false,
+   "description": "Stage 0.5 주제 자료조사 요약(data/research/<id>.json 연결 또는 건너뜀 사유)",
+   "properties": {
+    "file": {
+     "type": "string"
+    },
+    "facts_count": {
+     "type": "integer",
+     "minimum": 0
+    },
+    "sources": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "visual_entities": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "skip_reason": {
+     "type": "string"
+    }
+   }
   }
  }
 }

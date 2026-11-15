@@ -21,6 +21,11 @@ order: 0
 - 섞기: 실제 자료 영상에 '없는 장면' 한두 컷만 필요하면 material 을 추천하고, 그 컷만 생성 경로 샷으로 따로 만들어 재료로 넣는 것을 선택지에 함께 적는다.
 
 ## 순서 (generate 경로)
+0-5. **Stage 0.5 — 주제 자료조사 · 시각 레퍼런스 확인 (기획 전에 먼저 실행)**:
+   - **① 정보 · 사실 조사**: 설명 · 제품 · 사건 · 개념이 들어간 주제면 먼저 `WebSearch`/`WebFetch` 로 정확한 사실·원리·사물을 조사해 `data/research/<id>.json` (`facts[]` + `source` URL + `visual_entities[]`)에 저장한다. 이후 `plan.py new` 뒤에 `python3 engine/gen/plan.py research <id>` 로 연결한다(순수 창작·밈 컷만 `--skip "<사유>"`). 조사된 `visual_entities` 를 아래 `Mute Test` 소품 칸에 반영한다.
+   - **② 화풍 · 작품 · 캐릭터 · 실물 레퍼런스 눈으로 확인**: 사용자가 특정 화풍("지브리풍"·"아케인 스타일" 등)·작품·캐릭터·실제 제품/화면을 말했거나 유튜브 레퍼런스가 있으면 **기억으로 작문하지 말고** 실제로 확인한다:
+     - 이미지: `python3 engine/research/ref_image.py search <id> "<영문 검색어>" --limit 6` (또는 직접 URL/첨부 `fetch`) → `candidates_sheet.jpg` 를 `Read`/`read_file` 로 직접 열어 확인 → `python3 engine/research/ref_image.py pick <id> <번호...> --role style|character|prop|background --note "<관찰 메모>"` (`shotplan.style_refs` 에 자동 연결되어 2단계 `character.py` · 3단계 `keyframe.py` 에 참조 이미지로 붙음).
+     - 유튜브 쇼츠: `python3 engine/research/analyze_ref.py <링크>` → `python3 engine/look/look.py sheet <id>` 를 열어 확인.
 1. **트렌드 → 추천 선택지**: 기존 트렌드 분석을 읽는다(새로 분석 기능을 만들지 않는다).
    `python3 engine/gen/plan.py trends [--request <rid>] [--label <이름>]` — 훅 유형 빈도 · 화풍 · 조회수 상위 · X-ray recipe.
    결과가 없으면 trends 스킬(`engine/research/trends.py search`)로 먼저 찾는다.

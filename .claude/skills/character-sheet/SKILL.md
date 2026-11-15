@@ -11,7 +11,7 @@ description: 파이프라인 2단계 — 캐릭터 시트 · 사용자 승인 �
 > 작업 공간 화면 **/pipeline/<id>** 에서 사용자가 그림 · 클립을 보고 승인 · 재생성 버튼을 누를 수 있다 — 대화에서는 그 화면을 안내하고, 사용자가 대화로 승인을 말하면 명령으로 기록한다.
 
 ## 순서
-1. `python3 engine/gen/character.py make <id> <이름>` — 정면을 먼저 만들고, 그 정면을 참조로 뒤 · 왼쪽 · 오른쪽을 한 장씩(동시에) 만든다. 한 장 약 1분.
+1. `python3 engine/gen/character.py make <id> <이름>` — 정면을 먼저 만들고(`shotplan.style_refs` 에 `style`/`character` 참조가 있으면 자동 전달), 그 정면을 참조로 뒤 · 왼쪽 · 오른쪽을 한 장씩(동시에) 만든다. 한 장 약 1분.
    정면을 여러 장 보고 고르려면 `--views front --candidates 3` → `pick <id> <이름> <번호>` → `make … --views back,left,right`.
 2. 승인용 그림 `data/compositions/<id>/characters/<이름>/sheet.png` 를 사용자에게 보여 준다. 확인할 것: 네 장이 같은 얼굴 · 머리 · 옷 · 색 · 화풍인가, **좌우가 맞는가**(left = 왼어깨가 카메라 쪽, right = 오른어깨), 발까지 보이는가, 글자가 없는가.
 3. 선택지: 승인 / 특정 방향만 다시(`make … --views left`) / 정면부터 다시(정면을 바꾸면 나머지도 다시) / 설명 고치기(샷 계획 characters[].identity · wardrobe — 고치면 시트를 다시 만든다).

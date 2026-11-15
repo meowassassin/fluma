@@ -20,8 +20,15 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
+from contextlib import contextmanager
 from pathlib import Path
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401
@@ -29,6 +36,23 @@ sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401
 ASPECTS = {"9:16": 9 / 16, "16:9": 16 / 9, "1:1": 1.0, "3:4": 3 / 4, "4:3": 4 / 3, "2:3": 2 / 3}
 ALLOW = '{"permissions":{"allow":["invoke_subagent(*)","write_file(*)","read_file(*)","edit_file(*)"]}}'
 SETTINGS_PATH = ROOT / "data" / "workspace" / "settings.json"
+_GFLOW_THREAD_LOCK = threading.Lock()
+_GFLOW_LOCK_PATH = Path("/tmp/fluma_gflow_image.lock")
+
+
+@contextmanager
+def _gflow_profile_lock():
+    """동일 gflow Chrome 프로필 동시 접근(ProfileLockedError)을 막기 위한 스레드·프로세스 락."""
+    with _GFLOW_THREAD_LOCK:
+        if fcntl is None or os.name == "nt":
+            yield
+            return
+        with _GFLOW_LOCK_PATH.open("a+") as lf:
+            fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lf.fileno(), fcntl.LOCK_UN)
 
 
 class ImageGenError(RuntimeError):
@@ -138,17 +162,26 @@ def _generate_gflow(out: Path, prompt: str, refs: list[tuple[Path, str]], aspect
             cmd = [xvfb, "-a", "-s", "-screen 0 1920x1080x24", *cmd]
 
     try:
-        r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout, cwd=str(out.parent))
+        with _gflow_profile_lock():
+            r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout, cwd=str(out.parent))
     except subprocess.TimeoutExpired:
         raise ImageGenError(f"gflow 이미지 생성 시간 초과({timeout}초)")
 
     took = round(time.time() - t0, 1)
 
-    target_file = tmp_out if tmp_out.exists() else None
+    target_file = None
+    for cand in (tmp_out, tmp_out.with_suffix(".jpg"), tmp_out.with_suffix(".jpeg"), tmp_out.with_suffix(".webp")):
+        if cand.exists():
+            target_file = cand
+            break
     if not target_file:
-        for line in (r.stdout + "\n" + r.stderr).splitlines():
-            if ".png" in line and os.path.exists(line.strip()):
-                target_file = Path(line.strip())
+        for part in (r.stdout + "\n" + r.stderr).split():
+            clean = part.strip().strip("|").strip()
+            for ext in (".png", ".jpg", ".jpeg", ".webp"):
+                if clean.endswith(ext) and os.path.exists(clean):
+                    target_file = Path(clean)
+                    break
+            if target_file:
                 break
 
     if not target_file or not target_file.exists():
@@ -158,8 +191,10 @@ def _generate_gflow(out: Path, prompt: str, refs: list[tuple[Path, str]], aspect
         raise ImageGenError(f"gflow 이미지 생성 실패 (출력 파일 없음): {err_msg[:400]}")
 
     from PIL import Image
-    if target_file != out:
-        shutil.move(str(target_file), str(out))
+    im = Image.open(target_file)
+    im.convert("RGB").save(out)
+    if target_file != out and target_file.exists():
+        target_file.unlink(missing_ok=True)
 
     im = Image.open(out)
     w, h = im.size
@@ -169,6 +204,7 @@ def _generate_gflow(out: Path, prompt: str, refs: list[tuple[Path, str]], aspect
         "aspect_asked": aspect,
         "took_sec": took,
         "via": "gflow:image",
+        "mode": "i2i" if refs else "t2i",
         "backend": "gflow",
         "model_asked": model,
         "model_reported": model_alias,
@@ -255,6 +291,7 @@ def _generate_agy(out: Path, prompt: str, refs: list[tuple[Path, str]], aspect: 
         "aspect_asked": aspect,
         "took_sec": took,
         "via": "agy:image-generator",
+        "mode": "i2i" if refs else "t2i",
         "backend": "agy",
         "model_asked": model,
         "model_reported": reply.get("model"),
@@ -280,8 +317,8 @@ def generate(out: Path, prompt: str, refs: list[tuple[Path, str]] | None = None,
     out = out.resolve()
     resolved_refs = [(Path(p).resolve(), r) for p, r in refs or []]
     for p, _ in resolved_refs:
-        if not p.exists():
-            raise ImageGenError(f"참조 그림 없음: {p}")
+        if not p.exists() or p.stat().st_size == 0:
+            raise ImageGenError(f"참조 그림 없음 또는 빈 파일: {p}")
 
     if chosen_backend == "mock":
         return _generate_mock(out, aspect, prompt, chosen_model)

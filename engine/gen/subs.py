@@ -70,10 +70,12 @@ def get(pid: str) -> dict:
                       "y": float((sb.get("direction") or {}).get("screen_text_y") or 0.17), "hot": False})
         t += sec
     d = sb.get("direction") or {}
+    subs_cfg = d.get("subs") or {}
+    font_size = int(subs_cfg.get("font_size") or subs_cfg.get("size") or 56)
     title = str(sb.get("title") or "")
     return {"mode": "story", "duration": round(t, 3), "title": [title, ""], "segments": segs, "items": items,
-            "style": {"screen_text_y": float(d.get("screen_text_y") or 0.17), "subs_y": float((d.get("subs") or {}).get("y") or 0.7)},
-            "editable": {"move": False, "time": False, "size": False, "hot": False, "add": False}}
+            "style": {"screen_text_y": float(d.get("screen_text_y") or 0.17), "subs_y": float(subs_cfg.get("y") or 0.7), "font_size": font_size},
+            "editable": {"move": False, "time": False, "size": True, "hot": False, "add": False}}
 
 
 def backup(pid: str, src: Path) -> None:
@@ -127,8 +129,16 @@ def put(pid: str, m: dict, by: str) -> dict:
         d["screen_text_y"] = round(min(0.4, max(0.08, float(st["screen_text_y"]))), 3)
     if "subs_y" in st:
         d["subs"] = {**(d.get("subs") or {}), "y": round(min(0.82, max(0.5, float(st["subs_y"]))), 3)}
+    if "font_size" in st or "size" in st or "subs_size" in st:
+        fval = int(st.get("font_size") or st.get("size") or st.get("subs_size") or 56)
+        d["subs"] = {**(d.get("subs") or {}), "font_size": max(24, min(120, fval))}
     sb.setdefault("meta", {}).setdefault("edits", []).append({"by": by, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "what": "자막 · 제목"})
     p.write_text(json.dumps(sb, ensure_ascii=False, indent=1) + "\n", "utf-8")
+    try:
+        import editor_bridge as eb
+        eb.convert(pid)
+    except Exception:
+        pass
     return {"saved": len(by_seg), "next": "초안 다시 만들기 — 확정 미리보기는 정지 화면으로"}
 
 

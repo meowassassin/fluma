@@ -52,7 +52,7 @@ jobs:
           npm --prefix studio run build
       - name: Server starts and answers
         run: |
-          (cd web && node server.mjs > ../server.log 2>&1 &)
+          (cd studio && node server.mjs > ../server.log 2>&1 &)
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:4310/api/engines > /dev/null && break; sleep 1; done
           curl -sf http://127.0.0.1:4310/api/engines | head -c 300; echo
           curl -sf http://127.0.0.1:4310/api/crafts | head -c 200; echo
@@ -81,4 +81,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build image
-        run: docker build -t fluma:ci .
+        run: docker build -f docker/Dockerfile -t fluma:ci .

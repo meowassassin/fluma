@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 import json
 import re
 import sys
@@ -36,8 +37,53 @@ def px_to_font(px: float, canvas_h: int = 1920) -> float:
     return round(px * FONT_SCALE_REF / canvas_h, 2)
 
 
+def wrap_text_two_lines(text: str, max_line_chars: int = 13) -> str:
+    """긴 자막이나 제목을 화면 너비(9:16 기준)에 맞게 2줄로 균형 있게 나눈다."""
+    text = str(text or "").strip()
+    if len(text) <= max_line_chars or "\n" in text:
+        return text
+    words = text.split()
+    if len(words) <= 1:
+        return text
+    mid = len(text) // 2
+    best_idx = 1
+    best_dist = 999
+    acc = 0
+    for i in range(len(words) - 1):
+        acc += len(words[i]) + (1 if i > 0 else 0)
+        dist = abs(acc - mid)
+        if dist < best_dist:
+            best_dist = dist
+            best_idx = i + 1
+    return " ".join(words[:best_idx]) + "\n" + " ".join(words[best_idx:])
+
+
 def sec_to_ticks(sec: float) -> int:
     return int(round(float(sec) * TICKS_PER_SECOND))
+
+
+def _story_audio_matches(pid: str, sb: dict | None, use_dub: bool) -> bool:
+    """data/public/audio/<pid>.* 가 현재 콘티 대본과 일치하는지 확인한다(이전 주제 유령 음성·자막 차단)."""
+    if use_dub or not sb:
+        return True
+    scenes = sb.get("scenes") or []
+    has_narr = bool(str(sb.get("script") or "").strip() or any(str(sc.get("narration") or "").strip() for sc in scenes))
+    if not has_narr:
+        return False
+    timing_p = ROOT / "data" / "public" / "audio" / f"{pid}.timing.json"
+    if timing_p.is_file():
+        try:
+            rows = json.loads(timing_p.read_text("utf-8"))
+        except Exception:
+            return False
+        if len(rows) != len(scenes):
+            return False
+        for sc, row in zip(scenes, rows):
+            t = str(sc.get("narration") or "").strip()
+            expected = hashlib.sha1(t.encode("utf-8")).hexdigest()[:8] if t else ""
+            if row.get("text_hash", "") != expected:
+                return False
+    return True
 
 
 def probe_video(p: Path) -> tuple[int, int, float]:
@@ -89,8 +135,8 @@ def load_inputs(pid: str) -> tuple[dict | None, dict | None, dict | None]:
     return sb, dub, sp
 
 
-def group_words_into_phrases(words: list[dict], max_words: int = 4, max_gap_ms: int = 400) -> list[dict]:
-    """단어 단위 캡션을 2~4단어 단위의 읽기 편한 구(phrase) 자막으로 묶고 시간 겹침을 방지한다."""
+def group_words_into_phrases(words: list[dict], max_words: int = 3, max_chars: int = 13, max_gap_ms: int = 400) -> list[dict]:
+    """단어 단위 캡션을 1~3단어/최대 13글자 단위의 읽기 편한 구(phrase) 자막으로 묶고 화면 밖 잘림을 방지한다."""
     if not words:
         return []
     raw_phrases = []
@@ -102,7 +148,9 @@ def group_words_into_phrases(words: list[dict], max_words: int = 4, max_gap_ms: 
         prev = curr[-1]
         gap = (w.get("startMs", 0) or 0) - (prev.get("endMs", 0) or 0)
         same_scene = w.get("scene") == prev.get("scene")
-        if len(curr) < max_words and gap <= max_gap_ms and same_scene:
+        curr_chars = sum(len(x.get("text", "").strip()) for x in curr) + max(0, len(curr) - 1)
+        next_chars = curr_chars + 1 + len(w.get("text", "").strip())
+        if len(curr) < max_words and next_chars <= max_chars and gap <= max_gap_ms and same_scene:
             curr.append(w)
         else:
             txt = " ".join(x.get("text", "").strip() for x in curr)
@@ -317,6 +365,7 @@ def convert(pid: str, write: bool = True) -> dict:
                 curr_time_sec += float(seg.get("sec", 2))
 
     total_duration_sec = max(curr_time_sec, 1.0)
+    audio_ok = _story_audio_matches(pid, sb, use_dub)
 
     # 2. 오디오 트랙 구성 (나레이션 음성)
     voice_file = ROOT / "data" / "public" / "audio" / f"{pid}.voice.wav"
@@ -325,7 +374,7 @@ def convert(pid: str, write: bool = True) -> dict:
     if not voice_file.exists():
         voice_file = ROOT / "data" / "audio" / f"{pid}.wav"
 
-    if voice_file.exists():
+    if audio_ok and voice_file.exists():
         import subprocess
         voice_dur = total_duration_sec
         try:
@@ -397,10 +446,13 @@ def convert(pid: str, write: bool = True) -> dict:
     elif (sb or sp) and ((sb or {}).get("title") or (sp or {}).get("title")):
         raw_title = str((sb or {}).get("title") or (sp or {}).get("title") or "").strip()
         if raw_title:
+            title_dir = ((sb or {}).get("direction") or {}).get("title") or {}
+            title_px = float(title_dir.get("font_size") or title_dir.get("size") or 52)
+            title_content = wrap_text_two_lines(raw_title, 13)
             title_elements.append({
                 "id": f"title_{uuid.uuid4().hex[:6]}", "name": "상단 제목", "type": "text",
                 "startTime": 0, "duration": sec_to_ticks(total_duration_sec), "trimStart": 0, "trimEnd": 0, "hidden": False,
-                "params": {"content": raw_title, "fontSize": px_to_font(64), "fontFamily": "Pretendard", "color": "#FFFFFF",
+                "params": {"content": title_content, "fontSize": px_to_font(title_px), "fontFamily": "Pretendard", "color": "#FFFFFF",
                            "textAlign": "center", "fontWeight": "bold", "lineHeight": 1.25,
                            "transform.positionX": 0, "transform.positionY": -720,
                            "background.enabled": True, "background.color": "rgba(0, 0, 0, 0.55)",
@@ -447,7 +499,10 @@ def convert(pid: str, write: bool = True) -> dict:
 
     # 3-2. captions.json (단어 단위 타이밍)
     captions_file = ROOT / "data" / "public" / "audio" / f"{pid}.captions.json"
-    if not text_elements and captions_file.exists():
+    subs_dir = ((sb or {}).get("direction") or {}).get("subs") or {}
+    sub_px = float(subs_dir.get("font_size") or subs_dir.get("size") or 56)
+    sub_fs = px_to_font(sub_px)
+    if audio_ok and not text_elements and captions_file.exists():
         try:
             words = json.loads(captions_file.read_text("utf-8"))
             phrases = group_words_into_phrases(words)
@@ -464,7 +519,7 @@ def convert(pid: str, write: bool = True) -> dict:
                     "hidden": False,
                     "params": {
                         "content": p["text"],
-                        "fontSize": 6.5,
+                        "fontSize": sub_fs,
                         "fontFamily": "Pretendard",
                         "color": "#FFFFFF",
                         "textAlign": "center",
@@ -486,7 +541,8 @@ def convert(pid: str, write: bool = True) -> dict:
         t_accum = 0.0
         for i, sc in enumerate(sb.get("scenes") or []):
             sc_dur = float(sc.get("sec") or 3.0)
-            cap_text = (sc.get("caption") or sc.get("narration") or "").strip()
+            raw_cap = (sc.get("caption") or sc.get("narration") or "").strip()
+            cap_text = wrap_text_two_lines(raw_cap, 13)
             if cap_text:
                 text_elements.append({
                     "id": f"caption_scene_{i + 1}_{uuid.uuid4().hex[:6]}",
@@ -499,7 +555,7 @@ def convert(pid: str, write: bool = True) -> dict:
                     "hidden": False,
                     "params": {
                         "content": cap_text,
-                        "fontSize": 6.5,
+                        "fontSize": sub_fs,
                         "fontFamily": "Pretendard",
                         "color": "#FFFFFF",
                         "textAlign": "center",

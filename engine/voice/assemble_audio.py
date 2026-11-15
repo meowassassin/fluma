@@ -343,7 +343,9 @@ def main():
 
     # 1) 합성 + 필요한 길이
     parts = []
-    cont = continuous_mode(sb) and not keep and all((sc.get("narration") or "").strip() for sc in scenes)
+    scene_vids = {sc.get("voice_id") or sc.get("voice") for sc in scenes if (sc.get("voice_id") or sc.get("voice"))}
+    has_multi_voice = len(scene_vids) > 1
+    cont = continuous_mode(sb) and not keep and not has_multi_voice and all((sc.get("narration") or "").strip() for sc in scenes)
     if cont:
         try:
             parts = continuous_parts(scenes, work, prov, vid, speed, style, vopts)
@@ -355,7 +357,8 @@ def main():
         # 장면마다 합성할 때는 앞뒤 장면 글을 문맥으로 넘긴다(문맥으로 감정을 고르는 엔진 — typecast smart)
         ctx = {"prev_text": (scenes[i - 1].get("narration") or "").strip() if i else None,
                "next_text": (scenes[i + 1].get("narration") or "").strip() if i + 1 < len(scenes) else None} if prov == "typecast" and not (sb.get("voice") or {}).get("style") else {}
-        wav, nar_text = scene_wav(sc, i, work, prov, vid, speed, style, {**vopts, **{k: v for k, v in ctx.items() if v}})
+        sc_vid = sc.get("voice_id") or sc.get("voice") or vid
+        wav, nar_text = scene_wav(sc, i, work, prov, sc_vid, speed, style, {**vopts, **{k: v for k, v in ctx.items() if v}})
         if nar_text:
             clip, words, speech_s = speech(wav)
         else:
