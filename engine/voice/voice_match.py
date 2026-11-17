@@ -240,8 +240,8 @@ def _voices_of(eng: str, gender: str | None) -> list[dict]:
 def cmd_auto(sb_path: Path, sb: dict, a):
     v = sb.get("voice") or {}
     st = tts._settings()
-    if v.get("source") == "user":
-        print("[음성] 사용자가 정한 목소리 — 그대로"); return
+    if v.get("source") == "user" or (v.get("engine") and v.get("source") != "auto"):
+        print("[음성] 콘티에 정한 목소리 — 그대로"); return
     if st.get("voice_auto") is False:
         print(f"[음성] 설정에서 고정한 목소리({st.get('voice_engine')}) — 자동 선택 안 함"); return
     ref, src = ref_profile(sb)

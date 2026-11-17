@@ -290,14 +290,16 @@ def _settings() -> dict:
 
 
 def resolve(sb: dict | None = None) -> tuple[str, str | None]:
-    """(엔진, 목소리). 우선순위: 사용자가 콘티에 직접 정한 목소리(voice.source == "user") > 설정(설정 → 미디어 → 음성:
-    data/workspace/settings.json voice_engine · voice_id) > 도구가 자동으로 적은 콘티 목소리(direct.py · voice_match.py) > TTS_PROVIDER > edge.
+    """(엔진, 목소리). 우선순위: 콘티에 사람 · 에이전트가 적은 목소리(voice.engine, source 가 "auto" 가 아닌 것) > 설정(설정 → 미디어 → 음성:
+    data/workspace/settings.json voice_engine · voice_id) > 도구가 자동으로 적은 콘티 목소리(voice_match.py, source == "auto") > TTS_PROVIDER > edge.
+    (2026-11-17: 에이전트가 "ElevenLabs 로 바꿔" 요청대로 콘티 엔진을 바꿔도 설정의 Typecast 가 덮어 같은 403 으로 거듭 실패했다.)
     (예전엔 콘티 목소리가 늘 이겨서, 레퍼런스 카드가 적은 Edge 가 설정의 유료 엔진을 덮었다.) 말 속도 · 감정 같은 다른 voice 값은 그대로 쓴다.
     쓸 수 없는 엔진이면(미설치 · 키 없음) edge 로 바꾸고 알린다."""
     v = (sb or {}).get("voice") or {}
     st = _settings()
     # 설정 '자동'(voice_auto, 기본 켬)이면 voice_match auto 가 콘티에 적은 목소리를 쓴다 — 설정 엔진은 콘티에 목소리가 없을 때의 기본
-    if st.get("voice_engine") and v.get("source") != "user" and (st.get("voice_auto") is False or not v.get("engine")):
+    picked = v.get("engine") and v.get("source") != "auto"      # 콘티에 직접 정한 엔진 — 설정보다 우선
+    if st.get("voice_engine") and not picked and (st.get("voice_auto") is False or not v.get("engine")):
         eng, vid = str(st["voice_engine"]).lower(), st.get("voice_id")
     else:
         eng = (v.get("engine") or st.get("voice_engine") or os.environ.get("TTS_PROVIDER") or "edge").lower()

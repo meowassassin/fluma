@@ -541,13 +541,6 @@ def main() -> int:
     except ImportError:
         pass
 
-    # 2-1) 다양성 — 최근 영상과 같은 구성 · 한 종류 재료 반복(권고, 렌더는 계속). engine/craft/craft_variety.py
-    try:
-        import craft_variety
-        soft += [(c, m) for c, m in craft_variety.check(sb)]
-    except Exception as e:  # noqa: BLE001
-        print(f"[제작] 다양성 검사 건너뜀: {e}", flush=True)
-
     try:
         sys.path.insert(0, str(ROOT / "engine" / "story"))
         from ui_build import warm_all_ui_mocks  # noqa: E402

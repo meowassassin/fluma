@@ -58,23 +58,6 @@ def _element_meta(rec: dict) -> dict:
         return {}
 
 
-def screen_changes(rec: dict) -> int:
-    """이 재료 안에서 화면이 바뀌는 횟수 — 웹 녹화는 상태 화면 수 + 실제 녹화 구간 3초마다 한 번(줄이 쏟아지는 터미널 · 말풍선이 올라오는 대화창)"""
-    if rec.get("layers") and rec.get("type") in ("overlay", "diagram"):
-        return len(rec["layers"])     # 주석 · 도식 항목이 낱말마다 하나씩 나온다 — 나올 때마다 화면이 바뀐다
-    if rec.get("type") == "craft":
-        # 2D 애니메이션(craft) 한 장면은 낱말($CUE)마다 그림이 바뀐다 — 그 박자 수가 화면 전환 수
-        # (2026-11-17: 장면당 1번으로만 세서, 사용자가 고른 '2D 애니메이션 통일' 영상이 전환 부족 L37 로 막혔다)
-        return max(1, int(rec.get("_cues") or 0))
-    if rec.get("type") != "web":
-        return 1
-    meta = _element_meta(rec)
-    n = len(meta.get("states") or []) or 1
-    import math
-    n += sum(math.ceil(float(a.get("sec") or 0) / 3) for a in meta.get("actions") or [] if a.get("do") == "record")
-    return max(1, n - 1)          # 첫 상태는 등장 자체
-
-
 def material_kind(rec: dict) -> str:
     """재료 종류(시청자가 보는 화면의 종류): 문서 캡처 · 그래픽 · 그림/사진 · 화면/영상"""
     t = rec.get("type")
@@ -118,7 +101,7 @@ def material_kind(rec: dict) -> str:
 
 
 def material_checks(sb: dict) -> list:
-    """L33 같은 재료 반복 · L34 글자 캡처 위주 · L35 재료 종류 부족 · T35 외국어 캡처 — 재료 단계의 기록(글자 인식 포함)으로"""
+    """L33 같은 재료 반복 · L34 글자 캡처 위주 · T35 외국어 캡처 — 재료 단계의 기록(글자 인식 포함)으로"""
     sid = sb.get("id", "")
     base = ROOT / "data" / "compositions" / sid / "craft" / "materials"
     if not sid or not base.exists():
@@ -131,8 +114,6 @@ def material_checks(sb: dict) -> list:
                 try:
                     r = json.loads(f.read_text("utf-8"))
                     if isinstance(r, dict):
-                        if r.get("type") == "craft":     # 기록에는 낱말이 초로 풀려 있다 — 콘티 재료의 $CUE 낱말 수로 박자를 센다
-                            r["_cues"] = len(set(re.findall(r"\$CUE:([^\s\"'\\,;)}\]]+)", json.dumps(m, ensure_ascii=False))))
                         recs.append(r)
                 except ValueError:
                     pass
@@ -162,27 +143,8 @@ def material_checks(sb: dict) -> list:
     docs = kinds.count("문서 캡처")
     if docs * 2 > len(kinds):
         out.append(("L34", None, f"재료 {len(kinds)}개 중 {docs}개가 글자 빽빽한 문서 캡처 — 세로 화면에서 안 읽힌다. 핵심 수치는 그래픽(chart)으로, 근거는 문장 하나만 짚는 doc_quote 로, 나머지는 실제 화면 · 사진 · 그림으로"))
-    dur = sum(float(x.get("sec") or 0) for x in sb.get("scenes") or [])
-    if dur >= 20 and len(set(kinds)) < 3 and not sb.get("single_style"):   # single_style: 사용자가 한 가지 화면 스타일로 통일해 달라고 한 영상
-        out.append(("L35", None, f"재료 종류가 {len(set(kinds))}가지({', '.join(sorted(set(kinds)))}) — 레퍼런스 쇼츠는 화면 종류를 섞는다. 문서 캡처(doc_quote · document) · 그래픽(stat · chart · diagram · info_card) · 그림/사진(photo · photo_grade) · 화면/영상(web · screen · ui_mock) · 3D 제품(model3d) · 도면(drawing) · 짤(meme) 중 3가지 이상"))
-    # L37 재료 개수: 레퍼런스 설명 쇼츠는 10초에 4번 남짓 화면이 바뀐다 → 3초에 하나 이상(같은 파일은 한 번만 셈)
-    seen_src: dict[str, int] = {}
-    for r in recs + notes:            # 주석은 새 화면 종류는 아니지만 짚을 때마다 화면이 바뀐다
-        key = (r.get("spec") or {}).get("src") or (r.get("spec") or {}).get("csv") or f"{r.get('scene')}/{r.get('id')}"
-        seen_src[key] = max(seen_src.get(key, 0), screen_changes(r))
-    uniq = sum(seen_src.values())          # 같은 파일은 한 번 · 녹화 재료는 그 안의 화면 전환 수만큼
-    need = int(dur // 3)
-    spoken = any((s.get("narration") or "").strip() for s in sb.get("scenes") or [])    # 문장마다 화면이 바뀌는 규칙 — 음악 주도 영상은 해당 없음
-    if spoken and dur >= 15 and uniq < need:
-        out.append(("L37", None, f"화면 전환 {uniq}번(서로 다른 재료 · 녹화 안의 전환 포함) / {dur:.0f}초 — {need}개 이상 필요(문장마다 하나: 짤 · 웹 녹화 · 아이콘 · 수치 카드 · 그림을 섞어서, cue 로 그 낱말에 등장)"))
-    # T37 같은 종류가 네 번 연속(클립 모음 형식은 실사 클립이 이어지는 게 형식)
-    run_k, run_n = None, 0
-    for k in (kinds if sb.get("format") not in ("ranking", "clip") else []):
-        run_n = run_n + 1 if k == run_k else 1
-        run_k = k
-        if run_n == 4:
-            out.append(("T37", None, f"'{k}' 가 네 번 연속 — 사이에 다른 종류(짤 · 그래픽 · 화면)를 끼우기"))
-            break
+    # 재료 종류 수(L35) · 화면 전환 수(L37) · 같은 종류 연속(T37) 다양성 검사는 없앴다(2026-11-17) — 사용자가 고른 한 가지 스타일을 막고,
+    # 디자이너가 그림을 안 보고 구도를 바꾸게 했으며, 걸릴 때마다 에이전트가 처음부터 다시 돌려 시간만 들었다. 구성은 감독 단계가 장면 의도로 정한다
     if sb.get("language", "ko") == "ko":
         def latin_heavy(r):
             txt = "".join(o.get("text") or "" for o in (r.get("ocr") or []))
@@ -513,18 +475,13 @@ def lint(sb: dict, recent_titles=None) -> list:
     except ImportError:
         from checks.refnorm import check as _refnorm
     fails += _refnorm(sb)
-    # L58 같은 화면 반복 — 이어지는 장면이 같은 그림 · 영상 파일을 쓰거나, 같은 화면 종류 · 같은 주재료 종류가 세 장면 연달아면 실패
-    # (2026-11-11 QR 영상: 8장면 중 6장면이 '크림 바탕 + QR 한 장' — "디자인 · 구성이 다 비슷비슷하다". R01 · V42 는 경고뿐이라 막지 못했다)
-    _sig = []
-    for _sc in sb.get("scenes") or []:
-        _ms = [m for m in _sc.get("materials") or [] if m.get("type") not in ("overlay", "stat", "text")]
-        _src = {Path(str(m.get("src"))).stem.split("_")[0] for m in _ms if m.get("src")}
-        _sig.append((str(_sc.get("screen") or ""), tuple(sorted(m.get("type") for m in _ms)), _src))
-    for _i in range(1, len(_sig)):
-        if _sig[_i][2] and _sig[_i][2] & _sig[_i - 1][2]:
-            fails.append(("L58", _i, f"{_i}·{_i + 1}장면이 같은 그림 · 영상({', '.join(sorted(_sig[_i][2] & _sig[_i - 1][2]))})을 씀 — 다른 자료 · 구도로(확대 · 해부 · 실사 · 도식)"))
-        if _i >= 2 and _sig[_i][:2] == _sig[_i - 1][:2] == _sig[_i - 2][:2]:
-            fails.append(("L58", _i, f"{_i - 1}~{_i + 1}장면이 같은 화면 종류({_sig[_i][0]}) · 같은 재료 구성 — 장면마다 화면 종류를 바꾼다(director 7장)"))
+    # T58 같은 그림 · 영상 파일을 이어지는 장면에 다시 씀(실수 잡기 — 경고만). 화면 종류 · 재료 구성 반복 실패(L58)는 없앴다(2026-11-17, 다양성 검사 정리)
+    _prev: set = set()
+    for _i, _sc in enumerate(sb.get("scenes") or []):
+        _src = {Path(str(m.get("src"))).stem.split("_")[0] for m in _sc.get("materials") or [] if isinstance(m, dict) and m.get("src") and m.get("type") not in ("overlay", "stat", "text")}
+        if _src & _prev:
+            fails.append(("T58", _i, f"{_i}·{_i + 1}장면이 같은 그림 · 영상({', '.join(sorted(_src & _prev))})을 이어서 씀 — 의도가 아니면 다른 자료로"))
+        _prev = _src
     # L56 근거 — research 스킬 '출처 있는 사실이 5개 미만이면 만들지 않는다'(형식이 고객 수치 · 퍼온 클립 위주인 것은 빼고)
     if sb.get("format") not in ("ad", "clip", "ranking", "emotional", "daily") and sb.get("scenes"):
         _src = set(sb.get("sources") or [])

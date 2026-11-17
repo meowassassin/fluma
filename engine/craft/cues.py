@@ -34,7 +34,7 @@ def scene_words(sb: dict, i: int) -> tuple[list[dict], float]:
     return ws, s0
 
 
-def find(words: list[dict], word: str, end: bool = False) -> float:
+def find(words: list[dict], word: str, end: bool = False, strict: bool = True) -> float | None:
     """정확히 같은 낱말 → 없으면 가장 닮은 낱말(각본가가 '떠요'를 '뜹니다'로 고쳐도 따라간다, 2026-11-17: 낱말이 어긋나 콘티를 23번 고쳤다)"""
     import difflib
     k = _norm(word)
@@ -55,8 +55,60 @@ def find(words: list[dict], word: str, end: bool = False) -> float:
     if best is not None and score >= 0.55:
         print(f"[cue] '{word}' 정확히 없음 → 가장 닮은 '{best['text'].strip()}'({score:.2f})", flush=True)
         return best["end"] if end else best["start"]
+    if not strict:
+        return None
     said = " ".join(w["text"] for w in words)
     raise RuntimeError(f"$CUE:{word} — 이 장면 나레이션에 그 낱말이 없습니다(들리는 말: {said[:120]})")
+
+
+# ---------- 대사가 바뀌어 낱말이 사라졌을 때: 지난번 자리로 다시 잇기 (2026-11-17) ----------
+# 대사를 줄이거나 고치면 $CUE 낱말이 사라져 에이전트가 콘티를 수십 번 고쳤다(한 영상에서 cue 수정만 80회).
+# 성공할 때마다 그 낱말이 '대사 몇 % 지점'(글자 기준)에 있었는지 적어 두고, 사라지면 새 대사의 같은 지점 낱말로 잇는다.
+def _map_path(sb: dict) -> Path:
+    return ROOT / "data" / "workspace" / "tmp" / str(sb.get("id")) / "cue_map.json"
+
+
+def _load_map(sb: dict) -> dict:
+    try:
+        return json.loads(_map_path(sb).read_text("utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_map(sb: dict, m: dict):
+    p = _map_path(sb)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(m, ensure_ascii=False, indent=1), "utf-8")
+
+
+def _char_frac(words: list[dict], w_hit: dict) -> float:
+    """낱말이 장면 대사에서 몇 % 지점(글자 수 기준)에 있는가"""
+    total = sum(len(_norm(w["text"])) for w in words) or 1
+    before = 0
+    for w in words:
+        if w is w_hit:
+            break
+        before += len(_norm(w["text"]))
+    return round(before / total, 4)
+
+
+def _at_frac(words: list[dict], frac: float) -> dict | None:
+    """새 대사에서 같은 % 지점의 낱말"""
+    if not words:
+        return None
+    total = sum(len(_norm(w["text"])) for w in words) or 1
+    acc = 0
+    for w in words:
+        n = len(_norm(w["text"]))
+        if (acc + n / 2) / total >= frac:
+            return w
+        acc += n
+    return words[-1]
+
+
+def _hit(words: list[dict], word: str) -> dict | None:
+    t_ = find(words, word, False, strict=False)
+    return next((w for w in words if w["start"] == t_), None) if t_ is not None else None
 
 
 def resolve(o, sb: dict, i: int, absolute: bool = False):
@@ -65,9 +117,24 @@ def resolve(o, sb: dict, i: int, absolute: bool = False):
         return o
     words, s0 = scene_words(sb, i)
     base = s0 if absolute else 0.0
+    cmap = _load_map(sb)
+    dirty = [False]
 
     def sec(m: re.Match) -> float:
-        t = find(words, m.group(1).strip(), bool(m.group(2))) + float(m.group(3) or 0)
+        word, end = m.group(1).strip(), bool(m.group(2))
+        key = f"{i + 1}|{word}"
+        w = _hit(words, word)
+        if w is not None:
+            fr = _char_frac(words, w)
+            if cmap.get(key) != fr:
+                cmap[key] = fr
+                dirty[0] = True
+        elif key in cmap and words:
+            w = _at_frac(words, float(cmap[key]))
+            print(f"[cue] {i + 1}장면 '{word}' 이 바뀐 대사에 없음 → 지난번과 같은 자리({cmap[key]:.0%})의 '{w['text'].strip()}' 에 맞춤", flush=True)
+        else:
+            find(words, word, end)        # 처음부터 없던 낱말 — 지금처럼 이유와 함께 멈춘다
+        t = (w["end"] if end else w["start"]) + float(m.group(3) or 0)
         return round(max(0.0, t) + base, 3)
 
     def walk(x):
@@ -79,7 +146,10 @@ def resolve(o, sb: dict, i: int, absolute: bool = False):
         if isinstance(x, list):
             return [walk(v) for v in x]
         return x
-    return walk(o)
+    out = walk(o)
+    if dirty[0]:
+        _save_map(sb, cmap)
+    return out
 
 
 def _has(o) -> bool:

@@ -486,6 +486,22 @@
         "why": {
           "type": "string",
           "description": "고른 이유"
+        },
+        "fallback": {
+          "type": "object",
+          "description": "합성이 막혀 제작이 다른 엔진으로 자동 전환한 기록(from · to · why). 원래 엔진으로 성공하면 지워진다",
+          "properties": {
+            "from": {
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            },
+            "why": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         }
       }
     },

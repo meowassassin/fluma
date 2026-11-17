@@ -15,7 +15,7 @@ order: 2
 - 정지 화면은 고친 장면만 본다. 초안 전체의 흐름 · 타이밍은 `python3 engine/look/look.py sheet <초안 mp4>` 로 보고, 기록이 필요하면 `look.py critique <id>`(data/workspace/critique/<id>.json).
 
 ## 두 단계로 만들기
-**두 단계로 만든다(2026-11-17 — 한 줄로 차례차례 돌면 15분을 넘겼다)**: ① 대본(제목 · 장면별 narration · caption · sec 대략, 재료는 비워도 됨)을 Write → ② `python3 engine/produce.py data/storyboards/<id>.json --prep --bg`(이해 관문 · 음성을 뒤에서 — 바로 돌아온다) → ③ 그동안 장면 재료(2D 는 craft-2d 예시 복사, 시각은 `$CUE:낱말`)를 콘티에 넣는다 — **첫 장면 재료를 넣은 뒤 `produce.py <콘티> --prep-status` 로 확인**: 막혔으면(이해 관문 · 구조) 재료보다 대본을 먼저 고치고 ②를 다시. **prep 을 기다리지 않는다**(until · tail -F · Monitor 로 지켜보지 않는다 — ④의 produce 가 알아서 기다린다). prep 의 각본가가 대사를 다듬어도 `$CUE` 는 가장 닮은 낱말을 찾아가므로 낱말 맞추기로 콘티를 고치지 않는다 — **narration · caption · title 은 바꾸지 않는다**(바꾸면 대본 단계를 다시 한다) → ④ `python3 engine/produce.py data/storyboards/<id>.json`(prep 이 아직 돌면 기다렸다가 연출 · 디자인 · 렌더). 대본 단계 전에 lint 를 돌리지 않는다(재료가 비어 걸린다).
+**두 단계로 만든다(2026-11-17 — 한 줄로 차례차례 돌면 15분을 넘겼다)**: ① 대본(제목 · 장면별 narration · caption · sec 대략, 재료는 비워도 됨)을 Write → ② `python3 engine/produce.py data/storyboards/<id>.json --prep --bg`(이해 관문 · 음성을 뒤에서 — 바로 돌아온다) → ③ 그동안 장면 재료(2D 는 craft-2d 예시 복사, 시각은 `$CUE:낱말`)를 콘티에 넣는다 — **첫 장면 재료를 넣은 뒤 `produce.py <콘티> --prep-status` 로 확인**: 막혔으면(이해 관문 · 구조) 재료보다 대본을 먼저 고치고 ②를 다시. **prep 을 기다리지 않는다**(until · tail -F · Monitor 로 지켜보지 않는다 — ④의 produce 가 알아서 기다린다). prep 의 각본가가 대사를 다듬거나 길이 때문에 대사를 줄여도 `$CUE` 는 가장 닮은 낱말 → 없으면 지난번과 같은 자리(대사 % 지점)의 낱말로 엔진이 다시 잇는다(`[cue] … 에 맞춤` 줄) — 낱말 맞추기로 콘티를 고치지 않는다(처음부터 대사에 없던 낱말만 멈춘다) — **narration · caption · title 은 바꾸지 않는다**(바꾸면 대본 단계를 다시 한다) → ④ `python3 engine/produce.py data/storyboards/<id>.json`(prep 이 아직 돌면 기다렸다가 연출 · 디자인 · 렌더). 대본 단계 전에 lint 를 돌리지 않는다(재료가 비어 걸린다).
 
 ## 한 줄로 돌리기
 재료 칸까지 적었으면 **네가** `python3 engine/produce.py data/storyboards/<id>.json` — 레퍼런스 스타일 → 스킬(채팅에서 이미 통과했으면 엔진이 생략) → 음성 → 검사 → **납품 해상도 1회 렌더** → 장면별 정지 화면. DEEP_REVIEW 는 기본 생략(막힌 장면만 채팅에서 refine). `timeout` · `&` 로 감싸지 않는다 — produce 가 스스로 뒤에서 돌고 기다리며, 종료 11(`FLUMA_RUNNING`)이면 같은 명령을 그대로 다시 부른다(이어서 기다림).
@@ -29,7 +29,7 @@ order: 2
 - 별도 `render.py` 최종 패스는 기본 없음 — produce 한 번이 완성본이다.
 
 ## 재료 고르기(요약 — 칸 · 예시는 storyboard 스킬, 표 전체는 reference.md)
-문장(핵심 낱말)마다 재료 하나, 30초면 서로 다른 재료 10개 이상(L37), 같은 종류 네 번 연속 금지(T37).
+재료는 장면의 말을 가장 잘 보여 주는 것으로 — 종류 수 · 개수를 맞추려고 섞지 않는다.
 숫자 하나 `stat`(바탕 재료 위 덧씌우기) · 비교 `chart` · 근거 문장 `doc_quote` · 실제 화면 `web` · `screen` · 짚기 `overlay` · 구조 `diagram` · 요점 `info_card` · 문서 `document` · 로고 `icon` · 짤 `meme` · 실사 `video`(clip.py) · `stock` · `photo` · 제품 `model3d`.
 **사람/장면**은 실제 자료(퍼온 클립 · 자료 사진 · 스톡 · 짤)로. 그림 · 영상 생성 모델은 쓰지 않고, 손이나 코드로 인물 · 장면을 그리지 않는다.
 설명형 영상은 실제 자료와 정교한 UI/데이터 목업 · 도표가 화면의 주인공이 된다. 실행 녹화(`engine/capture/demo.py run <id>` · `webrec.py`)는 증거가 필요할 때 쓰는 재료 중 하나.

@@ -19,7 +19,6 @@ order: 1
 3. **작성**: `data/storyboards/<프로젝트 id>.json` 을 쓴다. 스키마 `engine/spec/schema/storyboard.schema.json`, 예시 `engine/spec/examples/storyboard.example.json`. **스키마 · 엔진 코드를 열어 칸을 찾지 않는다** — 예시를 복사해 고치고, 모르는 칸은 lint 메시지가 알려 준다(2026-11-16: 스키마 · 코드 찾기에 3분).
    **한 영상에 요점 하나 — 40초 이하(비교 · 순위 45초) · 장면 9개 이하**(L70, produce 가 대본 단계 전에 막는다). 곁가지(두 번째 언어 · 설정법 · 도구)는 다음 영상으로.
    사용자가 **길어도 된다**고 했으면 억지로 줄이지 말고 콘티에 `"allow_long": true`(90초 · 12장면까지) — 설명이 빠지면 이해가 깨진다(2026-11-17).
-   사용자가 화면을 **한 가지 스타일로 통일**해 달라고 했으면(예: "2D 애니메이션으로만") 콘티에 `"single_style": true` — 재료 종류 섞기 검사(L35)를 건너뛴다. 2D 애니메이션 장면은 `$CUE` 박자마다 화면 전환으로 센다(L37).
    **콘티는 한 번에 통째로 Write** 한다 — 같은 콘티를 Edit 로 여러 번 나눠 고치지 않는다(2026-11-17: Edit 17번 연달아 ≈ 10분). 고칠 곳이 여러 장면이면 전체를 다시 쓴다.
    2D 장면은 `screen: "애니메이션 · 일러스트"` + `visual.kind`(compare · list · number · diff · code · text …) + 재료 `type: craft`(craft-2d 예시). 실제 화면을 쓰는 장면만 `screen: "실제 화면"` + 증거 재료(web · screen · doc_quote). 감독 다섯 기둥은 `direction.anchors`, 고른 2D 표현은 `direction.explainer`.
    - `id` 는 프로젝트 id 그대로, `version: 1`, `sources` 에 쓴 사실의 URL. 대상 시청자를 알면 `audience`, 하단에 보일 이름이 있으면 `brand`.
@@ -29,7 +28,6 @@ order: 1
    - 마지막 장면이 훅의 핵심어를 다시 말한다 (L08 루프).
    - **개념 사다리**(writer 0.3): 콘티 맨 위 `concepts_order` 에 시청자가 모르는 개념을 나오는 순서대로 적고, 장면마다 새 개념은 하나만 소개한 뒤 쓴다. 제작 때 시청자 시뮬레이션이 대상 시청자로 따라가 보고, 장면을 더해야 풀리는 문제가 있으면 제작을 멈춘다.
    - **증거 재료(L59~L63)**: 본문 장면은 카드·도표·mock 목업만으로 채우지 않는다 — `web` · `screen` · `photo` · `icon`(icons.py) · `doc_quote` 중 최소 하나. 장면에 `info_card`+`diagram` 동시 금지(L60). `screen: 실제 화면`이면 증거 재료 필수(L61). mock `ui_mock` 단독 금지(L62). produce 전 `material_evidence.py`가 브랜드 로고를 자동 보강할 수 있으나 web/캡처는 콘티에 써 둔다.
-   - **화면 다양성**: 이어지는 장면이 같은 그림 · 영상을 쓰거나, 같은 화면 종류 · 재료 구성이 세 장면 연달아면 lint L58 실패. 한 대상(예: QR 한 장)을 계속 보여 줘야 하면 실사 · 확대 해부 · 도식 · 실험 화면 · 비교로 보는 방식을 바꾼다.
    - **분위기**(예: "전문적이고 세련된")는 `constraints` 에 한 줄 남긴다(사람 · 비평용 — 엔진은 글을 해석하지 않는다). **엔진이 꼭 지켜야 하는 금지**는 `intent.ban` 에 값으로: `number_punch`(숫자 크게 덧씌우기) · `sfx` · `music` · `bg_motion`.
    - 화면 글자 `caption` 은 나레이션이 있어도 위쪽 띠에 강조색으로 따로 나온다(훅 세 칸의 '화면 글자' — 말을 받아 적지 않는다). 끄려면 `direction.screen_text: false`.
    - **엔진은 Craft 하나** — `engine: "craft"`. 장면에 보일 것은 아래 '장면 재료(materials)' 칸으로 적고, 제작은 produce 스킬이 한다(HyperFrames · Manim 은 제거).

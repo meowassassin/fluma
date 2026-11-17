@@ -10,9 +10,9 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 
 기본 흐름: 재료(각 앱) → **EffectCraft**(움직임 · 합성) → **SoundCraft**(소리) → **FilmCraft**(조립 · 마감).
 
-## 0. 먼저 — 기능을 넓게 쓰고, 영상마다 다르게 (편향 금지)
+## 0. 먼저 — 장면의 말에 맞는 기능을 고른다
 앱 16개에 명령 · 효과 · 프리셋이 9,000개 넘게 있다. 아는 몇 가지만 되풀이하지 않는다.
-1. 장면마다 `python3 engine/craft/craft_variety.py suggest "<장면 용도>"` — 검증된 레시피(★ = 최근 5편에 안 씀)와 안 써 본 기능이 나온다. ★ 를 먼저 고른다.
+1. 아이디어가 필요할 때만 `python3 engine/craft/craft_variety.py suggest "<장면 용도>"` — 검증된 레시피와 안 써 본 기능을 보여 준다(선택).
 2. 고정 재료 종류(아래 표)로 안 되는 화면은 `python3 engine/craft/craft_catalog.py search "<하고 싶은 일>"` 로 명령을 찾아 `type: craft` 로 직접 짠다:
    `{"type":"craft","id":"m2","app":"vectorcraft","steps":[{"id":"shape.rectangle","params":{…}}, …],"export":{"format":"png"}}`
    params 는 `craft_catalog.py show <앱> <id>` 와 reference/<앱>.md 의 시험된 예를 따른다. 앞 결과 참조 `"$N.키"`, 작업 폴더 `$WORK/…`, 프레임 `$FRAMES`.
@@ -25,9 +25,7 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
    - 시각은 `"$CUE:낱말"`(그 장면에서 그 낱말을 말하는 순간, `+0.3` · `@end`) — 재료 안 어디든(JSX 코드 안도) 쓸 수 있다. 글자를 써 내려가기: 글자 레이어에 `ADBE Linear Wipe`(Wipe Angle 270) Transition Completion 100→0.
    - `$USE:이름`(그 재료 결과 파일) · `$USE:이름/파일`(그 재료 작업 폴더 안 파일) · `$READ:<경로>`(파일 글자 내용).
    - 같은 짜임을 다음 영상에 그대로 쓰지 않는다(움직임 라이브러리를 쌓지 않음) — 요청 · 레퍼런스 · 주제에 맞게 매번 새로. 렌더한 프레임을 보고 고친다.
-4. 잘 나온 craft 재료는 레시피로 남긴다: `python3 engine/craft/craft_variety.py save <영상 id> <재료 id> --name <영어-이름> --purpose a,b --look x,y --desc "…"`
-5. 영상마다 최소 한 장면은 최근 영상들이 안 쓴 레시피 · 기능으로(V44). 이어지는 장면은 구성을 바꾸고(V42), 재료 종류는 3가지 이상(V41). produce.py 가 V 권고를 보여 준다 — `craft_variety.py check data/storyboards/<id>.json`.
-6. 많이 쓰는 것과 효과 남발은 다르다 — 장면의 말을 더 잘 보여 주는 기능만. 결과는 정지 화면을 보고 판단(시선을 붙잡는가 — 채도 · 색 · 움직임).
+4. 많이 쓰는 것과 효과 남발은 다르다 — 장면의 말을 더 잘 보여 주는 기능만. 결과는 정지 화면을 보고 판단(시선을 붙잡는가 — 채도 · 색 · 움직임).
 7. **다양성은 사용자의 선택으로**: 모양 · 효과의 큰 방향은 시안(engine/story/directions.py)으로 보여 주고 사용자가 고른다. '안 써 본 것'을 이유로 사용자가 원하지 않는 효과를 넣지 않는다. 같은 재료를 다른 앱으로 만들 수 있으면(`method`) 그 차이도 시안에 쓴다.
 
 ## 1. 재료 · 작업 → 앱 → 핵심 기능

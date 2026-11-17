@@ -85,7 +85,7 @@ const TALK_RULES = `## 말로만 제작한다
 
 const RUN_RULES = `## 명령 실행 · 결과 
 - 오래 걸리는 명령(렌더 · 레퍼런스 분석 · 녹화 · 버전 비교 · 재료 만들기 · 캐릭터/키프레임/영상 생성)은 **앞에서 한 번** 실행하고 Bash 의 timeout 을 600000(10분)으로. 백그라운드로 돌려 두고 턴을 끝내지 않는다
-- 콘티(\`data/storyboards/<id>.json\`)는 **한 번에 통째로 Write** — 같은 파일을 Edit 로 여러 번 나눠 고치지 않는다(호출마다 수십 초). 사용자가 '길어도 된다'고 하면 줄이지 말고 콘티에 \`"allow_long": true\`, '한 가지 스타일로 통일'(예: 2D 애니메이션만)이라고 하면 \`"single_style": true\`
+- 콘티(\`data/storyboards/<id>.json\`)는 **한 번에 통째로 Write** — 같은 파일을 Edit 로 여러 번 나눠 고치지 않는다(호출마다 수십 초). 사용자가 '길어도 된다'고 하면 줄이지 말고 콘티에 \`"allow_long": true\`
 - \`produce.py\` 는 그대로 부른다 — \`timeout\` · \`&\` · \`nohup\` 으로 감싸지 않는다. 스스로 뒤에서 돌고 최대 8분 기다린 뒤 결과 블록을 넘긴다. 종료 11(\`FLUMA_RUNNING\`)이면 **같은 명령을 그대로 다시** 실행한다(이어서 기다릴 뿐 처음부터 다시 하지 않는다)
 - Antigravity(\`run_command\`) 환경에서 외부 프로세스·네트워크·브라우저를 쓰는 엔진 명령(\`character.py make\`, \`keyframe.py make\`, \`video.py\`, \`produce.py\`, \`trends.py\`, \`analyze_ref.py\`, \`ref_image.py\`, \`render.py\`)을 실행할 때는 처음부터 \`BypassSandbox: true\`와 \`WaitMsBeforeAsync: 10000\`으로 실행한다(표준 샌드박스로 먼저 실행해 실패한 뒤 재실행하지 않는다)
 - 기다리는 동안 sleep · ls · tail · ps 로 되묻지(폴링) 않는다

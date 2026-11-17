@@ -246,8 +246,7 @@ def designer_io(sb: dict, sbp: Path) -> tuple[str, str]:
     astryx = crafts[crafts.find("## 앱 · 대시보드 화면은 Astryx"):][:2500] if "Astryx" in crafts else ""
     fmt = ('{"direction": {"layout": "full|band", "subs": {"y": 0~1, "box": true|false}, "screen_text_y": 0~1, "font_title": "", "font_body": "", "cam_push": 1.0~1.1}, '
            '"materials": {"재료 id": {"adjust": {"scale": 배수(0.6~1.6), "dx": 화면 너비 비율(-0.25~0.25), "dy": 화면 높이 비율(-0.25~0.25)}, "color": "#RRGGBB(overlay 주석만)"}}, "ui_scenes": [{"scene": 장면 번호, "replace": "바꿀 재료 id 또는 null", "what": "앱 화면 설명", "components": ["Table", "Badge"]}], "why": ["이유"]}')
-    vr = subprocess.run([sys.executable, str(ROOT / "engine" / "craft" / "craft_variety.py"), "check", str(sbp)], capture_output=True, text=True, timeout=120).stdout[-2000:]
-    p = (f"# 스킬: designer\n{skill_text('designer')}\n\n# 재료 다양성 검사(crafts 스킬 0절 — 반복이 있으면 장면 구도 · 크기로 다르게)\n{vr}\n\n# 앱 화면 규칙(crafts 스킬)\n{astryx}\n\n# 레퍼런스 실측(style.md)\n{st}\n\n# 콘티\n{json.dumps(view(sb, True), ensure_ascii=False)}\n\n"
+    p = (f"# 스킬: designer\n{skill_text('designer')}\n\n# 앱 화면 규칙(crafts 스킬)\n{astryx}\n\n# 레퍼런스 실측(style.md)\n{st}\n\n# 콘티\n{json.dumps(view(sb, True), ensure_ascii=False)}\n\n"
          "할 일: designer 3장 검사(시선 한 곳 · 안전 영역 · 띠를 70% 이상 채움 · 글자 세 단계 · 앞 장면과 다른 구도)를 통과하게 값을 정한다. "
          "재료는 crafts 기술 증거(web · screen · icon · photo · doc_quote)가 주인공 — info_card·diagram·mock ui_mock 으로 장면을 채우지 않는다(L59~L63). "
          "실험 결과 · 로그 · 데이터가 '앱 화면'으로 보이면 web · 실캡처가 우선이고, 그다음에만 ui_scenes(없으면 빈 배열). "
