@@ -62,6 +62,10 @@ def screen_changes(rec: dict) -> int:
     """이 재료 안에서 화면이 바뀌는 횟수 — 웹 녹화는 상태 화면 수 + 실제 녹화 구간 3초마다 한 번(줄이 쏟아지는 터미널 · 말풍선이 올라오는 대화창)"""
     if rec.get("layers") and rec.get("type") in ("overlay", "diagram"):
         return len(rec["layers"])     # 주석 · 도식 항목이 낱말마다 하나씩 나온다 — 나올 때마다 화면이 바뀐다
+    if rec.get("type") == "craft":
+        # 2D 애니메이션(craft) 한 장면은 낱말($CUE)마다 그림이 바뀐다 — 그 박자 수가 화면 전환 수
+        # (2026-11-17: 장면당 1번으로만 세서, 사용자가 고른 '2D 애니메이션 통일' 영상이 전환 부족 L37 로 막혔다)
+        return max(1, int(rec.get("_cues") or 0))
     if rec.get("type") != "web":
         return 1
     meta = _element_meta(rec)
@@ -127,6 +131,8 @@ def material_checks(sb: dict) -> list:
                 try:
                     r = json.loads(f.read_text("utf-8"))
                     if isinstance(r, dict):
+                        if r.get("type") == "craft":     # 기록에는 낱말이 초로 풀려 있다 — 콘티 재료의 $CUE 낱말 수로 박자를 센다
+                            r["_cues"] = len(set(re.findall(r"\$CUE:([^\s\"'\\,;)}\]]+)", json.dumps(m, ensure_ascii=False))))
                         recs.append(r)
                 except ValueError:
                     pass
@@ -157,7 +163,7 @@ def material_checks(sb: dict) -> list:
     if docs * 2 > len(kinds):
         out.append(("L34", None, f"재료 {len(kinds)}개 중 {docs}개가 글자 빽빽한 문서 캡처 — 세로 화면에서 안 읽힌다. 핵심 수치는 그래픽(chart)으로, 근거는 문장 하나만 짚는 doc_quote 로, 나머지는 실제 화면 · 사진 · 그림으로"))
     dur = sum(float(x.get("sec") or 0) for x in sb.get("scenes") or [])
-    if dur >= 20 and len(set(kinds)) < 3:
+    if dur >= 20 and len(set(kinds)) < 3 and not sb.get("single_style"):   # single_style: 사용자가 한 가지 화면 스타일로 통일해 달라고 한 영상
         out.append(("L35", None, f"재료 종류가 {len(set(kinds))}가지({', '.join(sorted(set(kinds)))}) — 레퍼런스 쇼츠는 화면 종류를 섞는다. 문서 캡처(doc_quote · document) · 그래픽(stat · chart · diagram · info_card) · 그림/사진(photo · photo_grade) · 화면/영상(web · screen · ui_mock) · 3D 제품(model3d) · 도면(drawing) · 짤(meme) 중 3가지 이상"))
     # L37 재료 개수: 레퍼런스 설명 쇼츠는 10초에 4번 남짓 화면이 바뀐다 → 3초에 하나 이상(같은 파일은 한 번만 셈)
     seen_src: dict[str, int] = {}
@@ -185,6 +191,41 @@ def material_checks(sb: dict) -> list:
         en = sum(1 for r in recs if latin_heavy(r))
         if en * 3 >= len(recs):
             out.append(("T35", None, f"영어 글자가 대부분인 캡처가 {en}개 — 한국어 시청자에게 안 읽힌다. 핵심 수치는 한국어 그래픽으로 다시 그리기"))
+    return out
+
+
+SCOPE_MAX_SEC = {"compare": 45, "ranking": 45, "countdown": 45}
+SCOPE_MAX_SCENES = 9
+LONG_MAX_SEC, LONG_MAX_SCENES = 90, 12   # allow_long: 사용자가 길어도 된다고 한 영상
+
+
+SPEECH_CPS = 5.2   # 실측(2026-11-17 Edge): 공백 뺀 글자 / 초, 장면 사이 쉼 포함 · 목소리 speed 1.0 기준
+
+
+def scope_problems(sb: dict, estimate: bool = False) -> list:
+    """L70 범위: 쇼츠 한 편에 요점 하나 — 총 길이(기본 40초, 비교 · 순위 45초) · 장면 9개 이하.
+    2026-11-17: 54초 · 11장면 대본(파이썬 + 스프링 + 로거 + 액추에이터)이 시청자 검토에서 매번 막히고, 장면 만들기 · 음성 · 렌더가 모두 길어져 15분을 넘겼다
+    estimate=True(produce 시작 전): 음성을 만들기 전이라 sec 칸은 예전 음성 길이일 수 있다 — 대사 글자 수로 어림하고,
+    어림이 빗나갈 수 있으니 한도의 10%를 넘을 때만 막는다(실제 길이는 음성 뒤 검사가 본다).
+    2026-11-17: 대본을 줄여도 예전 음성 길이로 계산해 음성 단계 전에 계속 막혔다"""
+    scenes = sb.get("scenes") or []
+    mx = SCOPE_MAX_SEC.get(sb.get("format") or "", 40)
+    max_scenes = SCOPE_MAX_SCENES
+    if sb.get("allow_long"):          # 사용자가 길어도 된다고 한 영상(2026-11-17: 상한을 풀 칸이 없어 59초 대본이 막히고, 다시 45초로 줄이는 턴이 한 번 더 생겼다)
+        mx, max_scenes = LONG_MAX_SEC, LONG_MAX_SCENES
+    if estimate and any(x.get("narration") for x in scenes):
+        speed = float((sb.get("voice") or {}).get("speed") or 1.0) or 1.0
+        total = round(sum(len(str(x.get("narration") or "").replace(" ", "")) for x in scenes) / (SPEECH_CPS * speed), 1)
+        limit = mx * 1.1
+    else:
+        total = round(sum(float(x.get("sec") or 0) for x in scenes), 1) or float(sb.get("duration_sec") or 0)
+        limit = mx
+    out = []
+    if total > limit:
+        out.append(("L70", f"너무 김: {total}초 > {mx}초 — 요점 하나만 남기고 덜어낸다(곁가지 설정 · 두 번째 사례는 다음 영상으로)"
+                    + ("" if sb.get("allow_long") else " · 사용자가 길어도 된다고 했으면 콘티에 \"allow_long\": true (90초 · 12장면까지)")))
+    if len(scenes) > max_scenes:
+        out.append(("L70", f"장면 {len(scenes)}개 > {max_scenes}개 — 같은 말을 하는 장면을 합치거나 덜어낸다"))
     return out
 
 
@@ -235,8 +276,10 @@ def material_spec_checks(sb: dict) -> list:
                 if len(m.get("items") or []) < 2:
                     out.append(("L39", i, f"{tag}: items 가 2개 이상 필요"))
             elif t == "ui_mock":
-                need("src", "screen", what="실제 캡처(src) 또는 가상 화면 설명(screen + mock:true)"); exists("src")
-                if m.get("screen") and not m.get("src") and not m.get("mock"):
+                # 디자이너 단계는 가상 앱 화면을 Astryx 장면 파일(ui)로 쓰고 재료 어댑터(figcraft)도 ui 를 읽는다 —
+                # 2026-11-17: 여기서 ui 를 인정하지 않아 멀쩡한 앱 화면 재료가 '비어 있음'으로 막혔다
+                need("src", "screen", "ui", what="실제 캡처(src) 또는 가상 화면(ui 장면 파일 · screen 설명 + mock:true)"); exists("src"); exists("ui")
+                if (m.get("screen") or m.get("ui")) and not m.get("src") and not m.get("mock"):
                     out.append(("L39", i, f"{tag}: 설명으로 그린 가상 화면이면 mock: true 를 적는다(실제 서비스 설명에는 실제 캡처)"))
             elif t == "info_card":
                 need("title", "rows", "csv"); exists("csv")
@@ -327,6 +370,8 @@ def lint(sb: dict, recent_titles=None) -> list:
     total = sum(s.get("sec", 0) for s in scenes)
     if abs(total - sb.get("duration_sec", 0)) > 1:
         fails.append(("L02", None, f"장면 합계 {total}s != duration {sb.get('duration_sec')}s"))
+    for code, msg in scope_problems(sb):
+        fails.append((code, None, msg))
 
     lo, hi = LIM["narration_chars_per_sec"]
     if (sb.get("language") or "ko") != "ko":   # 음절 속도는 언어마다 다르다 — 영어 · 중국어 나레이션은 초당 2.5~5.5음절
@@ -449,6 +494,14 @@ def lint(sb: dict, recent_titles=None) -> list:
     fails += material_checks(sb)
     # L39 재료 칸(필수 칸 · overlay 대상 · drawing 모형 · 가상 화면 표시) — 렌더 전에 콘티만으로
     fails += material_spec_checks(sb)
+    try:
+        import sys as _ms
+        _ms.path.insert(0, str(ROOT / "engine" / "story"))
+        from material_evidence import material_evidence_checks as _mec  # noqa: E402
+
+        fails += _mec(sb)
+    except Exception:  # noqa: BLE001
+        pass
     # L53 가상 앱 화면(ui_mock · mock)은 Astryx 장면(ui 칸)으로 — 손으로 그린 표 · 버튼은 '진짜 앱' 느낌이 안 났다(2026-11-10)
     for i, sc in enumerate(sb.get("scenes") or [], 1):
         for m in sc.get("materials") or []:
@@ -771,4 +824,5 @@ if __name__ == "__main__":
     for code, idx, msg in fails:
         print(f"{code} scene={idx} {msg}")
     hard = [f for f in fails if not f[0].startswith("T")]
+    # production_ready 는 produce / production_ready.py 만 호출 — 여기서 부르면 subprocess 재귀로 5분 대기(2026-11-16)
     sys.exit(1 if hard else 0)

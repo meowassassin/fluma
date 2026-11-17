@@ -91,14 +91,33 @@ def sheets(video: Path, out_dir: Path, t0: float = 0.0, t1: float | None = None,
     n = min(cols * rows * max_sheets, max(cols * rows, int((t1 - t0) / 0.5)))
     times = [t0 + (t1 - t0) * (i + 0.5) / n for i in range(n)]
     out_dir.mkdir(parents=True, exist_ok=True)
-    frames = []
-    with tempfile.TemporaryDirectory() as td:
-        for i, t in enumerate(times):
-            f = Path(td) / f"{i:03d}.jpg"
-            subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{t:.3f}", "-i", str(video), "-frames:v", "1", "-vf", f"scale={width}:-2", "-q:v", "4", str(f)],
-                           capture_output=True)
-            if f.exists():
-                frames.append((t, Image.open(f).convert("RGB")))
+    frames: list[tuple[float, Image.Image]] = []
+    try:
+        import cv2
+        cap = cv2.VideoCapture(str(video))
+        if cap.isOpened():
+            try:
+                for t in times:
+                    cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, t) * 1000.0)
+                    ok_read, fr = cap.read()
+                    if not ok_read or fr is None:
+                        continue
+                    im = Image.fromarray(cv2.cvtColor(fr, cv2.COLOR_BGR2RGB))
+                    im.thumbnail((width, width * 4))
+                    frames.append((t, im))
+            finally:
+                cap.release()
+    except ImportError:
+        pass
+    if len(frames) < max(1, len(times) // 2):
+        frames = []
+        with tempfile.TemporaryDirectory() as td:
+            for i, t in enumerate(times):
+                f = Path(td) / f"{i:03d}.jpg"
+                subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{t:.3f}", "-i", str(video), "-frames:v", "1", "-vf", f"scale={width}:-2", "-q:v", "4", str(f)],
+                               capture_output=True)
+                if f.exists():
+                    frames.append((t, Image.open(f).convert("RGB")))
     if not frames:
         raise SystemExit(f"프레임을 뽑지 못했습니다: {video}")
     fw, fh = frames[0][1].size

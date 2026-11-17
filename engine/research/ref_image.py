@@ -187,30 +187,45 @@ def search_and_save(pid: str, query: str, limit: int = 6, source: str = "auto") 
                 break
         except Exception as e:  # noqa: BLE001 — 한 소스 실패 시 다음 소스로 fallback
             errors.append(f"{src}: {e}")
+    from concurrent.futures import ThreadPoolExecutor
+
     cdir = refs_dir(pid) / "candidates"
     if cdir.exists():
         for old in cdir.glob("cand_*.jpg"):
             old.unlink()
+    cdir.mkdir(parents=True, exist_ok=True)
+    batch_sz = max(6, limit * 2)
+
+    def _dl_one(item: tuple[int, dict[str, str]]):
+        k, h = item
+        tmp_p = cdir / f"_tmp_{k:02d}.jpg"
+        sz = _download_image([h["url"], h.get("thumb", "")], tmp_p)
+        return h, tmp_p, sz
+
     saved: list[dict[str, Any]] = []
-    for h in raw_hits:
-        idx = len(saved) + 1
-        out_p = cdir / f"cand_{idx:02d}.jpg"
-        sz = _download_image([h["url"], h.get("thumb", "")], out_p)
-        if not sz:
-            continue
-        host = urllib.parse.urlparse(h["url"]).netloc
-        saved.append({
-            "index": idx,
-            "path": str(out_p.relative_to(ROOT)),
-            "url": h["url"],
-            "source": h["source"],
-            "host": host,
-            "title": h.get("title", ""),
-            "w": sz[0],
-            "h": sz[1],
-        })
-        if len(saved) >= limit:
-            break
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        for off in range(0, len(raw_hits), batch_sz):
+            if len(saved) >= limit:
+                break
+            chunk = list(enumerate(raw_hits[off:off + batch_sz], off + 1))
+            for h, tmp_p, sz in pool.map(_dl_one, chunk):
+                if not sz or len(saved) >= limit:
+                    tmp_p.unlink(missing_ok=True)
+                    continue
+                idx = len(saved) + 1
+                out_p = cdir / f"cand_{idx:02d}.jpg"
+                tmp_p.replace(out_p)
+                host = urllib.parse.urlparse(h["url"]).netloc
+                saved.append({
+                    "index": idx,
+                    "path": str(out_p.relative_to(ROOT)),
+                    "url": h["url"],
+                    "source": h["source"],
+                    "host": host,
+                    "title": h.get("title", ""),
+                    "w": sz[0],
+                    "h": sz[1],
+                })
     meta = load_meta(pid)
     meta["query"] = query
     meta["candidates"] = saved

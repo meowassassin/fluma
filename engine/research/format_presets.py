@@ -143,6 +143,9 @@ def cmd_pick(a):
         sys.exit("프리셋이 하나도 없습니다 — build 먼저")
     p = load(name)
     sb["preset"] = {k: p[k] for k in ("name", "title", "layout", "rhythm", "lead", "speech_ratio", "screens", "voice", "tone", "roles", "joke_rate_per_10s") if k in p}
+    from craft.subs_policy import apply_preset_direction_subs
+
+    apply_preset_direction_subs(sb)
     sp.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"[프리셋] {name} — {p['title']} (측정: {', '.join(p['source']['channels'])})")
     print(f"  자막: {cap_txt(p)}")

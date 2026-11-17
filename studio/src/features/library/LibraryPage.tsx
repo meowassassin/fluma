@@ -392,7 +392,7 @@ const PresetsSection: React.FC<{
         <EmptyState
           icon="sparkle"
           title={t("등록된 시리즈 프리셋이 없습니다")}
-          body={t("캐릭터 시트와 영상 스타일, 4박자 비트를 묶어 저장하면 n8n 자동화 파이프라인에서 원클릭으로 일괄 제작할 수 있습니다.")}
+          body={t("캐릭터 시트와 영상 스타일, 4박자 비트를 묶어 저장하면 시리즈 양산에서 같은 톤으로 여러 편을 돌릴 수 있습니다.")}
           action={
             <Button variant="primary" icon="plus" onClick={onCreateClick}>
               {t("새 시리즈 프리셋 만들기")}

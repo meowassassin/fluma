@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -277,12 +278,13 @@ def _write_draft_ass(ass_path: Path, pid: str, story: dict, W: int, H: int, tota
     return True
 
 
-def _fast_draft(pid: str, story: dict) -> Path | None:
-    """통과 클립(원음 효과음 포함) + 나레이션 음성 + 상단 제목/하단 자막을 ffmpeg 고속 합치기로 초안 MP4 로 만든다."""
+def _fast_draft(pid: str, story: dict, *, delivery: bool = False) -> Path | None:
+    """통과 클립(원음 효과음 포함) + 나레이션 음성 + 상단 제목/하단 자막을 ffmpeg 합치기로 MP4 를 만든다."""
     import tempfile
     out_dir = ROOT / "data" / "out"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_mp4 = out_dir / f"{pid}-craft-draft.mp4"
+    out_mp4 = out_dir / (f"{pid}.mp4" if delivery else f"{pid}-craft-draft.mp4")
+    v_preset, v_crf = ("medium", "18") if delivery else ("ultrafast", "23")
     W, H = (1080, 1920) if story.get("aspect", "9:16") == "9:16" else ((1920, 1080) if story.get("aspect") == "16:9" else (1080, 1080))
     scenes = story.get("scenes") or []
     if not scenes:
@@ -309,7 +311,7 @@ def _fast_draft(pid: str, story: dict) -> Path | None:
                     "ffmpeg", "-y", "-ss", f"{t_in:.3f}", "-i", str(src), "-t", f"{dur:.3f}",
                     "-vf", f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps=30{pad},format=yuv420p",
                     "-af", f"volume={vol:.2f},apad=whole_dur={dur:.3f},aresample=24000,pan=mono|c0=c0",
-                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+                    "-c:v", "libx264", "-preset", v_preset, "-crf", v_crf,
                     "-c:a", "aac", "-ar", "24000", "-ac", "1", str(seg),
                 ]
             else:
@@ -319,7 +321,7 @@ def _fast_draft(pid: str, story: dict) -> Path | None:
                     "-t", f"{dur:.3f}",
                     "-vf", f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},fps=30{pad},format=yuv420p",
                     "-map", "0:v:0", "-map", "1:a:0",
-                    "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+                    "-c:v", "libx264", "-preset", v_preset, "-crf", v_crf,
                     "-c:a", "aac", "-ar", "24000", "-ac", "1", str(seg),
                 ]
             r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -337,7 +339,8 @@ def _fast_draft(pid: str, story: dict) -> Path | None:
         ass_file = td_p / "subs.ass"
         has_ass = _write_draft_ass(ass_file, pid, story, W, H, total_dur)
         fonts_dir = (ROOT / "engine" / "assets" / "fonts").as_posix()
-        vf_args = ["-vf", f"ass={ass_file.as_posix()}:fontsdir={fonts_dir}", "-c:v", "libx264", "-preset", "ultrafast", "-crf", "22"] if has_ass else ["-c:v", "copy"]
+        ass_crf = "18" if delivery else "22"
+        vf_args = ["-vf", f"ass={ass_file.as_posix()}:fontsdir={fonts_dir}", "-c:v", "libx264", "-preset", v_preset, "-crf", ass_crf] if has_ass else ["-c:v", "copy"]
 
         voice_wav = ROOT / "data" / "public" / "audio" / f"{pid}.wav"
         if not voice_wav.is_file():
@@ -364,10 +367,44 @@ def _fast_draft(pid: str, story: dict) -> Path | None:
 
 
 def build(pid: str, voice: bool, full_craft: bool = False) -> dict:
+    from story.board_enrich import enrich
+
+    _, pl = planmod.load(pid)
     sbp = to_storyboard(pid)
+    enrich(sbp, pl)
     rel = str(sbp.relative_to(ROOT))
     story = json.loads(sbp.read_text("utf-8"))
     py = sys.executable
+    sys.path.insert(0, str(ROOT / "engine" / "core"))
+    import quality_mode as qm  # noqa: E402
+
+    from story.skill_pass import produce_skill_steps
+
+    hard = qm.hard_skills()
+    sk_steps = produce_skill_steps(sbp)
+    if sk_steps == ["writer", "director", "designer"]:
+        sk_cmd = "pipeline" if qm.skip_viewer_pass() else "all"
+        sk = subprocess.run([py, "engine/story/skill_pass.py", sk_cmd, rel], cwd=ROOT, capture_output=True, text=True, timeout=2400)
+        print((sk.stdout or "")[-800:], flush=True)
+        if sk.returncode != 0 and hard:
+            fail("assemble", stage="skills", error=(sk.stderr or sk.stdout).strip()[-400:] or "스킬 단계 실패")
+        story = json.loads(sbp.read_text("utf-8"))
+    elif sk_steps:
+        for sn in sk_steps:
+            sk = subprocess.run([py, "engine/story/skill_pass.py", sn, rel], cwd=ROOT, capture_output=True, text=True, timeout=1800)
+            print((sk.stdout or "")[-800:], flush=True)
+            if sk.returncode != 0 and hard:
+                fail("assemble", stage="skills", error=(sk.stderr or sk.stdout).strip()[-400:] or "스킬 단계 실패")
+        story = json.loads(sbp.read_text("utf-8"))
+    delivery = qm.ffmpeg_delivery()
+    use_produce = os.environ.get("FLUMA_GENERATE_PRODUCE", "0") == "1" or full_craft or _needs_craft_render(story)
+    if use_produce:
+        pr = subprocess.run([py, "engine/produce.py", rel] + (["--preview-only"] if not delivery else []),
+                            cwd=ROOT, capture_output=True, text=True, timeout=7200)
+        b = block(pr.stdout)
+        if pr.returncode != 0 or b.get("head") != "FLUMA_RESULT":
+            fail("assemble", stage="produce", error=(b.get("error") or [(pr.stderr or pr.stdout).strip()[-400:]])[0])
+        return {"storyboard": rel, "file": b["file"][0]}
     if voice and has_narration(story):
         r = subprocess.run([py, "engine/voice/assemble_audio.py", rel], cwd=ROOT, capture_output=True, text=True, timeout=1800)
         if r.returncode:
@@ -382,15 +419,16 @@ def build(pid: str, voice: bool, full_craft: bool = False) -> dict:
     subprocess.run([py, "engine/gen/editor_bridge.py", "convert", pid], cwd=ROOT, capture_output=True, text=True, timeout=120)
 
     if not full_craft and not _needs_craft_render(story):
-        fast_out = _fast_draft(pid, story)
+        fast_out = _fast_draft(pid, story, delivery=delivery)
         if fast_out:
-            return {"storyboard": rel, "draft": str(fast_out.relative_to(ROOT))}
+            return {"storyboard": rel, "file": str(fast_out.relative_to(ROOT))}
 
-    r = subprocess.run([py, "engine/render.py", rel, "--draft"], cwd=ROOT, capture_output=True, text=True, timeout=3600)
+    rend_args = [py, "engine/render.py", rel] + ([] if delivery else ["--draft"])
+    r = subprocess.run(rend_args, cwd=ROOT, capture_output=True, text=True, timeout=3600)
     b = block(r.stdout)
     if r.returncode or b.get("head") != "FLUMA_RESULT":
         fail("assemble", stage="render", error=(b.get("error") or [(r.stderr or r.stdout).strip()[-400:]])[0])
-    return {"storyboard": rel, "draft": b["file"][0]}
+    return {"storyboard": rel, "file": b["file"][0]}
 
 
 def main() -> int:
@@ -400,15 +438,19 @@ def main() -> int:
     s2 = sp.add_parser("build"); s2.add_argument("pid"); s2.add_argument("--no-voice", action="store_true"); s2.add_argument("--full-craft", action="store_true")
     a = ap.parse_args()
     if a.cmd == "storyboard":
-        ok("assemble", storyboard=str(to_storyboard(a.pid).relative_to(ROOT)), next="assemble.py build — 나레이션 음성 · 초안 렌더"); return 0
+        from story.board_enrich import enrich
+        _, pl = planmod.load(a.pid)
+        sbp = to_storyboard(a.pid)
+        enrich(sbp, pl)
+        ok("assemble", storyboard=str(sbp.relative_to(ROOT)), next="assemble.py build — 나레이션 · 납품 합성"); return 0
     r = build(a.pid, not a.no_voice, full_craft=a.full_craft)
     mock = videomod.mock_shots(a.pid)
     if mock:
-        ok("assemble", storyboard=r["storyboard"], file=r["draft"], mock=",".join(map(str, mock)),
+        ok("assemble", storyboard=r["storyboard"], file=r.get("file") or r.get("draft"), mock=",".join(map(str, mock)),
            warning=f"샷 {mock} 은(는) 시험용 mock 클립(키 프레임을 늘린 정지 화면)이다 — 흐름 확인용일 뿐 실제 영상이 아니다. 사용자에게 이 사실을 먼저 알린다",
            next="실제 생성 경로(video.py run)로 해당 샷을 다시 만든 뒤 재조립 — mock 이 남아 있으면 최종 렌더 · 업로드는 막힌다")
         return 0
-    ok("assemble", storyboard=r["storyboard"], file=r["draft"],
+    ok("assemble", storyboard=r["storyboard"], file=r.get("file") or r.get("draft"),
        next="초안을 보여 주고 웹 편집기(VEditor) 또는 값으로 고치기(knob.py) · 장면 다듬기(refine) — 끝나면 6단계 최종 렌더 · 업로드")
     return 0
 

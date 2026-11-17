@@ -116,6 +116,8 @@ def fmt_of(sb: dict) -> str:
 def decide(sb: dict) -> tuple[bool, str, dict]:
     m = sb.get("music") or {}
     ref = ref_info(sb)
+    if "music" in ((sb.get("intent") or {}).get("ban") or []):
+        return False, "intent.ban music", ref
     if m.get("src") and (ROOT / m["src"]).exists() and m.get("source") != "auto":
         return True, "콘티에 곡이 정해져 있음", ref
     if isinstance(m.get("use"), bool) and m.get("source") != "auto":

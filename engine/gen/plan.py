@@ -124,7 +124,7 @@ def trend_brief(request: str | None, label: str | None, top: int) -> dict:
         vis["3d"] = max(18, len(items) // 6)
     return {"count": len(items), "own": own, "hooks": Counter(x.get("hook") for x in items if x.get("hook")).most_common(5),
             "visual": vis.most_common(5), "top": refs,
-            "how": "이 재료로 추천 선택지 2~4개(훅 · 플롯 · 화풍 · 길이 · 근거 쇼츠)를 사용자에게 보여 주고 고르게 하거나 설명을 듣는다. 추천 선택지 중 최소 1개는 반드시 3D 캐릭터/3D 무대 연출 스타일(예: 3D 귀여운 소동물/비닐토이 애니메이션, 3D 공간/소품 연출)을 포함한다. 고른 것은 trend.option 에 기록한다."}
+            "how": "이 재료로 추천 선택지 2~4개(훅 · 플롯 · 화풍 · 길이 · 근거 쇼츠)를 사용자에게 보여 주고 고르게 하거나 설명을 듣는다. 화풍은 레퍼런스·트렌드 상위 쇼츠에서 뽑은 것을 우선하고, 비닐토이 3D 는 레퍼런스나 사용자가 그 스타일을 고른 경우에만 추천한다. 고른 것은 trend.option 에 기록한다."}
 
 
 # ── 프롬프트 조립(3 · 4단계가 같은 함수를 쓴다) ──

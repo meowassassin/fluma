@@ -18,14 +18,30 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401
 from result import fail, ok  # noqa: E402
+
+
+def _log_skill_timing(sid: str, phase: str, sec: float, **extra) -> None:
+    sec = round(sec, 1)
+    print(f"[스킬 타이밍] {phase} {sec}초", flush=True)
+    try:
+        p = ROOT / "data" / "workspace" / "results" / "skill-pass-timings.jsonl"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        row = {"id": sid, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "phase": phase, "sec": sec, **extra}
+        with p.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
 
 SKILLS = ROOT / ".claude" / "skills"
 SHOT_FN = ["자리 잡기", "힘", "압박", "디테일", "반응", "변화", "충격", "여운", "끝"]
@@ -79,22 +95,19 @@ def ref_review(sbp: Path) -> str:
 
 
 def claude(system: str, prompt: str, timeout: int = 900, tools: str = "", dirs: list[str] | None = None, allowed: list[str] | None = None, cwd: str = "/tmp") -> tuple[dict, float]:
-    """헤드리스 Claude Code — MCP · 설정 없이, JSON 하나를 돌려받는다. tools="Read" + dirs 면 그 폴더의 그림을 직접 본다(정지 화면 검토)"""
-    cmd = ["claude", "-p", "--output-format", "json", "--system-prompt", system, "--tools", tools, "--strict-mcp-config",
-           "--disable-slash-commands", "--no-session-persistence", "--setting-sources", ""]
-    for d in dirs or []:
-        cmd += ["--add-dir", d]
-    if tools:
-        cmd += ["--allowedTools", *(allowed or [tools])]
-    r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=timeout, cwd=cwd)
-    if r.returncode:
-        raise RuntimeError(f"claude 실패: {(r.stderr or r.stdout)[-400:]}")
-    out = json.loads(r.stdout)
-    txt = out.get("result") or ""
-    m = re.search(r"\{[\s\S]*\}", txt)
-    if not m:
-        raise RuntimeError(f"JSON 없음: {txt[:300]}")
-    return json.loads(m.group(0)), float(out.get("total_cost_usd") or 0)
+    """설정된 에이전트(Claude Code · Codex · Antigravity)를 헤드리스로 불러 JSON 하나를 돌려받는다."""
+    from agent_cli import extract_json, run_agent
+    txt, cost = run_agent(
+        system,
+        prompt,
+        override_env="FLUMA_SKILL_RUNTIME",
+        timeout=timeout,
+        tools=tools,
+        dirs=dirs,
+        allowed=allowed,
+        cwd=cwd,
+    )
+    return extract_json(txt), cost
 
 
 SYS = ("너는 Fluma 쇼츠 제작 파이프라인의 '{role}' 단계다. 아래 스킬 문서를 규칙 그대로 적용해 콘티를 고친다. "
@@ -125,7 +138,7 @@ def writer_io(sb: dict, sbp: Path) -> tuple[str, str]:
     fmt = '{"script": "장면 경계 / 로 나눈 전체 대본(장면 수와 같은 칸 수)", "captions": {"장면 번호": "화면 글자(28자 이하, 말을 받아 적지 않음)"}, "title": "고정 제목(24자 이하)", "why": ["고친 이유"]}'
     p = (f"# 스킬: writer\n{skill_text('writer')}\n\n# 함께: humanizer-ko\n{skill_text('humanizer-ko')[:9000]}\n\n"
          f"# 조사 사실(이것만 쓴다)\n" + "\n".join(facts(sb)) + "\n\n# 레퍼런스와 견준 검토표\n" + ref_review(sbp) +
-         f"\n\n# 시청자 시뮬레이션이 걸린 곳(대사로 풀 것 — 개념은 쓰기 전에 쉬운 말로 소개, 숫자는 무엇의 숫자인지 먼저)\n{json.dumps(viewer_issues(sb, 'writer'), ensure_ascii=False)}"
+         f"\n\n# 시청자 시뮬레이션이 걸린 곳(대사로 풀 것 — 개념은 쓰기 전에 쉬운 말로 소개, 숫자는 무엇의 숫자인지 먼저)\n{json.dumps(viewer_issues(sb, 'writer') + viewer_issues(sb, 'story'), ensure_ascii=False)}"
          f"\n\n# 감지기가 찾은 AI 티(꼭 고친다)\n{json.dumps(found, ensure_ascii=False)}\n\n# 콘티\n{json.dumps(view(sb), ensure_ascii=False)}\n\n"
          "할 일: writer 스킬 5장 '내기 전 스스로 검사'를 모두 통과하게 script · caption · title 을 고친다. 장면 수와 순서는 그대로. 뜻(사실)은 바꾸지 않는다. 고칠 게 없으면 원래 값을 그대로 돌려준다.")
     return SYS.format(role="각본가", fmt=fmt), p
@@ -236,7 +249,10 @@ def designer_io(sb: dict, sbp: Path) -> tuple[str, str]:
     vr = subprocess.run([sys.executable, str(ROOT / "engine" / "craft" / "craft_variety.py"), "check", str(sbp)], capture_output=True, text=True, timeout=120).stdout[-2000:]
     p = (f"# 스킬: designer\n{skill_text('designer')}\n\n# 재료 다양성 검사(crafts 스킬 0절 — 반복이 있으면 장면 구도 · 크기로 다르게)\n{vr}\n\n# 앱 화면 규칙(crafts 스킬)\n{astryx}\n\n# 레퍼런스 실측(style.md)\n{st}\n\n# 콘티\n{json.dumps(view(sb, True), ensure_ascii=False)}\n\n"
          "할 일: designer 3장 검사(시선 한 곳 · 안전 영역 · 띠를 70% 이상 채움 · 글자 세 단계 · 앞 장면과 다른 구도)를 통과하게 값을 정한다. "
-         "실험 결과 · 로그 · 데이터가 '앱 화면'으로 보이면 더 진짜 같은 장면만 ui_scenes 로 고른다(없으면 빈 배열). 실제 촬영 · 실제 출력 화면은 바꾸지 않는다.")
+         "재료는 crafts 기술 증거(web · screen · icon · photo · doc_quote)가 주인공 — info_card·diagram·mock ui_mock 으로 장면을 채우지 않는다(L59~L63). "
+         "실험 결과 · 로그 · 데이터가 '앱 화면'으로 보이면 web · 실캡처가 우선이고, 그다음에만 ui_scenes(없으면 빈 배열). "
+         "콘티 materials[].ui 에 .tsx 가 이미 있고 빌드가 되면 ui_scenes 에 넣지 않는다 — adjust·layout 만 고친다. 실제 촬영 · 실제 출력 화면은 바꾸지 않는다. "
+         "화면 전체 2D 장면(type craft · place full)은 장면 코드가 배치를 정한다 — 그 재료에는 adjust(scale · dx · dy · rot)를 주지 않는다(줘도 쓰이지 않음).")
     return SYS.format(role="디자이너", fmt=fmt), p
 
 
@@ -276,6 +292,10 @@ def designer_apply(sb: dict, patch: dict) -> list[str]:
                     x = x / (1080 if k == "dx" else 1920)
                 if abs(x) <= 0.25:
                     a[k] = round(float(x), 4)
+            from craft.motion import FRAME_KEYS, owns_frame
+            if owns_frame(mats[mid]):
+                # 화면 전체를 장면 코드가 그리는 2D 장면 — 배치는 장면 코드가 정한다(합성 단계도 이 값을 쓰지 않는다)
+                a = {k: v for k, v in a.items() if k not in FRAME_KEYS}
             if a and {**(mats[mid].get("adjust") or {}), **a} != mats[mid].get("adjust"):
                 mats[mid]["adjust"] = {**(mats[mid].get("adjust") or {}), **a}; ch.append(f"{mid}.adjust")
     return ch
@@ -291,25 +311,50 @@ def astryx_doc(names: list[str]) -> str:
 
 
 def build_ui(sb: dict, item: dict, cost: list) -> str | None:
+    from ui_build import ensure_ui_built, scene_ui_satisfied  # noqa: E402
+
     sid = sb["id"]
     n = int(item.get("scene") or 0)
+    rep = item.get("replace")
+    sc = (sb.get("scenes") or [])[n - 1]
+    for m in sc.get("materials") or []:
+        if rep and m.get("id") != rep:
+            continue
+        if not rep and m.get("type") != "ui_mock":
+            continue
+        rel = m.get("ui")
+        if isinstance(rel, str) and rel.strip():
+            if ensure_ui_built(rel, sb):
+                print(f"[ui 빌드] 기존 {rel} — Agent 생략", flush=True)
+                return rel
+    if scene_ui_satisfied(sb, n, rep):
+        return next(
+            (m["ui"] for m in sc.get("materials") or [] if m.get("ui")),
+            None,
+        )
     name = f"s{n:02d}_app"
     ui = ROOT / "data" / "compositions" / sid / "ui" / f"{name}.tsx"
     ui.parent.mkdir(parents=True, exist_ok=True)
-    sc = (sb.get("scenes") or [])[n - 1]
     ex = (ROOT / "tools" / "ui-scenes" / "examples" / "db-table.tsx").read_text("utf-8")
     sysm = "너는 Astryx(Meta 디자인 시스템) React 장면 파일을 쓰는 디자이너다. 출력은 JSON 하나: {\"tsx\": \"파일 전체\"}. 컴포넌트 속성은 문서 그대로(추측 금지)."
-    prompt = (f"# 만들 화면\n{item.get('what')}\n장면 나레이션: {sc.get('narration')}\n화면 글자: {sc.get('caption')}\n\n# 컴포넌트 문서\n{astryx_doc(item.get('components') or ['Card', 'Text'])}\n\n"
+    t_doc = time.perf_counter()
+    docs = astryx_doc(item.get("components") or ["Card", "Text"])
+    _log_skill_timing(sid, f"ui_s{n}_astryx_doc", time.perf_counter() - t_doc, scene=n)
+    prompt = (f"# 만들 화면\n{item.get('what')}\n장면 나레이션: {sc.get('narration')}\n화면 글자: {sc.get('caption')}\n\n# 컴포넌트 문서\n{docs}\n\n"
               f"# 예시 파일(형식만 — 내용은 새로)\n{ex}\n\n규칙: `export default function Scene()` 하나, 데이터는 파일 안에, 세로 9:16 화면 높이를 위아래로 꽉 채운다(padding 48, 빈 아래쪽 금지), "
               "영상에서 읽히게 크게(본문 글자 약 40px · 숫자 56px 이상 — style 로 키운다), 한 화면에 볼 곳 하나, 한국어, 실제 데이터만(콘티에 있는 숫자).")
     err = ""
-    for _ in range(2):
+    for attempt in range(2):
+        t_ag = time.perf_counter()
         res, c = claude(sysm, prompt + (f"\n\n# 직전 빌드 오류(고친다)\n{err}" if err else ""))
+        _log_skill_timing(sid, f"ui_s{n}_agent", time.perf_counter() - t_ag, scene=n, attempt=attempt + 1)
         cost.append(c)
         ui.write_text(res.get("tsx", ""), "utf-8")
         bg = str((sb.get("direction") or {}).get("color_bg") or "#000000").lstrip("#")
         light = sum(int(bg[i:i + 2], 16) for i in (0, 2, 4)) / 765 > 0.5 if len(bg) >= 6 else False   # 영상 바탕이 밝으면 밝은 테마
+        t_b = time.perf_counter()
         r = subprocess.run(["node", str(ROOT / "tools" / "ui-scenes" / "build.mjs"), str(ui), str(ui.with_suffix("")), "--mode", "light" if light else "dark", "--png", "1080x1920"], capture_output=True, text=True, timeout=300)
+        _log_skill_timing(sid, f"ui_s{n}_build", time.perf_counter() - t_b, scene=n, ok=r.returncode == 0)
         if r.returncode == 0:
             return str(ui.relative_to(ROOT))
         err = (r.stderr or r.stdout)[-2500:]
@@ -352,7 +397,8 @@ def review_io(sb: dict, sbp: Path) -> tuple[str, str]:
     p = (f"# 스킬: designer (3장 '보고 고친다'가 이 단계)\n{skill_text('designer')}\n\n# 콘티\n{json.dumps(view(sb, True), ensure_ascii=False)}\n\n"
          "# 볼 그림(Read 로 하나씩 연다 — 장면 순서)\n" + "\n".join(f"장면 {i + 1}: {x}" for i, x in enumerate(imgs)) + (f"\n레퍼런스와 나란히: {sheet}" if sheet.exists() else "") +
          "\n\n할 일: 그림을 실제로 열어 보고 designer 3장 1~5 를 장면마다 확인한다 — 특히 글자 · 숫자 · 주석이 서로 겹침, 재료가 화면 밖으로 잘림(증거 줄 · 글자), "
-         "띠 안 주인공이 70% 미만, 안전 영역 침범. 문제 있는 장면만 값으로 고친다(문제가 없으면 materials 를 비운다). 본 문제는 problems 에 적는다.")
+         "띠 안 주인공이 70% 미만, 안전 영역 침범. 문제 있는 장면만 값으로 고친다(문제가 없으면 materials 를 비운다). 본 문제는 problems 에 적는다. "
+         "화면 전체 2D 장면(type craft · place full)은 장면 코드가 배치를 정해 adjust 가 쓰이지 않는다 — 그 안의 잘림 · 겹침은 값을 주지 말고 problems 에만 적는다(장면 코드 다듬기 refine 로 넘김).")
     return SYS.format(role="디자이너(정지 화면 검토)", fmt=fmt), p
 
 
@@ -375,55 +421,261 @@ def lint_owners(sbp: Path) -> dict:
 
 PASSES = {"viewer": (viewer_io, viewer_apply), "writer": (writer_io, writer_apply), "director": (director_io, director_apply), "designer": (designer_io, designer_apply), "review": (review_io, designer_apply)}
 
+_NEED = ("writer", "director", "designer")
 
-def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None) -> dict:
+
+def words_hash(sb: dict) -> str:
+    """대본의 말(제목 · 나레이션 · 화면 글자)만의 해시 — 목소리 · 재료 · 연출 칸이 바뀌어도 그대로다(produce 의 --prep 기록과 같은 식)"""
+    return hashlib.sha1(json.dumps([sb.get("title"), [(x.get("narration"), x.get("caption")) for x in sb.get("scenes") or []]], ensure_ascii=False).encode()).hexdigest()[:16]
+
+
+def _approved_path(sid: str) -> Path:
+    return ROOT / "data" / "compositions" / sid / "skill_pass" / "approved.json"
+
+
+def mark_approved(sbp: Path, **info) -> None:
+    """이해 관문(시청자 · 각본가 · 검사 되먹임)을 마친 최종 대본을 기록한다.
+    2026-11-17: 음성 실패 뒤 재시도마다 대본 검토 9분을 처음부터 다시 했고, 검사 되먹임의 각본가가 마지막에 대본을 고쳐
+    음성 직전 이해 관문이 또 돌았다 — 끝난 대본의 말 해시를 남겨 같은 말이면 건너뛴다"""
     sb = json.loads(sbp.read_text("utf-8"))
-    rec_p = ROOT / "data" / "compositions" / sb["id"] / "skill_pass" / f"{name}.json"
+    p = _approved_path(sb["id"])
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"words": words_hash(sb), "at": time.strftime("%Y-%m-%dT%H:%M:%S"), **info}, ensure_ascii=False), "utf-8")
+
+
+def is_approved(sbp: Path) -> bool:
+    try:
+        sb = json.loads(sbp.read_text("utf-8"))
+        rec = json.loads(_approved_path(sb["id"]).read_text("utf-8"))
+        return rec.get("words") == words_hash(sb)
+    except (OSError, ValueError, KeyError):
+        return False
+
+
+def produce_skill_steps(sbp: Path) -> list[str]:
+    """produce 시작 시 skill_pass 에 돌릴 단계 — 기본 writer·director·designer 전부.
+
+    - FLUMA_PRODUCE_SKILLS=0 / FLUMA_SKIP_SKILLS=1 → []
+    - lint 실패 시에도 전부 돌린 뒤 skill_pass 안에서 되먹임(담당별 --force)
+    """
+    if os.environ.get("FLUMA_SKIP_SKILLS") == "1" or os.environ.get("FLUMA_PRODUCE_SKILLS") == "0":
+        return []
+    return ["writer", "director", "designer"]
+
+
+def pipeline_skills_ok(sbp: Path) -> bool:
+    """채팅(또는 방금 produce)에서 스킬이 이미 적용됐으면 produce 안에서 skill_pass all 을 생략한다."""
+    try:
+        sid = json.loads(sbp.read_text("utf-8"))["id"]
+        d = ROOT / "data" / "compositions" / sid / "skill_pass"
+        for name in _NEED:
+            f = d / f"{name}.json"
+            if not f.exists():
+                return False
+        return is_approved(sbp)
+    except (OSError, json.JSONDecodeError, KeyError):
+        return False
+
+
+def parallel_passes(names: list[str], sbp: Path, force: bool, issues: dict | None = None) -> list[dict]:
+    """서로 다른 칸을 고치는 단계(감독: 연출 · 박자 · 소리 / 디자이너: 배치 · 자막 · 글꼴 · 앱 화면)는 모델 호출을 동시에 보내고,
+    받은 답은 차례로 적용한다(파일을 동시에 쓰지 않게). 2026-11-16: 차례로 부르면 단계마다 20~50초가 그대로 더해졌다"""
+    sb = json.loads(sbp.read_text("utf-8"))
+    todo, out = {}, []
+    for n in names:
+        system, prompt = PASSES[n][0](sb, sbp)
+        if issues and issues.get(n):
+            prompt += "\n\n# 검사(lint)가 막은 것 — 이 단계 담당, 꼭 고친다(스킬 규칙과 함께 만족시키는 방법으로)\n" + "\n".join(issues[n])
+        rec_p = ROOT / "data" / "compositions" / sb["id"] / "skill_pass" / f"{n}.json"
+        h = hashlib.sha1((system + prompt).encode()).hexdigest()[:16]
+        if not force and rec_p.exists() and json.loads(rec_p.read_text("utf-8")).get("hash") == h:
+            out.append({"pass": n, "skipped": "입력 그대로"})
+            continue
+        todo[n] = (system, prompt)
+    if not todo:
+        return out
+    with ThreadPoolExecutor(max_workers=len(todo)) as ex:
+        futs = {n: ex.submit(claude, *sp) for n, sp in todo.items()}
+        got = {n: f.result() for n, f in futs.items()}
+    for n in names:
+        if n in got:
+            out.append(run_pass(n, sbp, True, (issues or {}).get(n), pre=got[n]))
+    return out
+
+
+BLOCKING = ("처음 보는 말", "설명 없는 숫자", "흐름 끊김", "넘김")
+
+
+def viewer_open(sbp: Path) -> tuple[int, list]:
+    """마지막 시청자 검토의 (점수, 아직 대사로 풀어야 할 이해 막힘)"""
+    sb = json.loads(sbp.read_text("utf-8"))
+    f = ROOT / "data" / "compositions" / sb["id"] / "skill_pass" / "viewer.json"
+    try:
+        r = json.loads(f.read_text("utf-8"))
+    except (OSError, ValueError):
+        return 0, []
+    score = int((r.get("patch") or {}).get("score") or r.get("score") or 0)
+    return score, [i for i in viewer_issues(sb, "writer") if i.get("kind") in BLOCKING]
+
+
+STORY_BLOCK_BELOW = 7
+
+
+def story_blocking(sbp: Path) -> list:
+    """콘티 구조 문제로 멈출지 — 시청자 이해 점수가 STORY_BLOCK_BELOW 미만일 때만.
+    2026-11-17 실측: 시청자 검토는 부를 때마다 새 '구조' 지적을 찾는다(점수는 7로 같음). 지적이 하나라도 있으면 멈추게 했더니
+    에이전트가 콘티를 고치고 produce 를 다시 돌리는 일을 다섯 번 넘게 반복했다(검토 한 번 30~45초 + 고치기 1~2분).
+    점수가 기준 이상이면 구조 지적은 각본가 · 감독에게 '제안'으로만 넘긴다(writer_io 가 함께 읽는다)."""
+    score, _ = viewer_open(sbp)
+    if score >= STORY_BLOCK_BELOW:
+        return []
+    return viewer_issues(json.loads(sbp.read_text("utf-8")), "story")
+
+
+def comprehension_loop(sbp: Path, force: bool = False, rounds: int = 2, always_write: bool = False) -> list[dict]:
+    """이해 관문(2026-11-16): 시청자 검토 → 각본가 → 고친 대본을 다시 시청자 검토.
+    - 콘티 구조 문제(fix_by story)는 첫 검토에서 바로 멈춘다 — 대사를 고쳐 봐야 안 풀리므로 각본가 루프를 돌지 않는다
+      (2026-11-16 실측: 첫 검토 25초에 찾은 구조 문제를 각본가 루프 4분 뒤에야 알렸다)
+    - 나아지지 않으면 멈춘다: 점수가 8 이상 · 막힘이 1개 이하 · 직전보다 점수가 안 오르고 막힘도 안 줄면 끝
+      (시청자는 매번 새 지적을 찾아 점수가 7에 머물러, 막힘 0개 조건으로는 늘 최대 횟수까지 돌았다)
+    입력(대본)이 그대로면 해시로 건너뛰므로 다시 불러도 비용이 없다 — produce 가 음성 직전에 한 번 더 부른다.
+    이해 관문을 이미 마친 말(approved.json)과 같으면 시청자도 부르지 않는다."""
+    if not force and is_approved(sbp):
+        return [{"pass": "comprehension", "skipped": "검토를 마친 대본 그대로"}]
+    out = [run_pass("viewer", sbp, force)]
+
+    def story_block() -> bool:
+        st = story_blocking(sbp)
+        if st:
+            out.append({"pass": "comprehension", "story": [f"{i.get('scene')}장면 {i.get('kind')}: {i.get('what')} → {i.get('how')}" for i in st]})
+        return bool(st)
+
+    if story_block():
+        return out
+    if always_write:                                   # 처음 쓸 때는 각본가(말투 · AI 티 · 시청자 막힘)를 꼭 한 번 거친다
+        pre_lint = lint_owners(sbp).get("writer")       # 검사에 걸릴 대사 문제도 첫 호출에 같이(나중 되먹임 왕복을 줄인다)
+        out += [run_pass("writer", sbp, force, pre_lint), run_pass("viewer", sbp, False)]
+        if story_block():
+            return out
+    prev = None
+    for _ in range(rounds):
+        score, open_ = viewer_open(sbp)
+        if score >= 8 or len(open_) <= 1 or (prev and score <= prev[0] and len(open_) >= prev[1]):
+            break
+        prev = (score, len(open_))
+        out.append(run_pass("writer", sbp, True))
+        out.append(run_pass("viewer", sbp, False))
+        if story_block():
+            return out
+    score, open_ = viewer_open(sbp)
+    out.append({"pass": "comprehension", "score": score, "open": [f"{i.get('scene')}장면 {i.get('kind')}: {i.get('what')}" for i in open_]})
+    return out
+
+
+def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None, pre: tuple | None = None) -> dict:
+    t_pass = time.perf_counter()
+    sb = json.loads(sbp.read_text("utf-8"))
+    sid = sb["id"]
+    rec_p = ROOT / "data" / "compositions" / sid / "skill_pass" / f"{name}.json"
     rec_p.parent.mkdir(parents=True, exist_ok=True)
     io, apply = PASSES[name]
     system, prompt = io(sb, sbp)
     if issues:
         prompt += "\n\n# 검사(lint)가 막은 것 — 이 단계 담당, 꼭 고친다(스킬 규칙과 함께 만족시키는 방법으로)\n" + "\n".join(issues)
     h = hashlib.sha1((system + prompt).encode()).hexdigest()[:16]
-    if not force and rec_p.exists() and json.loads(rec_p.read_text("utf-8")).get("hash") == h:
+    if pre is None and not force and rec_p.exists() and json.loads(rec_p.read_text("utf-8")).get("hash") == h:
+        _log_skill_timing(sid, name, time.perf_counter() - t_pass, skipped=True)
         return {"pass": name, "skipped": "입력 그대로"}
+    t_ag = time.perf_counter()
     if name == "review":
         patch, cost = claude(system, prompt, timeout=1500, tools="Read", dirs=[str(ROOT / "data" / "workspace" / "stills"), str(ROOT / "data" / "compositions" / sb["id"])])
+    elif pre is not None:                       # 다른 단계와 동시에 이미 받아 온 답(parallel_passes)
+        patch, cost = pre
     else:
         patch, cost = claude(system, prompt)
+    _log_skill_timing(sid, f"{name}_agent", time.perf_counter() - t_ag)
     costs = [cost]
     changed = apply(sb, patch)
     if name == "designer":
+        from ui_build import scene_ui_satisfied  # noqa: E402
+
+        ui_items = []
         for it in patch.get("ui_scenes") or []:
-            try:
-                ui = build_ui(sb, it, costs)
-            except (RuntimeError, subprocess.TimeoutExpired) as e:
-                changed.append(f"앱 화면 실패: {e}")
+            n = int(it.get("scene") or 0)
+            if scene_ui_satisfied(sb, n, it.get("replace")):
+                changed.append(f"s{n}.ui_mock(기존·빌드)")
                 continue
-            if ui:
-                n = int(it["scene"]); sc = sb["scenes"][n - 1]
-                mats = sc.setdefault("materials", [])
-                new = {"id": f"s{n:02d}app", "type": "ui_mock", "device": "phone", "mock": True, "ui": ui, "what": it.get("what")}
-                rep = it.get("replace")
-                idx = next((k for k, m in enumerate(mats) if m.get("id") == rep), None)
-                if idx is not None:
-                    mats[idx] = new
-                else:
-                    mats.append(new)
-                changed.append(f"s{n}.ui_mock(Astryx)")
-            else:
+            ui_items.append(it)
+
+        def _apply_ui(it: dict, ui: str | None) -> None:
+            if not ui:
                 changed.append(f"s{it.get('scene')} 앱 화면 빌드 실패(타입 검사 2번)")
+                return
+            n = int(it["scene"])
+            sc = sb["scenes"][n - 1]
+            mats = sc.setdefault("materials", [])
+            new = {"id": f"s{n:02d}app", "type": "ui_mock", "device": "phone", "mock": True, "ui": ui, "what": it.get("what")}
+            rep = it.get("replace")
+            idx = next((k for k, m in enumerate(mats) if m.get("id") == rep), None)
+            if idx is not None:
+                mats[idx] = new
+            else:
+                mats.append(new)
+            changed.append(f"s{n}.ui_mock")
+
+        def _scene_has_evidence(n: int) -> bool:
+            from material_evidence import _primary, is_evidence  # noqa: E402
+
+            sc_ = (sb.get("scenes") or [])[n - 1]
+            return any(is_evidence(m) for m in _primary(sc_.get("materials") or []))
+
+        if len(ui_items) <= 1:
+            for it in ui_items:
+                n = int(it.get("scene") or 0)
+                if not _scene_has_evidence(n) and not it.get("replace"):
+                    changed.append(f"s{n}.ui_mock(증거 없음 — icon/web 콘티 필요)")
+                    continue
+                try:
+                    ui = build_ui(sb, it, costs)
+                except (RuntimeError, subprocess.TimeoutExpired) as e:
+                    changed.append(f"앱 화면 실패: {e}")
+                    continue
+                _apply_ui(it, ui)
+        else:
+            built: dict[int, str | None] = {}
+
+            def _run(it: dict) -> tuple[int, str | None]:
+                local_cost: list = []
+                try:
+                    return int(it["scene"]), build_ui(sb, it, local_cost)
+                except (RuntimeError, subprocess.TimeoutExpired):
+                    return int(it["scene"]), None
+                finally:
+                    costs.extend(local_cost)
+
+            with ThreadPoolExecutor(max_workers=min(3, len(ui_items))) as ex:
+                futs = [ex.submit(_run, it) for it in ui_items]
+                for fut in as_completed(futs):
+                    sn, ui = fut.result()
+                    built[sn] = ui
+            for it in ui_items:
+                n = int(it.get("scene") or 0)
+                if not _scene_has_evidence(n) and not it.get("replace"):
+                    changed.append(f"s{n}.ui_mock(증거 없음 — icon/web 콘티 필요)")
+                    continue
+                _apply_ui(it, built.get(n))
     sbp.write_text(json.dumps(sb, ensure_ascii=False, indent=1) + "\n", "utf-8")
     # 적용 뒤 입력 해시(다음엔 건너뛰게)
     system2, prompt2 = io(sb, sbp)
     rec = {"pass": name, "hash": hashlib.sha1((system2 + prompt2).encode()).hexdigest()[:16], "changed": changed, "why": patch.get("why"), "problems": patch.get("problems") or patch.get("issues"), "score": patch.get("score"), "understood": patch.get("understood"), "cost_usd": round(sum(costs), 4), "patch": patch}
     rec_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
+    _log_skill_timing(sid, name, time.perf_counter() - t_pass, changed=len(changed or []))
     return {k: rec[k] for k in ("pass", "changed", "why", "problems", "score", "understood", "cost_usd") if rec.get(k) is not None}
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("which", choices=["all", "viewer", "writer", "director", "designer", "review", "refine", "status"])
+    ap.add_argument("which", choices=["all", "pipeline", "comprehension", "visual", "viewer", "writer", "director", "designer", "review", "refine", "status"])
     ap.add_argument("storyboard")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
@@ -444,27 +696,66 @@ def main() -> int:
         print(f"[스킬 단계] {json.dumps(r, ensure_ascii=False)}", flush=True)
         ok("skill_pass", passes=json.dumps([r], ensure_ascii=False))
         return 0
+    skip_viewer = os.environ.get("FLUMA_SKIP_VIEWER", "0") == "1"
+
+    def _viewer_gate(sbn: dict) -> None:
+        story = story_blocking(sbp)
+        if story:
+            fail("skill_pass", stage="story", error="시청자 시뮬레이션: 콘티 구조를 다시 써야 함 — " + " / ".join(f"{i.get('scene')}장면 {i.get('kind')}: {i.get('what')} → {i.get('how')}" for i in story)[:900])
+
     try:
-        if a.which == "all":
-            out.append(run_pass("viewer", sbp, a.force))
-            print(f"[스킬 단계] {json.dumps(out[-1], ensure_ascii=False)}", flush=True)
-            sbn = json.loads(sbp.read_text("utf-8"))
-            story = viewer_issues(sbn, "story")
-            if story:                                  # 장면을 더하거나 순서를 바꿔야 풀리는 이해 문제 — 대사 다듬기로는 안 된다
-                fail("skill_pass", stage="story", error="시청자 시뮬레이션: 콘티 구조를 다시 써야 함 — " + " / ".join(f"{i.get('scene')}장면 {i.get('kind')}: {i.get('what')} → {i.get('how')}" for i in story)[:900])
-        for n in (["writer", "director", "designer"] if a.which == "all" else [a.which]):
+        which = a.which
+        if which == "pipeline":
+            which = "all"
+        if a.which == "visual":                                   # 감독 · 디자이너만(동시에) — produce --prep 뒤
+            for r in parallel_passes(["director", "designer"], sbp, a.force):
+                out.append(r); print(f"[스킬 단계] {json.dumps(r, ensure_ascii=False)}", flush=True)
+            ok("skill_pass", passes=json.dumps(out, ensure_ascii=False))
+            return 0
+        if a.which == "comprehension":
+            out = comprehension_loop(sbp, a.force, rounds=1)
+            for r in out:
+                print(f"[스킬 단계] {json.dumps(r, ensure_ascii=False)}", flush=True)
+            _viewer_gate(json.loads(sbp.read_text("utf-8")))
+            if out[-1].get("score", 10) < 7:
+                fail("skill_pass", stage="comprehension", error=f"처음 보는 시청자가 이해하지 못함(점수 {out[-1]['score']}) — " + " / ".join(out[-1]["open"])[:900])
+            if not out[-1].get("skipped"):
+                mark_approved(sbp, by="comprehension", score=out[-1].get("score"))
+            ok("skill_pass", passes=json.dumps(out, ensure_ascii=False))
+            return 0
+        steps = [a.which]
+        if which == "all":
+            steps = ["director", "designer"]
+            if skip_viewer:
+                steps = ["writer"] + steps
+            else:
+                for r in comprehension_loop(sbp, a.force, rounds=1, always_write=True):   # 시청자 → 각본가 → 재검토(한 바퀴까지)
+                    out.append(r); print(f"[스킬 단계] {json.dumps(r, ensure_ascii=False)}", flush=True)
+                _viewer_gate(json.loads(sbp.read_text("utf-8")))
+        par = [n for n in steps if n in ("director", "designer")]
+        if len(par) == 2:                                          # 감독 · 디자이너는 동시에
+            for r in parallel_passes(par, sbp, a.force):
+                out.append(r); print(f"[스킬 단계] {json.dumps(r, ensure_ascii=False)}", flush=True)
+            steps = [n for n in steps if n not in par]
+        for n in steps:
             single = lint_owners(sbp).get(n) if a.which != "all" and n in OWNER else None   # 단독으로 부를 때도 지금 걸린 담당 검사를 넘긴다
             out.append(run_pass(n, sbp, a.force, single))
             print(f"[스킬 단계] {json.dumps(out[-1], ensure_ascii=False)}", flush=True)
-        if a.which == "all":
-            for rnd in range(2):                                   # 검사 되먹임: 걸린 규칙을 담당 단계로 돌려보낸다(최대 두 바퀴)
+        if which == "all" and a.which != "pipeline":
+            for rnd in range(2):                                   # 검사 되먹임: 걸린 규칙을 담당 단계로 돌려보낸다(최대 두 
                 by = lint_owners(sbp)
                 if not by:
                     break
-                for n in ("writer", "director", "designer"):
-                    if by.get(n):
-                        out.append(run_pass(n, sbp, True, by[n]))
-                        print(f"[스킬 단계 · 되먹임 {rnd + 1}] {json.dumps(out[-1], ensure_ascii=False)}", flush=True)
+                if by.get("writer") and rnd == 0:
+                    out.append(run_pass("writer", sbp, True, by["writer"]))
+                    print(f"[스킬 단계 · 되먹임 {rnd + 1}] {json.dumps(out[-1], ensure_ascii=False)}", flush=True)
+                for r in parallel_passes([n for n in ("director", "designer") if by.get(n)], sbp, True, by):
+                    out.append(r); print(f"[스킬 단계 · 되먹임 {rnd + 1}] {json.dumps(r, ensure_ascii=False)}", flush=True)
+            # 검사 되먹임까지 끝난 최종 대본을 승인으로 남긴다 — 음성 직전 이해 관문 · 재시도가 같은 말을 다시 검토하지 않게.
+            # 점수가 관문 기준(7) 아래면 남기지 않는다: 그때는 음성 직전 관문이 그대로 막아 사람에게 알린다
+            comp = [r for r in out if r.get("pass") == "comprehension"]
+            if not skip_viewer and comp and (comp[-1].get("skipped") or comp[-1].get("score", 0) >= 7):
+                mark_approved(sbp, by="all", score=comp[-1].get("score"))
     except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
         fail("skill_pass", stage="skill_pass", error=str(e)[:400])
     ok("skill_pass", passes=json.dumps(out, ensure_ascii=False))

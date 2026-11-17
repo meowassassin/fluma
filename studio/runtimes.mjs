@@ -5,9 +5,40 @@ import { OS, which } from "./platform.mjs";
 /** 로컬 CLI 에이전트. runs = Fluma 가 직접 구동할 수 있는지 */
 export const AGENTS = [
   { id: "claude", title: "Claude Code", vendor: "Anthropic", bin: "claude", runs: true, tagline: "파일 접근 제한 · 스킬 · 기억 연동이 가장 잘 됨 (기본)" },
+  { id: "cursor", title: "Cursor Agent", vendor: "Cursor", bin: "agent", runs: true, tagline: "Cursor CLI(agent) · Cursor 구독 · Composer 모델" },
   { id: "antigravity", title: "Antigravity", vendor: "Google", bin: "agy", runs: true, tagline: "Google 계정 로그인 · Gemini 모델 (숏폼 생성 파이프라인 오케스트레이터)" },
   { id: "codex", title: "Codex", vendor: "OpenAI", bin: "codex", runs: true, tagline: "ChatGPT 계정 또는 OpenAI 키로 GPT 모델 사용" },
 ];
+
+export const CURSOR_MODELS = [{ id: "", label: "기본 (Cursor Agent 설정)", efforts: [] }];
+
+/** agent --list-models 텍스트 → Codex 와 같은 { id, label, efforts? }[] */
+export function parseCursorListModels(text) {
+  const base = [{ id: "", label: "기본 (Cursor Agent 설정)", efforts: [] }];
+  const seen = new Set([""]);
+  const out = [];
+  for (const ln of String(text || "").split("\n")) {
+    const t = ln.trim();
+    if (!t || /^available models/i.test(t)) continue;
+    const m = /^(\S+)\s+-\s+(.+?)(\s+\(current\))?\s*$/i.exec(t);
+    if (!m) continue;
+    let id = m[1];
+    const current = !!m[3];
+    if (id === "auto") {
+      base[0] = { ...base[0], label: current ? "기본 (Auto · 현재)" : "기본 (Auto)" };
+      continue;
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const label = m[2].trim().replace(/\s*\(default\)\s*/i, "") + (current ? " · 현재" : "");
+    const slug = id.toLowerCase();
+    const efforts = /thinking|reason/.test(slug + label.toLowerCase())
+      ? ["low", "medium", "high", "xhigh", "max"]
+      : /codex|gpt-5|o[134]/.test(slug) ? ["low", "medium", "high", "xhigh", "max"] : [];
+    out.push({ id, label, efforts });
+  }
+  return [...base, ...out];
+}
 
 /** agy models 출력(2026-11-12 확인) — 기본은 agy 설정을 따른다 */
 export const AGY_MODELS = [
@@ -31,13 +62,25 @@ function exec(bin, args, timeout) {
 }
 let detected = null, detectedAt = 0, detecting = null;
 let codexModelCache = null;
+let cursorModelCache = [...CURSOR_MODELS];
+/** PATH 의 agent 가 Cursor CLI 인지(다른 도구와 이름 충돌 방지) */
+async function isCursorAgentBin(where) {
+  if (!where) return false;
+  const r = await exec(where, ["--help"], 6000);
+  return /Cursor Agent/i.test(r.out) || /api2\.cursor\.sh/i.test(r.out);
+}
 async function probeAll() {
   const list = await Promise.all(AGENTS.map(async (a) => {
     const where = which(a.bin);
     let version = null, auth = null;
-    if (where) version = (await exec(where, ["--version"], 8000)).out.trim().split("\n")[0].slice(0, 60) || null;
+    let installed = !!where;
+    if (a.id === "cursor") {
+      installed = !!(where && (await isCursorAgentBin(where)));
+      if (!installed) auth = where ? "Cursor CLI가 아닙니다 — SF_CURSOR_AGENT_BIN 으로 경로를 지정하세요" : null;
+    }
+    if (where && installed) version = (await exec(where, ["--version"], 8000)).out.trim().split("\n")[0].slice(0, 60) || null;
     if (where && a.id === "codex") auth = (await exec(where, ["login", "status"], 8000)).out.trim().split("\n")[0] || null;
-    return { ...a, installed: !!where, path: where, version, auth };
+    return { ...a, installed, path: installed ? where : null, version, auth };
   }));
   const cx = list.find((a) => a.id === "codex");
   const base = [{ id: "", label: "기본 (Codex 설정)", efforts: [] }];
@@ -49,6 +92,11 @@ async function probeAll() {
         .map((m) => ({ id: m.slug, label: m.display_name || m.slug, efforts: (m.supported_reasoning_levels || []).map((x) => x.effort) }))];
     } catch { codexModelCache = base; }
   } else codexModelCache = [];
+  const cur = list.find((a) => a.id === "cursor");
+  if (cur?.installed && cur.path) {
+    const r = await exec(cur.path, ["--list-models"], 15000);
+    cursorModelCache = parseCursorListModels(r.out);
+  } else cursorModelCache = [...CURSOR_MODELS];
   detected = list; detectedAt = Date.now();
   return list;
 }
@@ -63,6 +111,7 @@ export function detectAgents() {
   return detected || AGENTS.map((a) => ({ ...a, installed: null, path: null, version: null, auth: null }));
 }
 export function codexModels() { return codexModelCache || []; }
+export function cursorModels() { return cursorModelCache || [...CURSOR_MODELS]; }
 
 // ---------- 실행 구성 ----------
 /** 설정 → { runtime: "claude"|"antigravity"|"codex", model, effort, env, codexConfig[], label } */
@@ -72,7 +121,24 @@ export function resolveRuntime(cfg = {}) {
   const cli = a.cli || "claude";
   if (cli === "antigravity") return { runtime: "antigravity", model: a.agyModel ?? "", effort, env: {}, label: `Antigravity${a.agyModel ? ` · ${a.agyModel}` : ""}` };
   if (cli === "codex") return { runtime: "codex", model: a.codexModel ?? "", effort, env: {}, codexConfig: [], label: `Codex${a.codexModel ? ` · ${a.codexModel}` : ""}` };
+  if (cli === "cursor") return { runtime: "cursor", model: a.cursorModel ?? "", effort, env: {}, label: `Cursor Agent${a.cursorModel ? ` · ${a.cursorModel}` : ""}` };
   return { runtime: "claude", model: a.claudeModel ?? cfg.model ?? "", effort, env: {}, label: `Claude Code${(a.claudeModel ?? cfg.model) ? ` · ${a.claudeModel ?? cfg.model}` : ""}` };
+}
+
+/** Cursor Agent CLI 비대화형 인자 — 프롬프트는 마지막 위치 인자 */
+export function cursorArgs({ cwd, sessionId, model, effort, prompt }) {
+  const args = ["-p", "-f", "--trust", "--output-format", "stream-json", "--workspace", cwd];
+  if (sessionId) args.push("--resume", sessionId);
+  let m = model || "";
+  if (effort) {
+    const e = effort === "max" ? "high" : effort;
+    const base = m || "auto";
+    if (!/\[/.test(base)) m = `${base}[effort=${e}]`;
+    else m = base;
+  }
+  if (m) args.push("--model", m);
+  args.push(prompt);
+  return args;
 }
 
 /** codex exec 인자. 처음엔 시스템 지시를 프롬프트 앞에 붙이고, 이후엔 같은 스레드를 이어간다 */
@@ -147,6 +213,53 @@ export function makeAgyParser(emit, { onConversation }) {
   };
 }
 
+/** Cursor agent stream-json → Fluma 공통 이벤트 (2026-11-16: Claude stream-json 과 유사한 assistant · result) */
+export function makeCursorParser(emit, { onSession }) {
+  let said = false;
+  return (line) => {
+    let e; try { e = JSON.parse(line); } catch { return; }
+    if (e.session_id) onSession?.(e.session_id);
+    if (e.type === "system" && e.subtype === "init") {
+      emit({ type: "status", label: "시작" });
+      return;
+    }
+    if (e.type === "thinking" && e.subtype === "delta") {
+      emit({ type: "status", label: "생각 중" });
+      return;
+    }
+    if (e.type === "assistant" && e.message?.content) {
+      for (const c of e.message.content) {
+        if (c.type === "text" && c.text) { emit({ type: "text", text: c.text }); said = true; }
+        if (c.type === "tool_use" && c.name) {
+          const id = String(c.id || `${c.name}-${Date.now()}`);
+          emit({ type: "tool_start", id, name: c.name });
+          emit({ type: "tool_use", id, name: c.name, input: JSON.stringify(c.input || {}).slice(0, 160) });
+        }
+      }
+      return;
+    }
+    if (e.type === "tool_call" || e.type === "tool_result") {
+      const id = String(e.tool_call_id || e.id || `tool-${Date.now()}`);
+      const name = e.name || e.tool || "Tool";
+      if (e.type === "tool_call" || e.subtype === "started") {
+        emit({ type: "tool_start", id, name });
+        emit({ type: "tool_use", id, name, input: String(e.command || e.input || "").slice(0, 160) });
+      } else {
+        emit({ type: "tool_result", id, error: !!e.is_error, preview: String(e.output || e.result || "").slice(0, 400) });
+      }
+      return;
+    }
+    if (e.type === "result") {
+      if (e.result && !said) emit({ type: "text", text: String(e.result) });
+      emit({
+        type: "result", ok: e.subtype === "success" && !e.is_error,
+        cost: null, durationMs: e.duration_ms ?? null, denials: [],
+        ...(e.subtype === "success" && !e.is_error ? {} : { error: e.error || "Cursor Agent 실패" }),
+      });
+    }
+  };
+}
+
 /** codex --json 이벤트 → Fluma 공통 이벤트 (claude 파서와 같은 모양) */
 export function makeCodexParser(emit, { onThread, rel }) {
   let said = false;
@@ -187,6 +300,7 @@ const CODEX_DROP = ["OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_ORG_ID", "OPENA
 export function agentEnv(base, rt) {
   const env = { ...base };
   const dropped = [];
+  if (rt?.runtime === "cursor" || rt?.runtime === "antigravity") return { env, dropped: [] };
   for (const k of Object.keys(env)) {
     const drop = rt?.runtime === "codex"
       ? CODEX_DROP.includes(k)

@@ -115,7 +115,7 @@ export type Ovr = { dx?: number; dy?: number; scale?: number; rot?: number; opac
 export const useEventsBoot = () => useEffect(() => { startEvents(); }, []);
 
 /** 지금 일하는 에이전트 대화들(서버 기준). 시작 · 끝은 이벤트로 바로, 진행 중 도구 이름은 4초마다 */
-export interface ActiveAgent { id: string; user: string; startedAt: number; tool: { name: string; input: string } | null; stopping: boolean; skill: string | null }
+export interface ActiveAgent { id: string; user: string; startedAt: number; tool: { name: string; input: string } | null; stopping: boolean; skill: string | null; waiting?: number | null }
 export const useActiveAgents = () => useQuery({
   queryKey: qk.agentActive, staleTime: Infinity,
   queryFn: async ({ signal }) => { const r = await fetch("/api/agent/active", { signal }); return r.ok ? (await r.json() as ActiveAgent[]) : []; },

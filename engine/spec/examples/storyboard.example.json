@@ -1,0 +1,261 @@
+{
+ "id": "2026-01-01-example-01",
+ "version": 1,
+ "format": "concept",
+ "language": "ko",
+ "audience": "웹 · 앱 개발을 막 시작한 주니어 개발자",
+ "topic": "실무에서 자주 보는 HTTP 상태 코드 200 · 404 · 500",
+ "title": "상태 코드는 첫 자리만 보면 돼요",
+ "duration_sec": 15,
+ "hook_number": null,
+ "badge": null,
+ "brand": null,
+ "cta": "4면 주소부터, 5면 서버 로그부터",
+ "reference": [
+  "uyhVC-QiYCs",
+  "ZBDWU1kMOB8",
+  "n7CeNb7B6rs"
+ ],
+ "constraints": [
+  "실제 화면만 — 로컬 예제 서버에 실제로 보낸 curl 응답 · 실제 서버 로그 · GitHub 실제 404 페이지 · MDN · RFC 9110 원문",
+  "차분하고 또렷한 실무 설명 톤"
+ ],
+ "intent": {
+  "summary": "주니어 개발자에게 200 · 404 · 500 을 실제 화면으로 보여 주고, '첫 자리 숫자로 요청 쪽 문제인지 서버 쪽 문제인지 가른다'는 기준 하나를 들고 가게 한다",
+  "reference_use": "가져올 것: 고정 질문 하나에 코드별 답이 바뀌는 비교 구조 · 2~4초 하드컷 리듬. 안 가져올 것: 막대 인간 의인화 만화 · 밈 더빙 · 코드 10개 나열",
+  "must": [
+   "모든 상태 줄 · 로그는 실제로 실행한 출력",
+   "끝에 시청자가 들고 갈 기준 하나(첫 자리)"
+  ],
+  "must_not": [
+   "직접 그린 캐릭터 · 이모지",
+   "출처 없는 수치"
+  ],
+  "ban": [
+   "number_punch"
+  ]
+ },
+ "script": "개발하다 보면 이 숫자 셋, 매일 보죠 / 200은 성공이에요. 요청이 처리돼서, 페이지가 그대로 왔죠 / 첫 자리가 종류를 정해요. 4로 시작하면 요청 쪽, 5로 시작하면 서버 쪽이에요",
+ "scenes": [
+  {
+   "role": "hook",
+   "sec": 3.0,
+   "beat": "훅 — 증거 먼저",
+   "shot_fn": "자리 잡기",
+   "screen": "실제 화면",
+   "caption": "매일 보는 숫자 셋",
+   "narration": "개발하다 보면 이 숫자 셋, 매일 보죠",
+   "visual": {
+    "kind": "screenshot",
+    "asset": "elements/2026-11-16-sbase-02/three"
+   },
+   "materials": [
+    {
+     "id": "term",
+     "type": "web",
+     "src": "data/public/elements/<프로젝트 id>/<termrec 이름>",
+     "note": "engine/capture/termrec.py 로 녹화한 실제 실행 화면"
+    }
+   ],
+   "beats": [
+    {
+     "do": "확대",
+     "at": "숫자"
+    }
+   ]
+  },
+  {
+   "role": "item",
+   "sec": 5.31,
+   "beat": "설명 — 200",
+   "shot_fn": "디테일",
+   "screen": "기사",
+   "view": "전체",
+   "caption": "200 OK",
+   "narration": "200은 성공이에요. 요청이 처리돼서, 페이지가 그대로 왔죠",
+   "visual": {
+    "kind": "screenshot",
+    "asset": "elements/2026-11-16-sbase-02/mdn200",
+    "emphasis": "good"
+   },
+   "materials": [
+    {
+     "id": "gh",
+     "type": "screen",
+     "src": "data/compositions/<프로젝트 id>/<캡처>.png"
+    },
+    {
+     "id": "mark",
+     "type": "overlay",
+     "target": "gh",
+     "style": "clean",
+     "marks": [
+      {
+       "kind": "box",
+       "box": [
+        0.02,
+        0.18,
+        0.32,
+        0.31
+       ],
+       "cue": "404가"
+      }
+     ]
+    }
+   ],
+   "beats": [
+    {
+     "do": "표시",
+     "at": "200은"
+    },
+    {
+     "do": "확대",
+     "at": "페이지가"
+    }
+   ]
+  },
+  {
+   "role": "item",
+   "sec": 6.4,
+   "beat": "설명 — 404",
+   "shot_fn": "변화",
+   "screen": "애니메이션 · 일러스트",
+   "caption": "첫 자리 = 종류",
+   "narration": "첫 자리가 종류를 정해요. 4로 시작하면 요청 쪽, 5로 시작하면 서버 쪽이에요",
+   "visual": {
+    "kind": "compare",
+    "primary": "4xx 요청 쪽 · 5xx 서버 쪽"
+   },
+   "materials": [
+    {
+     "id": "art",
+     "type": "craft",
+     "app": "vectorcraft",
+     "steps": [
+      {
+       "id": "shape.rectangle",
+       "params": {
+        "x": 80,
+        "y": 750,
+        "width": 380,
+        "height": 300,
+        "radius": 28
+       }
+      },
+      {
+       "id": "paint.setFill",
+       "params": {
+        "id": "$0.id",
+        "color": "#e8eefc"
+       }
+      },
+      {
+       "id": "paint.setStroke",
+       "params": {
+        "id": "$0.id",
+        "none": true
+       }
+      },
+      {
+       "id": "document.export",
+       "params": {
+        "path": "$WORK/art.svg",
+        "format": "svg"
+       }
+      }
+     ],
+     "export": {
+      "format": "png"
+     }
+    },
+    {
+     "id": "explain",
+     "type": "craft",
+     "app": "effectcraft",
+     "uses": {
+      "art": "art"
+     },
+     "new": {
+      "duration": 6
+     },
+     "steps": [
+      {
+       "id": "edit.pasteSvg",
+       "params": {
+        "svg": "$READ:$USE:art/art.svg",
+        "name": "Ink"
+       }
+      },
+      {
+       "id": "script.run",
+       "params": {
+        "name": "explain",
+        "code": "var C = app.project.activeItem; /* 말에 맞춘 키: $CUE:4로 · $CUE:서버+0.2 (장면 기준 초) */"
+       }
+      }
+     ],
+     "export": {
+      "format": "mp4",
+      "start": 0,
+      "end": 6
+     },
+     "place": "full"
+    }
+   ],
+   "beats": [
+    {
+     "do": "확대",
+     "at": "찾았다는"
+    }
+   ]
+  }
+ ],
+ "sources": [
+  "https://www.rfc-editor.org/rfc/rfc9110.html#name-status-codes",
+  "https://www.rfc-editor.org/rfc/rfc9110.html#name-404-not-found",
+  "https://www.rfc-editor.org/rfc/rfc9110.html#name-500-internal-server-error",
+  "https://developer.mozilla.org/ko/docs/Web/HTTP/Reference/Status/200",
+  "https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml"
+ ],
+ "hashtags": [
+  "#HTTP",
+  "#상태코드",
+  "#404",
+  "#500에러",
+  "#개발자"
+ ],
+ "voice": {
+  "engine": "typecast",
+  "speed": 1.0,
+  "continuous": false,
+  "id": "tc_6af54d77f4d336c400d1370d"
+ },
+ "music": {
+  "use": true,
+  "src": "data/workspace/asset-cache/music/pF2tXC1pXNo.m4a",
+  "title": "Chill – sakura Hz (No Copyright Music)",
+  "by": "Audio Library",
+  "url": "https://www.youtube.com/watch?v=pF2tXC1pXNo",
+  "free": true,
+  "license": "무료 라이브러리 곡(설명란에 곡 · 만든 이 표기)",
+  "bpm": 143.6,
+  "target_bpm": 143.6,
+  "start": 99.47,
+  "why": "'chill lofi beat' 분위기 무료 곡",
+  "upload_sound": [],
+  "source": "auto",
+  "mood": "chill lofi beat",
+  "decide": "레퍼런스에 음악이 100% 깔림 · 144 BPM"
+ },
+ "direction": {
+  "anchors": {
+   "emotion": "500이 떴을 때의 당황 → 어디부터 볼지 아는 안도",
+   "motif": "요청이 오가는 알약",
+   "object": "상태 코드 숫자의 첫 자리",
+   "break": "첫 자리 하나로 갈린다는 반전",
+   "final_image": "브라우저와 서버 사이에 멈춘 500 알약"
+  },
+  "explainer": "2D 플랫 모션그래픽: 브라우저 · 서버 사이를 코드 알약이 오간다"
+ },
+ "meta": {}
+}

@@ -181,6 +181,11 @@ $EC render --template vs.ectemplate --values vals.json --out out.mp4 --format h2
 | 표현식 조절기 | Slider · Checkbox · Color · Point Control | 사람이 나중에 숫자 하나로 조정 |
 전체: `exec effect.list --empty --json` (params 에 id · 기본값 · 범위 · 팝업 옵션). 위 표 중 ✅ 표시 외는 ❔.
 
+### 3-10-1. 스크립트로 키를 걸 때 주의 (2026-11-16 시험)
+- **키는 프레임 단위로 합쳐진다**: 같은 프레임 안(30fps 면 0.033초 안)에 건 두 키는 하나가 된다. '갑자기 나타나기'를 `t-0.01 → 0, t → 100` 으로 걸면 키 하나(100)만 남아 **처음부터 보인다**. 두 프레임 이상 띄운다(`t-0.07`).
+- **부모의 투명도는 자식에 안 내려간다**(위치 · 크기 · 회전만): 알약 + 글자처럼 묶을 때 자식 글자에 `opacity.expression = 'parent.transform.opacity'`.
+- 스크립트 오류는 종료 코드 0 으로 끝난다 — craft 재료 · refine 은 결과의 ok:false 를 잡아 실패로 알린다. JS 줄 끝 `//` 주석 뒤에 코드를 이어 쓰지 않는다(뒤가 통째로 주석이 된다).
+
 ### 3-11. 한 번에 여러 명령 · 결과 참조 ✅
 - CLI: `run --commands steps.json` (JSON 배열, 실패 단계는 `(step N)` 로 알려줌). t1 은 14단계, t3 은 13단계를 한 번에.
 - MCP `batch {steps, atomic}`: `"$1.layer"` 처럼 앞 단계 결과를 다음 params 에 쓸 수 있고 실패하면 전체 되돌림. ❔(CLI `engine.batch` 와 같음)

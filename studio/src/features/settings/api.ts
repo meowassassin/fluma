@@ -17,7 +17,7 @@ async function call<T>(method: string, url: string, body?: unknown, signal?: Abo
 }
 
 export interface AgentInfo { id: string; title: string; vendor: string; runs: boolean; tagline: string; installed: boolean | null; version: string | null; auth: string | null; path: string | null }
-export interface AgentsResp { agents: AgentInfo[]; models: { claude: { id: string; label: string }[]; codex: { id: string; label: string; efforts?: string[] }[]; antigravity?: { id: string; label: string }[] }; active: string | null; problem: string | null }
+export interface AgentsResp { agents: AgentInfo[]; models: { claude: { id: string; label: string }[]; codex: { id: string; label: string; efforts?: string[] }[]; antigravity?: { id: string; label: string }[]; cursor?: { id: string; label: string; efforts?: string[] }[] }; active: string | null; problem: string | null }
 export interface Voice {
   name: string; title: string; vendor: string; kind: "cloud" | "local" | "api"; runtime: string; status: string;
   license: { code: string; model: string; commercial: string; note: string; url: string };

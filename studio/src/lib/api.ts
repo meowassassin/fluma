@@ -112,9 +112,11 @@ export interface PipeShot { n: number; purpose: string; beat?: string; gen_sec: 
 export interface PipelineLive {
   at: number;
   jobs: { id: string; type: string; label?: string; status: string; progress: number | null; stage?: string; started?: number | null; ended?: number | null; error?: string | null }[];
-  agent: { busy: boolean; tool: string | null; skill: string | null; runtime: "claude" | "codex" | "antigravity" | null; model: string | null; label: string | null };
+  agent: { busy: boolean; waiting?: number | null; tool: string | null; skill: string | null; runtime: "claude" | "codex" | "antigravity" | "cursor" | null; model: string | null; label: string | null };
   models: { voice: string; video: string; image: string };
   editor: { project: number; exported: number };
+  /** produce.py 진행 기록 — 프로세스가 살아 있을 때만 running · stage */
+  produce?: { running: boolean; stage: string | null; stageStarted: number | null; done: Record<string, number>; error: string | null; updated: number } | null;
 }
 export interface Pipeline {
   id: string; next: string; route?: "generate" | "clip" | "material";
@@ -142,7 +144,12 @@ export interface Pipeline {
     video?: { model: string | null; backend: string | null }[];
     voice?: { engine: string | null; voice?: string | null; at?: string };
     draft?: string[];
+    materials?: string[];
   };
+  /** 아직 안 한 단계에 쓸 도구(이 영상 콘티의 재료에서) — 실제 자료 경로 */
+  planned?: { materials?: string[]; draft?: string[] };
+  /** 결과 파일이 실제로 있나 — 실제 자료 경로 */
+  artifacts?: { research: boolean; audio: boolean; materials: [number, number] };
 }
 
 /** 업로드: 파일 본문을 그대로 보낸다(서버가 디스크로 흘려 씀) */

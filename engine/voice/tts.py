@@ -186,16 +186,52 @@ def _typecast(text, out_wav, voice, speed=1.0, style=None, intensity=None, pitch
         write_words(out_wav, words)
 
 
+def _eleven_why(r) -> str:
+    """ElevenLabs 오류 응답의 이유만(키 · 본문 전체는 남기지 않는다) — 예: missing_permissions · voice_not_found · quota_exceeded"""
+    try:
+        d = r.json().get("detail")
+        if isinstance(d, dict):
+            return f"{d.get('status') or ''} {str(d.get('message') or '')[:160]}".strip()
+        return str(d)[:160]
+    except ValueError:
+        return r.text[:160]
+
+
+def _eleven_default_voice(key: str) -> str:
+    """목소리를 고르지 않았을 때 — 이 키로 쓸 수 있는 목소리 중 하나(기본 제공 목소리 먼저)를 골라 기억한다.
+    2026-11-17: 기본 목소리 id 가 빈칸이라 요청 주소가 '/v1/text-to-speech/'(목소리 없음)가 되어, 키가 맞아도 늘 실패했다"""
+    import requests
+    cache = ROOT / "data" / "workspace" / "tmp" / "elevenlabs_voice.json"
+    try:
+        return json.loads(cache.read_text("utf-8"))["voice_id"]
+    except (OSError, ValueError, KeyError):
+        pass
+    r = requests.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key}, timeout=30)
+    if r.status_code != 200:
+        raise RuntimeError(f"ElevenLabs 목소리 목록 실패 {r.status_code}: {_eleven_why(r)} — 설정에서 목소리 id 를 직접 고르거나, 키에 Voices 읽기 권한을 주세요")
+    vs = r.json().get("voices") or []
+    vs.sort(key=lambda v: v.get("category") != "premade")
+    if not vs:
+        raise RuntimeError("ElevenLabs 에 쓸 수 있는 목소리가 없습니다 — ElevenLabs 에서 목소리를 추가하거나 설정에서 고르세요")
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps({"voice_id": vs[0]["voice_id"], "name": vs[0].get("name")}, ensure_ascii=False), "utf-8")
+    print(f"[tts] ElevenLabs 목소리를 고르지 않아 '{vs[0].get('name')}' 을(를) 씁니다", file=sys.stderr)
+    return vs[0]["voice_id"]
+
+
 def _elevenlabs(text, out_wav, voice):
     import requests
     key = _env_key("ELEVENLABS_API_KEY")
-    vid = voice or DEFAULT_VOICE["elevenlabs"] or os.environ.get("ELEVENLABS_VOICE_ID", "")
+    if not key:
+        raise RuntimeError("ELEVENLABS_API_KEY 가 없습니다 — 설정 → 생성 · 음성 API 키에 넣으세요")
+    vid = voice or DEFAULT_VOICE["elevenlabs"] or os.environ.get("ELEVENLABS_VOICE_ID", "") or _eleven_default_voice(key)
     r = requests.post(f"https://api.elevenlabs.io/v1/text-to-speech/{vid}",
                       headers={"xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
                       json={"text": text, "model_id": "eleven_multilingual_v2",
                             "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "speed": TOKENS["audio"].get("speed", 1.0)}},
                       timeout=90)
-    r.raise_for_status()
+    if r.status_code != 200:
+        raise RuntimeError(f"ElevenLabs TTS 실패 {r.status_code}: {_eleven_why(r)}")
     tmp = Path(tempfile.mkstemp(suffix=".mp3")[1]); tmp.write_bytes(r.content)
     to_wav(tmp, out_wav); tmp.unlink(missing_ok=True)
 

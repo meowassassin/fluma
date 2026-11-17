@@ -5,7 +5,8 @@ description: 트렌드 쇼츠를 찾아 트렌드 화면에 바로 띄운다. "�
 
 # 트렌드 찾기
 
-사용자 말 → 검색어 2~5개(+ 필요하면 해시태그) → `python3 engine/research/trends.py search ...` → 결과 요약. 화면은 `data/public/trends/index.json` 이 바뀔 때마다 저절로 갱신된다(검색어 · 해시태그 하나 끝날 때마다).
+사용자 말 → 검색어 2~5개(+ 필요하면 해시태그) → `python3 engine/research/trends.py search ...` → 결과 요약.
+**레퍼런스 고르기 · 분석은 이 순서로 한 번씩**(2026-11-17: 출력을 grep 으로 여러 번 보고 썸네일을 한 장씩 열어 고르기에만 5~12분): `trends.py search` → `python3 engine/research/ref_pick.py --request <r… id>`(표 + 썸네일 시트 한 장 — 이 한 장만 Read) → 2~3편을 골라 `analyze_ref.py <id1> <id2> <id3>` 한 명령(동시에 돈다) → 시트가 필요하면 `look.py sheet <id>` 는 고른 편만. 맞는 게 없을 때만 검색어를 바꿔 한 번 더. 화면은 `data/public/trends/index.json` 이 바뀔 때마다 저절로 갱신된다(검색어 · 해시태그 하나 끝날 때마다).
 
 ## 검색어 먼저 (구체적인 주제)
 

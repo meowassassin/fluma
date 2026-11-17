@@ -296,23 +296,39 @@ def _search_into(a, d, req, queries, tags):
     req["rejected"] = 0
     handles = [h.strip() for h in (getattr(a, "channel", None) or "").split(",") if h.strip()]
     sources = [("channel", h if h.startswith("@") else "@" + h) for h in handles] + [("search", q) for q in queries] + [("hashtag", t) for t in tags]
-    for via, tag in sources:
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _fetch_source(src):
+        via, tag = src
         name = {"search": f"\"{tag}\"", "hashtag": f"#{tag}", "channel": tag}[via]
         try:
             if via == "channel":
-                found = channel_items(tag, a.limit)
-            else:
-                found = search(tag, a.limit * (2 if want else 1) + 4) if via == "search" else hashtag(tag, a.limit * (2 if want else 1))
+                return via, tag, name, channel_items(tag, a.limit)
+            found = search(tag, a.limit * (2 if want else 1) + 4) if via == "search" else hashtag(tag, a.limit * (2 if want else 1))
+            return via, tag, name, found
         except (subprocess.TimeoutExpired, OSError) as e:
             print(f"{name}: 실패 ({e})", file=sys.stderr)
+            return via, tag, name, []
+
+    with ThreadPoolExecutor(max_workers=min(4, max(1, len(sources)))) as pool:
+        source_results = list(pool.map(_fetch_source, sources))
+
+    for via, tag, name, found in source_results:
+        if not found:
             continue
-        new, fresh = 0, []
+        pending = []
         for f in found:
             if f["id"] in seen:
                 continue
             seen.add(f["id"])
+            pending.append(f)
+        with ThreadPoolExecutor(max_workers=8) as tpool:
+            thumbs = list(tpool.map(lambda x: thumb(x["id"]), pending))
+        new, fresh = 0, []
+        for f, th in zip(pending, thumbs):
             fresh.append({**f, "tag": tag, "via": via, "category": a.category, "label": a.label, "request": rid,
-                          "hook": hook_guess(f["title"]), "thumb": thumb(f["id"]),
+                          "hook": hook_guess(f["title"]), "thumb": th,
                           "url": f"https://www.youtube.com/{'shorts/' if f.get('short', True) else 'watch?v='}{f['id']}"})
         vis = classify([str(PUBLIC / x["thumb"]) for x in fresh if x.get("thumb")])
         rej = 0

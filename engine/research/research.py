@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 OUT = ROOT / "data" / "research"
-LLM_CMD = os.environ.get("RESEARCH_CMD", "claude -p --output-format text --model sonnet --allowedTools WebSearch,WebFetch")
+LLM_CMD = os.environ.get("RESEARCH_CMD", "")
 
 PROMPT = """당신은 정보형 쇼츠를 위한 리서처다. 아래 주제에 대해 **웹을 검색해서** 영상에 쓸 수 있는 사실을 모은다.
 
@@ -63,10 +63,25 @@ def slug(s: str) -> str:
 
 
 def llm(prompt: str) -> str:
-    res = subprocess.run(LLM_CMD, shell=True, input=prompt, capture_output=True, text=True, timeout=600)
-    if res.returncode != 0:
-        raise RuntimeError(res.stderr[:800])
-    return res.stdout
+    if LLM_CMD:
+        res = subprocess.run(LLM_CMD, shell=True, input=prompt, capture_output=True, text=True, timeout=600)
+        if res.returncode != 0:
+            raise RuntimeError(res.stderr[:800])
+        return res.stdout
+    from agent_cli import run_agent, runtime
+    rt, _ = runtime("FLUMA_RESEARCH_RUNTIME")
+    tools = "WebSearch,WebFetch" if rt == "claude" else ""
+    allowed = ["WebSearch", "WebFetch"] if rt == "claude" else None
+    text, _ = run_agent(
+        "",
+        prompt,
+        override_env="FLUMA_RESEARCH_RUNTIME",
+        timeout=600,
+        tools=tools,
+        allowed=allowed,
+        allow_web=True,
+    )
+    return text
 
 
 def research(topic: str, audience: str = "", force=False) -> dict:

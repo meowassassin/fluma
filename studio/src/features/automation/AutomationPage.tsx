@@ -105,9 +105,21 @@ export const AutomationPage: React.FC = () => {
   // Feasibility Check
   const [verifyData, setVerifyData] = useState<VerifyResult | null>(null);
 
-  // 1. n8n Status Query
+  const { data: seriesData, refetch: refetchSeries } = useQuery({
+    queryKey: ["series-runs"],
+    queryFn: async () => {
+      const res = await fetch("/api/series/runs");
+      if (!res.ok) return { runs: [] };
+      return res.json();
+    },
+    refetchInterval: 8000,
+  });
+  const seriesRuns = seriesData?.runs ?? [];
+
+  // 레거시 n8n 상태 (제거됨 — 쿼리 비활성)
   const { data: n8nStatus, refetch: refetchN8nStatus } = useQuery({
     queryKey: ["n8n-status"],
+    enabled: false,
     queryFn: async () => {
       try {
         const res = await fetch("/api/n8n/status");
@@ -333,23 +345,17 @@ export const AutomationPage: React.FC = () => {
         setExecutingStep(i);
       }
 
+      const theme = topicMode === "theme" ? themeInput.trim() : finalTopics[0];
       const payload = {
-        n8nWebhookUrl: `${n8nHost}/webhook/phantasos-automation`,
-        presetId: selectedPresetId || undefined,
-        presetName: currentPreset?.name || "자유 주제",
-        characterId: (currentPreset as any)?.character || currentPreset?.characterId,
-        style: currentPreset?.style,
-        topics: finalTopics,
+        theme,
+        topics: topicMode === "list" ? finalTopics : [],
         count: topicMode === "list" ? finalTopics.length : videoCount,
-        schedule: {
-          startDate,
-          interval: scheduleInterval,
-          publishTime,
-          autoPublish,
-        },
+        presetId: selectedPresetId || undefined,
+        route: "material",
+        maxEpisodes: videoCount,
       };
 
-      const res = await fetch("/api/automation/trigger-n8n", {
+      const res = await fetch("/api/series/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -360,8 +366,9 @@ export const AutomationPage: React.FC = () => {
       return resData;
     },
     onSuccess: (data) => {
-      toast.success(t("자동화 파이프라인이 실행 대기열에 등록되었습니다. (배치 ID: {id})", { id: data.batchId }));
+      toast.success(t("시리즈 양산이 시작됐습니다. ({n}편 · {id})", { n: data.run?.episodes?.length ?? "?", id: data.seriesId || data.batchId }));
       qc.invalidateQueries({ queryKey: ["automation-history"] });
+      qc.invalidateQueries({ queryKey: ["series-runs"] });
       setTimeout(() => setExecutingStep(-1), 2000);
     },
     onError: (err: any) => {
@@ -414,22 +421,23 @@ export const AutomationPage: React.FC = () => {
       {/* 1. Clean Top Header Bar */}
       <header className="n8n-header">
         <div className="n8n-brand-area">
-          <div className="n8n-tag" title="n8n Pipeline">
-            <Icon n="n8n" s={15} />
-            <span>n8n</span>
+          <div className="n8n-tag" title={t("시리즈 양산")}>
+            <Icon n="zap" s={15} />
+            <span>Fluma</span>
           </div>
 
-          <h1 className="n8n-title">{t("쇼츠 자동 제작 & 예약 배포 파이프라인")}</h1>
+          <h1 className="n8n-title">{t("시리즈 양산 — 주제만 넣으면 편수·제작을 알아서")}</h1>
 
           <button
             type="button"
-            className={cx("n8n-conn-badge", isConnected ? "connected" : "disconnected")}
-            onClick={() => setShowN8nConfigModal(true)}
-            title={t("n8n 서버 연결 및 API 설정")}
+            className={cx("n8n-conn-badge", "connected")}
+            onClick={() => refetchSeries()}
+            title={t("시리즈 진행 새로고침")}
           >
             <i className="status-dot" />
-            <span>{isConnected ? t("n8n 연결됨") : t("로컬 모드 (n8n 설정)")}</span>
-            <Icon n="gear" s={12} />
+            <span>{seriesRuns.filter((r: { status: string }) => r.status === "running").length
+              ? t("진행 중 시리즈 {n}개", { n: seriesRuns.filter((r: { status: string }) => r.status === "running").length })
+              : t("내장 큐 — n8n 불필요")}</span>
           </button>
 
           <button

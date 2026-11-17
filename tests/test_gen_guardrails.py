@@ -270,3 +270,141 @@ def test_stage05_skip_and_direct_fetch(tmp_path, monkeypatch):
     (tmp_path / sb["style_refs"][0]["path"]).unlink()
     errs_missing, _ = plan.problems(sb)
     assert any("시각 레퍼런스 파일 없음" in e for e in errs_missing)
+
+
+def test_gflow_i2i_agent_only_routes_and_skips_agy(tmp_path, monkeypatch):
+    import subprocess
+    from PIL import Image
+
+    monkeypatch.setattr(imagegen, "_GFLOW_LOCK_PATH", tmp_path / "gflow.lock")
+    monkeypatch.setattr(imagegen, "_AGENT_ONLY_IMAGE", False)
+    monkeypatch.setattr(imagegen, "_AGENT_WORKER", None)
+    monkeypatch.setattr(imagegen, "SETTINGS_PATH", tmp_path / "settings.json")
+    monkeypatch.setattr(imagegen, "default_flow_project", lambda: "proj-agent-1")
+
+    fake_gflow = tmp_path / "gflow"
+    fake_gflow.write_text("#!/bin/sh\n", "utf-8")
+    monkeypatch.setattr(imagegen, "_find_gflow", lambda: fake_gflow)
+    monkeypatch.setattr(imagegen.shutil, "which", lambda name: None if name == "xvfb-run" else f"/usr/bin/{name}")
+
+    ref1 = tmp_path / "style.png"
+    ref2 = tmp_path / "front.png"
+    Image.new("RGB", (64, 64), (10, 20, 30)).save(ref1, format="PNG")
+    Image.new("RGB", (64, 64), (40, 50, 60)).save(ref2, format="PNG")
+
+    cli_calls = []
+
+    def fake_run(cmd, env=None, capture_output=True, text=True, timeout=600, cwd=None):
+        cli_calls.append(cmd)
+        return subprocess.CompletedProcess(
+            cmd,
+            36,
+            stdout="",
+            stderr="flow-host-migrated: this account is served Flow's agent-only composer (#799)",
+        )
+
+    monkeypatch.setattr(imagegen.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        imagegen,
+        "_generate_agy",
+        lambda *a, **kw: (_ for _ in ()).throw(AssertionError("agy 폴백이 호출되면 안 됨")),
+    )
+
+    jobs_sent = []
+    worker_starts = 0
+
+    class FakeWorker:
+        def __init__(self):
+            self._lines: list[str] = []
+            self.stdin = self
+            self.stdout = self
+
+        def poll(self):
+            return None
+
+        def write(self, payload: str):
+            job = json.loads(payload)
+            jobs_sent.append(job)
+            Image.new("RGB", (90, 160), (200, 100, 50)).save(job["out"], format="PNG")
+            reply = {
+                "ok": True,
+                "stage": "done",
+                "kind": "image",
+                "path": job["out"],
+                "media_id": f"media-{len(jobs_sent)}",
+                "project_id": job["project"] or "proj-agent-1",
+                "uploaded": [Path(r["path"]).name for r in job["refs"]],
+            }
+            self._lines.append("FLUMA_AGENT_I2V " + json.dumps(reply, ensure_ascii=False) + "\n")
+
+        def flush(self):
+            pass
+
+        def readline(self):
+            return self._lines.pop(0) if self._lines else ""
+
+        def close(self):
+            pass
+
+        def wait(self, timeout=5):
+            return 0
+
+    fake_worker = FakeWorker()
+
+    def fake_ensure_worker():
+        nonlocal worker_starts
+        if imagegen._AGENT_WORKER is None:
+            worker_starts += 1
+            imagegen._AGENT_WORKER = fake_worker
+        return imagegen._AGENT_WORKER
+
+    monkeypatch.setattr(imagegen, "_ensure_agent_worker", fake_ensure_worker)
+    monkeypatch.setattr(imagegen.select, "select", lambda rlist, *_: (rlist, [], []))
+
+    out1 = tmp_path / "shot1.png"
+    meta1 = imagegen.generate(
+        out1,
+        "hero wearing blue hoodie",
+        refs=[(ref1, "style ref"), (ref2, "front view")],
+        aspect="9:16",
+        model="nano-pro",
+        backend="gflow",
+    )
+    assert out1.exists()
+    assert meta1["via"] == "gflow:agent-i2i"
+    assert meta1["agent_only"] is True
+    assert meta1["flow_project_id"] == "proj-agent-1"
+    assert meta1["flow_media_id"] == "media-1"
+    assert len(cli_calls) == 1
+    assert len(jobs_sent) == 1 and len(jobs_sent[0]["refs"]) == 2
+
+    # 두 번째 i2i 호출은 _AGENT_ONLY_IMAGE 캐시로 gflow CLI 를 건너뛰고 상주 워커를 재사용한다
+    out2 = tmp_path / "shot2.png"
+    meta2 = imagegen.generate(
+        out2,
+        "hero back view",
+        refs=[(ref2, "front view")],
+        aspect="9:16",
+        model="flash",
+        backend="gflow",
+    )
+    assert out2.exists()
+    assert meta2["flow_media_id"] == "media-2"
+    assert len(cli_calls) == 1
+    assert worker_starts == 1
+    assert len(jobs_sent) == 2
+    assert jobs_sent[1]["model"] == "nano2"
+
+
+def test_gflow_failure_and_agy_fallback_reports_both_errors(tmp_path, monkeypatch):
+    import pytest
+
+    monkeypatch.setattr(imagegen, "SETTINGS_PATH", tmp_path / "settings.json")
+    monkeypatch.setattr(imagegen.shutil, "which", lambda name: "/usr/bin/agy" if name == "agy" else None)
+    monkeypatch.setattr(imagegen, "_generate_gflow", lambda *a, **kw: (_ for _ in ()).throw(imagegen.ImageGenError("gflow broken")))
+    monkeypatch.setattr(imagegen, "_generate_agy", lambda *a, **kw: (_ for _ in ()).throw(imagegen.ImageGenError("429 QUOTA_EXHAUSTED")))
+
+    with pytest.raises(imagegen.ImageGenError) as exc:
+        imagegen.generate(tmp_path / "o.png", "prompt", backend="gflow")
+    msg = str(exc.value)
+    assert "gflow broken" in msg and "429 QUOTA_EXHAUSTED" in msg

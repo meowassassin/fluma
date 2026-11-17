@@ -41,11 +41,23 @@ _S: dict = {}
 def _load():
     if _S:
         return _S
+    import hashlib
+    import json
+    import os
     import onnxruntime as ort
     from huggingface_hub import hf_hub_download
-    from tokenizers import Tokenizer
     o = ort.SessionOptions(); o.log_severity_level = 3
+    o.intra_op_num_threads = max(1, min(4, (os.cpu_count() or 4) // 2))
     _S["vis"] = ort.InferenceSession(hf_hub_download(REPO, "onnx/vision_model_quantized.onnx"), o, providers=["CPUExecutionProvider"])
+    key = hashlib.sha1((REPO + json.dumps(KINDS, ensure_ascii=False)).encode("utf-8")).hexdigest()[:12]
+    cache_p = ROOT / "data" / "workspace" / "cache" / f"clip-kinds-{key}.npy"
+    if cache_p.exists():
+        try:
+            _S["text"] = np.load(cache_p)
+            return _S
+        except (OSError, ValueError):
+            pass
+    from tokenizers import Tokenizer
     txt = ort.InferenceSession(hf_hub_download(REPO, "onnx/text_model_quantized.onnx"), o, providers=["CPUExecutionProvider"])
     tok = Tokenizer.from_file(hf_hub_download(REPO, "tokenizer.json"))
     embs = []
@@ -57,6 +69,11 @@ def _load():
         e = e / np.linalg.norm(e, axis=1, keepdims=True)
         m = e.mean(axis=0); embs.append(m / np.linalg.norm(m))
     _S["text"] = np.stack(embs)
+    try:
+        cache_p.parent.mkdir(parents=True, exist_ok=True)
+        np.save(cache_p, _S["text"])
+    except OSError:
+        pass
     return _S
 
 

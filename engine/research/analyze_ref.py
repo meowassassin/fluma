@@ -43,7 +43,7 @@ def call(method: str, path: str, body: dict | None = None) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("video", nargs="+", help="쇼츠 id 또는 URL — 여러 개면 동시에(서버가 두 편씩) 돌리고 모두 기다린다")
+    ap.add_argument("video", nargs="+", help="쇼츠 id 또는 URL — 여러 개면 동시에(서버가 세 편씩) 돌리고 모두 기다린다")
     ap.add_argument("--channel", "--n", dest="n", type=int, default=0, help="같은 채널에서 더 볼 쇼츠 수(0 = 채널 카드 안 만듦, 기본)")
     ap.add_argument("--no-channel", action="store_true", help="(옛 옵션 — 이제 기본이 채널 카드 없음)")
     ap.add_argument("--deep", action="store_true", help="누끼 · 음원 분리까지(분해도 레이어용 — 느림)")

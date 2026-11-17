@@ -93,6 +93,14 @@ def script_failures(out: str) -> list[str]:
             fails.append(f"{e.get('file')}: {e.get('message')}" if isinstance(e, dict) else str(e))
 
 
+def _cue(o, sb: dict, i):
+    """"$CUE:낱말" → 그 낱말을 말하는 순간(영상 전체 기준 초) — 장면 다듬기에서만"""
+    if i is None:
+        return o
+    from craft import cues
+    return cues.resolve(o, sb, i, absolute=True)
+
+
 def subst(o, v: dict):
     if isinstance(o, str):
         m = _PH.match(o)
@@ -138,7 +146,8 @@ def motion_steps(sb: dict, nums: list[int] | None = None) -> list[dict]:
     for i, p in passes(sb, "motion"):
         v = vars_for(sb, i, nums[i] if nums and i is not None else None)
         out.append({"command": "comp.open", "params": {"comp": v["COMP"]}})
-        out += [{"command": s["id"], "params": subst(s.get("params") or {}, v)} for s in p.get("steps") or []]
+        from craft.adapters.craft_script import with_kit   # script.run 앞에 기본 함수(K)
+        out += [{"command": s["id"], "params": with_kit(s["id"], _cue(subst(s.get("params") or {}, v), sb, i))} for s in p.get("steps") or []]
         if i is not None and v["COMP"] not in seen:
             seen.append(v["COMP"])
     for c in seen:                                  # 다듬기로 얹은 인물 · 글자가 자막을 덮지 않게 — 자막은 늘 맨 위
@@ -148,13 +157,13 @@ def motion_steps(sb: dict, nums: list[int] | None = None) -> list[dict]:
 
 def sound_cmds(sb: dict) -> list[str]:
     """SoundCraft run --cmd 형식("id=JSON")"""
-    return [f"{s['id']}={json.dumps(subst(s.get('params') or {}, vars_for(sb, i)), ensure_ascii=False)}"
+    return [f"{s['id']}={json.dumps(_cue(subst(s.get('params') or {}, vars_for(sb, i)), sb, i), ensure_ascii=False)}"
             for i, p in passes(sb, "sound") for s in p.get("steps") or []]
 
 
 def edit_lines(sb: dict) -> list[dict]:
     """FilmCraft run 스크립트 줄({"id","params"})"""
-    return [{"id": s["id"], "params": subst(s.get("params") or {}, vars_for(sb, i))}
+    return [{"id": s["id"], "params": _cue(subst(s.get("params") or {}, vars_for(sb, i)), sb, i)}
             for i, p in passes(sb, "edit") for s in p.get("steps") or []]
 
 

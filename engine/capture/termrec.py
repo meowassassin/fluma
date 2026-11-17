@@ -26,7 +26,7 @@ from pathlib import Path
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
-WARN = [r"^WARNING: ", r"^\s*$"]
+WARN = [r"^WARNING: ", r"^\s*$", r"^\s*[~^]{3,}\s*$"]   # 파이썬 3.11+ 오류 위치 표시(~~~^^^) — 화면에선 잡음
 
 
 def term_dir(sid: str) -> Path:
@@ -74,39 +74,68 @@ def cmd_import(a) -> int:
 
 PAGE = """<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  html,body{{margin:0;height:100%;background:#1e1f22;color:#d4d4d4}}
-  .bar{{display:flex;align-items:center;gap:7px;padding:11px 14px;background:#2b2d30;font:600 12.5px "Pretendard","Noto Sans CJK KR",sans-serif;color:#b9bcc2;border-bottom:1px solid #393b40}}
+  /* 2026-11-16: 밋밋한 기본 터미널 → 실제 개발 화면처럼(JetBrains Mono · 둥근 창 · 그림자 · 상태 코드 색 · 줄이 부드럽게 올라옴) */
+  html,body{{margin:0;height:100%;background:radial-gradient(120% 90% at 20% 0%,#2a2350 0%,#14131c 55%,#0d0d12 100%);color:#cdd6f4;overflow:hidden}}
+  .win{{position:absolute;inset:14px 12px;border-radius:14px;background:#181825;box-shadow:0 18px 40px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.07);overflow:hidden}}
+  .bar{{position:relative;display:flex;align-items:center;gap:7px;height:36px;padding:0 14px;background:#11111b;font:600 12px "Pretendard",sans-serif;color:#9399b2}}
   .bar i{{width:11px;height:11px;border-radius:50%;display:inline-block}}
-  .bar span{{margin-left:8px}}
-  #t{{position:absolute;top:42px;bottom:0;left:0;right:0;overflow:hidden;padding:10px 12px 0;font:{fs}px/1.5 "DejaVu Sans Mono","Noto Sans Mono CJK KR",monospace;white-space:pre-wrap;overflow-wrap:anywhere}}
-  .p{{color:#6fb3ff}} .p b{{color:#e6e6e6;font-weight:600}}
-  .l{{display:none}} .l.on{{display:block}}
-  .k{{color:#cc7832}} .m{{background:rgba(255,214,10,.22);color:#fff3b0}} .last{{font-weight:700;color:#7ee787}}
-  .cur{{display:inline-block;width:.6em;background:#d4d4d4}}
+  .bar span{{position:absolute;left:0;right:0;text-align:center;pointer-events:none}}
+  #t{{position:absolute;top:36px;bottom:0;left:0;right:0;overflow:hidden;padding:12px 14px 0;font:500 {fs}px/1.55 "JetBrains Mono","FiraCode Nerd Font Mono","Noto Sans Mono CJK KR",monospace;white-space:pre-wrap;overflow-wrap:anywhere;letter-spacing:-.01em}}
+  .p{{color:#a6e3a1;font-weight:700}} .p .arw{{color:#89b4fa}} .p b{{color:#cdd6f4;font-weight:600}} #typed{{color:#f5e0dc;font-weight:600}}
+  .l{{display:block;opacity:0;transform:translateY(8px);padding-left:2.4ch;text-indent:-2.4ch}}   /* 긴 줄은 들여쓴 채로 감싼다 — 어디까지가 한 줄인지 보이게 */
+  body.focus .l:not(.m), body.focus .l:not(.m) span{{color:#7f849c!important;font-weight:400!important}}   /* 볼 줄(--mark)이 있으면 나머지는 흐리게 */
+  #probe{{position:absolute;visibility:hidden;white-space:pre;font:inherit}}
+  .k{{color:#cba6f7}} .ok{{color:#a6e3a1;font-weight:700}} .warn{{color:#f9e2af;font-weight:700}} .err{{color:#f38ba8;font-weight:700}}
+  .url{{color:#89dceb}} .num{{color:#fab387}} .dim{{color:#6c7086}}
+  .l.m{{padding:2px 8px 2px calc(2.4ch + 8px);margin:2px -8px;background:linear-gradient(90deg,rgba(249,226,175,.28),rgba(249,226,175,.08));box-shadow:inset 3px 0 0 #f9e2af;border-radius:4px;color:#fff6d6}}
+  .cur{{display:inline-block;width:.55em;height:1.1em;vertical-align:-.15em;background:#f5e0dc;border-radius:1px;margin-left:1px}}
 </style>
-<div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>{title}</span></div>
-<div id="t"><div class="p">{prompt_html}<span id="typed"></span><span class="cur" id="cur">&nbsp;</span></div>{body}</div>
+<div class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span>{title}</span></div>
+<div id="t"><div class="p">{prompt_html}<span id="typed"></span><span class="cur" id="cur"></span></div>{body}</div></div>
 <script>
-// 녹화기가 시각마다 부른다: 명령을 몇 글자까지 쳤는지 · 출력을 몇 줄까지 보일지 · 커서 깜빡임
+// 녹화기가 시각마다 부른다: 명령을 몇 글자까지 쳤는지 · 출력을 몇 줄까지(소수 = 올라오는 중) · 커서 깜빡임
 const LS = [...document.querySelectorAll('.l')], CMD = {cmd_js};
+// 글자 크기를 화면 폭에 맞춘다: 가장 긴 줄이 한 줄에 들어가도록 줄이되 기본의 80% 아래로는 줄이지 않는다(그보다 길면 들여쓴 채 감싼다)
+(() => {{ const box = document.getElementById('t'), pr = document.createElement('span'); pr.id = 'probe'; box.appendChild(pr);
+  const avail = box.clientWidth - 28; let w = 0; LS.forEach(l => {{ pr.textContent = l.textContent; w = Math.max(w, pr.getBoundingClientRect().width); }});
+  const fs = parseFloat(getComputedStyle(box).fontSize); if (w > avail) box.style.fontSize = Math.max(fs * 0.8, fs * avail / w) + 'px'; pr.remove();
+  if (document.querySelector('.l.m')) document.body.classList.add('focus'); }})();
 window.__render = (chars, n, cursor) => {{
   document.getElementById('typed').textContent = CMD.slice(0, chars);
   document.getElementById('cur').style.visibility = (n > 0 || !cursor) ? 'hidden' : 'visible';
-  LS.forEach((l, i) => l.classList.toggle('on', i < n));
+  LS.forEach((l, i) => {{ const k = Math.max(0, Math.min(1, n - i)), e = 1 - Math.pow(1 - k, 3);
+    l.style.opacity = e; l.style.transform = `translateY(${{(1 - e) * 8}}px)`; l.style.display = k > 0 ? 'block' : 'none'; }});
   const box = document.getElementById('t'); box.scrollTop = box.scrollHeight;
 }};
 </script></html>"""
 
 
+TOKENS = re.compile(
+    r"(?P<ok>\b2\d\d\b(?: [A-Z][A-Za-z]+)*)|(?P<warn>\b[34]\d\d\b(?: [A-Z][A-Za-z]+)*)|(?P<err>\b5\d\d\b(?: [A-Z][A-Za-z]+)*)"
+    r"|(?P<url>https?://\S+|(?<=[\s\"'])/[\w.\-/?=&%]+)|(?P<k>\b(?:select|from|where|join|insert|update|delete|GET|POST|PUT|DELETE|PATCH)\b)")
+
+
 def colorize(text: str) -> str:
-    t = html.escape(text)
-    return re.sub(r"\b(select|from|where|join|left join|on|in|insert|update|delete)\b", r'<span class="k">\1</span>', t)
+    """상태 코드 · 주소 · 오류 줄에 색 — 2xx 초록 · 3xx/4xx 노랑 · 5xx · Traceback · Error 빨강.
+    날 글자에서 한 번에 훑어 조각마다 감싼다(2026-11-16: 감싼 HTML 위에 다시 바꾸다 '</span>' 이 화면에 새어 나왔다)"""
+    if re.search(r"Traceback|^\w*(Error|Exception)\b|^\s*raise\b", text):
+        return f'<span class="err">{html.escape(text)}</span>'
+    if re.match(r"\s*File \"", text):
+        t = html.escape(text)
+        return re.sub(r"(line \d+)", r'<span class="num">\1</span>', t).replace("File ", '<span class="dim">File </span>', 1)
+    out, i = [], 0
+    for m in TOKENS.finditer(text):
+        out.append(html.escape(text[i:m.start()]))
+        out.append(f'<span class="{m.lastgroup}">{html.escape(m.group(0))}</span>')
+        i = m.end()
+    out.append(html.escape(text[i:]))
+    return "".join(out)
 
 
 def cmd_render(a) -> int:
     d = term_dir(a.id)
     rec = json.loads((d / f"{a.name}.json").read_text("utf-8"))
-    lines = rec["lines"]
+    lines = [l for l in rec["lines"] if not re.match(r"^\s*[~^]{3,}\s*$", l["text"])]   # 오류 위치 표시 줄은 잡음
     marks = [re.compile(p) for p in (a.mark or [])]
     body = []
     for k, l in enumerate(lines):
@@ -115,7 +144,7 @@ def cmd_render(a) -> int:
     prompt = rec.get("prompt") or "$"
     pm = re.match(r"^(\S+\s?)(.*)$", prompt)
     prompt_head, cmd_text = (pm.group(1), pm.group(2)) if pm else ("$ ", prompt)
-    page = PAGE.format(fs=a.font, title=html.escape(a.title or "Terminal"), prompt_html=f"{html.escape(prompt_head)}",
+    page = PAGE.format(fs=a.font, title=html.escape(a.title or "Terminal"), prompt_html=('<span class="arw">❯</span> ' if prompt_head.strip() in ("$", ">", "%", "#") else html.escape(prompt_head)),
                        body="".join(body), line_ms=a.line_ms, cmd_js=json.dumps(cmd_text, ensure_ascii=False))
     hp = d / f"{a.name}.html"
     hp.write_text(page, "utf-8")
@@ -135,7 +164,7 @@ def cmd_render(a) -> int:
 
     def state(t: float) -> tuple[int, int, bool]:
         chars = 0 if t < t_type0 else min(len(cmd_text), int((t - t_type0) / type_ms) + 1)
-        n = 0 if t < t_out0 else min(len(lines), int((t - t_out0) * 1000 / a.line_ms) + 1)
+        n = 0 if t < t_out0 else min(float(len(lines)), round((t - t_out0) * 1000 / max(a.line_ms, 1) / 0.12, 0) * 0.12 + 1.0)   # 소수 = 그 줄이 올라오는 중
         return chars, n, int(t * 2) % 2 == 0
 
     from playwright.sync_api import sync_playwright
@@ -174,8 +203,8 @@ def main() -> int:
     c = sub.add_parser("capture"); c.add_argument("id"); c.add_argument("name"); c.add_argument("--cwd"); c.add_argument("--prompt"); c.add_argument("--drop", action="append"); c.set_defaults(cmd=[])
     i = sub.add_parser("import"); i.add_argument("id"); i.add_argument("name"); i.add_argument("--log", required=True); i.add_argument("--prompt"); i.add_argument("--drop", action="append")
     r = sub.add_parser("render"); r.add_argument("id"); r.add_argument("name")
-    r.add_argument("--line-ms", type=int, default=35); r.add_argument("--typed", action="store_true", help="명령을 이미 친 상태로 시작 — 결과 줄이 바로 나온다(짧은 장면)"); r.add_argument("--hold", type=float, default=2.5); r.add_argument("--mark", action="append")
-    r.add_argument("--title"); r.add_argument("--font", type=float, default=14, help="글자 크기(px, 390 폭 기준 — 14 면 세로 화면에서 약 42px). 2026-11-09: 10.5 는 세로 화면에서 읽히지 않았다"); r.add_argument("--viewport", default="390x620", help="영상에서 위 제목 띠 아래 영역(1080×1718)과 같은 비율 — 세로로 길면 아래(새 줄이 찍히는 곳)가 잘린다"); r.add_argument("--scale", type=int, default=3)
+    r.add_argument("--line-ms", type=int, default=90); r.add_argument("--typed", action="store_true", help="명령을 이미 친 상태로 시작 — 결과 줄이 바로 나온다(짧은 장면)"); r.add_argument("--hold", type=float, default=2.5); r.add_argument("--mark", action="append")
+    r.add_argument("--title"); r.add_argument("--font", type=float, default=16, help="글자 크기(px, 390 폭 기준 — 14 면 세로 화면에서 약 42px). 2026-11-09: 10.5 는 세로 화면에서 읽히지 않았다"); r.add_argument("--viewport", default="390x620", help="영상에서 위 제목 띠 아래 영역(1080×1718)과 같은 비율 — 세로로 길면 아래(새 줄이 찍히는 곳)가 잘린다"); r.add_argument("--scale", type=int, default=3)
     argv = sys.argv[1:]
     cmd = argv[argv.index("--") + 1:] if "--" in argv else []
     a = ap.parse_args(argv[:argv.index("--")] if "--" in argv else argv)
