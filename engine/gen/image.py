@@ -15,8 +15,10 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import json
 import os
+import select
 import shutil
 import subprocess
 import sys
@@ -38,6 +40,8 @@ ALLOW = '{"permissions":{"allow":["invoke_subagent(*)","write_file(*)","read_fil
 SETTINGS_PATH = ROOT / "data" / "workspace" / "settings.json"
 _GFLOW_THREAD_LOCK = threading.Lock()
 _GFLOW_LOCK_PATH = Path("/tmp/fluma_gflow_image.lock")
+_AGENT_ONLY_IMAGE = False
+_AGENT_WORKER: subprocess.Popen | None = None
 
 
 @contextmanager
@@ -67,6 +71,13 @@ def _find_gflow() -> Path:
     return Path(w) if w else local
 
 
+def _find_agent_python() -> Path:
+    local = ROOT / "tools" / "gflow" / (".venv/Scripts/python.exe" if os.name == "nt" else ".venv/bin/python")
+    if local.exists():
+        return local
+    return Path(sys.executable)
+
+
 def load_settings() -> dict:
     if SETTINGS_PATH.exists():
         try:
@@ -74,6 +85,51 @@ def load_settings() -> dict:
         except Exception:
             return {}
     return {}
+
+
+def default_flow_project() -> str | None:
+    """설정 imagegen/videogen.flow_project → 없으면 gflow 기본 프로필의 최근 프로젝트 UUID."""
+    s = load_settings()
+    for section in ("imagegen", "videogen"):
+        proj = (s.get(section) or {}).get("flow_project")
+        if proj:
+            return str(proj)
+    import sqlite3
+    import tomllib
+    home = Path(os.environ.get("GFLOW_CLI_HOME") or Path.home() / ".local" / "share" / "gflow-cli")
+    db, cfg = home / "gflow.db", home / "config.toml"
+    if not db.exists():
+        return None
+    prof = (tomllib.loads(cfg.read_text("utf-8")).get("default_profile") if cfg.exists() else None) or "default"
+    with sqlite3.connect(db) as c:
+        row = c.execute("select flow_project_id from projects where profile_name=? order by created_at desc limit 1", (prof,)).fetchone()
+    return row[0] if row else None
+
+
+def _is_agent_only_error(msg: str) -> bool:
+    low = msg.lower()
+    return any(tok in low for tok in ("agent-only", "flow-host-migrated", "#799", "not ported"))
+
+
+def _close_agent_worker() -> None:
+    global _AGENT_WORKER
+    p = _AGENT_WORKER
+    if p is None:
+        return
+    _AGENT_WORKER = None
+    try:
+        if p.stdin:
+            p.stdin.close()
+        p.wait(timeout=5)
+    except Exception:
+        p.terminate()
+        try:
+            p.wait(timeout=3)
+        except Exception:
+            p.kill()
+
+
+atexit.register(_close_agent_worker)
 
 
 def parse_reply(text: str) -> dict:
@@ -115,80 +171,160 @@ def _generate_mock(out: Path, aspect: str, prompt: str, model: str) -> dict:
     }
 
 
+_GFLOW_MODEL_ALIASES = {
+    "nano-pro": "nano-pro",
+    "pro": "nano-pro",
+    "nano2": "nano2",
+    "nano21": "nano2",
+    "flash": "nano2",
+    "nano2-lite": "nano2-lite",
+    "flash_lite": "nano2-lite",
+    "image4": "image4",
+    "imagen4": "image4",
+}
+
+
+def _ensure_agent_worker() -> subprocess.Popen:
+    global _AGENT_WORKER
+    if _AGENT_WORKER is not None and _AGENT_WORKER.poll() is None:
+        return _AGENT_WORKER
+    py = _find_agent_python()
+    if not py.exists():
+        raise ImageGenError(f"gflow agent-only 파이썬을 찾을 수 없습니다: {py}")
+    env = dict(os.environ)
+    env.setdefault("GFLOW_CLI_BROWSER_WINDOW_POSITION", "-30000,-30000")
+    cmd = [str(py), str(ROOT / "engine" / "gen" / "flow_agent_i2v.py"), "--server"]
+    _AGENT_WORKER = subprocess.Popen(
+        cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, env=env, bufsize=1,
+    )
+    return _AGENT_WORKER
+
+
+def _run_agent_i2i(out: Path, prompt: str, refs: list[tuple[Path, str]], aspect: str, model_alias: str, timeout: int) -> dict:
+    """agent-only Flow UI(#799)에서 참조 이미지 기반 i2i 실행(상주 워커 재사용)."""
+    p = _ensure_agent_worker()
+    job = {
+        "kind": "image",
+        "project": default_flow_project(),
+        "prompt": prompt,
+        "aspect": aspect,
+        "model": model_alias,
+        "out": str(out),
+        "refs": [{"path": str(rp), "role": r} for rp, r in refs],
+        "timeout": max(60, int(timeout) - 30),
+    }
+    try:
+        assert p.stdin is not None and p.stdout is not None
+        p.stdin.write(json.dumps(job, ensure_ascii=False) + "\n")
+        p.stdin.flush()
+    except Exception as exc:
+        _close_agent_worker()
+        raise ImageGenError(f"flow agent-only 이미지 워커 전송 실패: {exc}") from exc
+
+    end = time.time() + timeout
+    lines: list[str] = []
+    body: dict | None = None
+    while time.time() < end:
+        if os.name != "nt":
+            rdy, _, _ = select.select([p.stdout], [], [], max(0.1, end - time.time()))
+            if not rdy:
+                break
+        line = p.stdout.readline()
+        if not line:
+            break
+        s = line.strip()
+        lines.append(s)
+        if s.startswith("FLUMA_AGENT_I2V "):
+            try:
+                body = json.loads(s.split(" ", 1)[1])
+                break
+            except Exception:
+                pass
+    if not body:
+        _close_agent_worker()
+        raise ImageGenError(f"flow agent-only i2i 응답 없음/시간초과: {' | '.join(lines[-4:])[:350]}")
+    if not body.get("ok"):
+        if body.get("stage") in ("start", "attach"):
+            _close_agent_worker()
+        raise ImageGenError(f"flow agent-only i2i 실패({body.get('stage')}): {str(body.get('error') or '')[:350]}")
+    return body
+
+
+def _find_gflow_output(tmp_out: Path, stdout: str, stderr: str) -> Path | None:
+    for cand in (tmp_out, tmp_out.with_suffix(".jpg"), tmp_out.with_suffix(".jpeg"), tmp_out.with_suffix(".webp")):
+        if cand.exists():
+            return cand
+    for part in (stdout + "\n" + stderr).split():
+        clean = part.strip().strip("|").strip()
+        for ext in (".png", ".jpg", ".jpeg", ".webp"):
+            if clean.endswith(ext) and os.path.exists(clean):
+                return Path(clean)
+    return None
+
+
 def _generate_gflow(out: Path, prompt: str, refs: list[tuple[Path, str]], aspect: str, model: str, timeout: int) -> dict:
+    global _AGENT_ONLY_IMAGE
     gflow_bin = _find_gflow()
     if not gflow_bin.exists():
         raise ImageGenError(f"gflow 바이너리를 찾을 수 없습니다: {gflow_bin}")
 
-    # 모델 별칭 정규화
-    model_alias = model
-    alias_map = {
-        "nano-pro": "nano-pro",
-        "pro": "nano-pro",
-        "nano2": "nano2",
-        "nano21": "nano2",
-        "flash": "nano2",
-        "nano2-lite": "nano2-lite",
-        "flash_lite": "nano2-lite",
-        "image4": "image4",
-        "imagen4": "image4",
-    }
-    if model in alias_map:
-        model_alias = alias_map[model]
-
+    model_alias = _GFLOW_MODEL_ALIASES.get(model, model)
     t0 = time.time()
     out.parent.mkdir(parents=True, exist_ok=True)
     tmp_out = out.parent / f"_gflow_{out.stem}_{int(time.time())}.png"
 
-    if refs:
-        # i2i 모드: 참조 이미지들과 함께 생성
-        cmd = [str(gflow_bin), "image", "i2i", prompt, "--model", model_alias, "--aspect", aspect, "-o", str(tmp_out)]
-        for p, _ in refs:
-            cmd += ["--ref", str(p)]
-    else:
-        # t2i 모드
-        cmd = [str(gflow_bin), "image", "t2i", prompt, "--model", model_alias, "--aspect", aspect, "-o", str(tmp_out)]
+    target_file: Path | None = None
+    agent_res: dict | None = None
+    via = "gflow:image"
 
-    env = dict(os.environ)
-    env.setdefault("GFLOW_CLI_BROWSER_WINDOW_POSITION", "-30000,-30000")
-    if os.name != "nt" and not env.get("_FLUMA_IN_XVFB"):
-        xvfb = shutil.which("xvfb-run")
-        if xvfb:
-            env.pop("WAYLAND_DISPLAY", None)
-            env["XDG_SESSION_TYPE"] = "x11"
-            env["GDK_BACKEND"] = "x11"
-            env["QT_QPA_PLATFORM"] = "xcb"
-            env["_FLUMA_IN_XVFB"] = "1"
-            cmd = [xvfb, "-a", "-s", "-screen 0 1920x1080x24", *cmd]
+    with _gflow_profile_lock():
+        if refs and _AGENT_ONLY_IMAGE:
+            agent_res = _run_agent_i2i(tmp_out, prompt, refs, aspect, model_alias, timeout)
+            target_file = Path(agent_res.get("path") or tmp_out)
+            via = "gflow:agent-i2i"
+        else:
+            _close_agent_worker()
+            if refs:
+                cmd = [str(gflow_bin), "image", "i2i", prompt, "--model", model_alias, "--aspect", aspect, "-o", str(tmp_out)]
+                for p, _ in refs:
+                    cmd += ["--ref", str(p)]
+            else:
+                cmd = [str(gflow_bin), "image", "t2i", prompt, "--model", model_alias, "--aspect", aspect, "-o", str(tmp_out)]
 
-    try:
-        with _gflow_profile_lock():
-            r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout, cwd=str(out.parent))
-    except subprocess.TimeoutExpired:
-        raise ImageGenError(f"gflow 이미지 생성 시간 초과({timeout}초)")
+            env = dict(os.environ)
+            env.setdefault("GFLOW_CLI_BROWSER_WINDOW_POSITION", "-30000,-30000")
+            if os.name != "nt" and not env.get("_FLUMA_IN_XVFB"):
+                xvfb = shutil.which("xvfb-run")
+                if xvfb:
+                    env.pop("WAYLAND_DISPLAY", None)
+                    env["XDG_SESSION_TYPE"] = "x11"
+                    env["GDK_BACKEND"] = "x11"
+                    env["QT_QPA_PLATFORM"] = "xcb"
+                    env["_FLUMA_IN_XVFB"] = "1"
+                    cmd = [xvfb, "-a", "-s", "-screen 0 1920x1080x24", *cmd]
+
+            try:
+                r = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout, cwd=str(out.parent))
+            except subprocess.TimeoutExpired:
+                raise ImageGenError(f"gflow 이미지 생성 시간 초과({timeout}초)")
+
+            target_file = _find_gflow_output(tmp_out, r.stdout, r.stderr)
+            if not target_file or not target_file.exists():
+                err_msg = (r.stderr or r.stdout).strip()
+                if refs and _is_agent_only_error(err_msg):
+                    _AGENT_ONLY_IMAGE = True
+                    agent_res = _run_agent_i2i(tmp_out, prompt, refs, aspect, model_alias, timeout)
+                    target_file = Path(agent_res.get("path") or tmp_out)
+                    via = "gflow:agent-i2i"
+                elif "login" in err_msg.lower() or "auth" in err_msg.lower() or "read-only" in err_msg.lower():
+                    raise ImageGenError(f"gflow 로그인 또는 인증 필요: {err_msg[:300]}")
+                else:
+                    raise ImageGenError(f"gflow 이미지 생성 실패 (출력 파일 없음): {err_msg[:400]}")
 
     took = round(time.time() - t0, 1)
-
-    target_file = None
-    for cand in (tmp_out, tmp_out.with_suffix(".jpg"), tmp_out.with_suffix(".jpeg"), tmp_out.with_suffix(".webp")):
-        if cand.exists():
-            target_file = cand
-            break
-    if not target_file:
-        for part in (r.stdout + "\n" + r.stderr).split():
-            clean = part.strip().strip("|").strip()
-            for ext in (".png", ".jpg", ".jpeg", ".webp"):
-                if clean.endswith(ext) and os.path.exists(clean):
-                    target_file = Path(clean)
-                    break
-            if target_file:
-                break
-
     if not target_file or not target_file.exists():
-        err_msg = (r.stderr or r.stdout).strip()
-        if "login" in err_msg.lower() or "auth" in err_msg.lower() or "read-only" in err_msg.lower():
-            raise ImageGenError(f"gflow 로그인 또는 인증 필요: {err_msg[:300]}")
-        raise ImageGenError(f"gflow 이미지 생성 실패 (출력 파일 없음): {err_msg[:400]}")
+        raise ImageGenError("gflow 이미지 생성 실패 (출력 파일 없음)")
 
     from PIL import Image
     im = Image.open(target_file)
@@ -203,7 +339,7 @@ def _generate_gflow(out: Path, prompt: str, refs: list[tuple[Path, str]], aspect
         "size": [w, h],
         "aspect_asked": aspect,
         "took_sec": took,
-        "via": "gflow:image",
+        "via": via,
         "mode": "i2i" if refs else "t2i",
         "backend": "gflow",
         "model_asked": model,
@@ -211,6 +347,12 @@ def _generate_gflow(out: Path, prompt: str, refs: list[tuple[Path, str]], aspect
         "refs": [{"path": str(p), "role": r} for p, r in refs],
         "prompt": prompt,
     }
+    if agent_res:
+        meta["agent_only"] = True
+        if agent_res.get("project_id"):
+            meta["flow_project_id"] = agent_res["project_id"]
+        if agent_res.get("media_id"):
+            meta["flow_media_id"] = agent_res["media_id"]
     want = ASPECTS.get(aspect)
     if want and abs(w / h - want) > 0.03:
         meta["warn"] = f"비율이 다름: {w}×{h}({w / h:.3f}) — 요청 {aspect}({want:.3f})"
@@ -325,9 +467,12 @@ def generate(out: Path, prompt: str, refs: list[tuple[Path, str]] | None = None,
     elif chosen_backend == "gflow":
         try:
             return _generate_gflow(out, prompt, resolved_refs, aspect, chosen_model, timeout)
-        except ImageGenError:
+        except ImageGenError as gflow_err:
             if shutil.which("agy"):
-                return _generate_agy(out, prompt, resolved_refs, aspect, "flash", timeout)
+                try:
+                    return _generate_agy(out, prompt, resolved_refs, aspect, "flash", timeout)
+                except ImageGenError as agy_err:
+                    raise ImageGenError(f"gflow 실패({gflow_err}) → agy 폴백 실패({agy_err})") from agy_err
             raise
     else:
         return _generate_agy(out, prompt, resolved_refs, aspect, chosen_model, timeout)

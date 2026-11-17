@@ -298,6 +298,10 @@ def brief(sb: dict, res: dict, engines: list[str | None]) -> str:
 def voice_from_card(card: dict) -> dict:
     import tts
     v = card.get("voice", {})
+    # 2026-11-16: 말이 거의 없는 레퍼런스(음악 · 화면만, speech_ratio 0.07)의 값이 말 속도 · 끊어 말하기를 정했다 → 대사가 기계 같았다.
+    # 레퍼런스가 실제로 말하는 영상(말 비율 30% 이상)일 때만 말 속도 · 쉼을 빌린다. 합성은 언제나 대본 전체를 한 번에(이어 말하기)
+    if float(v.get("speech_ratio") or 0) < 0.3:
+        v = {}
     cps = float(v.get("chars_per_sec") or 6.6)
     speed = round(max(0.9, min(1.5, cps / 6.6)), 2)   # 우리 엔진 기본 속도 ≈ 초당 6.6자(공백 제외)
     ends = ", ".join(f"~{k}" for k in list(v.get("endings", {}))[:4])
@@ -305,11 +309,11 @@ def voice_from_card(card: dict) -> dict:
     st = tts._settings()
     mine = st.get("voice_engine") or ""
     if mine not in ("", "edge", "silent", "gemini") and tts.engine_available(mine):   # 사용자가 고른 엔진 — 말 속도 · 이어 말하기만 카드에서
-        out = {"engine": mine, "speed": speed, "continuous": bool(v.get("continuous"))}
+        out = {"engine": mine, "speed": speed, **({"cut_pause": v["median_gap"]} if v.get("median_gap") else {})}
         return {**out, "id": st["voice_id"]} if st.get("voice_id") else out
     if tts.engine_available("gemini"):
-        return {"engine": "gemini", "id": "Puck", "speed": 1.0, "style": style, "continuous": bool(v.get("continuous"))}
-    return {"engine": "edge", "id": "ko-KR-HyunsuMultilingualNeural", "speed": speed, "continuous": bool(v.get("continuous"))}
+        return {"engine": "gemini", "id": "Puck", "speed": 1.0, "style": style, **({"cut_pause": v["median_gap"]} if v.get("median_gap") else {})}
+    return {"engine": "edge", "id": "ko-KR-HyunsuMultilingualNeural", "speed": speed, **({"cut_pause": v["median_gap"]} if v.get("median_gap") else {})}
 
 
 def style_card(sb: dict) -> dict | None:
@@ -333,11 +337,16 @@ def style_card(sb: dict) -> dict | None:
 def design_merge(sb: dict) -> dict:
     """레퍼런스 X-ray 에서 잰 디자인 값(craft/design.py from_reference)을 direction 에 채운다.
     사용자가 정한 칸 · 고른 시안(locked)은 그대로 — 자동으로 채운 칸(_auto)만 다시 계산한다. 근거가 없으면 아무것도 넣지 않는다(= 효과 없음)"""
+    from craft.pace_policy import apply_voice_pace
+    from craft.subs_policy import apply_preset_direction_subs
+
+    apply_preset_direction_subs(sb)
+    apply_voice_pace(sb)
     d = sb.setdefault("direction", {})
-    if d.get("locked"):
+    if d.get("locked") or d.get("user_locked"):
         return {}
     try:
-        from look import look, xrays
+        from story.look import look, xrays
         from craft import design
         ref = design.from_reference(look(sb), xrays(sb))
     except Exception as e:  # noqa: BLE001
@@ -378,6 +387,11 @@ def main():
             print(f"(영상별 대사 · 대사 시트: data/public/trends/channels/{card['channel']}/channel.md)")
         if a.write:
             prev = sb.get("direction") or {}
+            if prev.get("user_locked"):
+                design_merge(sb)
+                path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                print("[기록] direction.user_locked — 레퍼런스 카드로 배치 · 색을 덮어쓰지 않음")
+                return
             fp = (prev.get("feel") or {}).get("palette") or {}
             col.update({f"color_{k}": v for k, v in fp.items() if k in ("bg", "surface", "text", "muted", "accent")})   # 고른 느낌의 색이 레퍼런스 색보다 앞선다(배치 · 리듬은 레퍼런스)
             sb["direction"] = {**{k: v for k, v in d.items() if not k.startswith("caption_")}, **col, "style_card": f"data/public/trends/xray/{card['id']}/style/style.json",

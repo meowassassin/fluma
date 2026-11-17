@@ -16,13 +16,14 @@ import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { createAgent } from "./agent.mjs";
+import { createSeriesRunner } from "./seriesRunner.mjs";
 import { NAME_RE as MCP_NAME, loadMcp, normalize as mcpNormalize, publicMcp, saveMcp, testMcp } from "./mcp.mjs";
 import { createJobs } from "./jobs.mjs";
 import { createCrafts } from "./crafts.mjs";
 import { zip, unzip } from "./zipstore.mjs";
 import { createYoutube } from "./youtube.mjs";
 import { pythonCmd, venvBin } from "./platform.mjs";
-import { AGENTS, CLAUDE_MODELS, AGY_MODELS, detectAgents, refreshAgents, codexModels, resolveRuntime } from "./runtimes.mjs";
+import { AGENTS, CLAUDE_MODELS, AGY_MODELS, detectAgents, refreshAgents, codexModels, cursorModels, resolveRuntime } from "./runtimes.mjs";
 import { HttpError, bad, notFound, conflict, ah, sendError, isId, checkId, within, atomicWrite, readJson, run, requestSignal, tail, logEffort } from "./lib.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -52,7 +53,18 @@ for (const p of [path.join(userHome, ".local", "bin"), path.join(userHome, ".npm
 process.on("unhandledRejection", (e) => console.error("[api] 처리되지 않은 거부:", e));
 process.on("uncaughtException", (e) => { console.error("[api] 처리되지 않은 예외 — 종료 (systemd 가 다시 띄움):", e); process.exit(1); });
 
-const agent = createAgent({ ROOT, env: process.env, onState: (id, running) => publish({ kind: "agent", id, running }) });
+let seriesRunner;
+const agent = createAgent({
+  ROOT, env: process.env,
+  onState: (id, running) => {
+    publish({ kind: "agent", id, running });
+    if (!running) seriesRunner?.onAgentIdle(id).catch((e) => console.error("[series]", e));
+  },
+});
+seriesRunner = createSeriesRunner({
+  ROOT, agent,
+  onChange: (run) => publish({ kind: "series", id: run.id, status: run.status, current: run.current, total: run.episodes?.length }),
+});
 const jobs = createJobs({ onChange: (j) => publish({ kind: "job", id: j.project ?? undefined, job: j }) });
 
 const app = express();
@@ -306,7 +318,14 @@ app.post("/api/gen-keys/:id/test", ah(async (req, res) => {
   const url = q ? `${k.test.url}${k.test.url.includes("?") ? "&" : "?"}${q}=${encodeURIComponent(key)}` : k.test.url;
   try {
     const r = await fetch(url, { headers: h, signal: AbortSignal.timeout(15000) });
-    res.json({ ok: r.ok, status: r.status, msg: r.ok ? "연결됨" : r.status === 401 || r.status === 403 ? "키가 맞지 않아요" : `실패 ${r.status}` });
+    // 권한을 골라 만든 키(예: ElevenLabs 'Text to Speech' 만 켠 키)는 시험 주소(/v1/user)만 401 — 키가 틀린 게 아니다.
+    // 2026-11-17: 맞는 키를 넣었는데 '키가 맞지 않아요'로 보였다. 응답 본문은 돌려주지 않고 이유 종류만 본다
+    let why = "";
+    if (!r.ok) { try { const b = await r.json(); why = String(b?.detail?.status || b?.error?.status || ""); } catch { /* 본문 없음 */ } }
+    const msg = r.ok ? "연결됨"
+      : why === "missing_permissions" ? "키는 맞아요 — 다만 이 키에 계정 정보 읽기 권한이 없어 시험만 실패했어요(음성 생성 권한이 있으면 그대로 쓸 수 있어요)"
+      : r.status === 401 || r.status === 403 ? "키가 맞지 않아요" : `실패 ${r.status}`;
+    res.json({ ok: r.ok || why === "missing_permissions" ? (r.ok ? true : null) : false, status: r.status, msg });
   } catch (e) { res.json({ ok: false, msg: `연결 실패: ${String(e.message || e).slice(0, 80)}` }); }
 }));
 app.get("/api/gen-keys", ah(async (_req, res) => {
@@ -394,12 +413,11 @@ app.post("/api/trends/xray/:vid", ah(async (req, res) => {
     if (force || !existsSync(path.join(dir, "style", "style.json"))) {
       await h.run(PY, ["engine/research/ref_style.py", vid], { cwd: ROOT, timeout: 20 * 60e3 });
     }
-    // 레퍼런스 이해 — 설정된 에이전트(Claude Code · Codex · Antigravity)가 프레임 모음 · 대사를 보고 xray.json 의 understanding 을 쓴다(engine/look, 유료 보기 API 없음).
-    // 에이전트가 로그인 안 됐거나 실패해도 분석은 남는다(이해만 빠짐)
-    h.progress(0.72, "레퍼런스 이해");
-    await h.run(PY, ["engine/look/look.py", "ref", vid, ...(force ? ["--force"] : [])], { cwd: ROOT, timeout: 10 * 60e3 });
-    // 이어서 채널 말투 카드(같은 채널 쇼츠 여러 편 — 말투 · 구성 · 농담 · 목소리). 실패해도 스타일 카드는 남는다
-    const c = req.body?.channel === false ? null : await h.run(PY, ["engine/research/ref_channel.py", vid, "--n", String(fast ? 2 : Math.max(2, Math.min(10, Number(req.body?.n) || 5))), ...(fast ? ["--whisper", "base"] : []), ...(force ? ["--fresh"] : [])], { cwd: ROOT, timeout: 40 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.8 + Number(m[1]) * 0.2, `채널 말투 · ${m[2]}`); } });
+    // 레퍼런스 이해(look.py ref)와 채널 말투 카드(ref_channel.py)는 서로 다른 파일을 쓰므로 병렬 실행해 대기 시간을 줄인다
+    h.progress(0.72, req.body?.channel === false ? "레퍼런스 이해" : "레퍼런스 이해 · 채널 말투");
+    const lookP = h.run(PY, ["engine/look/look.py", "ref", vid, ...(force ? ["--force"] : [])], { cwd: ROOT, timeout: 10 * 60e3 });
+    const chanP = req.body?.channel === false ? Promise.resolve(null) : h.run(PY, ["engine/research/ref_channel.py", vid, "--n", String(fast ? 2 : Math.max(2, Math.min(10, Number(req.body?.n) || 5))), ...(fast ? ["--whisper", "base"] : []), ...(force ? ["--fresh"] : [])], { cwd: ROOT, timeout: 40 * 60e3, onLine: (l) => { const m = /^@progress ([\d.]+) (.*)$/.exec(l); if (m) h.progress(0.8 + Number(m[1]) * 0.2, `채널 말투 · ${m[2]}`); } });
+    const [, c] = await Promise.all([lookP, chanP]);
     const ch = c && c.code === 0 ? lastJson(c) : null;
     return { result: { url: `/api/public/trends/xray/${vid}/xray.json`, style: existsSync(path.join(dir, "style", "style.json")) ? `/api/public/trends/xray/${vid}/style/style.json` : null,
       channel: ch?.channel ? `/api/public/trends/channels/${ch.channel}/channel.json` : null } };
@@ -788,11 +806,21 @@ app.get("/api/pipeline/:id/live", ah(async (req, res) => {
   res.json({
     at: Date.now(),
     jobs: jobs.list({ project: id }).map((j) => ({ id: j.id, type: j.type, label: j.label, status: j.status, progress: j.progress, stage: j.stage, started: j.started, ended: j.ended, error: j.error })),
-    agent: { busy: !!act, tool: act?.tool?.name ?? null, skill: act?.skill ?? null, runtime: rt?.runtime ?? null, model: rt?.model || null, label: rt?.label ?? null },
+    agent: { busy: !!act, waiting: act?.waiting ?? null, tool: act?.tool?.name ?? null, skill: act?.skill ?? null, runtime: rt?.runtime ?? null, model: rt?.model || null, label: rt?.label ?? null },
     models: { voice: s.voice_engine || "edge", video: s.videogen?.model || "veo_3_1_lite", image: s.agent?.agyModel || "" },
     editor: { project: st(path.join(ed, "project.json")), exported: st(path.join(ed, "exported.mp4")) },
+    produce: produceProgress(id),
   });
 }));
+// produce.py 진행 기록(data/workspace/progress/<id>.json) — 프로세스가 살아 있을 때만 '도는 중'(죽은 기록은 무시)
+function produceProgress(id) {
+  let pr = null;
+  try { pr = JSON.parse(readFileSync(path.join(ROOT, "data", "workspace", "progress", `${id}.json`), "utf8")); } catch { return null; }
+  let alive = false;
+  if (pr.running && pr.pid) { try { process.kill(pr.pid, 0); alive = true; } catch { alive = false; } }
+  return { running: alive, stage: alive ? pr.stage || null : null, stageStarted: pr.stage_started ? Math.round(pr.stage_started * 1000) : null,
+    done: pr.done || {}, error: pr.error || null, updated: Math.round((pr.updated || 0) * 1000) };
+}
 const PIPE_NUM = (x) => String(x || "").split(",").map((s) => s.trim()).filter((s) => /^\d{1,2}$/.test(s)).join(",");
 const PIPE_NAME = (x) => { const s = String(x || ""); if (!/^[A-Za-z][A-Za-z0-9]{0,31}$/.test(s)) throw bad("캐릭터 이름이 올바르지 않습니다"); return s; };
 const PIPE_VIEWS = (x) => { const s = String(x || "all"); if (!/^(all|(front|back|left|right)(,(front|back|left|right))*)$/.test(s)) throw bad("방향이 올바르지 않습니다"); return s; };
@@ -839,7 +867,7 @@ app.post("/api/pipeline/:id/:step/:action", ah(async (req, res) => {
   const args = slow[k]();
   const label = { "character/make": "캐릭터 시트 만들기", "keyframe/make": "키 프레임 만들기", "video/run": "영상 생성", "edit/build": "편집 초안", "publish/final": "최종 렌더", "dub/build": "클립 재편집 초안", "material/produce": "실제 자료 초안" }[k];
   const j = jobs.create({ type: k === "publish/final" ? "render" : "generate", project: id, key: `pipe:${id}:${k}:${shots}:${b.name || ""}`, label, timeout: 60 * 60e3, work: async (h) => {
-    const r = await h.run(PY, args, { cwd: ROOT });
+    const r = await h.run(PY, args, { cwd: ROOT, env: await flumaProcessEnv() });
     if (r.timedOut || r.canceled) return r;
     const msg = (r.out + r.err).match(/^error=(.*)$/m)?.[1];
     if (r.code !== 0) return { error: msg || `${label} 실패`, detail: tail(r.err || r.out) };
@@ -1597,7 +1625,7 @@ app.post("/api/projects/:id/chat", ah(async (req, res) => {
     return res.json({ ok: true, mode });
   }
   const r = await agent.start(id, { message: message.slice(0, 20000), look, template, skill, scene, model, context });
-  res.json({ ok: true, mode: "start", ...r });
+  res.json({ ok: true, mode: r?.waiting ? "waiting" : "start", ...r });
 }));
 app.get("/api/agent/active", (_req, res) => res.json(agent.active()));
 // 홈 대화 목록: 영상(프로젝트)마다의 대화 기록 — 콘티가 아직 없는 기획 대화도 포함
@@ -1638,13 +1666,14 @@ app.post("/api/projects/:id/revert", ah(async (req, res) => {
 
 // ---------- 설정 · 에이전트 실행 환경 ----------
 const SETTINGS = path.join(ROOT, "data", "workspace", "settings.json");
+const flumaProcessEnv = async (base = process.env) => ({ ...base });
 const MODELS = ["", "opus", "sonnet", "haiku", "claude-fable-5-1"];
 const EFFORTS = ["", "low", "medium", "high", "xhigh", "max"];
 function sanitizeAgent(a = {}) {
   const str = (x, n = 120) => (typeof x === "string" ? x.trim().slice(0, n) : "");
   return {
     cli: AGENTS.some((x) => x.id === a.cli && x.runs) ? a.cli : "claude",
-    claudeModel: str(a.claudeModel), codexModel: str(a.codexModel), agyModel: str(a.agyModel),
+    claudeModel: str(a.claudeModel), codexModel: str(a.codexModel), agyModel: str(a.agyModel), cursorModel: str(a.cursorModel),
     effort: EFFORTS.includes(a.effort) ? a.effort : "",
   };
 }
@@ -1655,7 +1684,7 @@ app.get("/api/agents", ah(async (_req, res) => {
   // 고른 에이전트가 로그인 안 된 상태면 위 상태 줄에 알린다(Codex: 결제 · 로그인 전에는 실행이 401 로 실패)
   const cur = detectAgents().find((x) => x.id === resolveRuntime(s).runtime);
   if (!problem && cur?.auth && /not logged in/i.test(cur.auth)) problem = `${cur.title} 로그인이 필요합니다 — 터미널에서 '${cur.id} login' 후 사용할 수 있어요`;
-  res.json({ agents: detectAgents(), models: { claude: CLAUDE_MODELS, codex: codexModels(), antigravity: AGY_MODELS }, active, problem });
+  res.json({ agents: detectAgents(), models: { claude: CLAUDE_MODELS, codex: codexModels(), antigravity: AGY_MODELS, cursor: cursorModels() }, active, problem });
 }));
 
 // ---------- gflow 자동 로그인 및 상태 ----------
@@ -2069,270 +2098,68 @@ app.delete("/api/automation/history", ah(async (_req, res) => {
   res.json({ ok: true });
 }));
 
-app.post("/api/automation/trigger-n8n", ah(async (req, res) => {
-  const { n8nWebhookUrl, batchId, presetId, topics = [], count = 1, schedule = {}, autopilot = true } = req.body || {};
-  const bId = batchId || `batch-${Date.now().toString(36)}`;
+// ---------- 시리즈 양산 (Fluma 내장 큐, n8n 불필요) ----------
+app.post("/api/series/start", ah(async (req, res) => {
+  const { theme, topics, count, presetId, route, maxEpisodes } = req.body || {};
+  const run = await seriesRunner.start({ theme, topics, count, presetId, route, maxEpisodes });
   const nowIso = new Date().toISOString();
-  const finalCount = Math.min(topics.length || count, count);
-  const payload = {
-    batchId: bId,
-    timestamp: nowIso,
-    presetId: presetId || null,
-    topics,
-    count: finalCount,
-    autopilot: !!autopilot,
-    schedule: {
-      startDate: schedule.startDate || nowIso.slice(0, 10),
-      interval: schedule.interval || "1h",
-      publishTime: schedule.publishTime || schedule.preferredTime || "18:00",
-      autoPublish: !!schedule.autoPublish,
-    },
-    phantasosApiUrl: `http://localhost:${PORT}/api`,
-  };
-
-  let webhookResult = null;
-  if (n8nWebhookUrl && /^https?:\/\//.test(n8nWebhookUrl)) {
-    try {
-      const r = await fetch(n8nWebhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(4000),
-      });
-      webhookResult = { status: r.status, ok: r.ok };
-    } catch (e) {
-      webhookResult = { error: String(e.message || e) };
-    }
-  }
-
   const history = (await readJson(AUTO_HIST_FILE, [])) || [];
   history.push({
-    id: bId,
-    batchId: bId,
+    id: run.id,
+    batchId: run.id,
     date: nowIso,
     triggeredAt: nowIso,
-    videoCount: finalCount,
-    topicsCount: finalCount,
-    topics,
-    presetId,
-    autopilot,
-    schedule: payload.schedule,
-    webhookSent: !!n8nWebhookUrl,
-    webhookResult,
-    status: webhookResult?.ok ? "in_progress" : "queued",
+    videoCount: run.episodes.length,
+    topicsCount: run.episodes.length,
+    topics: run.episodes.map((e) => e.topic),
+    presetId: run.presetId,
+    autopilot: true,
+    status: "in_progress",
+    kind: "series",
   });
   await atomicWrite(AUTO_HIST_FILE, JSON.stringify(history, null, 2));
-
-  res.json({ ok: true, batchId: bId, payload, webhookResult });
+  res.json({ ok: true, seriesId: run.id, run });
 }));
 
-// ---------- n8n 양방향 실시간 동기화 (Bi-directional Live Sync) API ----------
-const N8N_CONFIG_FILE = path.join(ROOT, "data", "workspace", "n8n_config.json");
+app.get("/api/series/runs", ah(async (_req, res) => {
+  res.json({ runs: await seriesRunner.list() });
+}));
 
-app.get("/api/n8n/config", ah(async (_req, res) => {
-  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
-  res.json({
-    host: conf.host || "http://localhost:5678",
-    hasApiKey: !!conf.apiKey,
-    workflowId: conf.workflowId || "",
-    active: !!conf.active,
-    schedule: conf.schedule || null,
+app.get("/api/series/runs/:id", ah(async (req, res) => {
+  const run = await seriesRunner.get(req.params.id);
+  if (!run) throw notFound("시리즈 실행을 찾을 수 없습니다");
+  res.json({ run });
+}));
+
+app.post("/api/series/runs/:id/stop", ah(async (req, res) => {
+  const run = await seriesRunner.stop(req.params.id);
+  if (!run) throw notFound("시리즈 실행을 찾을 수 없습니다");
+  res.json({ ok: true, run });
+}));
+
+// 레거시: 예전 클라이언트가 부르면 시리즈 시작으로 위임
+app.post("/api/automation/trigger-n8n", ah(async (req, res) => {
+  const { topics = [], count = 1, presetId, theme } = req.body || {};
+  const run = await seriesRunner.start({
+    theme: theme || topics[0] || "IT 쇼츠",
+    topics: topics.length > 1 ? topics : [],
+    count,
+    presetId,
+    route: "material",
   });
+  res.json({ ok: true, batchId: run.id, seriesId: run.id, legacy: true, run });
 }));
 
-app.post("/api/n8n/config", ah(async (req, res) => {
-  const { host = "http://localhost:5678", apiKey, workflowId } = req.body || {};
-  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
-  conf.host = host.replace(/\/+$/, "");
-  if (apiKey !== undefined) conf.apiKey = apiKey;
-  if (workflowId !== undefined) conf.workflowId = workflowId;
-  await atomicWrite(N8N_CONFIG_FILE, JSON.stringify(conf, null, 2));
-  res.json({ ok: true, host: conf.host, workflowId: conf.workflowId });
-}));
-
-app.get("/api/n8n/status", ah(async (_req, res) => {
-  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
-  const host = conf.host || "http://localhost:5678";
-  const apiKey = conf.apiKey;
-
-  try {
-    const headers = {};
-    if (apiKey) headers["X-N8N-API-KEY"] = apiKey;
-    const r = await fetch(`${host}/api/v1/workflows?limit=10`, { headers, signal: AbortSignal.timeout(3000) });
-    if (!r.ok) {
-      return res.json({ connected: false, status: r.status, error: `n8n 인증 실패 또는 응답 오류 (HTTP ${r.status})` });
-    }
-    const data = await r.json();
-    let currentWorkflow = null;
-    if (conf.workflowId && data?.data) {
-      currentWorkflow = data.data.find((w) => w.id === conf.workflowId) || null;
-    }
-    res.json({
-      connected: true,
-      host,
-      workflowsCount: data?.data?.length || 0,
-      workflow: currentWorkflow,
-      active: currentWorkflow ? currentWorkflow.active : conf.active,
-    });
-  } catch (err) {
-    res.json({ connected: false, host, error: `n8n 서버에 연결할 수 없습니다 (${err.message || "연결 거부"})` });
-  }
-}));
-
-app.post("/api/n8n/deploy", ah(async (req, res) => {
-  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
-  const host = conf.host || "http://localhost:5678";
-  const apiKey = conf.apiKey;
-  const { workflowName = "Phantasos 유튜브 쇼츠 자동화" } = req.body || {};
-
-  // Phantasos 표준 n8n 워크플로 템플릿
-  const workflowTemplate = {
-    name: workflowName,
-    nodes: [
-      {
-        parameters: { rule: { interval: [{ field: "hours", hoursInterval: 1 }] } },
-        name: "Schedule Trigger",
-        type: "n8n-nodes-base.scheduleTrigger",
-        typeVersion: 1.1,
-        position: [240, 300],
-      },
-      {
-        parameters: {
-          method: "POST",
-          url: `http://localhost:${PORT}/api/automation/verify`,
-          options: {},
-        },
-        name: "Phantasos Quota Verify",
-        type: "n8n-nodes-base.httpRequest",
-        typeVersion: 4.1,
-        position: [460, 300],
-      },
-      {
-        parameters: {
-          method: "POST",
-          url: `http://localhost:${PORT}/api/automation/trigger-n8n`,
-          options: {},
-        },
-        name: "Phantasos Video Pipeline",
-        type: "n8n-nodes-base.httpRequest",
-        typeVersion: 4.1,
-        position: [680, 300],
-      },
-    ],
-    connections: {
-      "Schedule Trigger": {
-        main: [[{ node: "Phantasos Quota Verify", type: "main", index: 0 }]],
-      },
-      "Phantasos Quota Verify": {
-        main: [[{ node: "Phantasos Video Pipeline", type: "main", index: 0 }]],
-      },
-    },
-    settings: { executionOrder: "v1" },
-  };
-
-  try {
-    const headers = { "Content-Type": "application/json" };
-    if (apiKey) headers["X-N8N-API-KEY"] = apiKey;
-    const r = await fetch(`${host}/api/v1/workflows`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(workflowTemplate),
-    });
-    if (!r.ok) {
-      const errTxt = await r.text();
-      return sendError(res, r.status, "deploy_failed", `n8n 워크플로 생성 실패: ${errTxt}`);
-    }
-    const created = await r.json();
-    conf.workflowId = created.id;
-    await atomicWrite(N8N_CONFIG_FILE, JSON.stringify(conf, null, 2));
-    res.json({ ok: true, workflowId: created.id, workflow: created });
-  } catch (err) {
-    sendError(res, 500, "deploy_error", `n8n 배포 중 오류: ${err.message}`);
-  }
-}));
-
-app.post("/api/n8n/sync", ah(async (req, res) => {
-  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
-  const host = conf.host || "http://localhost:5678";
-  const apiKey = conf.apiKey;
-  const { workflowId = conf.workflowId, schedule = {} } = req.body || {};
-
-  conf.schedule = schedule;
-  if (workflowId) conf.workflowId = workflowId;
-  await atomicWrite(N8N_CONFIG_FILE, JSON.stringify(conf, null, 2));
-
-  if (!workflowId) {
-    return res.json({ ok: true, localOnly: true, message: "로컬 스케줄 설정이 저장되었습니다. (n8n 워크플로 배포 시 원격 동기화됩니다)" });
-  }
-
-  try {
-    const headers = { "Content-Type": "application/json" };
-    if (apiKey) headers["X-N8N-API-KEY"] = apiKey;
-
-    const updatePayload = {
-      settings: {
-        phantasosSchedule: schedule,
-      },
-    };
-
-    const r = await fetch(`${host}/api/v1/workflows/${workflowId}`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify(updatePayload),
-      signal: AbortSignal.timeout(4000),
-    });
-    const updated = await r.json().catch(() => ({}));
-    res.json({ ok: r.ok, workflow: updated });
-  } catch (err) {
-    res.json({ ok: true, localOnly: true, warning: err.message });
-  }
-}));
-
-app.post("/api/n8n/activate", ah(async (req, res) => {
-  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
-  const host = conf.host || "http://localhost:5678";
-  const apiKey = conf.apiKey;
-  const { workflowId = conf.workflowId, active = true } = req.body || {};
-
-  conf.active = active;
-  await atomicWrite(N8N_CONFIG_FILE, JSON.stringify(conf, null, 2));
-
-  if (!workflowId) {
-    return res.json({ ok: true, active, localOnly: true });
-  }
-
-  try {
-    const headers = {};
-    if (apiKey) headers["X-N8N-API-KEY"] = apiKey;
-    const action = active ? "activate" : "deactivate";
-    const r = await fetch(`${host}/api/v1/workflows/${workflowId}/${action}`, {
-      method: "POST",
-      headers,
-      signal: AbortSignal.timeout(4000),
-    });
-    const data = await r.json().catch(() => ({}));
-    res.json({ ok: r.ok, active, data });
-  } catch (err) {
-    res.json({ ok: true, active, localOnly: true, warning: err.message });
-  }
-}));
-
+// (n8n API 제거됨 — 2026-11-16)
+const _n8nRemoved = async (_req, res) => sendError(res, 410, "n8n_removed", "n8n 연동은 제거되었습니다. 자동화 화면에서 시리즈 양산을 사용하세요.");
+app.get("/api/n8n/config", ah(_n8nRemoved));
+app.post("/api/n8n/config", ah(_n8nRemoved));
+app.get("/api/n8n/status", ah(_n8nRemoved));
+app.post("/api/n8n/deploy", ah(_n8nRemoved));
+app.post("/api/n8n/sync", ah(_n8nRemoved));
+app.post("/api/n8n/activate", ah(_n8nRemoved));
 app.get("/api/n8n/executions", ah(async (_req, res) => {
-  const conf = (await readJson(N8N_CONFIG_FILE, {})) || {};
-  const host = conf.host || "http://localhost:5678";
-  const apiKey = conf.apiKey;
-  if (!conf.workflowId) return res.json({ executions: [] });
-
-  try {
-    const headers = {};
-    if (apiKey) headers["X-N8N-API-KEY"] = apiKey;
-    const r = await fetch(`${host}/api/v1/executions?workflowId=${conf.workflowId}&limit=10`, { headers });
-    if (!r.ok) return res.json({ executions: [] });
-    const data = await r.json();
-    res.json({ executions: data?.data || [] });
-  } catch {
-    res.json({ executions: [] });
-  }
+  res.json({ executions: [], removed: true });
 }));
 
 // ---------- 캐릭터 ----------

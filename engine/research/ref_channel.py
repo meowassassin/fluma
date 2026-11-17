@@ -210,20 +210,50 @@ def ending_of(sent: str) -> str:
     return next((e for e in ENDINGS if w.endswith(e)), w[-2:] if len(w) >= 2 else w)
 
 
+def _grab_cv2_frames(src: Path, timestamps: list[float]) -> list[Image.Image | None]:
+    """단일 VideoCapture 핸들로 여러 시각의 프레임을 한 번에 꺼낸다(ffmpeg 반복 스폰 방지)."""
+    try:
+        import cv2
+    except ImportError:
+        return [None] * len(timestamps)
+    cap = cv2.VideoCapture(str(src))
+    if not cap.isOpened():
+        return [None] * len(timestamps)
+    out: list[Image.Image | None] = []
+    try:
+        for t in timestamps:
+            cap.set(cv2.CAP_PROP_POS_MSEC, max(0.0, t) * 1000.0)
+            ok_read, frame = cap.read()
+            if not ok_read or frame is None:
+                out.append(None)
+                continue
+            out.append(Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
+    finally:
+        cap.release()
+    return out
+
+
 def line_sheet(src: Path, sents: list[dict], dst: Path, offset: int):
     """대사마다 그 순간 화면(번호 = channel.md 의 줄 번호) — 화면을 비트는 농담인지 에이전트가 눈으로 확인"""
     if not sents:
         return
+    mids = [(s["t"] + s["end"]) / 2 for s in sents]
+    imgs = _grab_cv2_frames(src, mids)
     ths = []
-    with tempfile.TemporaryDirectory() as tmp:
-        for i, s in enumerate(sents):
-            f = Path(tmp) / f"l{i:03d}.jpg"
-            run(["ffmpeg", "-v", "error", "-y", "-ss", f"{(s['t'] + s['end']) / 2:.2f}", "-i", str(src), "-frames:v", "1", "-q:v", "3", str(f)])
-            if not f.exists():
-                continue
-            im = Image.open(f).convert("RGB"); im.thumbnail((180, 320))
-            dr = ImageDraw.Draw(im); dr.rectangle([0, 0, 40, 18], fill=(0, 0, 0)); dr.text((4, 3), f"#{offset + i}", fill=(255, 255, 0))
-            ths.append(im)
+    need_fallback = [i for i, im in enumerate(imgs) if im is None]
+    if need_fallback:
+        with tempfile.TemporaryDirectory() as tmp:
+            for i in need_fallback:
+                f = Path(tmp) / f"l{i:03d}.jpg"
+                run(["ffmpeg", "-v", "error", "-y", "-ss", f"{mids[i]:.2f}", "-i", str(src), "-frames:v", "1", "-q:v", "3", str(f)])
+                if f.exists():
+                    imgs[i] = Image.open(f).convert("RGB")
+    for i, im in enumerate(imgs):
+        if im is None:
+            continue
+        im.thumbnail((180, 320))
+        dr = ImageDraw.Draw(im); dr.rectangle([0, 0, 40, 18], fill=(0, 0, 0)); dr.text((4, 3), f"#{offset + i}", fill=(255, 255, 0))
+        ths.append(im)
     if not ths:
         return
     w, h = ths[0].size
@@ -233,34 +263,65 @@ def line_sheet(src: Path, sents: list[dict], dst: Path, offset: int):
     sh.save(dst, quality=85)
 
 
-def analyze_video(vid: str, title: str, d: Path, whisper: str, langs, step: float = 1.0) -> dict | None:
-    import separate
+def analyze_video(vid: str, title: str, d: Path, whisper: str, langs, step: float = 1.0, use_separate: bool = False) -> dict | None:
     import shorts_xray as sx
     import voice_profile as vp
     xd = XR / vid
     d.mkdir(parents=True, exist_ok=True)
-    if (xd / "src.mp4").exists() and (xd / "vocals.m4a").exists():          # 레퍼런스(이미 분해함) — 소리는 다시 쓰고 받아쓰기만 새로
-        src, vocals = xd / "src.mp4", xd / "vocals.m4a"
-    else:
-        src = sx.download(vid, d)
-        vocals = d / "vocals.m4a"
-        if not vocals.exists():
+    x_cached = None
+    if (xd / "src.mp4").exists():
+        src = xd / "src.mp4"
+        vocals = (xd / "vocals.m4a") if (xd / "vocals.m4a").exists() else src
+        if (xd / "xray.json").exists():
             try:
+                x_cached = json.loads((xd / "xray.json").read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                x_cached = None
+    else:
+        cand = d / "src.mp4"
+        src = cand if (cand.exists() and cand.stat().st_size > 10_000) else sx.download(vid, d)
+        vocals = d / "vocals.m4a"
+        if use_separate and not vocals.exists():
+            try:
+                import separate
                 mix = separate.load(src); v = separate.vocals(mix); separate.save(v, vocals)
             except Exception as e:  # noqa: BLE001
                 print(f"[음원 분리] {vid} 건너뜀: {e}", file=sys.stderr); vocals = src
-    dur = float(sx.probe(src)["duration"])
-    import ocr
-    words, kinds, frames = screen_scan(src, dur, ocr.order_langs(langs, title), step)
-    cuts = sx.detect_cuts(src, dur)
-    segs = sx.speech(vocals, whisper, lang_from=src, prompt=hint_prompt(title, words)) if whisper != "none" else []
+        elif not vocals.exists():
+            vocals = src
+    if x_cached and (x_cached.get("video") or {}).get("duration"):
+        dur = float(x_cached["video"]["duration"])
+        cuts = [round(float(s["start"]), 2) for s in (x_cached.get("shots") or [])[1:]]
+        segs = x_cached.get("speech") or []
+        snd = x_cached.get("sound") or {}
+    else:
+        dur = float(sx.probe(src)["duration"])
+        cuts = sx.detect_cuts(src, dur)
+        segs = []
+        snd = None
+    scan_p = xd / "style" / "scan.json"
+    words, kinds, frames = [], [], []
+    if x_cached and scan_p.exists():
+        try:
+            sc = json.loads(scan_p.read_text(encoding="utf-8"))
+            words = sc.get("words") or []
+            kinds = [(float(k[0]), k[1]) for k in (sc.get("kinds") or [])]
+            frames = sc.get("frames") or []
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            words, kinds, frames = [], [], []
+    if not frames:
+        import ocr
+        words, kinds, frames = screen_scan(src, dur, ocr.order_langs(langs, title), step)
+    if not segs and whisper != "none":
+        segs = sx.speech(vocals, whisper, lang_from=src, prompt=hint_prompt(title, words))
     for sg in segs:
         sg["words"] = sg.get("words") or [{"w": t, "s": sg["start"], "e": sg["end"]} for t in sg["text"].split()]
     # 음악: 박자 · 컷이 박에 맞는 비율(말 없는 영상의 리듬)
-    try:
-        snd = sx.sound(src, dur, segs)
-    except Exception:  # noqa: BLE001
-        snd = {}
+    if snd is None:
+        try:
+            snd = sx.sound(src, dur, segs)
+        except Exception:  # noqa: BLE001
+            snd = {}
     beats = snd.get("beats") or []
     on_beat = round(sum(1 for c in cuts if beats and min(abs(c - b) for b in beats) <= 0.08) / len(cuts), 2) if cuts and beats else None
     # 컷마다 화면 종류(말이 없을 때의 뼈대)
@@ -434,6 +495,7 @@ def main():
     ap.add_argument("--n", type=int, default=6, help="레퍼런스 말고 더 볼 쇼츠 수")
     ap.add_argument("--whisper", default="small")
     ap.add_argument("--langs", default="korean,en")
+    ap.add_argument("--separate", action="store_true", help="채널 쇼츠마다 목소리 분리(Demucs)까지 수행 — 느림")
     ap.add_argument("--fresh", action="store_true", help="이미 받아 적은 영상도 다시")
     ap.add_argument("--keep-video", action="store_true", help="받은 영상을 지우지 않는다(기본: 대사 시트를 만든 뒤 지움)")
     a = ap.parse_args()
@@ -447,6 +509,24 @@ def main():
     listed = [e for e in channel_shorts(meta["id"], a.n + 6) if e["id"] != ref][: a.n]
     todo = [{"id": ref, "title": meta.get("ref_title") or ""}] + listed
     langs = a.langs.split(",")
+    # 미캐시 영상들을 병렬로 미리 받아 두어 순차 다운로드 대기를 없앤다
+    from concurrent.futures import ThreadPoolExecutor
+    import shorts_xray as sx
+    def _prefetch(e):
+        vid = e["id"]
+        done = out / "v" / f"{vid}.json"
+        if (done.exists() and not a.fresh) or (XR / vid / "src.mp4").exists():
+            return
+        d = out / "v" / vid
+        d.mkdir(parents=True, exist_ok=True)
+        try:
+            sx.download(vid, d)
+        except Exception as ex:  # noqa: BLE001
+            print(f"[받기 건너뜀] {vid}: {ex}", file=sys.stderr)
+    if len(todo) > 1:
+        say(0.04, "채널 영상 받는 중")
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            list(pool.map(_prefetch, todo))
     vids, line_no = [], 1
     for k, e in enumerate(todo):
         say(0.05 + 0.9 * k / len(todo), f"쇼츠 {k + 1}/{len(todo)} 받아 적는 중")
@@ -459,23 +539,22 @@ def main():
             continue
         try:
             # 레퍼런스는 1초마다, 같은 채널의 다른 쇼츠는 2초마다 화면을 읽는다(화면 종류 · 배치 · 받아쓰기 힌트에는 충분)
-            v = analyze_video(e["id"], e["title"], out / "v" / e["id"], a.whisper, langs, 1.0 if k == 0 else 2.0)
-        except SystemExit as ex:
-            print(f"[건너뜀] {e['id']}: {ex}", file=sys.stderr); continue
-        except Exception as ex:  # noqa: BLE001
-            print(f"[건너뜀] {e['id']}: {ex}", file=sys.stderr); continue
-        if not v:
-            continue
-        for s in v["sentences"]:
-            s["n"] = line_no; line_no += 1
-        sheet = out / f"lines-{e['id']}.jpg"
-        marks = v["sentences"] or [{"t": sh["t"], "end": sh["t"] + sh["sec"]} for sh in v.get("shots") or []]
-        line_sheet(v.pop("src"), marks, sheet, v["sentences"][0]["n"] if v["sentences"] else 1)
-        v["sheet"] = str(sheet.relative_to(ROOT)) if sheet.exists() else None
-        vids.append(v)
-        done.write_text(json.dumps(v, ensure_ascii=False), encoding="utf-8")
-        if not a.keep_video:
-            shutil.rmtree(out / "v" / e["id"], ignore_errors=True)
+            v = analyze_video(e["id"], e["title"], out / "v" / e["id"], a.whisper, langs, 1.0 if k == 0 else 2.0, use_separate=a.separate)
+            if not v:
+                continue
+            for s in v["sentences"]:
+                s["n"] = line_no; line_no += 1
+            sheet = out / f"lines-{e['id']}.jpg"
+            marks = v["sentences"] or [{"t": sh["t"], "end": sh["t"] + sh["sec"]} for sh in v.get("shots") or []]
+            line_sheet(v.pop("src"), marks, sheet, v["sentences"][0]["n"] if v["sentences"] else 1)
+            v["sheet"] = str(sheet.relative_to(ROOT)) if sheet.exists() else None
+            vids.append(v)
+            done.write_text(json.dumps(v, ensure_ascii=False), encoding="utf-8")
+        except (SystemExit, Exception) as ex:  # noqa: BLE001
+            print(f"[건너뜀] {e['id']}: {ex}", file=sys.stderr)
+        finally:
+            if not a.keep_video:
+                shutil.rmtree(out / "v" / e["id"], ignore_errors=True)
     if not vids:
         sys.exit("받아 적은 쇼츠가 없습니다")
     old = out / "channel.json"

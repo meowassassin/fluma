@@ -186,16 +186,52 @@ def _typecast(text, out_wav, voice, speed=1.0, style=None, intensity=None, pitch
         write_words(out_wav, words)
 
 
+def _eleven_why(r) -> str:
+    """ElevenLabs 오류 응답의 이유만(키 · 본문 전체는 남기지 않는다) — 예: missing_permissions · voice_not_found · quota_exceeded"""
+    try:
+        d = r.json().get("detail")
+        if isinstance(d, dict):
+            return f"{d.get('status') or ''} {str(d.get('message') or '')[:160]}".strip()
+        return str(d)[:160]
+    except ValueError:
+        return r.text[:160]
+
+
+def _eleven_default_voice(key: str) -> str:
+    """목소리를 고르지 않았을 때 — 이 키로 쓸 수 있는 목소리 중 하나(기본 제공 목소리 먼저)를 골라 기억한다.
+    2026-11-17: 기본 목소리 id 가 빈칸이라 요청 주소가 '/v1/text-to-speech/'(목소리 없음)가 되어, 키가 맞아도 늘 실패했다"""
+    import requests
+    cache = ROOT / "data" / "workspace" / "tmp" / "elevenlabs_voice.json"
+    try:
+        return json.loads(cache.read_text("utf-8"))["voice_id"]
+    except (OSError, ValueError, KeyError):
+        pass
+    r = requests.get("https://api.elevenlabs.io/v1/voices", headers={"xi-api-key": key}, timeout=30)
+    if r.status_code != 200:
+        raise RuntimeError(f"ElevenLabs 목소리 목록 실패 {r.status_code}: {_eleven_why(r)} — 설정에서 목소리 id 를 직접 고르거나, 키에 Voices 읽기 권한을 주세요")
+    vs = r.json().get("voices") or []
+    vs.sort(key=lambda v: v.get("category") != "premade")
+    if not vs:
+        raise RuntimeError("ElevenLabs 에 쓸 수 있는 목소리가 없습니다 — ElevenLabs 에서 목소리를 추가하거나 설정에서 고르세요")
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps({"voice_id": vs[0]["voice_id"], "name": vs[0].get("name")}, ensure_ascii=False), "utf-8")
+    print(f"[tts] ElevenLabs 목소리를 고르지 않아 '{vs[0].get('name')}' 을(를) 씁니다", file=sys.stderr)
+    return vs[0]["voice_id"]
+
+
 def _elevenlabs(text, out_wav, voice):
     import requests
     key = _env_key("ELEVENLABS_API_KEY")
-    vid = voice or DEFAULT_VOICE["elevenlabs"] or os.environ.get("ELEVENLABS_VOICE_ID", "")
+    if not key:
+        raise RuntimeError("ELEVENLABS_API_KEY 가 없습니다 — 설정 → 생성 · 음성 API 키에 넣으세요")
+    vid = voice or DEFAULT_VOICE["elevenlabs"] or os.environ.get("ELEVENLABS_VOICE_ID", "") or _eleven_default_voice(key)
     r = requests.post(f"https://api.elevenlabs.io/v1/text-to-speech/{vid}",
                       headers={"xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg"},
                       json={"text": text, "model_id": "eleven_multilingual_v2",
                             "voice_settings": {"stability": 0.5, "similarity_boost": 0.75, "speed": TOKENS["audio"].get("speed", 1.0)}},
                       timeout=90)
-    r.raise_for_status()
+    if r.status_code != 200:
+        raise RuntimeError(f"ElevenLabs TTS 실패 {r.status_code}: {_eleven_why(r)}")
     tmp = Path(tempfile.mkstemp(suffix=".mp3")[1]); tmp.write_bytes(r.content)
     to_wav(tmp, out_wav); tmp.unlink(missing_ok=True)
 
@@ -254,14 +290,16 @@ def _settings() -> dict:
 
 
 def resolve(sb: dict | None = None) -> tuple[str, str | None]:
-    """(엔진, 목소리). 우선순위: 사용자가 콘티에 직접 정한 목소리(voice.source == "user") > 설정(설정 → 미디어 → 음성:
-    data/workspace/settings.json voice_engine · voice_id) > 도구가 자동으로 적은 콘티 목소리(direct.py · voice_match.py) > TTS_PROVIDER > edge.
+    """(엔진, 목소리). 우선순위: 콘티에 사람 · 에이전트가 적은 목소리(voice.engine, source 가 "auto" 가 아닌 것) > 설정(설정 → 미디어 → 음성:
+    data/workspace/settings.json voice_engine · voice_id) > 도구가 자동으로 적은 콘티 목소리(voice_match.py, source == "auto") > TTS_PROVIDER > edge.
+    (2026-11-17: 에이전트가 "ElevenLabs 로 바꿔" 요청대로 콘티 엔진을 바꿔도 설정의 Typecast 가 덮어 같은 403 으로 거듭 실패했다.)
     (예전엔 콘티 목소리가 늘 이겨서, 레퍼런스 카드가 적은 Edge 가 설정의 유료 엔진을 덮었다.) 말 속도 · 감정 같은 다른 voice 값은 그대로 쓴다.
     쓸 수 없는 엔진이면(미설치 · 키 없음) edge 로 바꾸고 알린다."""
     v = (sb or {}).get("voice") or {}
     st = _settings()
     # 설정 '자동'(voice_auto, 기본 켬)이면 voice_match auto 가 콘티에 적은 목소리를 쓴다 — 설정 엔진은 콘티에 목소리가 없을 때의 기본
-    if st.get("voice_engine") and v.get("source") != "user" and (st.get("voice_auto") is False or not v.get("engine")):
+    picked = v.get("engine") and v.get("source") != "auto"      # 콘티에 직접 정한 엔진 — 설정보다 우선
+    if st.get("voice_engine") and not picked and (st.get("voice_auto") is False or not v.get("engine")):
         eng, vid = str(st["voice_engine"]).lower(), st.get("voice_id")
     else:
         eng = (v.get("engine") or st.get("voice_engine") or os.environ.get("TTS_PROVIDER") or "edge").lower()

@@ -36,6 +36,7 @@ export interface EngineMeta {
 export interface SkillMeta { name: string; description: string; when?: string }
 export interface CharMeta { name: string; title: string; base: string; [k: string]: unknown }
 
+
 export interface Settings {
   model: string; effort: string; language: string; voice_engine: string; voice_id: string; voice_auto?: boolean; music_any_license?: boolean;
   agent?: Record<string, unknown>;

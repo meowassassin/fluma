@@ -37,7 +37,7 @@ def _rel(p: Path) -> str:
 
 def ref_design(sb: dict) -> dict:
     try:
-        from look import look, xrays
+        from story.look import look, xrays
         return design.from_reference(look(sb), xrays(sb))
     except Exception:  # noqa: BLE001
         return {}

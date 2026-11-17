@@ -40,6 +40,9 @@ def _j(p: Path):
         return None
 
 
+from craft.usage import DRAFT_APPS  # noqa: E402
+
+
 def provenance(pid: str, sb: dict) -> dict:
     """단계마다 '실제로 무엇으로 만들었나' — 결과 파일에 남은 기록만 모은다(지금 설정은 보지 않는다).
     기록이 없으면 그 칸을 비운다 — 화면은 '기록 없음'으로 보여 준다."""
@@ -78,21 +81,66 @@ def provenance(pid: str, sb: dict) -> dict:
     vm = _j(ROOT / "data" / "audio" / f"{pid}.voice.meta.json")
     if vm:
         out["voice"] = vm
-    craft_apps = set()
-    us = _j(comp / "craft" / "usage.json")
-    if us:
-        craft_apps.update(f.get("app") for f in us.get("features") or [] if f.get("app"))
-    # 각 장면 재료(materials)에 실제로 투입된 모든 Craft 앱 수집
+    # 재료: 장면 재료 기록마다 실제로 만든 도구(Craft 앱 · 화면 녹화 · 스톡 …) / 초안: 조립 단계 기록(usage.json)에서 재료 앱을 뺀 것
+    mat_tools, mat_apps = [], set()
     mats_dir = comp / "craft" / "materials"
     if mats_dir.is_dir():
-        for mf in mats_dir.glob("s*/*.json"):
+        for mf in sorted(mats_dir.glob("s*/*.json")):
             mj = _j(mf)
-            if mj and mj.get("app"):
-                craft_apps.add(mj["app"])
-    if craft_apps:
-        out["draft"] = sorted(craft_apps)
-        out["materials"] = sorted(craft_apps)
+            if not isinstance(mj, dict) or not mj.get("type"):
+                continue
+            tool = material_tool(mj.get("spec") or mj, mj.get("app"))
+            if tool and tool not in mat_tools:
+                mat_tools.append(tool)
+            if mj.get("app"):
+                mat_apps.add(mj["app"])
+    if mat_tools:
+        out["materials"] = mat_tools
+    us = _j(comp / "craft" / "usage.json")
+    if us:
+        used = [a for a in dict.fromkeys(f.get("app") for f in us.get("features") or [] if f.get("app"))]
+        draft = [a for a in used if a in DRAFT_APPS]          # usage.json 에는 재료 앱 기능도 섞여 있다 — 조립 단계 앱만
+        if draft:
+            out["draft"] = draft
     return out
+
+
+def material_tool(m: dict, app: str | None = None) -> str | None:
+    """재료 하나 → 그걸 만드는 도구 이름(Craft 앱 id 또는 'capture:web' 같은 출처 종류)"""
+    if app:
+        return app
+    t = m.get("type")
+    if t == "craft":
+        return m.get("app")
+    if t == "web":
+        src = ROOT / str(m.get("src") or "")
+        meta = _j(src / "meta.json") if src.is_dir() else None
+        return "capture:terminal" if (meta or {}).get("terminal") else "capture:web"
+    if t == "stock":
+        return "stock"
+    if t in ("screen", "image", "video", "photo") and not m.get("method"):
+        return "capture:file"
+    if t == "meme":
+        return "capture:web"
+    try:
+        from craft.materials import methods
+        ms = methods().get(t) or []
+        return m.get("method") or (ms[0] if ms else None)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def planned_tools(sb: dict | None) -> dict:
+    """아직 안 한 단계에 '이 영상에서 쓸 도구'(흐리게) — 콘티 재료에서 정해진다. 콘티가 없으면 비움(지어내지 않는다)"""
+    if not sb:
+        return {}
+    mats = []
+    for sc in sb.get("scenes") or []:
+        for m in sc.get("materials") or []:
+            t_ = material_tool(m)
+            if t_ and t_ not in mats:
+                mats.append(t_)
+    return {"materials": mats, "draft": list(DRAFT_APPS)} if mats else {"draft": list(DRAFT_APPS)}
 
 
 def gather(pid: str) -> dict:
@@ -104,10 +152,19 @@ def gather(pid: str) -> dict:
         errs, warns = [f"검사 실패: {e}"], []
     out: dict = {"id": pid, "plan": sb, "check": {"errors": errs, "warnings": warns}, "steps": {}, "route": sb.get("route", "generate")}
     out["provenance"] = provenance(pid, sb)
+    out["planned"] = {"draft": list(DRAFT_APPS)}          # 실제 자료 경로는 아래에서 콘티 재료로 덮는다
     if out["route"] != "generate":                    # 생성이 아닌 경로 — 편집 · 렌더 상태만
         sbp = ROOT / "data" / "storyboards" / f"{pid}.json"
         drafts = sorted((ROOT / "data" / "out").glob(f"{pid}-*draft*.mp4"), key=lambda p: p.stat().st_mtime)
         finals = [p for p in sorted((ROOT / "data" / "out").glob(f"{pid}-*.mp4"), key=lambda p: p.stat().st_mtime) if "draft" not in p.name]
+        story = _j(sbp) if sbp.exists() else None
+        out["planned"] = planned_tools(story)
+        sid_ = pid
+        nmat = sum(len(sc.get("materials") or []) for sc in (story or {}).get("scenes") or [])
+        built = len([f for f in (ROOT / "data" / "compositions" / sid_ / "craft" / "materials").glob("s*/*.json")]) if nmat else 0
+        out["artifacts"] = {"research": (ROOT / "data" / "research" / f"{pid}.json").exists(),
+                            "audio": (ROOT / "data" / "audio" / f"{pid}.wav").exists(),
+                            "materials": [min(built, nmat), nmat]}
         out.update(characters=[], keyframes=[], clips=[], edit={"storyboard": sbp.exists(), "draft": drafts[-1].name if drafts else None, "final": finals[-1].name if finals else None},
                    next={"clip": "클립 재편집 — 더빙 계획(dub.json) → dub.py build", "material": "실제 자료 편집 — 콘티 → produce.py"}[out["route"]])
         return out

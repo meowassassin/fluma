@@ -115,7 +115,7 @@ const Palette: React.FC = () => {
             <Command.Item onSelect={() => go("/")}><Icon n="home" s={15} />{t("홈")}</Command.Item>
             <Command.Item onSelect={() => go("/trends")}><Icon n="trend" s={15} />{t("트렌드")}</Command.Item>
             <Command.Item onSelect={() => go("/library")}><Icon n="library" s={15} />{t("라이브러리 (캐릭터 · 시리즈 프리셋)")}</Command.Item>
-            <Command.Item onSelect={() => go("/automation")}><Icon n="zap" s={15} />{t("자동화 (n8n 영상 생성 & 업로드)")}</Command.Item>
+            <Command.Item onSelect={() => go("/automation")}><Icon n="zap" s={15} />{t("시리즈 양산")}</Command.Item>
             <Command.Item onSelect={() => go("/crafts")}><Icon n="palette" s={15} />{t("Craft 앱 (Photoshop · Illustrator · After Effects 류)")}</Command.Item>
             <Command.Item onSelect={() => go("/settings/agent")}><Icon n="agent" s={15} />{t("설정 · 에이전트")}</Command.Item>
             <Command.Item onSelect={() => go("/settings/agent")}><Icon n="agent" s={15} />{t("설정 · 모델 · 공급자")}</Command.Item>

@@ -603,6 +603,39 @@ def convert(pid: str, write: bool = True) -> dict:
                 "url": f"/api/pipefiles/{rel_ch}",
             })
 
+    # Craft 경로(2D 장면을 EffectCraft 로 렌더) — 장면에 video 재료가 없어 영상 트랙이 비고 편집기가 검은 화면만 보였다(2026-11-17).
+    # 렌더 결과(data/out/<id>-craft-*.mp4, 부분 · 초안 렌더 제외)를 장면마다 잘라 영상 트랙에 올린다.
+    # 그 렌더에는 자막 · 제목이 이미 그려져 있으므로, 편집기의 자막 · 제목 글자 층은 겹치지 않게 숨겨 둔다(타임라인에서 켜면 다시 보인다).
+    craft_baked = False
+    if sb and sb.get("scenes") and not use_dub and not main_elements:
+        outs = [p for p in (ROOT / "data" / "out").glob(f"{pid}-craft-*.mp4")
+                if not re.search(r"-s\d|-draft", p.stem[len(pid):])]
+        if outs:
+            vid = max(outs, key=lambda p: p.stat().st_mtime)
+            vw, vh, vdur = probe_video(vid)
+            media_manifest.append({
+                "id": "media_craft_render", "name": vid.name, "type": "video", "size": vid.stat().st_size,
+                "lastModified": int(vid.stat().st_mtime * 1000), "duration": round(vdur, 2), "width": vw, "height": vh,
+                "hasAudio": True, "url": f"/api/projects/{pid}/studio-file?p={vid.relative_to(ROOT)}",
+            })
+            at = 0.0
+            for i, sc in enumerate(sb["scenes"]):
+                d = float(sc.get("sec") or 3.0)
+                if at >= vdur:
+                    break
+                d = min(d, vdur - at) if i < len(sb["scenes"]) - 1 else max(0.1, vdur - at)
+                main_elements.append({
+                    "id": f"craft_{i + 1}_{uuid.uuid4().hex[:6]}", "name": f"장면 {i + 1}", "type": "video",
+                    "mediaId": "media_craft_render", "startTime": sec_to_ticks(at), "duration": sec_to_ticks(d),
+                    "trimStart": sec_to_ticks(at), "trimEnd": sec_to_ticks(max(0.0, vdur - at - d)),
+                    "sourceDuration": sec_to_ticks(vdur), "isSourceAudioEnabled": False, "hidden": False, "params": {},
+                })
+                at += d
+            craft_baked = True
+            for el in text_elements + title_elements:
+                el["hidden"] = True
+                el["name"] = "(영상에 포함) " + str(el.get("name") or "")
+
     scene_id = f"scene_{uuid.uuid4().hex[:8]}"
 
     project_doc = {

@@ -87,7 +87,7 @@ const Graph: React.FC<{
                 title={tipOf(s)} onClick={() => onSel(s.key)}>
                 <StateIcon s={s.state} />
                 <span className="pgx-name">{s.name}</span>
-                <span className="pgx-models">{s.models.slice(0, 2).map((m, i) => <ModelIcon key={i} m={m} size={18} spin={s.state === "running" && i === 0} />)}</span>
+                <span className="pgx-models">{s.models.slice(0, 3).map((m, i) => <ModelIcon key={i} m={m} size={18} spin={s.state === "running" && i === 0} />)}</span>
                 {s.state === "running" && s.progress != null && <i className="pgx-prog" style={{ width: `${Math.round(s.progress * 100)}%` }} />}
               </button>
             );
@@ -124,7 +124,7 @@ const Graph: React.FC<{
               title={tipOf(s)} onClick={() => onSel(s.key)}>
               <StateIcon s={s.state} />
               <span className="pgx-name">{s.name}</span>
-              <span className="pgx-models">{s.models.slice(0, 2).map((m, i) => <ModelIcon key={i} m={m} size={18} spin={s.state === "running" && i === 0} />)}</span>
+              <span className="pgx-models">{s.models.slice(0, 3).map((m, i) => <ModelIcon key={i} m={m} size={18} spin={s.state === "running" && i === 0} />)}</span>
               {s.state === "running" && s.progress != null && <i className="pgx-prog" style={{ width: `${Math.round(s.progress * 100)}%` }} />}
             </button>
           );
@@ -142,7 +142,7 @@ const List: React.FC<{ steps: Step[]; sel: string | null; onSel: (k: string) => 
         <button type="button" className={`pgx-li s-${s.state} ${sel === s.key ? "is-sel" : ""}`} title={tipOf(s)} onClick={() => onSel(s.key)}>
           <StateIcon s={s.state} />
           <span className="pgx-name">{s.name}</span>
-          <span className="pgx-models">{s.models.slice(0, 2).map((m, i) => <ModelIcon key={i} m={m} size={18} spin={s.state === "running" && i === 0} />)}</span>
+          <span className="pgx-models">{s.models.slice(0, 3).map((m, i) => <ModelIcon key={i} m={m} size={18} spin={s.state === "running" && i === 0} />)}</span>
         </button>
       </li>
     ))}
@@ -174,7 +174,10 @@ export const PipelineGraph: React.FC<PipelineGraphProps> = ({ id, variant = "ful
           {g.steps.map((s) => <i key={s.key} className={`s-${s.state}`} />)}
         </span>
         <span className="pgx-count">{done}/{g.steps.length}</span>
-        {running.map((s) => <ModelIcon key={s.key} m={s.models[0]} size={18} spin />)}
+        {running.map((s) => s.models[0] && <ModelIcon key={s.key} m={s.models[0]} size={18} spin />)}
+        {running[0] && <span className="pgx-now">{running[0].name} · {running[0].tip}</span>}
+        {live?.agent.waiting ? <span className="pgx-now is-wait">{t("대기 중 · {n}번째", { n: live.agent.waiting })}</span> : null}
+        {!running.length && live?.agent.busy && !live.agent.waiting ? <span className="pgx-now">{t("에이전트 작업 중")}</span> : null}
       </div>
       <Graph steps={g.steps} edges={g.edges} sel={sel} onSel={(k) => setSel(sel === k ? null : k)} orientation={isVert ? "vertical" : "horizontal"} />
       {selected && (

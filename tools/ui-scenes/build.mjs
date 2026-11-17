@@ -14,8 +14,8 @@ const [scene, outDir, ...rest] = process.argv.slice(2);
 if (!scene || !outDir) { console.error("사용: node tools/ui-scenes/build.mjs <장면.tsx> <출력 폴더> [--mode dark] [--png 1080x1920]"); process.exit(2); }
 const opt = (k, d) => { const i = rest.indexOf(k); return i >= 0 ? rest[i + 1] : d; };
 const mode = opt("--mode", "dark");
-const work = path.join(here, ".build");
-rmSync(work, { recursive: true, force: true }); mkdirSync(work, { recursive: true });
+const work = path.join(here, `.build-${process.pid}-${Date.now()}`);
+mkdirSync(work, { recursive: true });
 // 장면을 작업 공간 안으로 복사 — 그래야 @astryxdesign · react 가 이 폴더의 node_modules 에서 풀린다
 copyFileSync(path.resolve(scene), path.join(work, "scene.tsx"));
 writeFileSync(path.join(work, "main.tsx"), `import '@astryxdesign/core/reset.css';
@@ -36,9 +36,11 @@ const tsc = spawnSync(process.execPath, [path.join(here, "node_modules", "typesc
 if (tsc.status !== 0) { console.error("[UI 장면] 타입 오류 — 컴포넌트 문서: npm --prefix tools/ui-scenes run -s astryx -- component <이름>\n" + (tsc.stdout || tsc.stderr).replaceAll(work + "/", "")); process.exit(1); }
 const out = path.resolve(outDir);
 // file:// 에서 열려야 한다 — 크로미움은 file:// 의 모듈 스크립트(type=module)를 막는다 → 한 덩어리 일반 스크립트(iife)로 묶는다
+const entry = path.join(work, "index.html");
 await build({ root: work, base: "./", logLevel: "warn", plugins: [react()],
   build: { outDir: out, emptyOutDir: true, minify: !rest.includes("--debug"), assetsInlineLimit: 0, modulePreload: false, chunkSizeWarningLimit: 4000,
-    rollupOptions: { output: { format: "iife", inlineDynamicImports: true } } } });
+    rollupOptions: { input: entry, output: { format: "iife", inlineDynamicImports: true } } } });
+rmSync(work, { recursive: true, force: true });
 const ip = path.join(out, "index.html");
 writeFileSync(ip, readFileSync(ip, "utf8").replace(/<script type="module" crossorigin src=/g, "<script defer src=").replace(/ crossorigin/g, ""));
 console.log(`[UI 장면] → ${path.join(out, "index.html")}`);

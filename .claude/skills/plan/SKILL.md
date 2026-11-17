@@ -18,6 +18,7 @@ order: 0
   - **material**(실제 자료 편집): 설명 · 뉴스 · 비교 · 순위 · 사용법 · 광고처럼 화면 녹화 · 사진 · 스톡 · 퍼온 클립 · 차트 · 문서로 충분 → storyboard · produce 스킬.
 - 세 경로를 ```choices``` 로 보여 준다 — 추천을 첫째에 이유와 함께, 나머지는 무엇이 달라지는지(비용 · 시간 · 느낌) 한 줄씩. **사용자가 고른 뒤** `python3 engine/gen/route.py set <id> <경로> --why "<이유>" --topic "<주제>"`.
   사용자가 '알아서'라고 하면 추천대로 `--by default`.
+  **묻지 않고 바로 가는 경우:** 추천이 material 이고 요청에 '완성 영상까지' · '만들어 줘' 처럼 끝까지 하라는 뜻이 있으면, 선택지를 띄우지 말고 추천대로 `--by default` 로 정한 뒤 한 줄로 알리고 storyboard · produce 까지 이어 간다(생성은 크레딧 · 승인이 들므로 이때도 묻는다).
 - 섞기: 실제 자료 영상에 '없는 장면' 한두 컷만 필요하면 material 을 추천하고, 그 컷만 생성 경로 샷으로 따로 만들어 재료로 넣는 것을 선택지에 함께 적는다.
 
 ## 순서 (generate 경로)
@@ -29,12 +30,13 @@ order: 0
 1. **트렌드 → 추천 선택지**: 기존 트렌드 분석을 읽는다(새로 분석 기능을 만들지 않는다).
    `python3 engine/gen/plan.py trends [--request <rid>] [--label <이름>]` — 훅 유형 빈도 · 화풍 · 조회수 상위 · X-ray recipe.
    결과가 없으면 trends 스킬(`engine/research/trends.py search`)로 먼저 찾는다.
-   이 재료로 **추천 선택지 2~4개**(훅 · 플롯 한 줄 · 화풍 · 길이, 근거 쇼츠 id)를 ```choices``` 로 보여 준다. **추천 선택지 중 최소 1개는 반드시 3D 캐릭터/3D 무대 연출 스타일(예: 3D 말랑한 비닐토이/피규어 소동물 애니메이션, 3D 소품 기믹 연출)**을 포함하여 디자인 및 형태의 다양성을 확보한다. 사용자가 고르거나 직접 설명한다.
+   **레퍼런스 고르기 · 분석은 이 순서로 한 번씩**(2026-11-17: 출력을 grep 으로 여러 번 보고 썸네일을 한 장씩 열어 고르기에만 5~12분): `trends.py search` → `python3 engine/research/ref_pick.py --request <r… id>`(표 + 썸네일 시트 한 장 — 이 한 장만 Read) → 2~3편을 골라 `analyze_ref.py <id1> <id2> <id3>` 한 명령(동시에 돈다) → 시트가 필요하면 `look.py sheet <id>` 는 고른 편만. 맞는 게 없을 때만 검색어를 바꿔 한 번 더.
+   이 재료로 **추천 선택지 2~4개**(훅 · 플롯 한 줄 · 화풍 · 길이, 근거 쇼츠 id)를 ```choices``` 로 보여 준다. **화풍은 분석한 레퍼런스·조회 상위 쇼츠의 실제 룩을 맨 앞에** 둔다(시네마 · 실사 · 2D · 모션그래픽 등). 3D 비닐토이/마스코트는 레퍼런스가 그렇거나 사용자가 원할 때만 넣는다 — 기본 추천에 강제하지 않는다. 사용자가 고르거나 직접 설명한다.
 2. **디테일 확정**: 영상 생성이 한 번에 끝나도록 샷마다 카메라 워킹 · 배경 · 동작을 정한다. 모르는 칸은 짐작하지 말고 선택지로 묻는다(한 턴에 질문 하나).
 3. **샷 분할**: 장면을 샷으로 나눈다. 한 샷 = 한 순간(동작이 둘이면 샷을 나눈다). 생성 길이는 모델마다 — Veo 4 · 6 · 8 · Omni Flash 4~10 · Omni 1.2 Flash 3~15초.
    **모션그래픽**(키네틱 타이포 · 콜라주 · 도해 · 그래픽 전환)은 `kind: "motion"` — 키 프레임 없이 `style_ref`(레퍼런스 쇼츠 id) 대표 프레임을 매번 그림 레퍼런스로 붙여 생성한다.
    칸: action(무엇이 나타나 어떻게 움직이나) · on_screen_text(6단어 이하, 정확히) · transition_out · sfx · music_mood. `style` 은 레퍼런스 이해의 `motion_design.style_en` 을 바탕으로(움직임 · hex 색 · 타이포).
-3-1. **레퍼런스가 있으면 먼저 이해한다** — `python3 engine/research/analyze_ref.py <링크>`(수치 분해 · 스타일 카드 · 레퍼런스 이해까지 서버 작업으로) 뒤 `xray.json` 의 `understanding`(훅 · 반전 · 편집 문법 · 빌릴 것 · 베끼면 안 되는 것)을 읽는다. 감성 기준을 말했으면 `engine/look/anchor.py set`, 여러 편이면 `engine/look/look.py cliches <id>` 로 뻔함 지도 초안.
+3-1. **레퍼런스가 있으면 먼저 이해한다** — `python3 engine/research/analyze_ref.py <링크1> <링크2> …`(여러 편은 한 명령으로 — 동시에 돈다 · 수치 분해 · 스타일 카드 · 레퍼런스 이해까지 서버 작업으로) 뒤 `xray.json` 의 `understanding`(훅 · 반전 · 편집 문법 · 빌릴 것 · 베끼면 안 되는 것)을 읽는다. 감성 기준을 말했으면 `engine/look/anchor.py set`, 여러 편이면 `engine/look/look.py cliches <id>` 로 뻔함 지도 초안.
 4. **D1 — 캐릭터 · 레퍼런스 이미지가 필요한가**: 여러 샷에 같은 인물 · 생물 · 마스코트가 나오면 `needs_character: true` 와 `characters[]`(바뀌지 않는 특징: 체형 · 나이 · 머리 · 얼굴 · 눈 · 표식 · 옷, 대사가 있으면 voice). 아니면 false → 2단계를 건너뛴다.
 5. **쓰기 · 검사**: `python3 engine/gen/plan.py new <id> --topic "<주제>"` → `data/shotplans/<id>.json` 을 채운다(칸 설명: `engine/spec/schema/shotplan.schema.json`) → `python3 engine/gen/plan.py check <id>` 가 실패 없이 통과할 때까지. △ 권고도 읽고 고칠 수 있으면 고친다.
 6. **보여 주기**: 샷 표 | # | 목적 | 생성/편집 초 | 크기 · 앵글 · 움직임 | 시작 → 동작 → 끝 | 배경 | 소리 | 와 `plan.py prompts <id>` 의 조립된 프롬프트를 보여 주고, 다음 단계(2 또는 3)로 갈지 선택지로 묻는다.

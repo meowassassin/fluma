@@ -7,9 +7,9 @@
 // 다른 점: 권한을 bypass 하지 않고 허용 목록으로 제한한다 (쓰기는 콘텐츠 폴더만).
 import { spawn, execFile, execFileSync } from "node:child_process";
 import { randomUUID, createHash } from "node:crypto";
-import { promises as fs, existsSync, readFileSync, readdirSync } from "node:fs";
+import { promises as fs, existsSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
 import path from "node:path";
-import { resolveRuntime, codexArgs, codexPrompt, makeCodexParser, agyArgs, makeAgyParser, agentEnv } from "./runtimes.mjs";
+import { resolveRuntime, codexArgs, codexPrompt, makeCodexParser, agyArgs, makeAgyParser, cursorArgs, makeCursorParser, agentEnv } from "./runtimes.mjs";
 import { pythonCmd, spawnTarget } from "./platform.mjs";
 import { atomicWrite, killTree, HttpError } from "./lib.mjs";
 import { runConfig as mcpRunConfig, codexArgsFor } from "./mcp.mjs";
@@ -77,8 +77,16 @@ const SHOW_RULES = `## 결과는 채팅에 바로 보여 준다
 
 // 명령 실행 규칙: 오래 걸리는 스크립트는 앞에서 한 번 기다리고, 결과는 정해진 블록만 읽는다(engine/core/result.py).
 // 2026-11-04: 백그라운드로 돌린 분석이 턴과 함께 죽고, 출력을 짐작하며 경로 · 로그를 되읽느라 턴을 썼다(MoneyPrinterTurbo 스킬 규약 참고)
-const RUN_RULES = `## 명령 실행 · 결과 읽기
+const TALK_RULES = `## 말로만 제작한다
+- 사용자에게 터미널 명령(python3 …, produce 돌려 주세요)을 시키지 않는다. 필요한 명령은 네가 Bash로 실행한다.
+- material: produce 전에 콘티 L=0 → \`production_ready\`(\`lint.py\` 통과 시 자동). ui_mock 은 \`data/compositions/<id>/ui/*.tsx\` 를 채팅에서 쓰고 produce 는 빌드만. 그다음 \`python3 engine/produce.py data/storyboards/<id>.json\` — 엔진은 스킬 중복 없이 음성·재료·render. produce 돌리는 동안 같은 프로젝트 plan 턴은 서버가 거부한다.
+- generate: 샷 검토 후 \`python3 engine/gen/assemble.py build <id>\` 까지 네가 이어서 실행한다(말로 멈추지 않는다 — 승인·선택지가 필요할 때만 잠깐 묻는다).
+- 최종 화질은 produce · assemble 이 한 번에 내보낸다(초안 half 를 사용자에게 '완성'으로 주지 않는다).`;
+
+const RUN_RULES = `## 명령 실행 · 결과 
 - 오래 걸리는 명령(렌더 · 레퍼런스 분석 · 녹화 · 버전 비교 · 재료 만들기 · 캐릭터/키프레임/영상 생성)은 **앞에서 한 번** 실행하고 Bash 의 timeout 을 600000(10분)으로. 백그라운드로 돌려 두고 턴을 끝내지 않는다
+- 콘티(\`data/storyboards/<id>.json\`)는 **한 번에 통째로 Write** — 같은 파일을 Edit 로 여러 번 나눠 고치지 않는다(호출마다 수십 초). 사용자가 '길어도 된다'고 하면 줄이지 말고 콘티에 \`"allow_long": true\`
+- \`produce.py\` 는 그대로 부른다 — \`timeout\` · \`&\` · \`nohup\` 으로 감싸지 않는다. 스스로 뒤에서 돌고 최대 8분 기다린 뒤 결과 블록을 넘긴다. 종료 11(\`FLUMA_RUNNING\`)이면 **같은 명령을 그대로 다시** 실행한다(이어서 기다릴 뿐 처음부터 다시 하지 않는다)
 - Antigravity(\`run_command\`) 환경에서 외부 프로세스·네트워크·브라우저를 쓰는 엔진 명령(\`character.py make\`, \`keyframe.py make\`, \`video.py\`, \`produce.py\`, \`trends.py\`, \`analyze_ref.py\`, \`ref_image.py\`, \`render.py\`)을 실행할 때는 처음부터 \`BypassSandbox: true\`와 \`WaitMsBeforeAsync: 10000\`으로 실행한다(표준 샌드박스로 먼저 실행해 실패한 뒤 재실행하지 않는다)
 - 기다리는 동안 sleep · ls · tail · ps 로 되묻지(폴링) 않는다
 - 끝나면 출력 맨 끝 블록만 읽는다:
@@ -171,7 +179,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
   function systemPrompt({ project, look, template, skill, scene }) {
     const parts = [];
     parts.push(readIf(path.join(ROOT, "studio", "agent", "system.md")) ?? "");
-    parts.push(STYLE_RULES, MEMORY_RULES, SETUP_RULES, SHOW_RULES, RUN_RULES);
+    parts.push(STYLE_RULES, MEMORY_RULES, SETUP_RULES, SHOW_RULES, TALK_RULES, RUN_RULES);
     // 붙어 있는 Craft 앱(MCP) — 5단계 초안 다듬기 및 실제 자료(material) 경로에서 활용
     const cr = createCrafts(ROOT).list().filter((c) => c.agentOn && c.installed?.cli);
     if (cr.length) parts.push(`## 제작 도구 (Craft 앱, MCP: ${cr.map((c) => `mcp__${c.name}`).join(" · ")})\n` +
@@ -433,32 +441,80 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
 
   const userFrame = (text) => JSON.stringify({ type: "user", message: { role: "user", content: [{ type: "text", text }] } }) + "\n";
 
+  function produceRunning(project) {
+    const lock = path.join(ROOT, "data", "workspace", "tmp", project, "produce.lock");
+    if (!existsSync(lock)) return false;
+    try {
+      const { pid } = JSON.parse(readFileSync(lock, "utf8"));
+      process.kill(pid, 0);
+      return true;
+    } catch (e) {
+      if (e?.code === "ESRCH") unlinkSync(lock);
+      return false;
+    }
+  }
+
   let shuttingDown = false;
   const busy = new Set();   // 턴을 여는 중 · 실행 중 · 마무리 중인 영상 (동시에 두 턴이 뜨지 않게)
+  // 동시에 도는 에이전트 수 상한(설정 agent.maxConcurrent, 기본 2) — 넘치면 차례를 기다린다(2026-11-17: 대화 5개가 동시에 돌아
+  // 모델 사용량 · CPU · 서버 작업 줄을 나눠 쓰며 모두 느려졌다 — 시청자 검토 한 번 20초 → 45초). 기다리는 동안도 그 영상은 busy(같은 영상의 새 말은 줄에 선다)
+  const slots = new Set(), waiting = [];
+  const maxPar = () => Math.max(1, Number(readSettings().agent?.maxConcurrent) || 2);
+  function unbusy(project) {
+    busy.delete(project);
+    const i = waiting.findIndex((w) => w.project === project); if (i >= 0) waiting.splice(i, 1);
+    if (slots.delete(project)) pump();
+  }
+  function pump() {
+    while (waiting.length && slots.size < maxPar()) {
+      const w = waiting.shift(); slots.add(w.project);
+      startInner(w.project, w.opts).catch((e) => { console.error("[agent] 차례가 와서 시작하다 실패", e); unbusy(w.project); });
+    }
+  }
   async function start(project, opts) {
+    const sk = opts.skill || opts.skillIn;
+    if (produceRunning(project) && !opts.auto && sk !== "produce") {
+      throw new HttpError(409, "produce_busy", "제작(produce) 실행 중 — 끝난 뒤 다시 말해 주세요");
+    }
     if (busy.has(project) || runs.get(project)?.live) {
       if (opts.auto) return { sessionId: null };
       throw new HttpError(409, "busy", "에이전트가 아직 작업 중입니다");
     }
     busy.add(project);
-    try { return await startInner(project, opts); } catch (e) { busy.delete(project); throw e; }
+    if (slots.size >= maxPar() && !slots.has(project)) {           // 자리가 없으면 줄에 선다 — 요청은 바로 돌려준다
+      waiting.push({ project, opts });
+      return { sessionId: null, waiting: waiting.length };
+    }
+    slots.add(project);
+    try { return await startInner(project, opts); } catch (e) { unbusy(project); throw e; }
   }
   async function startInner(project, { message, look, template, skill: skillIn, scene, model, context, auto }) {
     let skill = skillIn;
     if (!auto) { clearTimeout(autoTimers.get(project)); autoTimers.delete(project); autoChain.set(project, 0); }   // 사용자가 직접 보내면 예약된 자동 이어가기는 취소 · 연속 횟수 0
-    else if (!autoTimers.has(project)) { busy.delete(project); return { sessionId: null }; }   // 그사이 멈췄으면 자동 이어가기 안 함
+    else if (!autoTimers.has(project)) { unbusy(project); return { sessionId: null }; }   // 그사이 멈췄으면 자동 이어가기 안 함
     else { autoTimers.delete(project); autoChain.set(project, (autoChain.get(project) ?? 0) + 1); }
     // 장면 코멘트는 따로 고른 스킬이 없으면 scene-edit 를 쓴다
     if (scene != null && !skill && existsSync(path.join(ROOT, ".claude", "skills", "scene-edit", "SKILL.md"))) skill = "scene-edit";
+    const cfgPre = readSettings();
+    let rtPre = "claude";
+    try { rtPre = resolveRuntime(cfgPre).runtime; } catch { /* 아래에서 다시 검사 */ }
     // Claude 세션을 실제로 연 적이 있어야 --resume (같은 대화를 Codex 로만 하다가 Claude 로 바꾸면 새 세션으로 시작)
     let first = false, ctx = null, rotated = false;
     const sess = await mutate(project, async (s) => {
-      const claudeUsed = s.claudeUsed ?? (!!s.sessionId && !s.codexThread);
-      first = !s.sessionId || !claudeUsed;
-      // 대화 갈아타기: 한 Claude 대화에 턴이 쌓이면 매 턴 앞 대화 전체(정지 화면 · 도구 출력 포함)를 다시 읽어 턴 비용이 계속 커졌다
-      // (2026-11-09 영상: 턴 비용 0.8 → 36.7, 전체의 3/4 이 쌓인 대화 다시 읽기). ROTATE 턴마다 새 대화로 시작하고, 상태는 코드가 요약해 넘긴다
-      if (claudeUsed && s.sessionId && (s.claudeTurns ?? 0) >= ROTATE && !project.startsWith("_")) {
-        s.sessionId = randomUUID(); first = true; rotated = true; s.claudeTurns = 0;
+      if (rtPre === "cursor") {
+        first = !s.cursorSession;
+      } else if (rtPre === "codex") {
+        first = !s.codexThread;
+      } else if (rtPre === "antigravity") {
+        first = !s.agyConversation;
+      } else {
+        const claudeUsed = s.claudeUsed ?? (!!s.sessionId && !s.codexThread);
+        first = !s.sessionId || !claudeUsed;
+        // 대화 갈아타기: 한 Claude 대화에 턴이 쌓이면 매 턴 앞 대화 전체(정지 화면 · 도구 출력 포함)를 다시 읽어 턴 비용이 계속 커졌다
+        // (2026-11-09 영상: 턴 비용 0.8 → 36.7, 전체의 3/4 이 쌓인 대화 다시 읽기). ROTATE 턴마다 새 대화로 시작하고, 상태는 코드가 요약해 넘긴다
+        if (claudeUsed && s.sessionId && (s.claudeTurns ?? 0) >= ROTATE && !project.startsWith("_")) {
+          s.sessionId = randomUUID(); first = true; rotated = true; s.claudeTurns = 0;
+        }
       }
       if (!s.sessionId) s.sessionId = randomUUID();
       ctx = await buildContext(project, message, context, s.sessionId);
@@ -476,7 +532,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       const r0 = { project, live: false, events: [], clients: clientsOf(project) }; runs.set(project, r0);
       broadcast(r0, { type: "start", user: message, skill: skill || null, scene: scene ?? null, memories: [] });
       broadcast(r0, { type: "end", ok: false, files: [], stopped: false, error: String(err.message || err) });
-      busy.delete(project);
+      unbusy(project);
       return { sessionId: sess.sessionId };
     }
     const sys = systemPrompt({ project, look, template, skill, scene });
@@ -497,6 +553,13 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       const cmcp = mcpRunConfig(createCrafts(ROOT).mcpServers());
       args = codexArgs({ cwd: ROOT, threadId: thread, model: model || rt.model, effort: rt.effort, codexConfig: [...(rt.codexConfig ?? []), ...codexArgsFor(cmcp?.servers)], prompt: thread ? body : codexPrompt(sys + "\n\n" + "답변 언어: " + (LANG_LINE[cfg.language] || LANG_LINE.korean), body) });
       stdio = ["ignore", "pipe", "pipe"];
+    } else if (rt.runtime === "cursor") {
+      const conv = sess.cursorSession || null;
+      const body = `${message}\n\n${ctx.text}`;
+      bin = process.env.SF_CURSOR_AGENT_BIN || "agent";
+      const full = conv ? body : codexPrompt(sys + "\n\n" + "답변 언어: " + (LANG_LINE[cfg.language] || LANG_LINE.korean), body);
+      args = cursorArgs({ cwd: ROOT, sessionId: conv, model: model || rt.model, effort: rt.effort, prompt: full });
+      stdio = ["ignore", "pipe", "pipe"];
     } else {
       bin = process.env.SF_CLAUDE_BIN || "claude";
       args = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
@@ -505,7 +568,12 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         "--append-system-prompt", sys];
       // 사용자가 설정에서 켠 MCP 서버: 그 서버의 도구를 모두 허용(mcp__<이름>)
       const mcp = mcpRunConfig(createCrafts(ROOT).mcpServers());   // 사용자 MCP + 설치된 Craft 앱(벡터 · 모션 · 이미지 …)
-      if (mcp) { args.push("--mcp-config", mcp.file); args.splice(args.indexOf("--disallowedTools"), 0, ...mcp.tools); }
+      if (mcp) {
+        args.push("--mcp-config", mcp.file); args.splice(args.indexOf("--disallowedTools"), 0, ...mcp.tools);
+        // Craft 앱의 '전체 명령 목록' 도구는 막는다 — 결과가 크고, 한 턴에 10번씩 다시 불렀다(2026-11-17 sjedqou).
+        // 명령 찾기는 로컬 카탈로그(python3 engine/craft/craft_catalog.py search "<하고 싶은 일>") · 하나 자세히는 describe_command
+        args.splice(args.indexOf("--disallowedTools") + 1, 0, ...mcp.names.flatMap((n) => [`mcp__${n}__command_list`, `mcp__${n}__list_commands`]));
+      }
       const m = model || rt.model || process.env.SF_AGENT_MODEL;
       if (m) args.push("--model", m);
       if (rt.effort) args.push("--effort", rt.effort);
@@ -542,6 +610,8 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       ? makeAgyParser(onEv, { onConversation: (id) => { mutate(project, (s3) => { s3.agyConversation = id; }).catch(() => {}); } })
       : rt.runtime === "codex"
       ? makeCodexParser(onEv, { rel: (p) => path.relative(ROOT, p) || p, onThread: (id) => { mutate(project, (s3) => { s3.codexThread = id; s3.codexProvider = rt.provider || "cli"; }).catch(() => {}); } })
+      : rt.runtime === "cursor"
+      ? makeCursorParser(onEv, { onSession: (id) => { mutate(project, (s3) => { s3.cursorSession = id; }).catch(() => {}); } })
       : makeParser(onEv, () => run.text);
     let buf = "";
     child.stdout.on("data", (b) => {
@@ -573,7 +643,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         });
       } catch (e) { console.error("[agent] 턴 마무리 실패", e); }
       run.live = false;
-      busy.delete(project);
+      unbusy(project);
       onState(project, false);
       broadcast(run, { type: "end", ok, files, stopped: !!run.stopped || signal === "SIGTERM", error: errorText, durationMs: Date.now() - run.startedAt, cost: run.result?.cost ?? null });
       // 줄 서 있던 말이 있으면 그것부터(사용자 말이 자동 이어가기보다 먼저). 멈춤을 눌렀으면 줄도 비운다
@@ -594,13 +664,22 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       const asked = waitsForUser(run.text);
       // 끊김에 의한 자동 이어가기는 연속 2번까지(자동으로 이어 간 작업이 또 끊겨도 한 번 더) — 사용자가 말하면 다시 0
       const chain = autoChain.get(project) ?? 0;
-      if (!ok && !userStopped && !killed && !run.result && !asked && chain < 2) {
+      // 사용 한도 · 크레딧 · 로그인 오류는 다시 보내도 똑같이 실패한다 — 이어가기 없이 사용자에게 알린다
+      const blocked = /usage limit|rate.?limit|quota|credits?|not logged in|log ?in required|unauthori[sz]ed|\b40[13]\b|\b429\b/i.test(errorText || "");
+      if (!ok && !userStopped && !killed && !run.result && !asked && !blocked && chain < 2) {
         autoTimers.set(project, setTimeout(() => start(project, { message: "(자동 이어가기) 방금 작업이 중간에 끊겼어. 이미 한 일은 다시 하지 말고, 남은 단계부터 이어서 마무리해 줘.", look, template, skill, scene, model, context, auto: true }).catch(() => {}), 1500));
-      } else if (ok && !auto && !userStopped && !asked && skill !== "plan") {   // 기획 대화에서는 화면 구성으로 넘어가지 않는다
-        // 콘티는 만들었는데 아직 영상(초안)이 없으면 한 번 이어서 만들게 한다
+      } else if (ok && !auto && !userStopped && !asked && skill !== "plan") {
         const missing = missingComposition(files);
-        if (missing) autoTimers.set(project, setTimeout(() => start(project,
-          { message: `(자동 이어가기) 콘티 ${missing.id}.json 은 있는데 아직 영상(초안)이 없어. 재료 칸을 채운 뒤 python3 engine/produce.py data/storyboards/${missing.id}.json 한 줄로 음성 → 검사 → 초안 → 장면별 정지 화면까지 돌리고, 정지 화면을 직접 보고 고칠 곳만 고쳐 줘(produce 스킬).`, look, template, skill: "produce", scene: null, model, context, auto: true }).catch(() => {}), 1500));
+        if (missing) {
+          autoTimers.set(project, setTimeout(() => start(project,
+            { message: `(자동 이어가기) 콘티 ${missing.id}.json 은 있는데 아직 제작이 없어. 네가 python3 engine/produce.py data/storyboards/${missing.id}.json 을 실행해서 완성 영상을 media 로 보여 줘. 사용자에게 명령을 시키지 마(produce 스킬).`, look, template, skill: "produce", scene: null, model, context, auto: true }).catch(() => {}), 1500));
+        } else {
+          const ga = missingAssembleBuild(project);
+          if (ga) {
+            autoTimers.set(project, setTimeout(() => start(project,
+              { message: `(자동 이어가기) 생성 파이프라인 ${ga.id} — 샷 검토까지 끝났는데 합성·편집 영상이 없어. 네가 python3 engine/gen/assemble.py build ${ga.id} 를 실행하고 media 로 보여 줘. 승인·선택이 필요할 때만 잠깐 묻고 멈추지 마(edit-shots · produce 스킬).`, look, template, skill: "edit-shots", scene: null, model, context, auto: true }).catch(() => {}), 1500));
+          }
+        }
       }
     });
     return { sessionId: sess.sessionId };
@@ -615,6 +694,21 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         if (!existsSync(path.join(ROOT, "data", "compositions", m[1], "craft", "craft.json"))) return { id: m[1] };
       } catch { /* 깨진 콘티는 무시 */ }
     }
+    return null;
+  }
+
+  /** 생성 경로: 샷 검토까지 끝났는데 5단계 합성 MP4 가 아직 없음 */
+  function missingAssembleBuild(pid) {
+    const sp = path.join(ROOT, "data", "shotplans", `${pid}.json`);
+    if (!existsSync(sp)) return null;
+    try {
+      const route = JSON.parse(readFileSync(sp, "utf8")).route || "generate";
+      if (route !== "generate") return null;
+    } catch { return null; }
+    try {
+      const st = JSON.parse(execFileSync(PY, ["engine/gen/status.py", pid], { cwd: ROOT, encoding: "utf8", maxBuffer: 2_000_000 }));
+      if (st.next === "5 편집 — 초안 만들기") return { id: pid };
+    } catch { /* status 실패 시 자동 이어가기 생략 */ }
     return null;
   }
 
@@ -660,6 +754,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
   }
 
   function stop(project) {
+    if (waiting.some((w) => w.project === project)) { unbusy(project); return true; }   // 차례를 기다리던 말은 줄에서 빼기만
     const run = runs.get(project);
     // 턴과 턴 사이(자동 이어가기 대기 1.5초)에 멈추면 예약된 이어가기만 취소
     if (!run?.live) { const had = autoTimers.has(project); clearTimeout(autoTimers.get(project)); autoTimers.delete(project); return had; }
@@ -717,7 +812,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     /** 지금 일하는 대화들 — 어느 화면에서든 '다른 곳에서 작업 중'을 보이고 멈출 수 있게 */
     active: () => [...new Set([...busy, ...[...runs.values()].filter((r) => r.live).map((r) => r.project)])].map((id) => {
       const r = runs.get(id); const t = r?.live ? r.tools.at(-1) : null;
-      return { id, user: r?.live ? r.events.find((e) => e.ev.type === "start")?.ev.user ?? "" : "", startedAt: r?.startedAt ?? Date.now(), tool: t ? { name: t.name, input: t.input } : null, stopping: !!r?.stopped, skill: r?.skill ?? null };
+      const wi = waiting.findIndex((w) => w.project === id);
+      return { id, user: r?.live ? r.events.find((e) => e.ev.type === "start")?.ev.user ?? "" : (wi >= 0 ? waiting[wi].opts.message ?? "" : ""), startedAt: r?.startedAt ?? Date.now(), tool: t ? { name: t.name, input: t.input } : null, stopping: !!r?.stopped, skill: r?.skill ?? null,
+        waiting: wi >= 0 ? wi + 1 : null };
     }),
     start, steer, say, interrupt, unqueue, stop, revert, subscribe,
     queuedOf: (id) => (queued.get(id) || []).map((x) => x.message),

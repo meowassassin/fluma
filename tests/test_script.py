@@ -28,7 +28,9 @@ def test_no_script_is_noop():
 
 def test_continuous_is_default():
     assert assemble_audio.continuous_mode({"scenes": []}) is True
-    assert assemble_audio.continuous_mode({"voice": {"continuous": False}}) is False
+    # 2026-11-16: 레퍼런스가 끊어 말해도 합성은 한 번에 — 예전 칸 continuous: false 는 무시, 따로 합성은 split_by_scene 일 때만
+    assert assemble_audio.continuous_mode({"voice": {"continuous": False}}) is True
+    assert assemble_audio.continuous_mode({"voice": {"split_by_scene": True}}) is False
 
 
 def test_continuous_split_survives_punctuation_and_number_reading(monkeypatch, tmp_path):

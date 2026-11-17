@@ -32,3 +32,4 @@ tools/gflow/.venv/
 tools/gflow/**/.venv/
 
 tools/ui-scenes/.build/
+tools/ui-scenes/.build-*/

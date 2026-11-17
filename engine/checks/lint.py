@@ -58,19 +58,6 @@ def _element_meta(rec: dict) -> dict:
         return {}
 
 
-def screen_changes(rec: dict) -> int:
-    """이 재료 안에서 화면이 바뀌는 횟수 — 웹 녹화는 상태 화면 수 + 실제 녹화 구간 3초마다 한 번(줄이 쏟아지는 터미널 · 말풍선이 올라오는 대화창)"""
-    if rec.get("layers") and rec.get("type") in ("overlay", "diagram"):
-        return len(rec["layers"])     # 주석 · 도식 항목이 낱말마다 하나씩 나온다 — 나올 때마다 화면이 바뀐다
-    if rec.get("type") != "web":
-        return 1
-    meta = _element_meta(rec)
-    n = len(meta.get("states") or []) or 1
-    import math
-    n += sum(math.ceil(float(a.get("sec") or 0) / 3) for a in meta.get("actions") or [] if a.get("do") == "record")
-    return max(1, n - 1)          # 첫 상태는 등장 자체
-
-
 def material_kind(rec: dict) -> str:
     """재료 종류(시청자가 보는 화면의 종류): 문서 캡처 · 그래픽 · 그림/사진 · 화면/영상"""
     t = rec.get("type")
@@ -114,7 +101,7 @@ def material_kind(rec: dict) -> str:
 
 
 def material_checks(sb: dict) -> list:
-    """L33 같은 재료 반복 · L34 글자 캡처 위주 · L35 재료 종류 부족 · T35 외국어 캡처 — 재료 단계의 기록(글자 인식 포함)으로"""
+    """L33 같은 재료 반복 · L34 글자 캡처 위주 · T35 외국어 캡처 — 재료 단계의 기록(글자 인식 포함)으로"""
     sid = sb.get("id", "")
     base = ROOT / "data" / "compositions" / sid / "craft" / "materials"
     if not sid or not base.exists():
@@ -156,27 +143,8 @@ def material_checks(sb: dict) -> list:
     docs = kinds.count("문서 캡처")
     if docs * 2 > len(kinds):
         out.append(("L34", None, f"재료 {len(kinds)}개 중 {docs}개가 글자 빽빽한 문서 캡처 — 세로 화면에서 안 읽힌다. 핵심 수치는 그래픽(chart)으로, 근거는 문장 하나만 짚는 doc_quote 로, 나머지는 실제 화면 · 사진 · 그림으로"))
-    dur = sum(float(x.get("sec") or 0) for x in sb.get("scenes") or [])
-    if dur >= 20 and len(set(kinds)) < 3:
-        out.append(("L35", None, f"재료 종류가 {len(set(kinds))}가지({', '.join(sorted(set(kinds)))}) — 레퍼런스 쇼츠는 화면 종류를 섞는다. 문서 캡처(doc_quote · document) · 그래픽(stat · chart · diagram · info_card) · 그림/사진(photo · photo_grade) · 화면/영상(web · screen · ui_mock) · 3D 제품(model3d) · 도면(drawing) · 짤(meme) 중 3가지 이상"))
-    # L37 재료 개수: 레퍼런스 설명 쇼츠는 10초에 4번 남짓 화면이 바뀐다 → 3초에 하나 이상(같은 파일은 한 번만 셈)
-    seen_src: dict[str, int] = {}
-    for r in recs + notes:            # 주석은 새 화면 종류는 아니지만 짚을 때마다 화면이 바뀐다
-        key = (r.get("spec") or {}).get("src") or (r.get("spec") or {}).get("csv") or f"{r.get('scene')}/{r.get('id')}"
-        seen_src[key] = max(seen_src.get(key, 0), screen_changes(r))
-    uniq = sum(seen_src.values())          # 같은 파일은 한 번 · 녹화 재료는 그 안의 화면 전환 수만큼
-    need = int(dur // 3)
-    spoken = any((s.get("narration") or "").strip() for s in sb.get("scenes") or [])    # 문장마다 화면이 바뀌는 규칙 — 음악 주도 영상은 해당 없음
-    if spoken and dur >= 15 and uniq < need:
-        out.append(("L37", None, f"화면 전환 {uniq}번(서로 다른 재료 · 녹화 안의 전환 포함) / {dur:.0f}초 — {need}개 이상 필요(문장마다 하나: 짤 · 웹 녹화 · 아이콘 · 수치 카드 · 그림을 섞어서, cue 로 그 낱말에 등장)"))
-    # T37 같은 종류가 네 번 연속(클립 모음 형식은 실사 클립이 이어지는 게 형식)
-    run_k, run_n = None, 0
-    for k in (kinds if sb.get("format") not in ("ranking", "clip") else []):
-        run_n = run_n + 1 if k == run_k else 1
-        run_k = k
-        if run_n == 4:
-            out.append(("T37", None, f"'{k}' 가 네 번 연속 — 사이에 다른 종류(짤 · 그래픽 · 화면)를 끼우기"))
-            break
+    # 재료 종류 수(L35) · 화면 전환 수(L37) · 같은 종류 연속(T37) 다양성 검사는 없앴다(2026-11-17) — 사용자가 고른 한 가지 스타일을 막고,
+    # 디자이너가 그림을 안 보고 구도를 바꾸게 했으며, 걸릴 때마다 에이전트가 처음부터 다시 돌려 시간만 들었다. 구성은 감독 단계가 장면 의도로 정한다
     if sb.get("language", "ko") == "ko":
         def latin_heavy(r):
             txt = "".join(o.get("text") or "" for o in (r.get("ocr") or []))
@@ -185,6 +153,41 @@ def material_checks(sb: dict) -> list:
         en = sum(1 for r in recs if latin_heavy(r))
         if en * 3 >= len(recs):
             out.append(("T35", None, f"영어 글자가 대부분인 캡처가 {en}개 — 한국어 시청자에게 안 읽힌다. 핵심 수치는 한국어 그래픽으로 다시 그리기"))
+    return out
+
+
+SCOPE_MAX_SEC = {"compare": 45, "ranking": 45, "countdown": 45}
+SCOPE_MAX_SCENES = 9
+LONG_MAX_SEC, LONG_MAX_SCENES = 90, 12   # allow_long: 사용자가 길어도 된다고 한 영상
+
+
+SPEECH_CPS = 5.2   # 실측(2026-11-17 Edge): 공백 뺀 글자 / 초, 장면 사이 쉼 포함 · 목소리 speed 1.0 기준
+
+
+def scope_problems(sb: dict, estimate: bool = False) -> list:
+    """L70 범위: 쇼츠 한 편에 요점 하나 — 총 길이(기본 40초, 비교 · 순위 45초) · 장면 9개 이하.
+    2026-11-17: 54초 · 11장면 대본(파이썬 + 스프링 + 로거 + 액추에이터)이 시청자 검토에서 매번 막히고, 장면 만들기 · 음성 · 렌더가 모두 길어져 15분을 넘겼다
+    estimate=True(produce 시작 전): 음성을 만들기 전이라 sec 칸은 예전 음성 길이일 수 있다 — 대사 글자 수로 어림하고,
+    어림이 빗나갈 수 있으니 한도의 10%를 넘을 때만 막는다(실제 길이는 음성 뒤 검사가 본다).
+    2026-11-17: 대본을 줄여도 예전 음성 길이로 계산해 음성 단계 전에 계속 막혔다"""
+    scenes = sb.get("scenes") or []
+    mx = SCOPE_MAX_SEC.get(sb.get("format") or "", 40)
+    max_scenes = SCOPE_MAX_SCENES
+    if sb.get("allow_long"):          # 사용자가 길어도 된다고 한 영상(2026-11-17: 상한을 풀 칸이 없어 59초 대본이 막히고, 다시 45초로 줄이는 턴이 한 번 더 생겼다)
+        mx, max_scenes = LONG_MAX_SEC, LONG_MAX_SCENES
+    if estimate and any(x.get("narration") for x in scenes):
+        speed = float((sb.get("voice") or {}).get("speed") or 1.0) or 1.0
+        total = round(sum(len(str(x.get("narration") or "").replace(" ", "")) for x in scenes) / (SPEECH_CPS * speed), 1)
+        limit = mx * 1.1
+    else:
+        total = round(sum(float(x.get("sec") or 0) for x in scenes), 1) or float(sb.get("duration_sec") or 0)
+        limit = mx
+    out = []
+    if total > limit:
+        out.append(("L70", f"너무 김: {total}초 > {mx}초 — 요점 하나만 남기고 덜어낸다(곁가지 설정 · 두 번째 사례는 다음 영상으로)"
+                    + ("" if sb.get("allow_long") else " · 사용자가 길어도 된다고 했으면 콘티에 \"allow_long\": true (90초 · 12장면까지)")))
+    if len(scenes) > max_scenes:
+        out.append(("L70", f"장면 {len(scenes)}개 > {max_scenes}개 — 같은 말을 하는 장면을 합치거나 덜어낸다"))
     return out
 
 
@@ -235,8 +238,10 @@ def material_spec_checks(sb: dict) -> list:
                 if len(m.get("items") or []) < 2:
                     out.append(("L39", i, f"{tag}: items 가 2개 이상 필요"))
             elif t == "ui_mock":
-                need("src", "screen", what="실제 캡처(src) 또는 가상 화면 설명(screen + mock:true)"); exists("src")
-                if m.get("screen") and not m.get("src") and not m.get("mock"):
+                # 디자이너 단계는 가상 앱 화면을 Astryx 장면 파일(ui)로 쓰고 재료 어댑터(figcraft)도 ui 를 읽는다 —
+                # 2026-11-17: 여기서 ui 를 인정하지 않아 멀쩡한 앱 화면 재료가 '비어 있음'으로 막혔다
+                need("src", "screen", "ui", what="실제 캡처(src) 또는 가상 화면(ui 장면 파일 · screen 설명 + mock:true)"); exists("src"); exists("ui")
+                if (m.get("screen") or m.get("ui")) and not m.get("src") and not m.get("mock"):
                     out.append(("L39", i, f"{tag}: 설명으로 그린 가상 화면이면 mock: true 를 적는다(실제 서비스 설명에는 실제 캡처)"))
             elif t == "info_card":
                 need("title", "rows", "csv"); exists("csv")
@@ -327,6 +332,8 @@ def lint(sb: dict, recent_titles=None) -> list:
     total = sum(s.get("sec", 0) for s in scenes)
     if abs(total - sb.get("duration_sec", 0)) > 1:
         fails.append(("L02", None, f"장면 합계 {total}s != duration {sb.get('duration_sec')}s"))
+    for code, msg in scope_problems(sb):
+        fails.append((code, None, msg))
 
     lo, hi = LIM["narration_chars_per_sec"]
     if (sb.get("language") or "ko") != "ko":   # 음절 속도는 언어마다 다르다 — 영어 · 중국어 나레이션은 초당 2.5~5.5음절
@@ -449,6 +456,14 @@ def lint(sb: dict, recent_titles=None) -> list:
     fails += material_checks(sb)
     # L39 재료 칸(필수 칸 · overlay 대상 · drawing 모형 · 가상 화면 표시) — 렌더 전에 콘티만으로
     fails += material_spec_checks(sb)
+    try:
+        import sys as _ms
+        _ms.path.insert(0, str(ROOT / "engine" / "story"))
+        from material_evidence import material_evidence_checks as _mec  # noqa: E402
+
+        fails += _mec(sb)
+    except Exception:  # noqa: BLE001
+        pass
     # L53 가상 앱 화면(ui_mock · mock)은 Astryx 장면(ui 칸)으로 — 손으로 그린 표 · 버튼은 '진짜 앱' 느낌이 안 났다(2026-11-10)
     for i, sc in enumerate(sb.get("scenes") or [], 1):
         for m in sc.get("materials") or []:
@@ -460,18 +475,13 @@ def lint(sb: dict, recent_titles=None) -> list:
     except ImportError:
         from checks.refnorm import check as _refnorm
     fails += _refnorm(sb)
-    # L58 같은 화면 반복 — 이어지는 장면이 같은 그림 · 영상 파일을 쓰거나, 같은 화면 종류 · 같은 주재료 종류가 세 장면 연달아면 실패
-    # (2026-11-11 QR 영상: 8장면 중 6장면이 '크림 바탕 + QR 한 장' — "디자인 · 구성이 다 비슷비슷하다". R01 · V42 는 경고뿐이라 막지 못했다)
-    _sig = []
-    for _sc in sb.get("scenes") or []:
-        _ms = [m for m in _sc.get("materials") or [] if m.get("type") not in ("overlay", "stat", "text")]
-        _src = {Path(str(m.get("src"))).stem.split("_")[0] for m in _ms if m.get("src")}
-        _sig.append((str(_sc.get("screen") or ""), tuple(sorted(m.get("type") for m in _ms)), _src))
-    for _i in range(1, len(_sig)):
-        if _sig[_i][2] and _sig[_i][2] & _sig[_i - 1][2]:
-            fails.append(("L58", _i, f"{_i}·{_i + 1}장면이 같은 그림 · 영상({', '.join(sorted(_sig[_i][2] & _sig[_i - 1][2]))})을 씀 — 다른 자료 · 구도로(확대 · 해부 · 실사 · 도식)"))
-        if _i >= 2 and _sig[_i][:2] == _sig[_i - 1][:2] == _sig[_i - 2][:2]:
-            fails.append(("L58", _i, f"{_i - 1}~{_i + 1}장면이 같은 화면 종류({_sig[_i][0]}) · 같은 재료 구성 — 장면마다 화면 종류를 바꾼다(director 7장)"))
+    # T58 같은 그림 · 영상 파일을 이어지는 장면에 다시 씀(실수 잡기 — 경고만). 화면 종류 · 재료 구성 반복 실패(L58)는 없앴다(2026-11-17, 다양성 검사 정리)
+    _prev: set = set()
+    for _i, _sc in enumerate(sb.get("scenes") or []):
+        _src = {Path(str(m.get("src"))).stem.split("_")[0] for m in _sc.get("materials") or [] if isinstance(m, dict) and m.get("src") and m.get("type") not in ("overlay", "stat", "text")}
+        if _src & _prev:
+            fails.append(("T58", _i, f"{_i}·{_i + 1}장면이 같은 그림 · 영상({', '.join(sorted(_src & _prev))})을 이어서 씀 — 의도가 아니면 다른 자료로"))
+        _prev = _src
     # L56 근거 — research 스킬 '출처 있는 사실이 5개 미만이면 만들지 않는다'(형식이 고객 수치 · 퍼온 클립 위주인 것은 빼고)
     if sb.get("format") not in ("ad", "clip", "ranking", "emotional", "daily") and sb.get("scenes"):
         _src = set(sb.get("sources") or [])
@@ -771,4 +781,5 @@ if __name__ == "__main__":
     for code, idx, msg in fails:
         print(f"{code} scene={idx} {msg}")
     hard = [f for f in fails if not f[0].startswith("T")]
+    # production_ready 는 produce / production_ready.py 만 호출 — 여기서 부르면 subprocess 재귀로 5분 대기(2026-11-16)
     sys.exit(1 if hard else 0)

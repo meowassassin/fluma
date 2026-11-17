@@ -54,7 +54,8 @@ def _dash_ids() -> None:
     av = sys.argv[1:]
     if "--" in av:
         return
-    ids = [x for x in av if _re.fullmatch(r"-[A-Za-z0-9_-]{10}", x)]
+    # argparse 플래그(--no-skills 등)는 `-`+10자 패턴과 겹치므로 제외
+    ids = [x for x in av if not x.startswith("--") and _re.fullmatch(r"-[A-Za-z0-9_-]{10}", x)]
     if ids:
         sys.argv[1:] = [x for x in av if x not in ids] + ["--"] + ids
 

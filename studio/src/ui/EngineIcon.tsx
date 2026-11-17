@@ -6,7 +6,7 @@ import { ENG_COLOR } from "./engines";
 const ICONS: Record<string, string> = {
   chatterbox: "png", claude: "png", cosyvoice: "png", edge: "svg", elevenlabs: "png",
   melotts: "png", typecast: "png", xtts: "png", supertonic: "png",
-  flow: "svg", gflow: "svg", veo: "svg", nanobanana: "svg", antigravity: "svg", deepmind: "svg", gemini: "svg",
+  flow: "svg", gflow: "svg", veo: "svg", nanobanana: "svg", antigravity: "svg", deepmind: "svg", gemini: "svg", cursor: "svg",
 };
 const FILE: Record<string, string> = {
   flow: "flow.svg",
@@ -14,6 +14,7 @@ const FILE: Record<string, string> = {
   veo: "veo.svg",
   nanobanana: "nanobanana.svg",
   antigravity: "antigravity.svg",
+  cursor: "agent-cursor.svg",
 };
 const TINT: Record<string, string> = {
   ...ENG_COLOR,
@@ -24,6 +25,7 @@ const TINT: Record<string, string> = {
   gflow: "#4285F4",
   veo: "#7B1FA2",
   antigravity: "#3186FF",
+  cursor: "#D6D5D2",
 };
 const initials = (t: string) => (t.match(/[A-Z가-힣]/g) || [t[0]]).slice(0, 2).join("").toUpperCase();
 
@@ -42,6 +44,7 @@ export const EngineIcon: React.FC<{ id: string; src?: string | null; title: stri
 /** 모델 이름 → 만든 회사 아이콘 (open-design modelProviderIcon 과 같은 규칙). `anthropic/claude-…` 처럼 제공자/모델 형식이면 앞부분을 본다 */
 export function modelIconSrc(modelId: string | null | undefined): string | null {
   if (!modelId) return null;
+  if (modelId.toLowerCase() === "auto") return "/api/engine-icons/agent-cursor.svg";
   const slash = modelId.indexOf("/");
   const v = (slash > 0 ? modelId.slice(0, slash) : modelId.split("-")[0] ?? modelId).toLowerCase();
   const I = (f: string) => `/api/engine-icons/${f}`;
@@ -49,6 +52,7 @@ export function modelIconSrc(modelId: string | null | undefined): string | null 
   if (v.includes("flow")) return I("flow.svg");
   if (v.includes("nano") || v.includes("banana")) return I("nanobanana.svg");
   if (v.includes("antigravity") || v.includes("agy")) return I("antigravity.svg");
+  if (v.includes("composer") || v.includes("cursor")) return I("agent-cursor.svg");
   if (v.includes("anthropic") || v.includes("claude") || ["opus", "sonnet", "haiku", "fable"].includes(v)) return I("agent-claude.svg");
   if (v.includes("openai") || v.includes("gpt") || v === "o1" || v === "o3" || v === "o4") return I("prov-openai.svg");
   if (v.includes("google") || v.includes("gemini")) return I("prov-google-gemini.svg");

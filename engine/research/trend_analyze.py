@@ -144,8 +144,17 @@ def analyze(arg: str):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         sys.exit(__doc__)
-    for a in sys.argv[1:]:
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _one(arg):
         try:
-            analyze(a)
+            analyze(arg)
         except SystemExit as e:
             print(e)
+
+    args = sys.argv[1:]
+    if len(args) > 1:
+        with ThreadPoolExecutor(max_workers=min(4, len(args))) as pool:
+            list(pool.map(_one, args))
+    else:
+        _one(args[0])

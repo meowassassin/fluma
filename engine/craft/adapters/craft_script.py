@@ -86,6 +86,11 @@ class Ctx:
         self.log.append((r.stdout or "")[-4000:])
         if r.returncode != 0:
             raise RuntimeError(self.fail(r.stdout or "", r.stderr or "", what))
+        if self.app == "effectcraft" and what == "run":     # EffectCraft 는 스크립트 오류에도 종료 코드 0 — 결과의 ok:false 를 찾아 실패로(2026-11-16: 재료가 조용히 반쯤 빠졌다)
+            from ..refine import script_failures
+            bad = script_failures(r.stdout or "")
+            if bad:
+                raise RuntimeError(f"effectcraft: 스크립트 실패 — {_short(' / '.join(bad))}")
         return r.stdout or ""
 
     def fail(self, so: str, se: str, what: str) -> str:
@@ -362,8 +367,9 @@ def still_to_mp4(png: Path, mp4: Path, ctx: Ctx) -> None:
     _ff(["-loop", "1", "-i", png, "-t", f"{dur:.3f}", *_vf(ctx.ex.get("size")), "-r", str(fps), "-pix_fmt", "yuv420p", "-c:v", "libx264", mp4], ctx, "정지 화면 → mp4")
 
 
-def video_to_still(mp4: Path, png: Path, ctx: Ctx) -> None:
-    _ff(["-ss", str(float(ctx.ex.get("time", 0))), "-i", mp4, "-frames:v", "1", png], ctx, "영상 → 정지 화면")
+def video_to_still(mp4: Path, png: Path, ctx: Ctx, at: float | None = None) -> None:
+    t = float(ctx.ex["time"]) if ctx.ex.get("time") is not None else float(at or 0)
+    _ff(["-ss", str(t), "-i", mp4, "-frames:v", "1", png], ctx, "영상 → 정지 화면")
     _fit_png(png, png, ctx.ex.get("size"))
 
 
@@ -478,6 +484,17 @@ def r_vectorcraft(ctx: Ctx, steps):
     return ed, finish_still(png, ctx)
 
 
+KIT = Path(__file__).resolve().parents[1] / "jsx" / "kit.jsx"
+
+
+def with_kit(cmd: str, params: dict) -> dict:
+    """EffectCraft script.run 코드 앞에 기본 함수(K — engine/craft/jsx/kit.jsx)를 붙인다. 코드가 K 를 안 쓰면 그대로"""
+    if cmd != "script.run" or not isinstance(params.get("code"), str) or "K." not in params["code"]:
+        return params
+    # 장면 코드가 끝난 뒤 안전 영역 맞춤(K.fit) — 화면 밖으로 나간 글자 · 카드를 장면 단위로 안쪽에 맞춘다. 끄려면 코드에 K.NOFIT = true
+    return {**params, "code": KIT.read_text("utf-8") + "\n" + params["code"] + "\n;if (!K.NOFIT) { try { K.fit(); } catch (x) {} }"}
+
+
 def r_effectcraft(ctx: Ctx, steps):
     ed = ctx.work / f"{ctx.id}.ecproj"
     src = _open_copy(ctx, ed)
@@ -485,7 +502,7 @@ def r_effectcraft(ctx: Ctx, steps):
     if not src:
         seq.append({"command": "comp.new", "params": {"name": "Main", "width": W0, "height": H0, "duration": 3, "fps": 30, **(ctx.m.get("new") or {})}})
     ctx.offset = len(seq)
-    seq += [{"command": s["id"], "params": s["params"]} for s in steps]
+    seq += [{"command": s["id"], "params": with_kit(s["id"], s["params"])} for s in steps]
     f = ctx.dir / "steps.json"
     f.write_text(json.dumps(seq, ensure_ascii=False, indent=1), "utf-8")
     if seq:
@@ -505,7 +522,10 @@ def r_effectcraft(ctx: Ctx, steps):
             tmp = ctx.dir / "render.mp4"
             shutil.move(mp4, tmp)
             _ff(["-i", tmp, *_vf(ctx.ex["size"]), "-pix_fmt", "yuv420p", "-c:v", "libx264", mp4], ctx, "크기 맞추기")
-        video_to_still(mp4, ctx.out, ctx)
+        # 움직이는 2D 장면은 0초엔 요소가 아직 없다(빈 배경) — 다 나온 끝 무렵(85%)을 미리보기로.
+        # 2026-11-17: 빈 미리보기를 보고 화면 검사 · 디자이너가 '빈 화면 · 작은 주인공'으로 판단해 장면을 키웠다
+        dur = float((ctx.m.get("new") or {}).get("duration") or 0)
+        video_to_still(mp4, ctx.out, ctx, at=dur * 0.85 if dur else 0)
         return ed, {"file_suffix": ".mp4"}
     png = ctx.dir / "frame.png"
     ctx.run([ctx.cli, "render-frame", "--project", ed, *comp, "--time", float(ctx.ex.get("time", 0)), "--out", png], "render-frame")
@@ -843,8 +863,48 @@ RUNNERS = {
 
 
 # ---------------------------------------------------------------- 재료 어댑터
+USE_RE = re.compile(r"\$USE:([\w-]+)(/[^\s\"']*)?")
+
+
+def expand_uses(o, m: dict):
+    """앱을 넘나드는 연결(콘티 uses: {이름: 재료 id}, 2026-11-16 — 전에는 적을 수만 있고 받아 쓰는 곳이 없었다)
+      "$USE:이름"          그 재료의 결과 파일(png · mp4)
+      "$USE:이름/파일"      그 재료 작업 폴더 안 파일(예: VectorCraft 가 document.export 로 쓴 $WORK/art.svg → "$USE:art/art.svg")
+      "$READ:<경로|$USE…>"  그 파일의 글자 내용(예: EffectCraft edit.pasteSvg 의 svg 칸)"""
+    got = m.get("_uses") or {}
+
+    def use(mt: re.Match) -> str:
+        name, rel = mt.group(1), mt.group(2)
+        if name not in got:
+            raise RuntimeError(f"$USE:{name} — 재료의 uses 에 '{name}' 이 없습니다(uses: {{\"{name}\": \"<재료 id>\"}})")
+        if not rel:
+            return got[name]
+        f = Path(got[name + "/"]) / rel.lstrip("/")
+        if not f.exists():
+            have = ", ".join(sorted(x.name for x in Path(got[name + "/"]).glob("*")))[:300]
+            raise RuntimeError(f"$USE:{name}{rel} — 그 재료 폴더에 파일이 없습니다(있는 것: {have})")
+        return str(f)
+
+    def walk(x):
+        if isinstance(x, str):
+            if x.startswith("$READ:"):
+                f = Path(USE_RE.sub(use, x[6:]))
+                f = f if f.is_absolute() else ROOT / f
+                if not _inside(f, ROOT):
+                    raise RuntimeError(f"$READ: 저장소 밖 파일은 읽을 수 없습니다: {f}")
+                return f.read_text("utf-8")
+            return USE_RE.sub(use, x) if "$USE:" in x else x
+        if isinstance(x, dict):
+            return {k: walk(v) for k, v in x.items()}
+        if isinstance(x, list):
+            return [walk(v) for v in x]
+        return x
+    return walk(o)
+
+
 def craft(m: dict, out: Path, work: Path) -> dict:
     steps = validate(m)
+    steps = [{**s, "params": expand_uses(s["params"], m)} for s in steps]
     ctx = Ctx(m, out, work)
     if ctx.dir.exists():
         shutil.rmtree(ctx.dir, ignore_errors=True)

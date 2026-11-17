@@ -10,16 +10,22 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 
 기본 흐름: 재료(각 앱) → **EffectCraft**(움직임 · 합성) → **SoundCraft**(소리) → **FilmCraft**(조립 · 마감).
 
-## 0. 먼저 — 기능을 넓게 쓰고, 영상마다 다르게 (편향 금지)
+## 0. 먼저 — 장면의 말에 맞는 기능을 고른다
 앱 16개에 명령 · 효과 · 프리셋이 9,000개 넘게 있다. 아는 몇 가지만 되풀이하지 않는다.
-1. 장면마다 `python3 engine/craft/craft_variety.py suggest "<장면 용도>"` — 검증된 레시피(★ = 최근 5편에 안 씀)와 안 써 본 기능이 나온다. ★ 를 먼저 고른다.
+1. 아이디어가 필요할 때만 `python3 engine/craft/craft_variety.py suggest "<장면 용도>"` — 검증된 레시피와 안 써 본 기능을 보여 준다(선택).
 2. 고정 재료 종류(아래 표)로 안 되는 화면은 `python3 engine/craft/craft_catalog.py search "<하고 싶은 일>"` 로 명령을 찾아 `type: craft` 로 직접 짠다:
    `{"type":"craft","id":"m2","app":"vectorcraft","steps":[{"id":"shape.rectangle","params":{…}}, …],"export":{"format":"png"}}`
    params 는 `craft_catalog.py show <앱> <id>` 와 reference/<앱>.md 의 시험된 예를 따른다. 앞 결과 참조 `"$N.키"`, 작업 폴더 `$WORK/…`, 프레임 `$FRAMES`.
 3. 레시피 쓰기: `{"recipe":"hook-title-arc","fill":{"/steps/3/params/text":"새 제목"}}` — 바꿀 칸은 recipes/<이름>.json 의 slots.
-4. 잘 나온 craft 재료는 레시피로 남긴다: `python3 engine/craft/craft_variety.py save <영상 id> <재료 id> --name <영어-이름> --purpose a,b --look x,y --desc "…"`
-5. 영상마다 최소 한 장면은 최근 영상들이 안 쓴 레시피 · 기능으로(V44). 이어지는 장면은 구성을 바꾸고(V42), 재료 종류는 3가지 이상(V41). produce.py 가 V 권고를 보여 준다 — `craft_variety.py check data/storyboards/<id>.json`.
-6. 많이 쓰는 것과 효과 남발은 다르다 — 장면의 말을 더 잘 보여 주는 기능만. 결과는 정지 화면을 보고 판단(시선을 붙잡는가 — 채도 · 색 · 움직임).
+3-0. **2D 설명 장면은 예시부터 복사** — `engine/spec/examples/craft-2d.example.json`(VectorCraft 그리기 → EffectCraft 움직이기, 시험됨)을 그대로 재료에 넣고 좌표 · 색 · 글자 · `$CUE` 낱말만 바꾼다. EffectCraft 코드는 기본 함수 `K.*`(engine/craft/jsx/kit.jsx — 자동으로 붙음: scene · text · shape · image · leaves · layer · appear · fadeOut · dim · pop · move · shake · draw · popGroup · write · follow)를 쓴다 — 공용 함수를 새로 만들거나 엔진 소스(craft_script.py · cues.py · materials.py)를 읽지 않는다(2026-11-17: 소스 읽기 · 함수 만들기에 9분). 화면 밖 걱정은 엔진이 맡는다: `K.text` 는 한 줄이 화면 폭 92%(또는 `{maxW}`)를 넘으면 글자를 줄이고, 장면이 끝나면 `K.fit()` 이 멈춘 자리가 화면 가장자리(4%)를 넘은 묶음만 그만큼 안쪽으로 옮긴다(크기는 그대로)(일부러 잘라 보일 때만 `K.NOFIT = true` · 글자에 `{noFit: true}`).
+3-1. **앱을 넘나들며 · 말에 맞춰 (2026-11-16 시험됨)** — 설명 장면을 요청한 느낌(노트 손글씨 · 2D 애니메이션 · 모션그래픽 …)대로 이 장면만을 위해 짠다:
+   - 그리기는 VectorCraft(`path.create` 손 떨림 좌표 · `shape.rectangle` · `paint.setStroke` · `stroke.set {cap: round}` · 붓 `brush.apply`) → 마지막에 `document.export {path: "$WORK/art.svg"}`.
+   - 움직이기는 EffectCraft 재료에 `"uses": {"art": "<VectorCraft 재료 id>"}` 를 적고 `edit.pasteSvg {svg: "$READ:$USE:art/art.svg", name: "Ink"}` → 도형 레이어 하나(획 · 도형마다 그룹, **나중에 그린 것이 앞** — 그린 순서로 쓰려면 뒤집는다).
+     그룹마다 `ADBE Vector Filter - Trim` 의 End 0→100 키(획이 그려짐) · 그룹 Transform 의 Anchor/Position 을 도형 가운데로 두고 Scale 키(튀어나옴) · Rotation 키(흔들림)를 `script.run` 으로 건다.
+   - 시각은 `"$CUE:낱말"`(그 장면에서 그 낱말을 말하는 순간, `+0.3` · `@end`) — 재료 안 어디든(JSX 코드 안도) 쓸 수 있다. 글자를 써 내려가기: 글자 레이어에 `ADBE Linear Wipe`(Wipe Angle 270) Transition Completion 100→0.
+   - `$USE:이름`(그 재료 결과 파일) · `$USE:이름/파일`(그 재료 작업 폴더 안 파일) · `$READ:<경로>`(파일 글자 내용).
+   - 같은 짜임을 다음 영상에 그대로 쓰지 않는다(움직임 라이브러리를 쌓지 않음) — 요청 · 레퍼런스 · 주제에 맞게 매번 새로. 렌더한 프레임을 보고 고친다.
+4. 많이 쓰는 것과 효과 남발은 다르다 — 장면의 말을 더 잘 보여 주는 기능만. 결과는 정지 화면을 보고 판단(시선을 붙잡는가 — 채도 · 색 · 움직임).
 7. **다양성은 사용자의 선택으로**: 모양 · 효과의 큰 방향은 시안(engine/story/directions.py)으로 보여 주고 사용자가 고른다. '안 써 본 것'을 이유로 사용자가 원하지 않는 효과를 넣지 않는다. 같은 재료를 다른 앱으로 만들 수 있으면(`method`) 그 차이도 시안에 쓴다.
 
 ## 1. 재료 · 작업 → 앱 → 핵심 기능

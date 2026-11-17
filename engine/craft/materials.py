@@ -22,6 +22,7 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -597,6 +598,7 @@ def _build_one(task: dict, sb: dict, sid: str, base: Path, reg: dict, plug: dict
                 raise RuntimeError(f"재료 {m['id']}: uses '{name}' 의 재료 {mid} 가 없습니다 — 같은 장면에서 먼저 적는다")
             srcs.append(u.get("key") or "missing")
             got[name] = str((ROOT / u["file"]).resolve())
+            got[name + "/"] = str((d / f"{mid}.craft").resolve())     # 그 재료의 작업 폴더(SVG · 중간 파일) — "$USE:이름/파일"
         m = {**m, "_uses": got}
     if t == "craft":                   # craft 재료: 칸 안의 입력 파일 · 레시피 내용이 바뀌면 다시
         srcs += [f"{q.relative_to(ROOT)}:{_hash(q)}" for q in _files_in({k: v for k, v in m.items() if k not in ("src", "csv", "xlsx", "pdf")})]
@@ -724,6 +726,8 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
                         f.unlink(missing_ok=True)
         for i, m in enumerate(sc.get("materials") or []):
             m = expand_recipe({"id": m.get("id") or f"m{i + 1}", **m})
+            from craft import cues                      # "$CUE:낱말" → 그 낱말을 말하는 순간(장면 기준 초) — 말과 맞춘 움직임
+            m = cues.resolve(m, sb, n - 1)
             t = m.get("type")
             dm = ((sb.get("direction") or {}).get("methods") or {}).get(t)
             if dm and not m.get("method"):           # 방향이 정한 방법(앱)도 재료 칸에 — 바뀌면 열쇠가 달라져 다시 만든다

@@ -1,6 +1,9 @@
 /* 에이전트 패널 · 홈(기획 대화 · 영상 목록) · lib(작업 상태 · API 오류 · 서버 오류 문장) 번역 */
 
 export const en: Record<string, string> = {
+  "차례를 기다리는 중 · {n}번째": "Waiting in line · #{n}",
+  "다른 영상 작업이 끝나면 바로 시작합니다": "Starts as soon as another video’s work finishes",
+  "대기 중 · {n}번째": "Waiting · #{n}",
   "이 단계에서 다시 시도한 호출이 있어요 — 펼쳐서 확인": "Some calls in this step were retried — expand to see",
   "확인 · 준비": "Checks & prep",
   "화면 녹화": "Screen capture",
@@ -339,6 +342,9 @@ export const en: Record<string, string> = {
 };
 
 export const zh: Record<string, string> = {
+  "차례를 기다리는 중 · {n}번째": "排队等待中 · 第 {n} 位",
+  "다른 영상 작업이 끝나면 바로 시작합니다": "其他视频的任务结束后立即开始",
+  "대기 중 · {n}번째": "等待中 · 第 {n} 位",
   "Craft 앱": "Craft 应用",
   "ArtCraft 의 오픈소스 제작 도구 · MIT / Apache-2.0": "ArtCraft 开源创作工具 · MIT / Apache-2.0",
   "모두 설치 ({n}개)": "全部安装（{n} 个）",

@@ -17,8 +17,8 @@ URL 결정 순서:
 종료 코드는 항상 0 — 에셋 부족은 렌더를 막지 않는다.
 
 사용:
-  python engine/capture/capture.py data/storyboards/example.json
-  python engine/capture/capture.py data/storyboards/example.json --set data/captures/elevenlabs/pricing-free.png=https://elevenlabs.io/pricing
+  python engine/capture/capture.py engine/spec/examples/storyboard.example.json
+  python engine/capture/capture.py engine/spec/examples/storyboard.example.json --set data/captures/elevenlabs/pricing-free.png=https://elevenlabs.io/pricing
 """
 import argparse
 import json

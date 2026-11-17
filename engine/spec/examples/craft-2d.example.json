@@ -1,0 +1,142 @@
+{
+ "_설명": "2D 설명 장면 예시(시험됨, 2026-11-17) — VectorCraft 로 그리고 EffectCraft 로 말($CUE)에 맞춰 움직인다. 콘티 scenes[].materials 에 그대로 넣고 좌표 · 색 · 글자 · $CUE 낱말만 바꾼다. EffectCraft 코드의 K.* 는 engine/craft/jsx/kit.jsx(자동으로 붙음).",
+ "materials": [
+  {
+   "id": "art",
+   "type": "craft",
+   "app": "vectorcraft",
+   "export": {
+    "format": "png"
+   },
+   "steps": [
+    {
+     "id": "shape.rectangle",
+     "params": {
+      "x": 90,
+      "y": 760,
+      "width": 380,
+      "height": 280,
+      "radius": 28
+     }
+    },
+    {
+     "id": "paint.setFill",
+     "params": {
+      "id": "$0.id",
+      "color": "#e8eefc"
+     }
+    },
+    {
+     "id": "paint.setStroke",
+     "params": {
+      "id": "$0.id",
+      "none": true
+     }
+    },
+    {
+     "id": "shape.rectangle",
+     "params": {
+      "x": 610,
+      "y": 760,
+      "width": 380,
+      "height": 280,
+      "radius": 28
+     }
+    },
+    {
+     "id": "paint.setFill",
+     "params": {
+      "id": "$3.id",
+      "color": "#2b2f45"
+     }
+    },
+    {
+     "id": "paint.setStroke",
+     "params": {
+      "id": "$3.id",
+      "none": true
+     }
+    },
+    {
+     "id": "path.create",
+     "params": {
+      "anchors": [
+       {
+        "x": 490,
+        "y": 900
+       },
+       {
+        "x": 590,
+        "y": 900
+       }
+      ]
+     }
+    },
+    {
+     "id": "paint.setFill",
+     "params": {
+      "id": "$6.id",
+      "none": true
+     }
+    },
+    {
+     "id": "paint.setStroke",
+     "params": {
+      "id": "$6.id",
+      "color": "#8b93b8"
+     }
+    },
+    {
+     "id": "stroke.set",
+     "params": {
+      "ids": [
+       "$6.id"
+      ],
+      "weight": 8,
+      "cap": "round"
+     }
+    },
+    {
+     "id": "document.export",
+     "params": {
+      "path": "$WORK/art.svg",
+      "format": "svg"
+     }
+    }
+   ]
+  },
+  {
+   "id": "explain",
+   "type": "craft",
+   "app": "effectcraft",
+   "uses": {
+    "art": "art"
+   },
+   "new": {
+    "duration": 6
+   },
+   "place": "full",
+   "export": {
+    "format": "mp4",
+    "start": 0,
+    "end": 6
+   },
+   "steps": [
+    {
+     "id": "edit.pasteSvg",
+     "params": {
+      "svg": "$READ:$USE:art/art.svg",
+      "name": "Ink"
+     }
+    },
+    {
+     "id": "script.run",
+     "params": {
+      "name": "explain",
+      "code": "K.scene(6, ['#151826', '#0b0c12']);\nvar ink = K.layer('Ink'); var g = K.leaves(ink);\nK.popGroup(g[0], 0.2, 280, 900); K.popGroup(g[1], 0.4, 800, 900); K.draw(g[2], $CUE:첫, 0.4);\nK.pop(K.text('브라우저', 280, 1110, 54, '#c9d1f0', {style: 'Bold'}), 0.3);\nK.pop(K.text('서버', 800, 1110, 54, '#c9d1f0', {style: 'Bold'}), 0.5);\nvar q = K.shape('rect', 0, 0, 220, 76, {fill: '#5b6180', round: 38}); K.follow(K.text('GET /', 0, 18, 44, '#fff', {style: 'Black'}), q);\nK.appear(q, $CUE:4로); K.move(q, $CUE:4로, [380, 860], [700, 860], 0.5);\nvar r = K.shape('rect', 0, 0, 180, 76, {fill: '#f59e0b', round: 38}); K.follow(K.text('404', 0, 18, 44, '#fff', {style: 'Black'}), r);\nK.appear(r, $CUE:요청); K.move(r, $CUE:요청, [700, 940], [380, 940], 0.5); K.shake(ink, $CUE:요청+0.5, 3);\nK.write(K.text('4xx → 내 요청 쪽', 540, 1400, 72, '#f59e0b', {style: 'Black'}), $CUE:시작하면);\n"
+     }
+    }
+   ]
+  }
+ ]
+}

@@ -105,13 +105,15 @@ def main():
     import ocr
     import vision_tags
 
-    # 1) 2초 간격 밀착 시트 + 화면 배치(띠)
+    # 1) 0.5초 간격 프레임 한 번만 추출해 밀착 시트 · 띠 · 1초 간격 OCR 에 재사용한다
     say(0.05, "밀착 시트")
-    ts = [round(t * 0.5, 2) for t in range(int(dur * 2))]
+    n_half = max(1, int(dur * 2))
+    half_frames = ocr.frames(src, 0.5, 0.5, n_half)
     bands, thumbs = [], []
-    for t, arr in ocr.frames(src, 0.01, 0.5, len(ts)):
+    for t, arr in half_frames:
+        t = min(dur - 0.1, t)
         im = Image.fromarray(arr)
-        bands.append(band_of(arr))
+        bands.append((t, band_of(arr)))
         th = im.copy(); th.thumbnail((180, 320))
         dr = ImageDraw.Draw(th); dr.rectangle([0, 0, 46, 16], fill=(0, 0, 0)); dr.text((3, 2), f"{t:.1f}s", fill=(255, 255, 0))
         thumbs.append(th)
@@ -123,9 +125,9 @@ def main():
         for i, th in enumerate(grp):
             sh.paste(th, ((i % 8) * w, (i // 8) * h))
         p = out / f"sheet-{k // per + 1}.jpg"; sh.save(p, quality=85); sheets.append(str(p.relative_to(ROOT)))
-    tops = [b[0] for b in bands if b[1] - b[0] < 0.95]; bots = [b[1] for b in bands if b[1] - b[0] < 0.95]
+    tops = [b[0] for _, b in bands if b[1] - b[0] < 0.95]; bots = [b[1] for _, b in bands if b[1] - b[0] < 0.95]
     letterbox = len(tops) / max(1, len(bands))
-    bg = max(set(b[2] for b in bands), key=[b[2] for b in bands].count)
+    bg = max(set(b[2] for _, b in bands), key=[b[2] for _, b in bands].count) if bands else "#000000"
     layout = {"letterbox_ratio": round(letterbox, 2), "band_top": round(float(np.median(tops)), 3) if tops else 0.0,
               "band_bottom": round(float(np.median(bots)), 3) if bots else 1.0, "background": bg,
               "summary": (f"단색 바탕({bg}) 가운데 띠에 내용 — 띠 높이 화면의 약 {round((np.median(bots) - np.median(tops)) * 100)}%, 폭 가득" if letterbox > 0.5 and tops else "화면 가득 채움")}
@@ -135,15 +137,24 @@ def main():
     say(0.25, "자막 읽기")
     langs = ocr.order_langs(a.langs.split(","), " ".join(sg.get("text", "") for sg in x.get("speech", [])))
     caps, open_ = [], {}
-    n = int(dur)
-    caps_frames = ocr.frames(src, 0.5, 1.0, n + 1)
-    per_sec: list[tuple[float, list]] = []          # 1초마다 읽은 글자 — 샷 글자 수도 여기서 가져온다(예전엔 샷마다 또 읽어 OCR 이 두 배: 80샷 영상에서 4분)
-    for k, (t, f) in enumerate(caps_frames):
-        t = min(dur - 0.3, t)
+    ocr_indices = list(range(0, len(half_frames), 2))
+    band_map = {t: b for t, b in bands}
+    per_sec: list[tuple[float, list]] = []          # 1초마다 읽은 글자 — 샷 글자 수 · 채널 분석 재사용
+    scan_frames: list[dict] = []
+    word_cnt: dict[str, int] = {}
+    for step_idx, idx in enumerate(ocr_indices):
+        t_raw, f = half_frames[idx]
+        t = min(dur - 0.3, t_raw)
         seen = set()
         got = ocr.read(f, langs)
         per_sec.append((t, got))
+        b = band_map.get(min(dur - 0.1, t_raw)) or band_of(f)
+        scan_frames.append({"t": round(t, 2), "lines": [{k_: o[k_] for k_ in ("text", "box", "bg", "fg")} for o in got], "band": [b[0], b[1], b[2]]})
         for o in got:
+            for tok in o["text"].split():
+                nt = re.sub(r"[^\w가-힣]", "", tok)
+                if 2 <= len(nt) <= 20 and not re.match(r"^[@#\d]|\d+(분|초|시간)전", tok):
+                    word_cnt[tok] = word_cnt.get(tok, 0) + 1
             if not is_overlay(o):
                 continue
             key = re.sub(r"\s+", "", o["text"])[:24]
@@ -156,14 +167,15 @@ def main():
                 open_[key] = {"start": max(0, t - 0.5), "end": t + 0.5, "band": band, "y": round(by, 3), "h": round(bh, 3), "text_example": o["text"], "style": cap_style(o), "bg": o["bg"], "fg": o["fg"]}
         for key in [k_ for k_ in open_ if k_ not in seen]:
             caps.append(open_.pop(key))
-        say(0.25 + 0.45 * (k + 1) / len(caps_frames), f"자막 {k + 1}/{len(caps_frames)}초")
+        say(0.25 + 0.45 * (step_idx + 1) / max(1, len(ocr_indices)), f"자막 {step_idx + 1}/{len(ocr_indices)}초")
     caps += list(open_.values())
     caps.sort(key=lambda c: c["start"])
     say(0.72, "샷 화면 종류")
     shots = []
     for i, s in enumerate(x.get("shots", [])):
         mid = (s["start"] + s["end"]) / 2
-        f = frame_at(src, mid, tmp / f"shot{i:02d}.jpg")
+        shot_img = d / "shots" / f"{i:03d}.jpg"
+        f = shot_img if shot_img.exists() else frame_at(src, mid, tmp / f"shot{i:02d}.jpg")
         lines = min(per_sec, key=lambda r: abs(r[0] - mid))[1] if per_sec else []     # 가장 가까운 초에 읽은 글자
         n_txt = len(lines)
         vt = vision_tags.classify(str(f), lines)
@@ -171,6 +183,13 @@ def main():
         shots.append({"i": i, "start": s["start"], "end": s["end"], "sec": round(s["end"] - s["start"], 2), "kind": kind, "kind_top": vt["top"],
                       "camera": (s.get("camera") or {}).get("kind"), "text_lines": n_txt})
         say(0.72 + 0.1 * (i + 1) / max(1, len(x["shots"])), f"샷 {i + 1}/{len(x['shots'])}")
+    # ref_channel 이 레퍼런스 본인을 다시 OCR · CLIP 하지 않게 스캔 결과를 캐시한다
+    scan_kinds = [[round(t, 2), min(shots, key=lambda s_: abs((s_["start"] + s_["end"]) / 2 - t))["kind"]] for t, _ in per_sec] if shots else []
+    (out / "scan.json").write_text(json.dumps({
+        "words": [w for w, _ in sorted(word_cnt.items(), key=lambda kv: -kv[1])],
+        "kinds": scan_kinds,
+        "frames": scan_frames,
+    }, ensure_ascii=False), encoding="utf-8")
 
     style_counts = {}
     for c in caps:

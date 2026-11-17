@@ -58,13 +58,45 @@ def chunks(words: list[dict], max_chars: int = 9, max_words: int = 2) -> list[di
         t = (w.get("text") or "").strip()
         if not t:
             continue
+        if cur and re.search(r"[.?!,]$", cur[-1]["text"].strip()):   # 문장 끝 · 쉼표 뒤는 항상 새 덩어리(다음 문장과 섞지 않는다)
+            out.append(cur)
+            cur = []
         if cur and (len(cur) >= max_words or len("".join(x["text"].strip() for x in cur)) + len(t) > max_chars):
+            # 꾸미는 말('이' · '매일' · 숫자)로 끝나면 뒤 낱말과 한 덩어리로 — 넘치는 건 한 낱말까지만 허용
+            if break_cost(cur[-1]["text"], t) >= 3.0:
+                if len("".join(x["text"].strip() for x in cur)) + len(t) <= max_chars + 3:
+                    cur.append(w)                      # 조금 넘쳐도 뒤 낱말과 한 덩어리로
+                    continue
+                if len(cur) > 1:                       # 많이 넘치면 꾸미는 말을 다음 덩어리 앞으로 넘긴다
+                    out.append(cur[:-1])
+                    cur = [cur[-1], w]
+                    continue
             out.append(cur)
             cur = []
         cur.append(w)
     if cur:
         out.append(cur)
     return [{"text": " ".join(x["text"].strip() for x in c), "start": c[0]["startMs"] / 1000, "end": c[-1]["endMs"] / 1000} for c in out]
+
+
+# 줄 끝에 오면 안 되는 말(뒤 낱말을 꾸미는 관형사 · 수 · 지시어) — 이 뒤에서 자르면 말 덩어리가 깨진다
+_NO_END = re.compile(r"^(이|그|저|이런|그런|저런|이번|그|한|두|세|네|다섯|몇|모든|각|매|매일|새|첫|단|약|딱|좀|더|아주|정말|진짜|너무|안|못|및|또는|혹은|[0-9]+)$")
+_GOOD_END = re.compile(r"(,|\.|\?|!|면|고|서|는데|은데|지만|니까|으니|도록|려고|라서|해서|어서|아서|거나|든지|죠|요|다)$")
+_PARTICLE = re.compile(r"(은|는|이|가|을|를|에|에서|으로|로|와|과|도|만|까지|부터|에게|한테)$")
+
+
+def break_cost(prev: str, nxt: str) -> float:
+    """두 어절 사이에서 줄을 바꿀 때의 비용(낮을수록 자연스러운 자리)"""
+    a, b = prev.strip(), nxt.strip()
+    if re.match(r"^(그런데|근데|그래서|하지만|그리고|그러니까|그럼|그러면|또|근데요)\b", b):
+        return 0.0                                    # 접속사 앞 — 가장 좋은 자리
+    if _NO_END.match(a.rstrip(",.?!")) or len(a.rstrip(",.?!")) <= 1 or (len(b.rstrip(",.?!")) <= 1 and b[-1:] in ",.?!"):   # 문장 끝 한 글자 낱말('셋,')만 따로 남기지 않는다
+        return 3.0                                    # 꾸미는 말 · 한 글자 뒤 — 거의 금지
+    if _GOOD_END.search(a):
+        return 0.0 if a.endswith((",", ".", "?", "!")) else 0.15
+    if _PARTICLE.search(a):
+        return 0.35
+    return 0.8
 
 
 def clause_chunks(words: list[dict], max_chars: int = 30) -> list[dict]:
@@ -85,9 +117,8 @@ def clause_chunks(words: list[dict], max_chars: int = 30) -> list[dict]:
         if size(c) <= max_chars or len(c) < 4:
             return [c]
         half = size(c) / 2
-        cand = range(1, len(c))
-        comma = [i for i in cand if c[i - 1]["text"].strip().endswith(",") and .3 < size(c[:i]) / size(c) < .7]
-        i = min(comma or cand, key=lambda k: abs(size(c[:k]) - half))
+        # 2026-11-16: 글자 수 절반에서 잘라 '개발하다 보면 이 / 숫자 셋'처럼 말 덩어리가 깨졌다 → 한국어 끊을 자리 점수(break_cost)로 고른다
+        i = min(range(1, len(c)), key=lambda k: abs(size(c[:k]) - half) / max(1.0, half) + break_cost(c[k - 1]["text"], c[k]["text"]))
         return split(c[:i]) + split(c[i:])
     out = [p_ for c in sents for p_ in split(c)]
     res = [{"text": " ".join(x["text"].strip() for x in c), "start": c[0]["startMs"] / 1000, "end": c[-1]["endMs"] / 1000} for c in out]
@@ -175,6 +206,10 @@ def grammar(sb: dict) -> dict:
             g[k]["y"] = max(float(g[k]["y"]), 0.08 + float(g[k].get("h", 0.03)) * 0.6 + 0.01)
     if isinstance(g.get("subs"), dict) and "y" in g["subs"]:     # 아래 18% 는 쇼츠 제목 · 버튼
         g["subs"]["y"] = min(float(g["subs"]["y"]), 0.80)
+    from craft.subs_policy import subs_max_chars, subs_mode
+
+    g["subs"].setdefault("mode", subs_mode(sb))
+    g["subs"].setdefault("max_chars", subs_max_chars(sb, g["subs"]))
     return g
 
 
@@ -451,6 +486,19 @@ def palette_list(sid: str) -> list[list[float]]:
         pal = {}
     order = [pal.get(k) for k in ("accent", "accent2", "main", "main_dark", "light")] + ["#ffd60a", "#ff3d6b", "#14c6d0", "#52cc66"]
     return [rgb(c) for c in order if isinstance(c, str) and c.startswith("#")]
+
+
+def owns_frame(m: dict, W: int = 1080, H: int = 1920) -> bool:
+    """화면 전체를 장면 코드가 직접 그리는 2D 장면(craft · 배치 full · 판 크기 = 화면) — 배치는 장면 코드가 정한다.
+    2026-11-17: 디자이너 단계가 그림을 보지 않고 '띠를 70% 채우게' 규칙으로 이런 장면을 1.05~1.45배 키우고 옮겨
+    (AI 코딩 도구 영상 8장면 전부) 창 · 카드 가장자리가 화면 밖으로 잘렸다. 크기 · 자리를 바꾸려면 장면 코드를 고친다(refine)"""
+    if not isinstance(m, dict) or m.get("type") != "craft" or (m.get("place") or "full") != "full":
+        return False
+    new = m.get("new") or {}
+    return int(new.get("width") or W) == W and int(new.get("height") or H) == H
+
+
+FRAME_KEYS = ("scale", "dx", "dy", "rot")     # 화면을 소유하는 장면에는 쓰지 않는 조정 값
 
 
 def adjust_jsx(mid: str, adj: dict, W: int, H: int) -> str:
@@ -979,6 +1027,20 @@ function txt(comp, name, s, font, size, fill, stroke, strokeW, pos) {
   t.property("Transform").property("Position").setValue(pos);
   return t;
 }
+// 글자가 화면 폭(maxW)을 넘으면: 가운데 띄어쓰기에서 두 줄로 → 그래도 넘으면 글자를 줄인다.
+// 2026-11-17: 자막 크기는 고정, 구절은 최대 34자 — 폭을 아무도 재지 않아 '지우고, 통신사면 하루를 기다려요'가 화면 끝까지 찼다
+function fitText(t, maxW) {
+  var st = t.property("Source Text"), d = st.value, r = t.sourceRectAtTime(0, false);
+  if (!r || r.width <= maxW) return t;
+  var s = String(d.text || "");
+  if (s.indexOf("\r") < 0 && s.indexOf("\n") < 0) {
+    var mid = s.length / 2, best = -1;
+    for (var i = 0; i < s.length; i++) if (s.charAt(i) === " " && (best < 0 || Math.abs(i - mid) < Math.abs(best - mid))) best = i;
+    if (best > 0) { d.text = s.slice(0, best) + "\r" + s.slice(best + 1); st.setValue(d); d = st.value; r = t.sourceRectAtTime(0, false); }
+  }
+  if (r && r.width > maxW) { d.fontSize = Math.max(12, Math.floor(d.fontSize * maxW / r.width)); st.setValue(d); }
+  return t;
+}
 // atT: 글자 애니메이터(단어 튀기기 등)가 도는 동안 상자가 출렁이지 않게, 그 시각 이후의 글자 크기로 잰다
 function fitBox(comp, name, target, color, padX, padY, round, atT) {
   var b = comp.layers.addShape(); b.name = name;
@@ -1358,8 +1420,10 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         # 화면 글자(caption) — 나레이션이 없으면 자막이 말소리에서 나오지 않는다. 그래도 콘티에 적은 화면 글자는 보여야 한다
         # 2026-11-09: 음악 없이 효과음만 쓰는 브랜드 필름에서 '아이디어를,' · 슬로건이 전부 빠졌다(자막은 말에서만 만들었음)
         cap = str(sc.get("caption") or "").strip()
-        if cap and (words or lines) and d.get("screen_text", True):
-            # 훅 세 칸(writer 스킬)의 '화면 글자' — 말 자막과 따로, 위쪽 띠에 강조색으로. 2026-11-11 점검: 나레이션이 있으면 caption 을 아예 안 그려 화면 글자 칸이 사라졌다
+        from craft.subs_policy import show_screen_caption_band
+
+        if show_screen_caption_band(sc, has_speech=bool(words or lines), screen_text=bool(d.get("screen_text", True))):
+            # 훅 세 칸(writer 스킬)의 '화면 글자' — 본문 장면은 말 자막만(이중 노출 방지), 훅·맺음만 위 띠
             st_size = int(H * (0.05 if len(cap) <= 8 else 0.042 if len(cap) <= 14 else 0.034))
             st_y = float(d.get("screen_text_y", 0.17)) * H
             st_col = rgb(d.get("color_accent") or "#ff5a36")
@@ -1382,6 +1446,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 y = y0 + i * size * 1.3
                 ti = t0 + i * 0.25
                 J(f"var ct = txt(c, {js(f'Caption {i + 1}')}, {js(line)}, {js(title_font if ed else font)}, {size}, {js(fg)}, {stroke}, [{W / 2}, {y:.0f}]);")
+                J(f"fitText(ct, {W * 0.86:.0f});")
                 J(f"var cto = ct.property('Transform').property('Opacity'); cto.setValueAtTime(0, 0); cto.setValueAtTime({ti:.3f}, 0); cto.setValueAtTime({ti + 0.6:.3f}, 100); ease(cto, 60);"
                   f" var ctp = ct.property('Transform').property('Position'); ctp.setValueAtTime({ti:.3f}, [{W / 2}, {y + size * 0.3:.0f}]); ctp.setValueAtTime({ti + 0.7:.3f}, [{W / 2}, {y:.0f}]); ease(ctp, 80);"
                   f" cto.setValueAtTime({max(ti + 0.7, sec - 0.3):.3f}, 100); cto.setValueAtTime({sec:.3f}, 0);")
@@ -1429,7 +1494,11 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         gs = g["subs"]
         size = int(gs["h"] * H * 1.75)
         keys = [_norm(x) for x in re.findall(r"[가-힣A-Za-z0-9.%+]{2,}", str((sc.get("visual") or {}).get("primary") or ""))]
-        sub_chunks = clause_chunks(words, int(gs.get("max_chars", 30))) if gs.get("mode") == "clause" else chunks(words, max_chars=13, max_words=4)
+        from craft.subs_policy import subs_max_chars, subs_mode
+
+        _sm = gs.get("mode") or subs_mode(sb)
+        _mx = int(gs.get("max_chars") or subs_max_chars(sb, gs))
+        sub_chunks = clause_chunks(words, _mx) if _sm == "clause" else chunks(words, max_chars=min(_mx, 13), max_words=4 if _mx >= 13 else 2)
         for i, ch in enumerate(sub_chunks):
             a_, b_ = max(0.0, ch["start"] - start), min(sec, ch["end"] - start)
             if b_ <= a_:
@@ -1438,6 +1507,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             fg = rgb(gs.get("hot", "#ffd60a")) if hot else rgb(gs.get("fg", "#ffffff"))   # 강조 낱말 색(방향 subs.hot — 밝은 상자면 빨강 등)
             stroke = "null, 0" if gs.get("box") else f"[0.02, 0.02, 0.05], {max(6, size // 5)}"     # 상자가 있으면 외곽선 없이(뭉개짐)
             J(f"var s = txt(c, {js(f'Sub {i + 1:02d}')}, {js(ch['text'])}, {js(font)}, {size}, {js(fg)}, {stroke}, [{W / 2}, {gs['y'] * H:.0f}]);")
+            J(f"fitText(s, {W * 0.86:.0f});")   # 좌우 7% 안전 여백 — 길면 두 줄, 그래도 넘으면 줄임
             pop = f"var sS = s.property('Transform').property('Scale'); sS.setValueAtTime({a_:.3f}, [88, 88]); sS.setValueAtTime({a_ + 0.09:.3f}, [100, 100]);"
             J(f"s.inPoint = {a_:.3f}; s.outPoint = {b_:.3f};")
             if gs.get("box"):   # 자막 상자(방향 subs.box) — 글자 뒤 반투명 판, 그 구절 동안만
@@ -1448,7 +1518,13 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 J(pop)
         for m in sc.get("materials") or []:           # 조정 값(adjust) — 대화로 고칠 때 에이전트가 바꾸는 손잡이(knob.py). 배치가 끝난 뒤 위에 얹는다
             if isinstance(m, dict) and isinstance(m.get("adjust"), dict) and m.get("id"):
-                J(adjust_jsx(str(m["id"]), m["adjust"], W, H))
+                adj = m["adjust"]
+                if owns_frame(m, W, H):
+                    dropped = {k: adj[k] for k in FRAME_KEYS if k in adj and adj[k] not in (0, 0.0, 1, 1.0)}
+                    if dropped:
+                        print(f"[움직임] {m['id']}: 화면 전체 2D 장면 — 배치 조정 {dropped} 무시(장면 코드가 배치를 정한다)", file=sys.stderr)
+                    adj = {k: v for k, v in adj.items() if k not in FRAME_KEYS}
+                J(adjust_jsx(str(m["id"]), adj, W, H))
         J(f"var sl = main.layers.add(c); sl.startTime = {start:.3f};")
         # 끝 장면이 영상 없이 그림 · 로고 · 글자만이면 멈춘 화면이 된다(2026-11-09: 로고 4초 정지) → 천천히 다가오며 나타남
         # 2026-11-11: 93→100 으로 키우니 화면이 줄어 네 가장자리에 검은 테두리가 생겼고, 감독이 '끝'(고정)으로 정한 것도 무시했다 → 고정 기능이면 그대로, 아니면 100→106 으로 다가감

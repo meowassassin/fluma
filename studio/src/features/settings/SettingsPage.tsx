@@ -17,12 +17,14 @@ import { sapi, type AgentInfo, type GenKey, type Mem, type Voice } from "./api";
 
 type Sec = "agent" | "videogen" | "media" | "youtube" | "memory" | "mcp" | "about";
 type MediaTab = "voice" | "music" | "stock";
-interface AgentCfg { cli: string; claudeModel: string; codexModel: string; agyModel?: string; effort: string }
+interface AgentCfg { cli: string; claudeModel: string; codexModel: string; agyModel?: string; cursorModel?: string; effort: string }
 type Save = "idle" | "saving" | "saved" | "failed";
 
 const EFFORT = [{ value: "", label: "기본" }, { value: "low", label: "낮음" }, { value: "medium", label: "보통" }, { value: "high", label: "높음" }, { value: "xhigh", label: "매우 높음" }, { value: "max", label: "최대" }];
 const SCOPE: Record<string, string> = { global: "공통", trends: "트렌드", brand: "브랜드", character: "캐릭터", look: "룩", studio: "영상" };
-const AGENT_ICON: Record<string, string> = { claude: "agent-claude", codex: "agent-codex", antigravity: "antigravity" };
+const AGENT_ICON: Record<string, string> = { claude: "agent-claude", codex: "agent-codex", antigravity: "antigravity", cursor: "agent-cursor" };
+/** 에이전트 카드 모델 선택 기본값(빈 값일 때 modelIconSrc 용) */
+const AGENT_MODEL_FALLBACK: Record<string, string> = { claude: "claude", codex: "gpt", antigravity: "gemini", cursor: "composer" };
 const commTone = (c: string) => (c.startsWith("가능") ? "ok" : c.startsWith("불가") ? "danger" : "warn") as "ok" | "danger" | "warn";
 const availTag = (a: boolean | null | undefined, off = "설치 필요") => a === null || a === undefined ? <Tag>{t("확인 중")}</Tag> : a ? <Tag tone="ok">{t("사용 가능")}</Tag> : <Tag tone="warn">{t(off)}</Tag>;
 /** 번역문의 {이름} 자리에 JSX 를 끼운다(굵은 글씨 등) */
@@ -57,7 +59,7 @@ export const SettingsPage: React.FC = () => {
 
   // open-design 처럼 두 덩어리: 글을 쓰는 모델(에이전트) · 소리와 화면 재료(음성 · 스톡 영상 · 렌더 엔진)
   const NAV: [Sec, string, string, string][] = [
-    ["agent", "agent", t("에이전트"), t("Claude · Antigravity · Codex")],
+    ["agent", "agent", t("에이전트"), t("Claude · Cursor · Antigravity · Codex")],
     ["videogen", "sparkle", t("AI 생성 (영상 · 이미지)"), t("Google Flow · Antigravity 모델 및 경로")],
     ["media", "image", t("미디어"), t("음성 · 스톡 영상")],
     ["youtube", "video", t("YouTube"), t("채널 연결 · 업로드 · 통계")],
@@ -154,19 +156,33 @@ const InstallButton: React.FC<{ kind: "engines" | "voices"; name: string; title:
 /* ---------- 에이전트 ---------- */
 const AgentSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void }> = ({ s, set }) => {
   const { data: info, isLoading, error, refetch } = useQuery({ queryKey: qk.agents, queryFn: ({ signal }) => sapi.agents(signal) });
-  const a: AgentCfg = { cli: "claude", claudeModel: s.model || "", codexModel: "", agyModel: "", effort: s.effort || "", ...((s.agent || {}) as Partial<AgentCfg>) };
+  const a: AgentCfg = { cli: "claude", claudeModel: s.model || "", codexModel: "", agyModel: "", cursorModel: "", effort: s.effort || "", ...((s.agent || {}) as Partial<AgentCfg>) };
   const setA = (p: Partial<AgentCfg>) => set({ agent: { ...a, ...p } });
   if (isLoading) return <div className="col"><Skeleton w={200} h={22} /><Skeleton h={72} /><Skeleton h={72} /></div>;
   if (error || !info) return <EmptyState icon="warn" title={t("에이전트 정보를 불러오지 못했어요")} body={errMsg(error)} action={<Button onClick={() => refetch()}>{t("다시 시도")}</Button>} />;
 
+  const effortList = (() => {
+    if (a.cli === "cursor") {
+      const es = (info.models.cursor ?? []).find((m) => m.id === (a.cursorModel ?? ""))?.efforts;
+      if (es?.length) return EFFORT.filter((o) => o.value === "" || es.includes(o.value));
+    }
+    if (a.cli === "codex") {
+      const es = info.models.codex.find((m) => m.id === a.codexModel)?.efforts;
+      if (es?.length) return EFFORT.filter((o) => o.value === "" || es.includes(o.value));
+    }
+    return EFFORT;
+  })();
+
   return <>
-    <Head t={t("에이전트")} d={t("영상을 만드는 에이전트와 모델입니다. 이 컴퓨터에 설치된 에이전트 CLI(Claude Code · Antigravity · Codex)를 직접 사용합니다.")} />
+    <Head t={t("에이전트")} d={t("영상을 만드는 에이전트와 모델입니다. 이 컴퓨터에 설치된 에이전트 CLI(Claude Code · Cursor Agent · Antigravity · Codex)를 직접 사용합니다.")} />
     <div className={cx("activebar", info.problem && "bad")}><Icon n={info.problem ? "warn" : "check"} s={14} />{info.problem ? info.problem : t("지금 쓰는 에이전트: {name}", { name: info.active ?? t("확인 중") })}</div>
 
     <div className="ecards">{info.agents.map((x: AgentInfo) => {
       const on = a.cli === x.id; const usable = !!x.installed && x.runs;
-      const ms = x.id === "claude" ? info.models.claude : x.id === "codex" ? info.models.codex : x.id === "antigravity" ? (info.models.antigravity ?? []) : [];
-      const curM = x.id === "claude" ? a.claudeModel : x.id === "antigravity" ? (a.agyModel ?? "") : a.codexModel;
+      const ms = x.id === "claude" ? info.models.claude : x.id === "codex" ? info.models.codex : x.id === "antigravity" ? (info.models.antigravity ?? []) : x.id === "cursor" ? (info.models.cursor ?? []) : [];
+      const curM = x.id === "claude" ? a.claudeModel : x.id === "antigravity" ? (a.agyModel ?? "") : x.id === "cursor" ? (a.cursorModel ?? "") : a.codexModel;
+      const modelForIcon = curM || AGENT_MODEL_FALLBACK[x.id] || "claude";
+      const iconSrc = modelIconSrc(modelForIcon) || (x.id === "cursor" ? "/api/engine-icons/agent-cursor.svg" : null);
       return (
         <div key={x.id} className={cx("ecard", on && "on", !usable && "dim")}>
           <button className="ecard-pick" role="radio" aria-checked={on} aria-label={t("{name} 쓰기", { name: x.title })} disabled={!usable} onClick={() => setA({ cli: x.id })}><i /></button>
@@ -185,16 +201,16 @@ const AgentSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void }> =
           {usable && ms.length > 0 && (
             <div className="ecard-act">
               <div className="model-pick">
-                {modelIconSrc(curM || (x.id === "codex" ? "gpt" : x.id === "antigravity" ? "gemini" : "claude")) && <img className="model-ic" src={modelIconSrc(curM || (x.id === "codex" ? "gpt" : x.id === "antigravity" ? "gemini" : "claude"))!} alt="" />}
-                <Select size="sm" aria-label={t("{name} 모델", { name: x.title })} value={curM} onChange={(v) => setA(x.id === "claude" ? { claudeModel: v, cli: "claude" } : x.id === "antigravity" ? { agyModel: v, cli: "antigravity" } : { codexModel: v, cli: "codex" })}
+                {iconSrc && <img className="model-ic" src={iconSrc} alt="" />}
+                <Select size="sm" aria-label={t("{name} 모델", { name: x.title })} value={curM} onChange={(v) => setA(x.id === "claude" ? { claudeModel: v, cli: "claude" } : x.id === "antigravity" ? { agyModel: v, cli: "antigravity" } : x.id === "cursor" ? { cursorModel: v, cli: "cursor" } : { codexModel: v, cli: "codex" })}
                   options={ms.map((m) => ({ value: m.id, label: t(m.label) }))} />
               </div>
             </div>)}
         </div>);
     })}</div>
 
-    <Row t={t("생각 깊이")} d={t("높을수록 오래 생각합니다. 화면 구성 · 긴 영상은 ‘높음’ 이상을 권합니다.")}>
-      <Segmented aria-label={t("생각 깊이")} size="sm" value={a.effort} onChange={(v) => setA({ effort: v })} options={EFFORT.map((o) => ({ ...o, label: t(o.label) }))} />
+    <Row t={t("생각 깊이")} d={a.cli === "cursor" ? t("Cursor 모델 슬러그에 effort 를 붙입니다. 모델을 Auto 로 두면 auto[effort=…] 로 전달됩니다.") : t("높을수록 오래 생각합니다. 화면 구성 · 긴 영상은 ‘높음’ 이상을 권합니다.")}>
+      <Segmented aria-label={t("생각 깊이")} size="sm" value={a.effort} onChange={(v) => setA({ effort: v })} options={effortList.map((o) => ({ ...o, label: t(o.label) }))} />
     </Row>
     <Row t={t("언어")} d={t("화면과 에이전트 답변 언어를 함께 바꿉니다. 영상의 나레이션 · 자막 언어는 영상마다 따로 정합니다.")}>
       <LangSwitch s={s} />

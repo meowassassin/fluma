@@ -32,6 +32,8 @@ from pathlib import Path
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
 from tts import synth, duration, write_silence, resolve, read_words, restore_punct, DEFAULT_VOICE, FFMPEG, SR  # noqa: E402
+from tts import engine_available as tts_available  # noqa: E402
+FALLBACK_ORDER = ("elevenlabs", "typecast", "supertonic", "edge")   # 막혔을 때 넘어갈 순서(유료 · 자연스러움 → 무료)
 TOKENS = json.loads((ROOT / "engine" / "spec" / "tokens" / "default.json").read_text(encoding="utf-8"))
 from craft.music_pick import music_on  # noqa: E402
 SFX_DIR = ROOT / "assets" / "sfx"
@@ -223,16 +225,14 @@ def scene_wav(sc: dict, i: int, work: Path, prov: str, vid: str | None = None, s
 
 
 def continuous_mode(sb: dict) -> bool:
-    """이어 말하기: 콘티 voice.continuous, 없으면 레퍼런스 스타일 카드의 voice.continuous(참고 영상이 컷이 바뀌어도 말을 이어 가면)"""
-    v = (sb.get("voice") or {}).get("continuous")
-    if v is not None:
-        return bool(v)
-    # 2026-11-09: 기본으로 켬 — 장면마다 따로 합성하면 컷마다 억양이 처음부터 다시 시작해 문장이 이어지지 않았다(대사가 AI 같다).
-    # 끄려면 콘티 voice.continuous: false (장면 사이에 일부러 쉼 · 다른 화자가 필요할 때)
-    return True
+    """이어 말하기(대본 전체를 한 번에 합성)가 기본이자 거의 언제나다.
+    장면마다 따로 합성하면 컷마다 억양이 처음부터 다시 시작해 대사가 기계 같다(2026-11-09 · 2026-11-16 두 번 겪음).
+    레퍼런스의 '끊어 말함'은 합성 방식이 아니라 컷 사이 쉼(voice.cut_pause)으로만 반영한다.
+    따로 합성은 사람이 일부러 고를 때만: 콘티 voice.split_by_scene: true (장면마다 다른 화자 · 일부러 끊는 연출)"""
+    return not bool((sb.get("voice") or {}).get("split_by_scene"))
 
 
-def continuous_parts(scenes: list, work: Path, prov: str, vid, speed: float, style, opts: dict | None = None) -> list:
+def continuous_parts(scenes: list, work: Path, prov: str, vid, speed: float, style, opts: dict | None = None, pause: float = 0.0) -> list:
     """대본 전체를 한 번에 합성(문장이 장면을 넘어 자연스럽게 이어짐) → 단어를 글자 수로 장면에 나눠 담고,
     장면 사이는 앞 장면 마지막 단어 끝과 다음 장면 첫 단어 시작의 가운데에서 자른다(프레임 단위)."""
     texts = [(sc.get("narration") or "").strip() for sc in scenes]
@@ -296,6 +296,9 @@ def continuous_parts(scenes: list, work: Path, prov: str, vid, speed: float, sty
         a0, a1 = cuts[i], max(cuts[i] + 1 / 30, cuts[i + 1])
         seg = clip[int(a0 * SR) * 2: int(a1 * SR) * 2]
         ws = [{**w, "startMs": w["startMs"] - a0 * 1000, "endMs": w["endMs"] - a0 * 1000} for w, o in zip(words, owner) if o == i]
+        if pause and i + 1 < len(texts) and ws:                     # 컷 사이 쉼(voice.cut_pause)이 실제 쉼보다 길면 모자란 만큼 무음을 붙인다
+            have = (a1 - a0) - ws[-1]["endMs"] / 1000            # 이 장면 끝에 이미 있는 쉼
+            seg += b"\x00\x00" * int(max(0.0, pause - have) * SR)
         parts.append({"clip": seg, "words": ws, "speech": len(seg) / 2 / SR, "need": len(seg) / 2 / SR, "tempo": 1.0, "text": t, "wav": wav})
     return parts
 
@@ -334,53 +337,86 @@ def main():
     work.mkdir(parents=True, exist_ok=True)
     ensure_sfx()
     prov, vid = resolve(sb)
+    from craft.pace_policy import apply_voice_pace, speech_led
+
+    if apply_voice_pace(sb):
+        sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        print(f"[음성] 말 주도 박자 — 합성 배속 ×{sb['voice']['speed']}")
     # 말 속도(콘티 voice.speed, 0.8~1.6): 엔진이 직접 빠르게 말한다(합성 뒤 빨리 감기보다 자연스럽다)
     speed = max(0.8, min(1.6, float((sb.get("voice") or {}).get("speed") or 1.0)))
+    led = speech_led(sb)
     style = ((sb.get("voice") or {}).get("style") or "").strip() or None
     vopts = voice_opts(sb)
     print(f"[음성] 엔진 {prov} · 목소리 {vid or '기본'}{' · ' + json.dumps(vopts, ensure_ascii=False) if vopts else ''}")
     scenes = sb["scenes"]
 
-    # 1) 합성 + 필요한 길이
-    parts = []
+    def synth_all(prov, vid, style, vopts):
+        cont, parts = cont0, []
+        if cont:
+            try:
+                parts = continuous_parts(scenes, work, prov, vid, speed, style, vopts, float((sb.get("voice") or {}).get("cut_pause") or 0))
+                print("[음성] 이어 말하기: 대본 전체를 한 번에 합성하고 단어 사이 쉼에서 장면을 자릅니다")
+            except ValueError as e:                       # 가르기가 어긋나면 멈추지 말고 장면별 합성으로
+                print(f"[음성] {e} — 장면마다 따로 합성합니다")
+                cont, parts = False, []
+        for i, sc in enumerate(scenes if not cont else []):
+            # 장면마다 합성할 때는 앞뒤 장면 글을 문맥으로 넘긴다(문맥으로 감정을 고르는 엔진 — typecast smart)
+            ctx = {"prev_text": (scenes[i - 1].get("narration") or "").strip() if i else None,
+                   "next_text": (scenes[i + 1].get("narration") or "").strip() if i + 1 < len(scenes) else None} if prov == "typecast" and not (sb.get("voice") or {}).get("style") else {}
+            sc_vid = sc.get("voice_id") or sc.get("voice") or vid
+            wav, nar_text = scene_wav(sc, i, work, prov, sc_vid, speed, style, {**vopts, **{k: v for k, v in ctx.items() if v}})
+            if nar_text:
+                clip, words, speech_s = speech(wav)
+            else:
+                clip, words, speech_s = b"", [], 0.0
+            tempo = 1.0
+            if not keep and speech_s > SEC_MAX - LEAD - TAIL:      # 12초를 넘는 한 장면만 예외적으로 빠르게
+                tempo = speech_s / (SEC_MAX - LEAD - TAIL)
+                fast = work / f"{wav.stem}.fit.wav"
+                write_pcm(fast, clip); speed_up(fast, tempo, fast.with_suffix(".x.wav"))
+                clip = read_pcm(fast.with_suffix(".x.wav")); speech_s = len(clip) / 2 / SR
+                words = [{**w, "startMs": w["startMs"] / tempo, "endMs": w["endMs"] / tempo} for w in words]
+            need = (LEAD + speech_s + TAIL) if nar_text else float(sc["sec"])
+            parts.append({"clip": clip, "words": words, "speech": speech_s, "need": need, "tempo": tempo, "text": nar_text, "wav": wav})
+
+        return parts, cont
+
+    # 1) 합성 + 필요한 길이 — 엔진이 막히면(403 · 키 · 크레딧 · 한도 · 네트워크) 쓸 수 있는 다음 엔진으로 넘어간다(2026-11-17)
     scene_vids = {sc.get("voice_id") or sc.get("voice") for sc in scenes if (sc.get("voice_id") or sc.get("voice"))}
     has_multi_voice = len(scene_vids) > 1
-    cont = continuous_mode(sb) and not keep and not has_multi_voice and all((sc.get("narration") or "").strip() for sc in scenes)
-    if cont:
+    cont0 = continuous_mode(sb) and not keep and not has_multi_voice and all((sc.get("narration") or "").strip() for sc in scenes)
+    tried = []
+    while True:
         try:
-            parts = continuous_parts(scenes, work, prov, vid, speed, style, vopts)
-            print("[음성] 이어 말하기: 대본 전체를 한 번에 합성하고 단어 사이 쉼에서 장면을 자릅니다")
-        except ValueError as e:                       # 가르기가 어긋나면 멈추지 말고 장면별 합성으로
-            print(f"[음성] {e} — 장면마다 따로 합성합니다")
-            cont, parts = False, []
-    for i, sc in enumerate(scenes if not cont else []):
-        # 장면마다 합성할 때는 앞뒤 장면 글을 문맥으로 넘긴다(문맥으로 감정을 고르는 엔진 — typecast smart)
-        ctx = {"prev_text": (scenes[i - 1].get("narration") or "").strip() if i else None,
-               "next_text": (scenes[i + 1].get("narration") or "").strip() if i + 1 < len(scenes) else None} if prov == "typecast" and not (sb.get("voice") or {}).get("style") else {}
-        sc_vid = sc.get("voice_id") or sc.get("voice") or vid
-        wav, nar_text = scene_wav(sc, i, work, prov, sc_vid, speed, style, {**vopts, **{k: v for k, v in ctx.items() if v}})
-        if nar_text:
-            clip, words, speech_s = speech(wav)
-        else:
-            clip, words, speech_s = b"", [], 0.0
-        tempo = 1.0
-        if not keep and speech_s > SEC_MAX - LEAD - TAIL:      # 12초를 넘는 한 장면만 예외적으로 빠르게
-            tempo = speech_s / (SEC_MAX - LEAD - TAIL)
-            fast = work / f"{wav.stem}.fit.wav"
-            write_pcm(fast, clip); speed_up(fast, tempo, fast.with_suffix(".x.wav"))
-            clip = read_pcm(fast.with_suffix(".x.wav")); speech_s = len(clip) / 2 / SR
-            words = [{**w, "startMs": w["startMs"] / tempo, "endMs": w["endMs"] / tempo} for w in words]
-        need = (LEAD + speech_s + TAIL) if nar_text else float(sc["sec"])
-        parts.append({"clip": clip, "words": words, "speech": speech_s, "need": need, "tempo": tempo, "text": nar_text, "wav": wav})
+            parts, cont = synth_all(prov, vid, style, vopts)
+            break
+        except (RuntimeError, OSError) as e:
+            tried.append(prov)
+            nxt = next((e2 for e2 in FALLBACK_ORDER if e2 not in tried and tts_available(e2)), None)
+            print(f"[음성] {prov} 합성 실패: {str(e)[:200]}", file=sys.stderr)
+            if not nxt:
+                raise
+            print(f"[음성] {prov} 대신 {nxt} 로 자동 전환합니다", file=sys.stderr)
+            sb.setdefault("voice", {})["fallback"] = {"from": prov, "to": nxt, "why": str(e)[:200]}
+            sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            prov, vid, style, vopts = nxt, None, None, {}
+    if not tried and (sb.get("voice") or {}).pop("fallback", None) is not None:   # 이번엔 원래 엔진으로 됐다 — 지난 전환 기록 지움
+        sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     # 2) 장면 길이 결정 — 말이 없는 영상(음악 · 화면 주도)은 콘티 길이 그대로. 최소 길이로 늘리면 재료가 끝난 뒤 화면이 빈다
     if keep or not any(p["text"] for p in parts):
         secs = [float(sc["sec"]) for sc in scenes]
-    elif cont:   # 자른 길이 그대로(프레임 단위), 마지막 장면에 끝 여유
+    elif cont:   # 자른 길이 그대로(프레임 단위)
         secs = [round(round(p["need"] * 30) / 30, 3) for p in parts]
-        secs[-1] = round(secs[-1] + (math.ceil(sum(secs) + TAIL) - sum(secs)), 3)   # 끝 여유를 두고 합계를 정수 초로
+        if not led:
+            secs[-1] = round(secs[-1] + (math.ceil(sum(secs) + TAIL) - sum(secs)), 3)   # 음악·화면 주도만 정수 초 패딩
     else:
-        secs = plan_secs([p["need"] for p in parts], [not p["text"] for p in parts])
+        needs = [p["need"] for p in parts]
+        fixed = [not p["text"] for p in parts]
+        if led:
+            secs = [round(min(SEC_MAX, max(SEC_MIN, n)), 2) for n in needs]  # 말만으로 길이 — 빈 화면 패딩 없음
+        else:
+            secs = plan_secs(needs, fixed)
 
     # 3) 조립
     pcm_all = bytearray()

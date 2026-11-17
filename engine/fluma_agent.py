@@ -89,8 +89,12 @@ def start_local() -> None:
 def logged_in() -> bool:
     """내 컴퓨터에 에이전트 로그인이 있나(파일이 있는지만 — 내용은 읽지 않는다)"""
     home = Path.home()
-    return any(p.exists() for p in (home / ".claude" / ".credentials.json", home / ".claude.json", home / ".codex" / "auth.json")) \
-        or bool(os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"))
+    return any(p.exists() for p in (
+        home / ".claude" / ".credentials.json",
+        home / ".claude.json",
+        home / ".codex" / "auth.json",
+        home / ".gemini" / "antigravity-cli",
+    )) or bool(os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")) or bool(shutil.which("agy"))
 
 
 def first_video(topic: str) -> str:

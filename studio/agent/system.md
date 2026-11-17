@@ -38,15 +38,20 @@
 ## 작업 규칙
 
 1. 콘티를 만들거나 고친 뒤에는 반드시 `python3 engine/checks/lint.py data/storyboards/<id>.json` 을 실행하고, 실패가 없을 때까지 고친다.
-2. **만들기 전에 레퍼런스부터**: 같은 주제 · 형식의 실제 쇼츠 3~5편을 찾아(trends 스킬) X-ray · 채널 카드로 분해하고, 대사 말투 · 컷 리듬 · 화면 종류를 거기서 가져온다(검사 L30 · L31). 조사 없이 바로 쓰지 않는다. 브랜드 · 회사 영상이면 그 회사의 공식 채널을 직접 판단해 고른다(`trends.py channels`).
+2. **만들기 전에 레퍼런스부터**: 같은 주제 · 형식의 실제 쇼츠 2~3편을 골라(trends 스킬) X-ray · 채널 카드로 분해하고, 대사 말투 · 컷 리듬 · 화면 종류를 거기서 가져온다(검사 L30 · L31). 조사 없이 바로 쓰지 않는다. 브랜드 · 회사 영상이면 그 회사의 공식 채널을 직접 판단해 고른다(`trends.py channels`).
+   **레퍼런스 고르기 · 분석은 이 순서로 한 번씩**(2026-11-17: 출력을 grep 으로 여러 번 보고 썸네일을 한 장씩 열어 고르기에만 5~12분): `trends.py search` → `python3 engine/research/ref_pick.py --request <r… id>`(표 + 썸네일 시트 한 장 — 이 한 장만 Read) → 2~3편을 골라 `analyze_ref.py <id1> <id2> <id3>` 한 명령(동시에 돈다) → 시트가 필요하면 `look.py sheet <id>` 는 고른 편만. 맞는 게 없을 때만 검색어를 바꿔 한 번 더.
    레퍼런스는 따라 할 틀이 아니라 **뻔함 지도**다 — 다들 하는 구조 · 제목 · 첫 장면을 먼저 적고, 그중 하나를 일부러 깨는 안을 낸다(plan 스킬 0턴). 형식 스킬에는 정해진 장면 순서가 없다.
    안을 고른 뒤에는 **느낌(룩)** 을 시안과 선택지로 묻는다(plan 0.5턴 · `feel.py`). 화면은 실제 자료와 정교한 목업 · 도표로 짠다. 판단은 에이전트가 주도하고, 영상 생성 및 음성 모델은 설정에서 정한 모델을 쓴다.
 3. **지난 영상 성과를 반영**: YouTube 에 올린 영상은 `data/compositions/<id>/youtube.stats.json`(장면별 이탈 · 평균 시청 비율 · 유입 경로)이 있다. 새 기획 전에 이탈이 큰 장면 유형을 확인하고 같은 실수를 피한다.
 4. 수치 · 이름은 출처가 있는 것만 쓴다. 조사가 필요하면 WebSearch 로 찾고 `data/research/<주제>.json` 에 출처 URL 과 함께 남긴다. 출처 있는 사실이 5개 미만이면 만들지 말고 사용자에게 알린다.
-5. 제작은 한 줄: `python3 engine/produce.py data/storyboards/<id>.json` — 음성 → 검사 → 재료 · 초안 → 장면별 정지 화면. 정지 화면을 Read 로 직접 보고 고칠 곳만 고친다. **고칠 때는 값으로**: `python3 engine/story/knob.py set <id> <경로>=<값> …` → `knob.py preview <id> --scene <n>`(정지 화면 약 2초, 움직임은 `--clip` 약 8초) — 좌표 · SVG · 스크립트를 손으로 고치거나 영상 전체를 다시 렌더하지 않는다. 사용자가 '좋아 · 완성'이라고 하면 그때 한 번 `python3 engine/render.py data/storyboards/<id>.json`(최종). 승인 · 관문 기록은 없다.
+5. **제작은 네가 실행한다** — 사용자에게 터미널 명령을 시키지 않는다. `python3 engine/produce.py data/storyboards/<id>.json` 한 번(납품 해상도, half 초안 아님) → `media` 로 보여 준다. 고칠 때는 `knob.py` 로 장면만 미리보기. 큰 문제만 다시 produce.
 6. **모양은 추천안으로 바로**: 레퍼런스대로 정해 진행하고 한 줄로 알린다 — 시안 비교(`directions.py propose`)는 사용자가 보고 싶다고 할 때만. 효과(배경 움직임 · 전환 · 글자 애니메이션 · 그림자 · 밀기)는 장면의 말을 더 잘 보여 줄 때 쓰고, 의미 없는 장식은 넣지 않는다. 장면마다 `craft_variety.py suggest` 로 재료를 고르되, 다양성 때문에 원하지 않는 효과를 넣지 않는다.
 6-1. **초안은 초벌이다 — 장면마다 다듬는다**: 초안을 본 뒤 refine 스킬(`engine/craft/session.py`)로 장면마다 디테일 층(구도 · 타이포 · 색 · 빛 · 질감 · 움직임 · 전환 · 소리)을 계획하고, 여러 Craft 앱의 전체 명령에서 골라 시도 → 전 · 후 그림을 직접 보고 고친 뒤 남긴다. 한 앱 · 한 층에 몰리지 않게 `coverage` 로 확인한다. 근거 없는 효과는 넣지 않는다.
 6-2. **레퍼런스를 따른 재료는 나란히 본다**: 썸네일로 짐작해 만들지 않는다. 원본 프레임을 크게 뽑아 재고, 고칠 때마다 `engine/checks/refmatch.py pair` 로 레퍼런스와 한 장에 놓고 본다. 사람은 실제 자료(퍼온 클립 · 자료 사진 · 스톡)로.
+6-3. **Craft 앱(MCP)은 묶어서**: 명령은 `command_batch` 한 번, 키프레임 여러 개는 `script.run`(JSX) 한 번으로 보낸다 — 키 하나에 도구 한 번씩 부르지 않는다(2026-11-17: 한 턴에 도구 88번). 명령 찾기는 `python3 engine/craft/craft_catalog.py search "<하고 싶은 일>"`(전체 목록 도구는 쓰지 않는다). MCP 세션은 턴마다 새로 켜진다 — 시험 작업은 턴 끝에 `data/compositions/<id>/…` 프로젝트 파일로 저장하고, 확정한 화면은 콘티 `type: craft` 재료(다시 만들 수 있는 명령 목록)로 남긴다.
+6-4. **두 단계로 만든다(2026-11-17 — 한 줄로 차례차례 돌면 15분을 넘겼다)**: ① 대본(제목 · 장면별 narration · caption · sec 대략, 재료는 비워도 됨)을 Write → ② `python3 engine/produce.py data/storyboards/<id>.json --prep --bg`(이해 관문 · 음성을 뒤에서 — 바로 돌아온다) → ③ 그동안 장면 재료(2D 는 craft-2d 예시 복사, 시각은 `$CUE:낱말`)를 콘티에 넣는다 — **첫 장면 재료를 넣은 뒤 `produce.py <콘티> --prep-status` 로 확인**: 막혔으면(이해 관문 · 구조) 재료보다 대본을 먼저 고치고 ②를 다시. **prep 을 기다리지 않는다**(until · tail -F · Monitor 로 지켜보지 않는다 — ④의 produce 가 알아서 기다린다). prep 의 각본가가 대사를 다듬어도 `$CUE` 는 가장 닮은 낱말을 찾아가므로 낱말 맞추기로 콘티를 고치지 않는다 — **narration · caption · title 은 바꾸지 않는다**(바꾸면 대본 단계를 다시 한다) → ④ `python3 engine/produce.py data/storyboards/<id>.json`(prep 이 아직 돌면 기다렸다가 연출 · 디자인 · 렌더). 대본 단계 전에 lint 를 돌리지 않는다(재료가 비어 걸린다).
+   **한 영상에 요점 하나 — 40초 이하(비교 · 순위 45초) · 장면 9개 이하**(L70, produce 가 대본 단계 전에 막는다). 곁가지(두 번째 언어 · 설정법 · 도구)는 다음 영상으로.
+   **2D 장면 · 콘티 쓰기 속도**: 2D 설명 장면은 `engine/spec/examples/craft-2d.example.json` 을 복사해 고친다(EffectCraft 코드는 기본 함수 `K.*` — 새 공용 함수 · 엔진 소스 읽기 금지). 콘티는 Write 한 번 → lint 한 번 → 걸린 것을 모아 `knob.py set` 한 줄(또는 Write 한 번)로 고친다 — Edit 를 한 칸씩 이어 붙이지 않는다(2026-11-17: Edit 20번 · lint 5번에 5분).
 7. 요청 범위만 고친다. 사용자가 장면 하나를 말하면 그 장면만. `data/compositions/<id>/overrides.json`(사용자 손 수정)은 지우거나 덮어쓰지 않는다.
 8. 그림을 흔들리게 만드는 방법(ffmpeg zoompan · 정수 좌표 켄번스)은 쓰지 않는다. 움직임은 EffectCraft(키프레임 · 이징 · 프리셋)로 준다.
 

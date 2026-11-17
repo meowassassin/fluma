@@ -56,7 +56,14 @@
 .pgx-unk { display: inline-grid; place-items: center; border-radius: 4px; border: 1px dashed var(--line-3); color: var(--tx-4); font: 700 11px var(--mono); }
 .pgx-tile { display: block; border-radius: 4px; object-fit: cover; }
 .pgx-glyph { display: inline-grid; place-items: center; border-radius: 4px; background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-2); }
-.pgx-mi.is-spin::after { content: ""; position: absolute; inset: -3px; border-radius: 7px; border: 1.5px solid transparent; border-top-color: var(--run); border-right-color: var(--run); animation: pgx-spin 1s linear infinite; }
+/* 도는 중: 상자를 돌리지 않고(모서리가 튀어 흔들려 보였다) 빛줄기만 둥근 테두리를 따라 돈다 */
+@property --pgx-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.pgx-mi.is-spin::after { content: ""; position: absolute; inset: -3px; border-radius: 7px; padding: 2px; pointer-events: none;
+  background: conic-gradient(from var(--pgx-a), transparent 0deg 200deg, color-mix(in srgb, var(--run) 35%, transparent) 280deg, var(--run) 350deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: pgx-beam 1.2s linear infinite; }
+.pgx-mi.is-spin::before { content: ""; position: absolute; inset: -3px; border-radius: 7px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--run) 22%, transparent); pointer-events: none; }
+@keyframes pgx-beam { to { --pgx-a: 360deg; } }
 
 /* 세로 목록(편집기 옆 패널) */
 .pgx-list { list-style: none; margin: 0; padding: 0; position: relative; display: flex; flex-direction: column; gap: 6px; }
@@ -123,3 +130,5 @@
 .pgx-revise { display: flex; gap: 4px; width: 100%; }
 .pgx-revise input { flex: 1; min-width: 0; height: 22px; padding: 0 6px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--bg-0); color: var(--tx-1); font: 11px var(--font); }
 .pgx-thumbs.is-tall figure { width: 120px; }
+.pgx-now { font: 500 12px var(--font); color: var(--tx-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pgx-now.is-wait { color: var(--wait); }

@@ -67,21 +67,28 @@ def download(vid: str, d: Path) -> Path:
     if not got:
         raise SystemExit(f"영상을 받지 못했습니다: {r.stderr.strip()[-300:]}")
     # 브라우저에서 바로 재생되게 H.264 + AAC mp4 로 맞춘다(이미 그렇다면 복사만)
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(got[0]), "-t", str(MAX_SEC), "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
-                    "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(dst)], check=True)
+    p0 = probe(got[0])
+    if (got[0].suffix.lower() == ".mp4" and p0.get("vcodec") == "h264"
+            and p0.get("acodec") in ("aac", None) and (p0.get("duration") or 0) <= MAX_SEC + 0.5):
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(got[0]), "-c", "copy", "-movflags", "+faststart", str(dst)], check=True)
+    else:
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(got[0]), "-t", str(MAX_SEC), "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
+                        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "96k", "-movflags", "+faststart", str(dst)], check=True)
     for g in got:
         g.unlink(missing_ok=True)
     return dst
 
 
 def probe(src: Path) -> dict:
-    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,width,height,r_frame_rate:format=duration",
+    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,codec_name,width,height,r_frame_rate:format=duration",
                         "-of", "json", str(src)], capture_output=True, text=True, check=True)
     j = json.loads(r.stdout)
     v = next((s for s in j["streams"] if s["codec_type"] == "video"), {})
+    au = next((s for s in j["streams"] if s["codec_type"] == "audio"), {})
     num, den = (v.get("r_frame_rate") or "30/1").split("/")
     return {"duration": round(float(j["format"]["duration"]), 2), "w": v.get("width"), "h": v.get("height"),
-            "fps": round(float(num) / max(1, float(den)), 2), "audio": any(s["codec_type"] == "audio" for s in j["streams"])}
+            "fps": round(float(num) / max(1, float(den)), 2), "audio": bool(au),
+            "vcodec": v.get("codec_name"), "acodec": au.get("codec_name")}
 
 
 # ---------------------------------------------------------------- 샷
@@ -423,9 +430,18 @@ def speech(src: Path, model_name: str, lang_from: Path | None = None, prompt: st
     # 파일 경로 대신 16kHz 소리 배열을 넘긴다 (설치된 PyAV 버전과 faster-whisper 의 파일 열기가 안 맞는 문제 회피)
     pcm = load_audio(src, 16000).mean(axis=1)
     lang = None
-    if lang_from is not None:
-        try:   # 받아쓰기와 같은 방식(음성 구간만)으로 판정해야 짧은 말에서도 받아쓰기 때 판정과 같아진다
-            _, info = m.transcribe(load_audio(lang_from, 16000).mean(axis=1), vad_filter=True, beam_size=1, without_timestamps=True)
+    same_src = lang_from is not None and Path(lang_from).resolve() == Path(src).resolve()
+    if lang_from is not None and not same_src:
+        try:   # 앞 25초로 언어만 빠르게 판정(전체 길이를 두 번 돌리지 않는다)
+            lang_pcm = load_audio(lang_from, 16000).mean(axis=1)[:16000 * 25]
+            _, info = m.transcribe(lang_pcm, vad_filter=True, beam_size=1, without_timestamps=True)
+            lang = info.language
+        except Exception:  # noqa: BLE001
+            lang = None
+    elif same_src and not prompt:
+        # 같은 트랙(--quick)은 1차 25초로 언어만 가볍게 보고 한국어 초기 힌트를 쓸지 정한다
+        try:
+            _, info = m.transcribe(pcm[:16000 * 25], vad_filter=True, beam_size=1, without_timestamps=True)
             lang = info.language
         except Exception:  # noqa: BLE001
             lang = None

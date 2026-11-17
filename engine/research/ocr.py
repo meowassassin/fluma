@@ -58,7 +58,7 @@ def _colors(crop: np.ndarray) -> tuple[str, str]:
 
 
 _SEEN: list = []        # 최근에 읽은 프레임(작은 회색 그림, 결과) — 자막이 그대로인 프레임은 다시 읽지 않는다
-ACCEPT = 0.9            # 첫 언어로 이만큼 확신하면 다른 언어는 읽지 않는다(언어마다 읽으면 두세 배 느림)
+ACCEPT = 0.85           # 첫 언어로 이만큼 확신하면 다른 언어는 읽지 않는다(언어마다 읽으면 두세 배 느림)
 
 
 def _thumb(img: np.ndarray) -> np.ndarray:
@@ -72,9 +72,11 @@ def read(image, langs=("korean", "en"), min_score: float = 0.5) -> list[dict]:
     H, W = img.shape[:2]
     langs = [LANG_ALIASES.get(l.strip().lower(), l.strip().lower()) for l in langs if l.strip()]
     th = _thumb(img)
-    for t0, key, res in _SEEN:          # 거의 같은 프레임(글자 한 자만 바뀌어도 그 자리 화소가 크게 변한다)
-        if key == (tuple(langs), min_score) and t0.shape == th.shape and int(np.abs(t0 - th).max()) < 28:
-            return [dict(o) for o in res]
+    for t0, key, res in _SEEN:          # 거의 같은 프레임(미세한 커서/배경 움직임은 건너뛴다)
+        if key == (tuple(langs), min_score) and t0.shape == th.shape:
+            diff = np.abs(t0 - th)
+            if int(diff.max()) < 28 or (float(diff.mean()) < 1.5 and int((diff > 24).sum()) <= 25):
+                return [dict(o) for o in res]
     r0 = _rapid(langs[0])(img, use_cls=False)        # 위치 찾기 + 첫 언어 읽기를 한 번에(글줄을 묶어 읽어 빠르다)
     rows = list(zip(r0.boxes, r0.txts, r0.scores)) if r0.boxes is not None and r0.txts else []
     out = []

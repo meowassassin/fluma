@@ -44,6 +44,23 @@ def resolve(sb: dict) -> dict:
             out[k] = d[k]
     if "bg_motion" in ((sb.get("intent") or {}).get("ban") or []) and "bg_motion" in out:   # 콘티 intent.ban — 움직이는 배경 금지
         out["bg_motion"] = NONE["bg_motion"]
+    # 납품 티어: 아트·풀 레이아웃이면 숏츠 기본(약한 배경 움직임 · 짧은 등장 · 살짝 밀기)
+    d = sb.get("direction") or {}
+    qt = (sb.get("meta") or {}).get("quality_tier")
+    if qt == "delivery" or (d.get("layout") == "full" and qt != "fast"):
+        if d.get("art") and not d.get("bg_motion") and out["bg_motion"] is False:
+            out["bg_motion"] = True
+        if not d.get("cam_push") and out["cam_push"] == 1.0:
+            out["cam_push"] = 1.045
+        if d.get("enter") is None and out.get("enter") is None:
+            out["enter"] = "fadeIn"
+        if not d.get("text_pop") and not out.get("text_pop"):
+            try:
+                from craft.subs_policy import subs_mode
+
+                out["text_pop"] = subs_mode(sb) != "clause"
+            except Exception:  # noqa: BLE001
+                out["text_pop"] = True
     return out
 
 

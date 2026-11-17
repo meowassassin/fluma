@@ -13,6 +13,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 CAT = ROOT / ".claude" / "skills" / "crafts" / "catalog"
+# 초안 조립 단계가 쓰는 앱(움직임 EffectCraft → 소리 SoundCraft → 조립 FilmCraft) — 파이프라인 그래프의 '예정' 표시가 여기서 읽는다
+DRAFT_APPS = ("effectcraft", "soundcraft", "filmcraft")
 SID: str | None = None                 # materials.build 가 정한다
 ALL: dict[str, set] = {}               # 이 렌더 전체
 _TLS = threading.local()               # 스레드별 재료 하나(begin ~ take)

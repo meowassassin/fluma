@@ -120,16 +120,24 @@ const Elsewhere: React.FC<{ sessionId: string }> = ({ sessionId }) => {
   const { data: projects = [] } = useProjects();
   const nav = useNavigate();
   const others = active.filter((a) => a.id !== sessionId);
-  if (!others.length) return null;
+  const mine = active.find((a) => a.id === sessionId && a.waiting);
+  if (!others.length && !mine) return null;
   return (
     <div className="elsewhere" role="status">
+      {mine && (   // 동시 실행 상한(설정 agent.maxConcurrent) 때문에 차례를 기다리는 중 — 앞 작업이 끝나면 저절로 시작
+        <div className="elsewhere-r">
+          <FlumaBounce s={14} />
+          <span className="grow ellipsis"><b>{t("차례를 기다리는 중 · {n}번째", { n: mine.waiting ?? 1 })}</b> <span className="faint">· {t("다른 영상 작업이 끝나면 바로 시작합니다")}</span></span>
+          <Button size="sm" variant="ghost" icon="stop" onClick={() => stopAgent(mine.id)}>{t("취소")}</Button>
+        </div>
+      )}
       {others.map((a) => {
         const where = a.id.startsWith("_") ? t("작업 공간 (홈 · 트렌드)") : t("영상 “{title}”", { title: projects.find((x) => x.id === a.id)?.title ?? a.id });
         const now = a.tool ? doing([{ name: a.tool.name, input: a.tool.input }]) : null;
         return (
           <div key={a.id} className="elsewhere-r">
             {!a.id.startsWith("_") && a.skill !== "plan" ? <FlumaStrain s={14} /> : <FlumaBounce s={14} />}
-            <span className="grow ellipsis" title={a.user}><b>{now ?? t("작업 중")}</b> <span className="faint">· {where}</span></span>
+            <span className="grow ellipsis" title={a.user}><b>{a.waiting ? t("대기 중 · {n}번째", { n: a.waiting }) : now ?? t("작업 중")}</b> <span className="faint">· {where}</span></span>
             <Button size="sm" variant="ghost" onClick={() => nav(a.id.startsWith("_") ? "/trends" : `/p/${a.id}`)}>{t("보기")}</Button>
             <Button size="sm" variant="danger" icon="stop" disabled={a.stopping} onClick={() => stopAgent(a.id)}>{a.stopping ? t("멈추는 중") : t("멈춤")}</Button>
           </div>
