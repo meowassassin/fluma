@@ -590,7 +590,7 @@ def main() -> int:
     if deep and not a.scenes:
         issues += qg.from_review(sid)                                     # 디자이너 정지 화면 검토가 본 문제(겹침 · 잘림 · 안전 영역은 막음)
     issues += [qg.issue(c, None, m, block=False) for c, m in soft]      # 말투 · 구성 · 절차(lint T · D01 · D02 · D04 · D05 · R) — 권고
-    q_block, q_waived, q_adv = qg.split(sb, issues)
+    q_block, q_waived, q_adv = qg.split(sb, qg.relevant(sb, issues))
     warns = [qg.line(x) for x in q_block + q_adv]
     import usage as _usage
     depth = _usage.depth(sid)

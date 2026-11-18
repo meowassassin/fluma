@@ -52,6 +52,14 @@ def rgb(hexs: str, default=(0.06, 0.29, 0.49)) -> list[float]:
     return [round(int(h[i:i + 2], 16) / 255, 4) for i in (0, 2, 4)]
 
 
+# 가운데 정렬 글자의 최대 폭(화면 폭 비율). 쇼츠 오른쪽 12% 는 좋아요 · 댓글 버튼 — 가운데에서 대칭이면 폭 0.76 까지, 상자 여백(36px)을 빼 0.72.
+# 2026-11-18: 0.86 이라 한 줄 자막 끝 글자가 x≈1000 까지 가 버튼과 겹쳤다(디자이너 검토 D21)
+SAFE_TEXT_W = 0.72
+# 위쪽 고정 제목 가운데 높이(화면 높이 비율). 위 8%(154px)는 상태 표시줄 — 상자(위아래 여백 30px)의 위 끝이 그 아래에 오게.
+# 2026-11-18: 0.062 라 상자가 62~138px 로 상태 표시줄 안에 있었다(디자이너 검토 D21)
+PIN_Y = 0.112
+
+
 def chunks(words: list[dict], max_chars: int = 9, max_words: int = 2) -> list[dict]:
     """단어 자막 → 1~2어절 덩어리(레퍼런스: 말하는 1~3단어만 따라 바뀜)"""
     out, cur = [], []
@@ -1427,6 +1435,8 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             # 훅 세 칸(writer 스킬)의 '화면 글자' — 본문 장면은 말 자막만(이중 노출 방지), 훅·맺음만 위 띠
             st_size = int(H * (0.05 if len(cap) <= 8 else 0.042 if len(cap) <= 14 else 0.034))
             st_y = float(d.get("screen_text_y", 0.17)) * H
+            if pin:   # 고정 제목 상자 아래로(겹치지 않게)
+                st_y = max(st_y, PIN_Y * H + 64 + st_size * 0.75)
             st_col = rgb(d.get("color_accent") or "#ff5a36")
             J(f"var stx = txt(c, 'Screen text', {js(cap)}, {js(title_font)}, {st_size}, {js(st_col)}, null, 0, [{W / 2}, {st_y:.0f}]);"
               f" var sto = stx.property('Transform').property('Opacity'); sto.setValueAtTime(0, 0); sto.setValueAtTime(0.15, 0); sto.setValueAtTime(0.45, 100);"
@@ -1447,7 +1457,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 y = y0 + i * size * 1.3
                 ti = t0 + i * 0.25
                 J(f"var ct = txt(c, {js(f'Caption {i + 1}')}, {js(line)}, {js(title_font if ed else font)}, {size}, {js(fg)}, {stroke}, [{W / 2}, {y:.0f}]);")
-                J(f"fitText(ct, {W * 0.86:.0f});")
+                J(f"fitText(ct, {W * SAFE_TEXT_W:.0f});")
                 J(f"var cto = ct.property('Transform').property('Opacity'); cto.setValueAtTime(0, 0); cto.setValueAtTime({ti:.3f}, 0); cto.setValueAtTime({ti + 0.6:.3f}, 100); ease(cto, 60);"
                   f" var ctp = ct.property('Transform').property('Position'); ctp.setValueAtTime({ti:.3f}, [{W / 2}, {y + size * 0.3:.0f}]); ctp.setValueAtTime({ti + 0.7:.3f}, [{W / 2}, {y:.0f}]); ease(ctp, 80);"
                   f" cto.setValueAtTime({max(ti + 0.7, sec - 0.3):.3f}, 100); cto.setValueAtTime({sec:.3f}, 0);")
@@ -1508,7 +1518,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             fg = rgb(gs.get("hot", "#ffd60a")) if hot else rgb(gs.get("fg", "#ffffff"))   # 강조 낱말 색(방향 subs.hot — 밝은 상자면 빨강 등)
             stroke = "null, 0" if gs.get("box") else f"[0.02, 0.02, 0.05], {max(6, size // 5)}"     # 상자가 있으면 외곽선 없이(뭉개짐)
             J(f"var s = txt(c, {js(f'Sub {i + 1:02d}')}, {js(ch['text'])}, {js(font)}, {size}, {js(fg)}, {stroke}, [{W / 2}, {gs['y'] * H:.0f}]);")
-            J(f"fitText(s, {W * 0.86:.0f});")   # 좌우 7% 안전 여백 — 길면 두 줄, 그래도 넘으면 줄임
+            J(f"fitText(s, {W * SAFE_TEXT_W:.0f});")   # 가운데 정렬 글자가 오른쪽 12%(좋아요 · 댓글 버튼)에 닿지 않게 — 길면 두 줄, 그래도 넘으면 줄임
             pop = f"var sS = s.property('Transform').property('Scale'); sS.setValueAtTime({a_:.3f}, [88, 88]); sS.setValueAtTime({a_ + 0.09:.3f}, [100, 100]);"
             J(f"s.inPoint = {a_:.3f}; s.outPoint = {b_:.3f};")
             if gs.get("box"):   # 자막 상자(방향 subs.box) — 글자 뒤 반투명 판, 그 구절 동안만
@@ -1546,9 +1556,9 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
     if pin:
         J("\n// ---------- 위쪽 고정 주제 제목(영상 전체)")
         psz = max(36, min(52, int(W * 0.84 / max(1, len(pin)))))   # 한 줄에 들어가게
-        J(f"var pt = txt(main, 'PinTitle', {js(pin)}, {js(font)}, {psz}, [1, 1, 1], null, 0, [{W / 2}, {H * 0.062:.0f}]);")
+        J(f"var pt = txt(main, 'PinTitle', {js(pin)}, {js(font)}, {psz}, [1, 1, 1], null, 0, [{W / 2}, {H * PIN_Y:.0f}]);")
         J("var pbx = fitBox(main, 'PinBox', 'PinTitle', [0.05, 0.05, 0.08], 56, 30, 18); pbx.property('Transform').property('Opacity').setValue(82);")
-        g["pill"] = {**g["pill"], "y": max(g["pill"]["y"], 0.115)}      # 숫자 알약은 그 아래로
+        g["pill"] = {**g["pill"], "y": max(g["pill"]["y"], PIN_Y + 0.055)}      # 숫자 알약은 그 아래로
     if pills:
         gp = g["pill"]
         size = int(gp["h"] * H * 1.5)

@@ -379,6 +379,16 @@ def main():
     a = ap.parse_args()
     path = Path(a.storyboard)
     sb = json.loads(path.read_text(encoding="utf-8"))
+    prev0 = sb.get("direction") or {}
+    if a.write and not a.reroll and (prev0.get("locked") or prev0.get("user_locked")):
+        # 사용자가 고른 시안 · 직접 잠근 방향은 다시 만들지 않는다(2026-11-18 감사: 고른 시안이 다음 제작에서 지워졌다)
+        import copy
+        import sbio
+        base = copy.deepcopy(sb)
+        design_merge(sb)
+        sbio.save(path, base, sb)
+        print(f"[기록] direction 잠금({prev0.get('picked') or 'user_locked'}) — 그대로 둠")
+        return
     # 레퍼런스 스타일 카드가 있으면 무작위로 고르지 않는다 — 카드의 방향(바탕 · 배치 · 자막 · 움직임 · 전환)을 그대로
     card = style_card(sb)
     if card and not a.reroll:
@@ -432,7 +442,7 @@ def main():
     if a.write:
         seed = int(hashlib.sha1(f"{sb.get('id')}:{a.reroll}".encode()).hexdigest(), 16)
         prev = sb.get("direction") or {}
-        keep = {k: prev[k] for k in ("anchors", "feel", "methods", "subs", "art", "number_punch") if k in prev}   # 감독 기둥 · 고른 느낌 등 직접 적은 칸은 지우지 않는다(2026-11-11: 통째로 덮어 anchors 가 사라졌다)
+        keep = {k: prev[k] for k in ("anchors", "feel", "methods", "subs", "art", "number_punch", *DESIGNER_KEYS) if k in prev}   # 감독 기둥 · 고른 느낌 등 직접 적은 칸은 지우지 않는다(2026-11-11: 통째로 덮어 anchors 가 사라졌다)
         col = colors(res["pick"], res["ref"], seed)
         fp = (prev.get("feel") or {}).get("palette") or {}
         col.update({f"color_{k}": v for k, v in fp.items() if k in ("bg", "surface", "text", "muted", "accent")})   # 고른 느낌의 색이 무작위 팔레트보다 앞선다

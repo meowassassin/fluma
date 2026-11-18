@@ -162,7 +162,10 @@ def _dedupe_slides(mats: list[dict], fmt: str | None) -> list[dict]:
     if len(slides) <= 1:
         return mats
     keep: dict | None = None
-    if fmt == "compare":
+    designed = next((m for m in slides if m.get("type") == "ui_mock" and str(m.get("id") or "").endswith("app")), None)
+    if designed is not None:   # 디자이너가 새로 만든 앱 화면이 이긴다(2026-11-18 감사: 앞에 있던 도표만 남기고 지웠다)
+        keep = designed
+    elif fmt == "compare":
         keep = next((m for m in slides if m.get("type") == "diagram"), None) or slides[0]
     else:
         keep = next((m for m in slides if m.get("type") != "info_card"), slides[0])

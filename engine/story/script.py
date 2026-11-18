@@ -23,29 +23,49 @@ def speaking(sb: dict) -> list[int]:
     return [i for i, sc in enumerate(sb.get("scenes") or []) if sc.get("say") is not False]
 
 
+def _fp(s: str) -> str:
+    import hashlib
+    return hashlib.sha1(re.sub(r"\s+", " ", s or "").strip().encode()).hexdigest()[:12]
+
+
 def apply(sb: dict) -> tuple[bool, str]:
+    """script ↔ 장면 narration 맞추기. 마지막으로 맞춘 뒤 script 는 그대로인데 narration 만 바뀌었으면(knob · 손 편집)
+    narration 이 새것 — script 를 narration 으로 다시 만든다. 아니면 script 가 새것 — narration 에 나눠 넣는다.
+    2026-11-18 감사: 장면 narration 만 고치면 다음 제작에서 옛 script 로 되돌아갔다."""
     s = sb.get("script")
     if not isinstance(s, str) or not s.strip():
         return False, ""
     ps, idx = pieces(s), speaking(sb)
+    meta = sb.setdefault("meta", {}) if isinstance(sb.get("meta", {}), dict) else {}
+    cur = [str(sb["scenes"][i].get("narration") or "").strip() for i in idx]
+    if meta.get("script_fp") == _fp(s) and len(ps) == len(idx) and cur != ps and all(cur):
+        sb["script"] = " / ".join(cur)
+        meta["script_fp"] = _fp(sb["script"])
+        return True, f"장면 나레이션 → 대본 {len(idx)}칸(나레이션을 직접 고친 것을 살림)"
     if len(ps) != len(idx):
         raise ValueError(f"대본 조각 {len(ps)}개 ≠ 말하는 장면 {len(idx)}개 — script 의 ' / ' 를 장면 수에 맞추거나, 말 없는 장면에 \"say\": false")
     changed = False
     for i, p in zip(idx, ps):
         if sb["scenes"][i].get("narration") != p:
             sb["scenes"][i]["narration"] = p; changed = True
+    if meta.get("script_fp") != _fp(s):
+        meta["script_fp"] = _fp(s); changed = True
     return changed, f"대본 → 장면 {len(idx)}개"
 
 
 def main() -> int:
     sp = Path(sys.argv[1])
     sb = json.loads(sp.read_text("utf-8"))
+    import copy
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import sbio
+    base = copy.deepcopy(sb)
     try:
         changed, msg = apply(sb)
     except ValueError as e:
         print(f"[대본] {e}", file=sys.stderr); return 1
     if changed:
-        sp.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", "utf-8")
+        sbio.save(sp, base, sb)
     if msg:
         print(f"[대본] {msg}{' (나레이션 갱신)' if changed else ''}")
     return 0

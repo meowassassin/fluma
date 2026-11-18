@@ -37,16 +37,17 @@ def from_review(sid: str) -> list[dict]:
     2026-11-18 실측: 검토가 '오리가 라벨을 덮음' · '고정 제목이 상태 표시줄 안'을 찾았는데 꺼진 refine 으로만 넘겨 아무도 고치지 않았다"""
     f = ROOT / "data" / "compositions" / sid / "skill_pass" / "review.json"
     try:
-        probs = json.loads(f.read_text("utf-8")).get("problems") or []
+        rec = json.loads(f.read_text("utf-8"))
     except (OSError, ValueError):
         return []
+    probs, stale = rec.get("problems") or [], bool(rec.get("stale"))   # stale: 검토 상한으로 지금 그림을 다시 못 봄 → 권고로만
     out = []
     for x in probs:
         if not isinstance(x, dict) or not x.get("what"):
             continue
         kind = str(x.get("kind") or "")
         msg = f"{kind + ': ' if kind else ''}{x['what']}" + (f" → {x['fix']}" if x.get("fix") else "")
-        out.append(issue("D21", x.get("scene"), msg, block=any(k in kind for k in REVIEW_BLOCK_KINDS)))
+        out.append(issue("D21", x.get("scene"), msg + (" (지난 검토 — 지금 그림으로 다시 보지 못함)" if stale else ""), block=not stale and any(k in kind for k in REVIEW_BLOCK_KINDS)))
     return out
 
 
@@ -66,6 +67,31 @@ def waived(sb: dict, it: dict) -> str | None:
         if v and (v.get("user_said") if isinstance(v, dict) else None):
             return v.get("why") or v["user_said"]
     return None
+
+
+# 실제 자료 · 사람을 넣으라는 권고 — 사용자가 2D 만 · 실제 사진 금지를 요구했으면 뜻이 정반대라 뺀다
+REAL_MATERIAL_CODES = {"T25", "R06", "R07"}
+NO_REAL_WORDS = ("실제 사진", "스톡", "실사", "2D 만", "2D 설명", "2D 도식", "2D 애니메이션", "생성 모델 없이")
+
+
+def relevant(sb: dict, issues: list[dict]) -> list[dict]:
+    """권고 소음 줄이기(2026-11-18: 한 편에 권고 22건 — 사용자 요구와 반대인 것 · 장면마다 같은 말이 섞여 아무도 읽지 않았다).
+    막음은 건드리지 않는다."""
+    it = sb.get("intent") or {}
+    said = " ".join(str(x) for x in [*(it.get("must_not") or []), *(it.get("must") or []), *(sb.get("constraints") or [])])
+    no_real = any(w in said for w in NO_REAL_WORDS)
+    out, r01 = [], []
+    for x in issues:
+        if not x["block"] and no_real and x["code"] in REAL_MATERIAL_CODES:
+            continue
+        if not x["block"] and x["code"] == "R01":                 # 장면마다 같은 말 → 한 줄로
+            m = re.match(r"(\d+)장면", x["msg"])
+            r01.append(str(x.get("scene") or (m.group(1) if m else "?")))
+            continue
+        out.append(x)
+    if r01:
+        out.append(issue("R01", None, f"{'·'.join(r01)}장면이 앞 장면과 같은 형식 — 장면마다 형식을 바꾼다", block=False))
+    return out
 
 
 def split(sb: dict, issues: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:

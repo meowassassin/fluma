@@ -329,9 +329,16 @@ def main():
         sys.exit("사용: python engine/voice/assemble_audio.py data/storyboards/<id>.json [--keep-sec]")
     sb_path = Path(args[0])
     sb = json.loads(sb_path.read_text(encoding="utf-8"))
+    import copy
+    import sbio                                   # 합성(수 분) 동안 에이전트가 고친 칸을 지우지 않게 — 이 단계가 바꾼 칸만 얹는다
+    _base = [copy.deepcopy(sb)]
+
+    def _save() -> None:
+        sbio.save(sb_path, _base[0], sb)
+        _base[0] = copy.deepcopy(sb)
     import script as _script                      # 대본 한 덩어리(sb.script) → 장면 나레이션
     if _script.apply(sb)[0]:
-        sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _save()
     sid = sb["id"]
     work = ROOT / "data" / "audio" / sid
     work.mkdir(parents=True, exist_ok=True)
@@ -340,7 +347,7 @@ def main():
     from craft.pace_policy import apply_voice_pace, speech_led
 
     if apply_voice_pace(sb):
-        sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _save()
         print(f"[음성] 말 주도 박자 — 합성 배속 ×{sb['voice']['speed']}")
     # 말 속도(콘티 voice.speed, 0.8~1.6): 엔진이 직접 빠르게 말한다(합성 뒤 빨리 감기보다 자연스럽다)
     speed = max(0.8, min(1.6, float((sb.get("voice") or {}).get("speed") or 1.0)))
@@ -398,10 +405,10 @@ def main():
                 raise
             print(f"[음성] {prov} 대신 {nxt} 로 자동 전환합니다", file=sys.stderr)
             sb.setdefault("voice", {})["fallback"] = {"from": prov, "to": nxt, "why": str(e)[:200]}
-            sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            _save()
             prov, vid, style, vopts = nxt, None, None, {}
     if not tried and (sb.get("voice") or {}).pop("fallback", None) is not None:   # 이번엔 원래 엔진으로 됐다 — 지난 전환 기록 지움
-        sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _save()
 
     # 2) 장면 길이 결정 — 말이 없는 영상(음악 · 화면 주도)은 콘티 길이 그대로. 최소 길이로 늘리면 재료가 끝난 뒤 화면이 빈다
     if keep or not any(p["text"] for p in parts):
@@ -479,7 +486,7 @@ def main():
                         if m.get("type") == "video":
                             m["out"] = round(float(m.get("in") or 0.0) + float(s), 2)
             sb["duration_sec"] = new_dur
-            sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            _save()
             print(f"[콘티] 장면 길이를 실측 음성으로 갱신 → 합계 {new_dur}s ({sb_path})")
 
     out_wav = ROOT / "data" / "audio" / f"{sid}.wav"

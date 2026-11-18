@@ -217,7 +217,8 @@ def text_locks(sb: dict) -> set:
 
 
 def update_text_locks(sb: dict) -> list[str]:
-    """지난 각본가가 바꾼 칸을 그 뒤 누군가 다시 바꿨으면(각본가 수정을 사람이 되돌리거나 고침) 그 칸을 잠근다. 장면 수가 바뀌면(새로 쓴 콘티) 잠금을 푼다"""
+    """각본가가 마지막으로 낸 뒤 누군가 고친 칸을 잠근다(2026-11-18 감사: 각본가가 낸 칸만 잠가, 에이전트가 고친 다른 칸은 되돌릴 수 있었다).
+    절반 넘게 바뀌었거나 장면 수가 바뀌면 새 초안으로 보고 잠금을 푼다"""
     sid, n = sb["id"], len(sb.get("scenes") or [])
     try:
         d = json.loads(_locks_path(sid).read_text("utf-8"))
@@ -228,9 +229,13 @@ def update_text_locks(sb: dict) -> list[str]:
         rec = json.loads((ROOT / "data" / "compositions" / sid / "skill_pass" / "writer.json").read_text("utf-8"))
     except (OSError, ValueError):
         rec = {}
-    tin, tout, cur = rec.get("text_in") or {}, rec.get("text_out") or {}, _text_fields(sb)
-    added = [k for k in cur if k in tin and k in tout and tin[k] != tout[k] and cur[k] != tout[k] and k not in keys]
-    keys |= set(added)
+    tout, cur = rec.get("text_out") or {}, _text_fields(sb)
+    diff = [k for k in cur if k in tout and cur[k] != tout[k]]
+    if len(diff) > len(cur) / 2:          # 콘티를 새로 썼다(초안) — 각본가가 다듬을 차례, 잠금도 새로
+        keys, added = set(), []
+    else:                                 # 각본가가 낸 뒤 누군가(에이전트 · 사용자 · knob) 고친 칸 = 사람이 정한 칸
+        added = [k for k in diff if k not in keys]
+        keys |= set(added)
     _locks_path(sid).parent.mkdir(parents=True, exist_ok=True)
     _locks_path(sid).write_text(json.dumps({"scenes": n, "keys": sorted(keys)}, ensure_ascii=False, indent=1), "utf-8")
     return added
@@ -247,23 +252,25 @@ def writer_apply(sb: dict, patch: dict) -> list[str]:
     ch = []
     scn = sb.get("scenes") or []
     locked = set(patch.get("_locked") or [])
-    if locked and isinstance(patch.get("script"), str):   # 잠근 칸은 지금 대사로 되돌려 둔다
-        parts = [x.strip() for x in patch["script"].split("/")]
-        if len(parts) == len(scn):
-            patch = dict(patch, script=" / ".join(scn[i].get("narration") or t if f"s{i + 1}.narration" in locked else t for i, t in enumerate(parts)))
     if isinstance(patch.get("script"), str):
         parts = [x.strip() for x in patch["script"].split("/")]
-        if len(parts) == len(scn) and all(parts):
-            # 장면 대사 스키마 한도(60자)를 넘긴 칸은 받지 않고 원래 대사를 둔다 — 2026-11-18 실측: 넘긴 대사가 L01 로 막혀 각본가를 두 번 더 불렀다
-            over = [i for i, t in enumerate(parts) if len(t) > NARRATION_MAX]
-            parts = [scn[i].get("narration") or t if i in over else t for i, t in enumerate(parts)]
-            new = " / ".join(parts)
+        speak = [i for i, x in enumerate(scn) if x.get("say") is not False]     # 말 없는 장면(say: false)은 script 칸이 없다(script.py)
+        if len(parts) == len(speak) and len(speak) != len(scn):
+            full = [""] * len(scn)
+            for i, t in zip(speak, parts):
+                full[i] = t
+            parts = full
+        if len(parts) == len(scn) and all(parts[i] for i in speak):
+            # 잠근 칸(사람이 고친 대사) · 한도(60자)를 넘긴 칸은 받지 않고 지금 대사를 둔다
+            keep = [i for i in speak if f"s{i + 1}.narration" in locked]
+            over = [i for i in speak if i not in keep and len(parts[i]) > NARRATION_MAX]
+            parts = [scn[i].get("narration") or "" if (i in keep or i in over or i not in speak) else parts[i] for i in range(len(scn))]
             if over:
                 ch.append("한도 넘긴 대사 버림: " + ", ".join(f"{i + 1}장면" for i in over))
-            if new != " / ".join(s.get("narration") or "" for s in scn):
-                sb["script"] = new
-                for s, t in zip(scn, parts):
-                    s["narration"] = t
+            if any(parts[i] != (scn[i].get("narration") or "") for i in speak):
+                sb["script"] = " / ".join(parts[i] for i in speak)
+                for i in speak:
+                    scn[i]["narration"] = parts[i]
                 ch.append("script")
         else:
             ch.append(f"script 버림(칸 {len(parts)} ≠ 장면 {len(scn)})")
@@ -594,16 +601,28 @@ def is_approved(sbp: Path) -> bool:
     return bool(old) and len(old) == len(new) and all(SequenceMatcher(None, a, b).ratio() >= SMALL_EDIT for a, b in zip(old, new))
 
 
-WRITER_MAX = 3   # 영상 하나에 각본가 실제 실행 상한 — 넘으면 남은 대사 문제는 에이전트가 직접 고친다(FLUMA_WRITER_MAX 로 바꿈)
+WRITER_MAX = 3   # (예전 이름 — PASS_MAX["writer"])
+# 영상 하나에 단계별 실제 LLM 실행 상한. 넘으면 그 단계는 건너뛰고 남은 문제는 에이전트가 직접 고친다(FLUMA_PASS_MAX_<이름> 으로 바꿈).
+# 2026-11-18 실측(11-17 9편): 시청자 최대 40번 · 각본가 33번/편 — 제작을 다시 돌릴 때마다 입력이 조금씩 바뀌어 단계가 매번 다시 돌았다.
+PASS_MAX = {"writer": WRITER_MAX, "viewer": 4, "director": 2, "designer": 2, "review": 4}
 
 
-def _writer_runs(sid: str, add: int = 0) -> int:
-    p = ROOT / "data" / "compositions" / sid / "skill_pass" / "writer_runs.json"
+def pass_max(name: str) -> int:
+    env = os.environ.get(f"FLUMA_PASS_MAX_{name.upper()}") or (os.environ.get("FLUMA_WRITER_MAX") if name == "writer" else None)
+    return int(env) if env else PASS_MAX.get(name, 99)
+
+
+def _runs(sid: str, name: str, add: int = 0) -> int:
+    p = ROOT / "data" / "compositions" / sid / "skill_pass" / f"{name}_runs.json"
     n = (json.loads(p.read_text("utf-8")).get("n", 0) if p.exists() else 0) + add
     if add:
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps({"n": n}), "utf-8")
     return n
+
+
+def _writer_runs(sid: str, add: int = 0) -> int:
+    return _runs(sid, "writer", add)
 
 
 def produce_skill_steps(sbp: Path) -> list[str]:
@@ -644,6 +663,9 @@ def parallel_passes(names: list[str], sbp: Path, force: bool, issues: dict | Non
         h = hashlib.sha1((system + prompt).encode()).hexdigest()[:16]
         if not force and rec_p.exists() and json.loads(rec_p.read_text("utf-8")).get("hash") == h:
             out.append({"pass": n, "skipped": "입력 그대로"})
+            continue
+        if _runs(sb["id"], n) >= pass_max(n):
+            out.append({"pass": n, "skipped": f"{n} 상한({pass_max(n)}회/영상)"})
             continue
         todo[n] = (system, prompt)
     if not todo:
@@ -730,7 +752,10 @@ def comprehension_loop(sbp: Path, force: bool = False, rounds: int = 2, always_w
 
 def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None, pre: tuple | None = None) -> dict:
     t_pass = time.perf_counter()
-    sb = json.loads(sbp.read_text("utf-8"))
+    import copy
+    import sbio
+    base = sbio.load(sbp)                        # 시작 때 읽은 것 — 끝에 '이 단계가 바꾼 칸만' 지금 파일에 얹는다(LLM 을 기다리는 동안 에이전트가 고친 칸을 지우지 않게)
+    sb = copy.deepcopy(base)
     sid = sb["id"]
     rec_p = ROOT / "data" / "compositions" / sid / "skill_pass" / f"{name}.json"
     rec_p.parent.mkdir(parents=True, exist_ok=True)
@@ -744,12 +769,14 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
     if pre is None and not force and rec_p.exists() and json.loads(rec_p.read_text("utf-8")).get("hash") == h:
         _log_skill_timing(sid, name, time.perf_counter() - t_pass, skipped=True)
         return {"pass": name, "skipped": "입력 그대로"}
-    wmax = int(os.environ.get("FLUMA_WRITER_MAX") or WRITER_MAX)
-    if name == "writer" and _writer_runs(sid) >= wmax:
+    cap = pass_max(name)
+    if pre is None and _runs(sid, name) >= cap:
+        if name == "review" and rec_p.exists():   # 그림이 바뀌었는데 다시 못 봤다 — 지난 검토의 문제는 막음이 아니라 권고로(품질 관문 D21)
+            r0 = json.loads(rec_p.read_text("utf-8")); r0["stale"] = True
+            rec_p.write_text(json.dumps(r0, ensure_ascii=False, indent=1), "utf-8")
         _log_skill_timing(sid, name, time.perf_counter() - t_pass, skipped=True, capped=True)
-        return {"pass": name, "skipped": f"각본가 상한({wmax}회/영상) — 남은 대사 문제는 에이전트가 직접 고친다"}
-    if name == "writer":
-        _writer_runs(sid, add=1)
+        return {"pass": name, "skipped": f"{name} 상한({cap}회/영상) — 남은 문제는 에이전트가 직접 고친다"}
+    _runs(sid, name, add=1)
     t_ag = time.perf_counter()
     if name == "review":
         patch, cost = claude(system, prompt, timeout=1500, tools="Read", dirs=[str(ROOT / "data" / "workspace" / "stills"), str(ROOT / "data" / "compositions" / sb["id"])])
@@ -771,12 +798,13 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
             msgs = _lint_lines(sb, new)
             patch2, cost2 = claude(system, prompt + "\n\n# 직전 답이 새로 깬 검사 — 이것을 깨지 않게 다시 낸다(나머지 고친 점은 살린다)\n" + "\n".join(msgs))
             costs.append(cost2)
-            sb2 = json.loads(sbp.read_text("utf-8"))
+            base2 = sbio.load(sbp)
+            sb2 = copy.deepcopy(base2)
             patch2 = dict(patch2, _locked=locked)
             ch2 = apply(sb2, patch2)
             new2 = sorted(_hard_lint(sb2) - before) if ch2 else []
             if not new2:
-                sb, patch, changed, new = sb2, patch2, ch2 + ["(검사를 알려 준 뒤 다시 씀)"], []
+                sb, base, patch, changed, new = sb2, base2, patch2, ch2 + ["(검사를 알려 준 뒤 다시 씀)"], []
             else:
                 new = new2
             cost = sum(costs)
@@ -853,7 +881,7 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
                     changed.append(f"s{n}.ui_mock(증거 없음 — icon/web 콘티 필요)")
                     continue
                 _apply_ui(it, built.get(n))
-    sbp.write_text(json.dumps(sb, ensure_ascii=False, indent=1) + "\n", "utf-8")
+    sb = sbio.save(sbp, base, sb, indent=1)
     # 적용 뒤 입력 해시(다음엔 건너뛰게)
     system2, prompt2 = io(sb, sbp)
     rec = {"pass": name, "hash": hashlib.sha1((system2 + prompt2).encode()).hexdigest()[:16], "changed": changed, "why": patch.get("why"), "problems": patch.get("problems") or patch.get("issues"), "score": patch.get("score"), "understood": patch.get("understood"), "cost_usd": round(sum(costs), 4), "patch": patch}

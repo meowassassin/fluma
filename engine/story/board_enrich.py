@@ -115,8 +115,8 @@ def enrich(sbp: Path, plan: dict | None = None) -> list[str]:
     d = sb.setdefault("direction", {})
     if sb.get("meta", {}).get("compose_mode") == "overlay" and d.get("layout") in (None, "", "card", "band"):
         d["layout"] = "full"
-        locked = list(d.get("locked") or [])
-        if "layout" not in locked:
+        locked = d.get("locked") if isinstance(d.get("locked"), list) else []
+        if d.get("locked") is not True and "layout" not in locked:
             locked.append("layout")
             d["locked"] = locked
         changed.append("direction.layout(lock)")

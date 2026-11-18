@@ -238,6 +238,9 @@ def _voices_of(eng: str, gender: str | None) -> list[dict]:
 
 
 def cmd_auto(sb_path: Path, sb: dict, a):
+    import copy
+    import sbio
+    base = copy.deepcopy(sb)
     v = sb.get("voice") or {}
     st = tts._settings()
     if v.get("source") == "user" or (v.get("engine") and v.get("source") != "auto"):
@@ -278,12 +281,15 @@ def cmd_auto(sb_path: Path, sb: dict, a):
     fmt = str(sb.get("format") or "").replace("format-", "")
     want = (ref or {}).get("cps") or TARGET_CPS.get(fmt, 7.0)
     speed = round(min(1.3, max(0.85, want / cps)), 2) if cps else 1.0
-    nv = {k: val for k, val in v.items() if k in ("intensity", "pitch", "ending") and v.get("engine") == best["engine"]}
+    # 엔진이 같으면 말투 지시를 살리고, 잠근 칸 · 엔진과 무관한 칸(끊어 읽기 · 음량)은 늘 살린다(2026-11-18 감사: voice 를 통째로 새로 만들어 locked 가 사라졌다)
+    nv = {k: val for k, val in v.items() if (k in ("intensity", "pitch", "ending", "style") and v.get("engine") == best["engine"]) or k in ("locked", "cut_pause", "gain_db")}
+    if "speed" in (v.get("locked") or []) and v.get("speed"):
+        speed = v["speed"]
     nv.update({"engine": best["engine"], "id": best["voice"], "speed": speed, "source": "auto",
                "why": (f"레퍼런스({src}) 화자와 가장 닮음(거리 {best['distance']})" if ref else "레퍼런스 없음 — 쓸 수 있는 엔진 중 한국어 품질 1순위") +
                       f" · 말 속도 {want:.1f}자/초에 맞춰 ×{speed}"})
     sb["voice"] = nv
-    sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    sbio.save(sb_path, base, sb)
     m = read_match(sb); m.update({"auto": rows[:8], "ref": ref, "ref_source": src}); write_match(sb, m)
     print(f"[음성] {best['engine']} · {best['title']} ({best['voice']}) · ×{speed} — {nv['why']}" + (f" · 새로 합성 {budget.get('spent', 0)}자" if budget.get("spent") else ""))
 

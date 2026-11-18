@@ -83,7 +83,8 @@ def apply_art(sb: dict) -> dict:
     d = sb.get("direction")
     if not isinstance(d, dict):
         return sb
-    locked = set(d.get("locked") or [])
+    lk = d.get("locked")
+    locked = {f"color_{k}" for k in ("bg", "surface", "text", "muted", "accent")} if lk is True else set(lk if isinstance(lk, list) else [])   # locked: true(시안을 고름) = 전부 잠금
     fp = (d.get("feel") or {}).get("palette") or {}
     for k in ("bg", "surface", "text", "muted", "accent"):      # 고른 느낌의 색이 direct.py 자동 색보다 앞선다(2026-11-11: 크림 느낌을 골랐는데 검은 배경)
         if fp.get(k) and f"color_{k}" not in locked:
