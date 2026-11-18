@@ -334,6 +334,10 @@ def style_card(sb: dict) -> dict | None:
     return None
 
 
+# 디자이너 단계(skill_pass designer · review)가 정하는 칸 — 제작마다 카드로 덮으면 디자이너 · 검토가 매번 같은 값을 다시 넣느라 LLM 을 또 불렀다(2026-11-18 실측: 제작마다 검토 32~65초)
+DESIGNER_KEYS = ("layout", "screen_text_y", "font_title", "font_body", "cam_push")
+
+
 def design_merge(sb: dict) -> dict:
     """레퍼런스 X-ray 에서 잰 디자인 값(craft/design.py from_reference)을 direction 에 채운다.
     사용자가 정한 칸 · 고른 시안(locked)은 그대로 — 자동으로 채운 칸(_auto)만 다시 계산한다. 근거가 없으면 아무것도 넣지 않는다(= 효과 없음)"""
@@ -396,7 +400,7 @@ def main():
             col.update({f"color_{k}": v for k, v in fp.items() if k in ("bg", "surface", "text", "muted", "accent")})   # 고른 느낌의 색이 레퍼런스 색보다 앞선다(배치 · 리듬은 레퍼런스)
             sb["direction"] = {**{k: v for k, v in d.items() if not k.startswith("caption_")}, **col, "style_card": f"data/public/trends/xray/{card['id']}/style/style.json",
                                **({"channel_card": f"data/public/trends/channels/{card['channel']}/channel.json"} if card.get("channel_card") else {}),
-                               **{k: prev[k] for k in ("anchors", "feel", "methods", "subs", "art", "number_punch") if k in prev}}   # 직접 적은 칸 보존
+                               **{k: prev[k] for k in ("anchors", "feel", "methods", "subs", "art", "number_punch", *DESIGNER_KEYS) if k in prev}}   # 직접 적은 칸 · 디자이너가 정한 칸 보존
             if not sb.get("voice"):   # 목소리도 카드에서: 가장 자연스러운 엔진 · 레퍼런스 말 속도 · 이어 말하기 · 말투 지시
                 sb["voice"] = voice_from_card(card)
                 print(f"[기록] 목소리: {sb['voice']}")

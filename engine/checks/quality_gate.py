@@ -5,6 +5,7 @@
   막음(block)  결과 화면 · 소리를 잰 신호 — 고치거나, 사용자가 사유와 함께 면제해야 통과
   권고(advise) 말투 · 구성 · 절차 신호 — 다 보여 주고 고칠 수 있으면 고친다(막지는 않음)
 오탐이 많던 것은 막지 않는다(실측): D03 ref 없음(57건 전부 이 경우 — 지움) · T34 컷 수(연속 craft 장면을 잘못 잼) ·
+D21 디자이너 검토가 본 겹침 · 잘림 · 안전 영역은 막고 나머지는 권고.
 D10 72~80%(레퍼런스 30편 평균 평평한 면적 중간값 55%, 72% 초과 17% — 80% 초과만 막음) · 절차(D01 · D02 · D04 · D05).
 
 면제: 콘티 "waivers": {"D10:3": {"why": "...", "user_said": "사용자가 한 말 그대로"}} — 키는 코드 또는 코드:장면.
@@ -26,6 +27,27 @@ BLOCK_CODES = {"D03", "D11", "D12", "D13", "D14", "D15", "T32", "T33"}   # D10 �
 
 def issue(code: str, scene, msg: str, block: bool | None = None) -> dict:
     return {"code": code, "scene": scene, "msg": msg, "block": (code in BLOCK_CODES) if block is None else block}
+
+
+REVIEW_BLOCK_KINDS = ("겹침", "잘림", "안전 영역")   # 디자이너 정지 화면 검토가 본 문제 중 막는 것 — 글자 · 증거가 안 읽히는 것
+
+
+def from_review(sid: str) -> list[dict]:
+    """디자이너 정지 화면 검토(skill_pass review)가 본 문제 → D21.
+    2026-11-18 실측: 검토가 '오리가 라벨을 덮음' · '고정 제목이 상태 표시줄 안'을 찾았는데 꺼진 refine 으로만 넘겨 아무도 고치지 않았다"""
+    f = ROOT / "data" / "compositions" / sid / "skill_pass" / "review.json"
+    try:
+        probs = json.loads(f.read_text("utf-8")).get("problems") or []
+    except (OSError, ValueError):
+        return []
+    out = []
+    for x in probs:
+        if not isinstance(x, dict) or not x.get("what"):
+            continue
+        kind = str(x.get("kind") or "")
+        msg = f"{kind + ': ' if kind else ''}{x['what']}" + (f" → {x['fix']}" if x.get("fix") else "")
+        out.append(issue("D21", x.get("scene"), msg, block=any(k in kind for k in REVIEW_BLOCK_KINDS)))
+    return out
 
 
 def from_render_line(line: str) -> dict:

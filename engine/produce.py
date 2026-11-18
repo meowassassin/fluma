@@ -587,6 +587,8 @@ def main() -> int:
     issues = [qg.issue("D03", n, f"{mid}: {why} — python3 engine/checks/refmatch.py sheet {rel} {mid} 로 그림을 보고 ok") for n, mid, why in refmatch.status(sb)] + issues
     from designcheck import findings as _df   # 렌더 결과를 재는 디자인 검사
     issues = [qg.issue(x["code"], x["scene"], x["msg"], x.get("block")) for x in (_df(video, sb) if not a.scenes else [])] + issues
+    if deep and not a.scenes:
+        issues += qg.from_review(sid)                                     # 디자이너 정지 화면 검토가 본 문제(겹침 · 잘림 · 안전 영역은 막음)
     issues += [qg.issue(c, None, m, block=False) for c, m in soft]      # 말투 · 구성 · 절차(lint T · D01 · D02 · D04 · D05 · R) — 권고
     q_block, q_waived, q_adv = qg.split(sb, issues)
     warns = [qg.line(x) for x in q_block + q_adv]

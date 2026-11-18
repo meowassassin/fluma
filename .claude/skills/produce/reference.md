@@ -71,7 +71,7 @@
    - 자막은 가로 영상이면 `direction.subs.mode: "clause"`, 대본의 숫자는 숫자로 적는다. 왼쪽으로 가는 인물은 왼쪽을 본다.
    - 재현한 것과 실제 자료를 화면에서 구분한다. 지어낸 대사는 말풍선으로, 사실은 나레이션으로.
    **어댑터는 초벌이다.** 훅과 핵심 장면은 카드 템플릿으로 끝내지 말고 앱을 직접 써서 디자인한다(refine 스킬).
-4. **초안 렌더**: `python3 engine/render.py data/storyboards/<id>.json --draft` → `data/out/<id>-craft-Scenes-draft.mp4`. 결과의 D10~D15 는 렌더를 재서 나온 값이다(빈 화면 · 멈춘 장면 · 작은 주인공 · 같은 구도 · 기본 보라 · 어두움). `depth` 는 앱을 쓴 깊이. 걸린 장면부터 고친다. produce 의 품질 관문(engine/checks/quality_gate.py)이 D03 · D10(80% 초과) · D11~D15 · T32 · T33 이 남으면 stage=quality 로 멈춘다 — 아트 디렉션 · 다듬기(D01 · D02 · D05)는 권고.
+4. **초안 렌더**: `python3 engine/render.py data/storyboards/<id>.json --draft` → `data/out/<id>-craft-Scenes-draft.mp4`. 결과의 D10~D15 는 렌더를 재서 나온 값이다(빈 화면 · 멈춘 장면 · 작은 주인공 · 같은 구도 · 기본 보라 · 어두움). `depth` 는 앱을 쓴 깊이. 걸린 장면부터 고친다. produce 의 품질 관문(engine/checks/quality_gate.py)이 D03 · D10(80% 초과) · D11~D15 · T32 · T33 · D21(디자이너 정지 화면 검토가 본 겹침 · 잘림 · 안전 영역) 이 남으면 stage=quality 로 멈춘다 — 아트 디렉션 · 다듬기(D01 · D02 · D05)는 권고.
    제작 파일: `data/compositions/<id>/craft/` (`motion/*.ecproj` · `audio/*.scraft` · `edit/*.fcproj` · `materials/`). 사람이 Craft 에서 고친 파일은 해시로 알아채 덮어쓰지 않는다(재료: .vectorcraft · 카드 .psd · .fcproj · .sc · .dxf).
    조립 결과: `edit/<id>.thumb.png`(훅 장면 썸네일 후보) · `edit/<id>.markers.csv`(장면 마커) — produce 결과 media 에 같이 나온다. 소리는 SoundCraft 가 -14 LUFS 로 맞추고(craft.json audio.lufs) FilmCraft 는 다시 정규화하지 않는다.
 5. **확인**: `python3 engine/core/still.py data/storyboards/<id>.json <초> …` → PNG 를 Read 로 직접 본다. 글자 겹침 · 잘림 · 빈 화면 · 재료가 말과 맞는지. 고칠 게 있으면 재료 · 콘티를 고치고 4로.
@@ -99,6 +99,9 @@
 초안은 어댑터 초벌이다(앱 기능 몇 개). 장면 정지 화면을 본 뒤 **refine 스킬**로 장면마다 층별 계획 → 앱의 전체 명령에서 골라 시도 → 전 · 후를 보고 고침 → 남김:
 `python3 engine/craft/session.py show data/storyboards/<id>.json <장면>` · `plan` · `try` · `keep` · `coverage`. 남긴 다듬기는 콘티 기록이라 다시 제작해도 적용된다.
 produce 결과의 D02 = 다듬기 없음 · 계획했는데 안 다듬은 층.
+
+## 디자이너 검토(D21)
+produce 가 렌더 앞에서 정지 화면을 디자이너가 본다. 본 문제가 D21 로 나온다 — 겹침 · 잘림 · 안전 영역은 막음, 나머지는 권고. 메시지의 장면 · 재료를 장면 코드에서 고치고 다시 produce(그림이 바뀌면 검토도 다시, 같으면 건너뜀).
 
 ## 레퍼런스 대조(D03)
 레퍼런스 모양을 따르는 재료에는 `"ref": {"video": "<id>", "at": [초], "me": [내 재료 초]}` 를 적는다. 제작 뒤 `python3 engine/checks/refmatch.py sheet <콘티> <재료>` 로 나란히 본 뒤 `refmatch.py ok <콘티> <재료> --diff "남은 차이"`. 재료가 바뀌면 다시. 만드는 중에는 `refmatch.py pair <영상> <초> <내 그림>`. produce 결과의 D03 = ref 를 적었는데 대조 안 함(막음). ref 가 없는 재료는 묻지 않는다.

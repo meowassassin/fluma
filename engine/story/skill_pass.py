@@ -140,6 +140,8 @@ def writer_io(sb: dict, sbp: Path) -> tuple[str, str]:
          f"# 조사 사실(이것만 쓴다)\n" + "\n".join(facts(sb)) + "\n\n# 레퍼런스와 견준 검토표\n" + ref_review(sbp) +
          f"\n\n# 시청자 시뮬레이션이 걸린 곳(대사로 풀 것 — 개념은 쓰기 전에 쉬운 말로 소개, 숫자는 무엇의 숫자인지 먼저)\n{json.dumps(viewer_issues(sb, 'writer') + viewer_issues(sb, 'story'), ensure_ascii=False)}"
          f"\n\n# 감지기가 찾은 AI 티(꼭 고친다)\n{json.dumps(found, ensure_ascii=False)}\n\n# 길이 예산(넘기면 음성 뒤 검사 L70 · L05 에 막혀 대본을 다시 고치게 된다)\n{length_budget(sb)}"
+         f"\n\n# 사용자 요구(어기면 이 답은 버려진다 — 톤 · 시제 · 금지어까지 그대로 지킨다)\n{must_block(sb)}"
+         f"\n\n# 사람이 직접 정한 칸(이 값 그대로 돌려준다)\n{json.dumps(sorted(text_locks(sb)), ensure_ascii=False)}"
          f"\n\n# 콘티\n{json.dumps(view(sb), ensure_ascii=False)}\n\n"
          "할 일: writer 스킬 5장 '내기 전 스스로 검사'를 모두 통과하게 script · caption · title 을 고친다. 장면 수와 순서는 그대로. 뜻(사실)은 바꾸지 않는다. "
          "길이 예산을 넘기지 않는다(줄일 때는 곁가지를 덜고, 늘릴 이유가 없으면 늘리지 않는다). 고칠 게 없으면 원래 값을 그대로 돌려준다.")
@@ -188,9 +190,67 @@ def viewer_issues(sb: dict, who: str) -> list:
     return [i for i in iss if i.get("fix_by", "writer").startswith(who)]
 
 
+def _text_fields(sb: dict) -> dict:
+    """각본가가 고치는 칸 — 장면 대사 · 화면 글자 · 고정 제목"""
+    out = {"title": sb.get("title") or ""}
+    for i, s in enumerate(sb.get("scenes") or [], 1):
+        out[f"s{i}.narration"] = s.get("narration") or ""
+        out[f"s{i}.caption"] = s.get("caption") or ""
+    return out
+
+
+def _locks_path(sid: str) -> Path:
+    return ROOT / "data" / "compositions" / sid / "skill_pass" / "text_locks.json"
+
+
+def text_locks(sb: dict) -> set:
+    """사람(에이전트 · 사용자)이 정한 칸 — 각본가가 다시 쓰지 않는다.
+    2026-11-18 실측: 각본가가 사용자가 요구한 회고 톤 대사를 현재형으로 되돌려, 에이전트가 손으로 되돌린 뒤 각본가를 또 돌렸다"""
+    keys = {str(k) for k in sb.get("locked_text") or []}
+    try:
+        d = json.loads(_locks_path(sb["id"]).read_text("utf-8"))
+        if d.get("scenes") == len(sb.get("scenes") or []):
+            keys |= set(d.get("keys") or [])
+    except (OSError, ValueError):
+        pass
+    return keys
+
+
+def update_text_locks(sb: dict) -> list[str]:
+    """지난 각본가가 바꾼 칸을 그 뒤 누군가 다시 바꿨으면(각본가 수정을 사람이 되돌리거나 고침) 그 칸을 잠근다. 장면 수가 바뀌면(새로 쓴 콘티) 잠금을 푼다"""
+    sid, n = sb["id"], len(sb.get("scenes") or [])
+    try:
+        d = json.loads(_locks_path(sid).read_text("utf-8"))
+    except (OSError, ValueError):
+        d = {}
+    keys = set(d.get("keys") or []) if d.get("scenes") == n else set()
+    try:
+        rec = json.loads((ROOT / "data" / "compositions" / sid / "skill_pass" / "writer.json").read_text("utf-8"))
+    except (OSError, ValueError):
+        rec = {}
+    tin, tout, cur = rec.get("text_in") or {}, rec.get("text_out") or {}, _text_fields(sb)
+    added = [k for k in cur if k in tin and k in tout and tin[k] != tout[k] and cur[k] != tout[k] and k not in keys]
+    keys |= set(added)
+    _locks_path(sid).parent.mkdir(parents=True, exist_ok=True)
+    _locks_path(sid).write_text(json.dumps({"scenes": n, "keys": sorted(keys)}, ensure_ascii=False, indent=1), "utf-8")
+    return added
+
+
+def must_block(sb: dict) -> str:
+    """사용자 요구(콘티 intent.must · must_not · constraints) — 각본가 · 디자이너가 어기면 안 되는 것"""
+    it = sb.get("intent") or {}
+    rows = [f"- 꼭: {x}" for x in it.get("must") or []] + [f"- 금지: {x}" for x in it.get("must_not") or []] + [f"- 조건: {x}" for x in sb.get("constraints") or []]
+    return "\n".join(rows) or "(없음)"
+
+
 def writer_apply(sb: dict, patch: dict) -> list[str]:
     ch = []
     scn = sb.get("scenes") or []
+    locked = set(patch.get("_locked") or [])
+    if locked and isinstance(patch.get("script"), str):   # 잠근 칸은 지금 대사로 되돌려 둔다
+        parts = [x.strip() for x in patch["script"].split("/")]
+        if len(parts) == len(scn):
+            patch = dict(patch, script=" / ".join(scn[i].get("narration") or t if f"s{i + 1}.narration" in locked else t for i, t in enumerate(parts)))
     if isinstance(patch.get("script"), str):
         parts = [x.strip() for x in patch["script"].split("/")]
         if len(parts) == len(scn) and all(parts):
@@ -209,10 +269,10 @@ def writer_apply(sb: dict, patch: dict) -> list[str]:
             ch.append(f"script 버림(칸 {len(parts)} ≠ 장면 {len(scn)})")
     for k, v in (patch.get("captions") or {}).items():
         i = int(k) - 1
-        if 0 <= i < len(scn) and isinstance(v, str) and 0 < len(v) <= 28 and v != scn[i].get("caption"):
+        if 0 <= i < len(scn) and isinstance(v, str) and 0 < len(v) <= 28 and v != scn[i].get("caption") and f"s{i + 1}.caption" not in locked:
             scn[i]["caption"] = v
             ch.append(f"s{i + 1}.caption")
-    if isinstance(patch.get("title"), str) and 0 < len(patch["title"]) <= 24 and patch["title"] != sb.get("title"):
+    if isinstance(patch.get("title"), str) and 0 < len(patch["title"]) <= 24 and patch["title"] != sb.get("title") and "title" not in locked:
         sb["title"] = patch["title"]
         ch.append("title")
     return ch
@@ -429,16 +489,29 @@ def run_refine(sbp: Path) -> dict:
     return rec
 
 
+def _digest(files: list[str]) -> str:
+    """정지 화면 내용의 지문 — 검토 캐시 키(파일 이름은 시각이라 같아도 그림이 바뀔 수 있다)"""
+    h = hashlib.sha1()
+    for x in files:
+        try:
+            h.update((ROOT / x if not Path(x).is_absolute() else Path(x)).read_bytes())
+        except OSError:
+            h.update(x.encode())
+    return h.hexdigest()[:16]
+
+
 def review_io(sb: dict, sbp: Path) -> tuple[str, str]:
     imgs = stills(sb, sbp)
     sheet = ROOT / "data" / "compositions" / sb["id"] / "craft" / "review" / "sheet.png"
     fmt = ('{"direction": {"subs": {"y": 0.55~0.82, "box": true|false}, "screen_text_y": 0.08~0.3}, "materials": {"재료 id": {"adjust": {"scale": 0.6~1.6, "dx": -0.25~0.25, "dy": -0.25~0.25}, "color": "#RRGGBB(overlay 주석만)"}}, '
-           '"problems": [{"scene": 번호, "what": "본 문제"}], "why": ["이유"]}')
+           '"problems": [{"scene": 번호, "kind": "겹침|잘림|안전 영역|작은 글자|시선 분산|기타", "what": "본 문제(어느 재료 · 글자)", "fix": "어떻게 고치면 되나(장면 코드의 어느 값)"}], "why": ["이유"]}')
     p = (f"# 스킬: designer (3장 '보고 고친다'가 이 단계)\n{skill_text('designer')}\n\n# 콘티\n{json.dumps(view(sb, True), ensure_ascii=False)}\n\n"
-         "# 볼 그림(Read 로 하나씩 연다 — 장면 순서)\n" + "\n".join(f"장면 {i + 1}: {x}" for i, x in enumerate(imgs)) + (f"\n레퍼런스와 나란히: {sheet}" if sheet.exists() else "") +
+         "# 볼 그림(Read 로 하나씩 연다 — 장면 순서)\n" + "\n".join(f"장면 {i + 1}: {x}" for i, x in enumerate(imgs)) +
+         f"\n(그림 지문 {_digest(imgs)} — 그림이 같으면 검토를 다시 하지 않는다)" + (f"\n레퍼런스와 나란히: {sheet}" if sheet.exists() else "") +
          "\n\n할 일: 그림을 실제로 열어 보고 designer 3장 1~5 를 장면마다 확인한다 — 특히 글자 · 숫자 · 주석이 서로 겹침, 재료가 화면 밖으로 잘림(증거 줄 · 글자), "
          "띠 안 주인공이 70% 미만, 안전 영역 침범. 문제 있는 장면만 값으로 고친다(문제가 없으면 materials 를 비운다). 본 문제는 problems 에 적는다. "
-         "화면 전체 2D 장면(type craft · place full)은 장면 코드가 배치를 정해 adjust 가 쓰이지 않는다 — 그 안의 잘림 · 겹침은 값을 주지 말고 problems 에만 적는다(장면 코드 다듬기 refine 로 넘김).")
+         "화면 전체 2D 장면(type craft · place full)은 장면 코드가 배치를 정해 adjust 가 쓰이지 않는다 — 그 안의 잘림 · 겹침은 값을 주지 말고 problems 에만 적는다. "
+         "problems 는 품질 관문에 올라가 겹침 · 잘림 · 안전 영역은 완성을 막는다 — 지금 그림에서 실제로 보이는 것만 적고, 고친 뒤 사라졌으면 적지 않는다.")
     return SYS.format(role="디자이너(정지 화면 검토)", fmt=fmt), p
 
 
@@ -662,6 +735,8 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
     rec_p = ROOT / "data" / "compositions" / sid / "skill_pass" / f"{name}.json"
     rec_p.parent.mkdir(parents=True, exist_ok=True)
     io, apply = PASSES[name]
+    if name == "writer":
+        update_text_locks(sb)
     system, prompt = io(sb, sbp)
     if issues:
         prompt += "\n\n# 검사(lint)가 막은 것 — 이 단계 담당, 꼭 고친다(스킬 규칙과 함께 만족시키는 방법으로)\n" + "\n".join(issues)
@@ -685,6 +760,10 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
     _log_skill_timing(sid, f"{name}_agent", time.perf_counter() - t_ag)
     costs = [cost]
     before = _hard_lint(json.loads(sbp.read_text("utf-8"))) if name == "writer" else None
+    text_in = _text_fields(sb)
+    if name == "writer":
+        locked = sorted(text_locks(sb))
+        patch = dict(patch, _locked=locked)
     changed = apply(sb, patch)
     if name == "writer" and changed:
         new = sorted(_hard_lint(sb) - before)
@@ -693,6 +772,7 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
             patch2, cost2 = claude(system, prompt + "\n\n# 직전 답이 새로 깬 검사 — 이것을 깨지 않게 다시 낸다(나머지 고친 점은 살린다)\n" + "\n".join(msgs))
             costs.append(cost2)
             sb2 = json.loads(sbp.read_text("utf-8"))
+            patch2 = dict(patch2, _locked=locked)
             ch2 = apply(sb2, patch2)
             new2 = sorted(_hard_lint(sb2) - before) if ch2 else []
             if not new2:
@@ -701,7 +781,7 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
                 new = new2
             cost = sum(costs)
         if new:   # 그래도 검사 실패를 새로 만들면 받지 않는다 — 대본이 나빠지지 않게(2026-11-18 실측: 고친 대사가 L08 · L51 · L01 을 새로 깨 되먹임 · 재시도가 이어졌다)
-            rec = {"pass": name, "hash": h, "changed": [], "rejected": [f"{c} {s if s is not None else ''}".strip() for c, s in new], "cost_usd": round(cost, 4), "patch": patch}
+            rec = {"pass": name, "hash": h, "changed": [], "rejected": [f"{c} {s if s is not None else ''}".strip() for c, s in new], "cost_usd": round(cost, 4), "patch": patch, "text_in": text_in, "text_out": text_in}
             rec_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
             _log_skill_timing(sid, name, time.perf_counter() - t_pass, changed=0, rejected=len(new))
             return {"pass": name, "changed": [], "why": [f"새 검사 실패를 만들어 버림: {', '.join(rec['rejected'][:6])}"], "cost_usd": round(cost, 4)}
@@ -777,6 +857,8 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
     # 적용 뒤 입력 해시(다음엔 건너뛰게)
     system2, prompt2 = io(sb, sbp)
     rec = {"pass": name, "hash": hashlib.sha1((system2 + prompt2).encode()).hexdigest()[:16], "changed": changed, "why": patch.get("why"), "problems": patch.get("problems") or patch.get("issues"), "score": patch.get("score"), "understood": patch.get("understood"), "cost_usd": round(sum(costs), 4), "patch": patch}
+    if name == "writer":
+        rec.update(text_in=text_in, text_out=_text_fields(sb))
     rec_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
     _log_skill_timing(sid, name, time.perf_counter() - t_pass, changed=len(changed or []))
     return {k: rec[k] for k in ("pass", "changed", "why", "problems", "score", "understood", "cost_usd") if rec.get(k) is not None}
