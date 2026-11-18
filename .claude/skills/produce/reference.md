@@ -53,8 +53,8 @@
    - 재료가 없는 장면은 엔진이 그 장면의 핵심어(`visual.primary`) · 목록(`visual.items`)으로 화면을 짠다 — 그래서 `visual` 을 꼭 채운다.
    - 공통 칸: `id`, `cue`(등장할 나레이션 낱말), `place`(center · left · right · top · bottom · full).
    - 같은 캐릭터를 여러 장면에 쓰면 같은 `src` — 한 번 고치면 모든 장면이 바뀐다.
-3. **검사**: `python3 engine/checks/lint.py data/storyboards/<id>.json` — 실패 0 이 될 때까지. T25(그래픽 위주)는 권고. 재료를 만든 뒤 시청자 기준 검사:
-   - L33 같은 재료를 세 장면 이상 반복 ✗ · L34 재료 절반 넘게 글자 빽빽한 문서 캡처 ✗(핵심 수치는 `stat` · `chart`, 근거는 `doc_quote` 로 문장 하나만) · L35 20초 이상인데 재료 종류 3가지 미만 ✗ · T35 영어 캡처가 1/3 이상(권고)
+3. **검사**: `python3 engine/checks/lint.py data/storyboards/<id>.json` — 실패 0 이 될 때까지. T25(그래픽 위주)는 권고(produce 결과 warn 에 남으면 사용자에게 알림). 재료를 만든 뒤 시청자 기준 검사:
+   - L33 같은 재료를 세 장면 이상 반복 ✗ · L34 재료 절반 넘게 글자 빽빽한 문서 캡처 ✗(핵심 수치는 `stat` · `chart`, 근거는 `doc_quote` 로 문장 하나만) · T35 영어 캡처가 1/3 이상(권고)
    - L36 사용자 녹화 대기: 초안은 그 재료 없이 렌더된다. 사용자에게 **무엇을 · 몇 초 · 파일 이름에 재료 id 를 넣어 편집기에 올려 달라고** 한 줄로 부탁하고 턴을 끝낸다(올리면 `data/public/uploads/<id>/` 에서 이름으로 찾아 쓴다). 녹화가 장면보다 짧아도 마지막 화면에서 멈춰 있다
    - 훅(L05): 훅 제목이 3초 안에 뜨면 나레이션은 4.6초까지 괜찮다(T05). 3초를 맞추려 문장을 자르거나 배속을 올리지 않는다
 3-1. **아트 디렉션** (콘티 `direction.art`, 재료를 만들기 전에): 이 영상의 시각 언어를 정한다 — `palette{bg, ink, accent}`(콘셉트 소재에서 뽑은 색. 기본 보라 금지) · `rule`(구도 원칙 한 문장: 예 "주인공은 언제나 화면의 절반 이상, 글자는 사물 위에") · `avoid`(이 영상에서 안 할 것: 예 "흰 카드 · 가운데 정렬 · 단색 배경"). 색은 자동으로 펴지지만 rule · avoid 는 네가 지킨다.
@@ -71,7 +71,7 @@
    - 자막은 가로 영상이면 `direction.subs.mode: "clause"`, 대본의 숫자는 숫자로 적는다. 왼쪽으로 가는 인물은 왼쪽을 본다.
    - 재현한 것과 실제 자료를 화면에서 구분한다. 지어낸 대사는 말풍선으로, 사실은 나레이션으로.
    **어댑터는 초벌이다.** 훅과 핵심 장면은 카드 템플릿으로 끝내지 말고 앱을 직접 써서 디자인한다(refine 스킬).
-4. **초안 렌더**: `python3 engine/render.py data/storyboards/<id>.json --draft` → `data/out/<id>-craft-Scenes-draft.mp4`. 결과의 D10~D15 는 렌더를 재서 나온 값이다(빈 화면 · 멈춘 장면 · 작은 주인공 · 같은 구도 · 기본 보라 · 어두움). `depth` 는 앱을 쓴 깊이. 걸린 장면부터 refine 으로 고친다. 최종 렌더는 아트 디렉션 · 다듬기 없이는 멈춘다.
+4. **초안 렌더**: `python3 engine/render.py data/storyboards/<id>.json --draft` → `data/out/<id>-craft-Scenes-draft.mp4`. 결과의 D10~D15 는 렌더를 재서 나온 값이다(빈 화면 · 멈춘 장면 · 작은 주인공 · 같은 구도 · 기본 보라 · 어두움). `depth` 는 앱을 쓴 깊이. 걸린 장면부터 고친다. produce 의 품질 관문(engine/checks/quality_gate.py)이 D03 · D10(80% 초과) · D11~D15 · T32 · T33 이 남으면 stage=quality 로 멈춘다 — 아트 디렉션 · 다듬기(D01 · D02 · D05)는 권고.
    제작 파일: `data/compositions/<id>/craft/` (`motion/*.ecproj` · `audio/*.scraft` · `edit/*.fcproj` · `materials/`). 사람이 Craft 에서 고친 파일은 해시로 알아채 덮어쓰지 않는다(재료: .vectorcraft · 카드 .psd · .fcproj · .sc · .dxf).
    조립 결과: `edit/<id>.thumb.png`(훅 장면 썸네일 후보) · `edit/<id>.markers.csv`(장면 마커) — produce 결과 media 에 같이 나온다. 소리는 SoundCraft 가 -14 LUFS 로 맞추고(craft.json audio.lufs) FilmCraft 는 다시 정규화하지 않는다.
 5. **확인**: `python3 engine/core/still.py data/storyboards/<id>.json <초> …` → PNG 를 Read 로 직접 본다. 글자 겹침 · 잘림 · 빈 화면 · 재료가 말과 맞는지. 고칠 게 있으면 재료 · 콘티를 고치고 4로.
@@ -101,10 +101,7 @@
 produce 결과의 D02 = 다듬기 없음 · 계획했는데 안 다듬은 층.
 
 ## 레퍼런스 대조(D03)
-레퍼런스 모양을 따르는 재료에는 `"ref": {"video": "<id>", "at": [초], "me": [내 재료 초]}` 를 적는다. 제작 뒤 `python3 engine/checks/refmatch.py sheet <콘티> <재료>` 로 나란히 본 뒤 `refmatch.py ok <콘티> <재료> --diff "남은 차이"`. 재료가 바뀌면 다시. 만드는 중에는 `refmatch.py pair <영상> <초> <내 그림>`. produce 결과의 D03 = 대조 안 함.
-
-## 다양성 (V 권고)
-produce.py 결과의 warn 에 V41~V45 가 있으면 무시하지 말고 한 장면 이상 바꿔 본다 — `craft_variety.py suggest` 의 ★ 레시피 또는 `craft_catalog.py search` 로 찾은 기능을 `type: craft` 로. 잘 나온 craft 재료는 `craft_variety.py save` 로 레시피에 남긴다(crafts 스킬 0절).
+레퍼런스 모양을 따르는 재료에는 `"ref": {"video": "<id>", "at": [초], "me": [내 재료 초]}` 를 적는다. 제작 뒤 `python3 engine/checks/refmatch.py sheet <콘티> <재료>` 로 나란히 본 뒤 `refmatch.py ok <콘티> <재료> --diff "남은 차이"`. 재료가 바뀌면 다시. 만드는 중에는 `refmatch.py pair <영상> <초> <내 그림>`. produce 결과의 D03 = ref 를 적었는데 대조 안 함(막음). ref 가 없는 재료는 묻지 않는다.
 
 ## 하지 말 것
 - `data/compositions/<id>/scene.js` 쓰기(예전 HyperFrames 경로 — 엔진이 없다)

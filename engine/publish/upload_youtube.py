@@ -101,6 +101,11 @@ def main():
     mp4 = Path(args.mp4)
     if not mp4.exists():
         sys.exit(f"영상 파일 없음: {mp4}")
+    sys.path.insert(0, str(ROOT / "engine" / "checks"))
+    import quality_gate   # 품질 막음이 남은 영상은 올리지 않는다(2026-11-18)
+    left = quality_gate.check(sid)
+    if left:
+        sys.exit(f"품질 막음 {len(left)}건이 남아 올리지 않는다 — produce 로 고친 뒤: " + " / ".join(left[:4]))
     prev = already_published(sid)
     if prev:
         sys.exit(f"이미 업로드됨: {sid} → {prev.get('url')} (중복 방지). 다시 올리려면 _published.jsonl 에서 줄을 지우세요.")

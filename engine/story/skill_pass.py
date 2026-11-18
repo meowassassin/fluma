@@ -139,9 +139,44 @@ def writer_io(sb: dict, sbp: Path) -> tuple[str, str]:
     p = (f"# 스킬: writer\n{skill_text('writer')}\n\n# 함께: humanizer-ko\n{skill_text('humanizer-ko')[:9000]}\n\n"
          f"# 조사 사실(이것만 쓴다)\n" + "\n".join(facts(sb)) + "\n\n# 레퍼런스와 견준 검토표\n" + ref_review(sbp) +
          f"\n\n# 시청자 시뮬레이션이 걸린 곳(대사로 풀 것 — 개념은 쓰기 전에 쉬운 말로 소개, 숫자는 무엇의 숫자인지 먼저)\n{json.dumps(viewer_issues(sb, 'writer') + viewer_issues(sb, 'story'), ensure_ascii=False)}"
-         f"\n\n# 감지기가 찾은 AI 티(꼭 고친다)\n{json.dumps(found, ensure_ascii=False)}\n\n# 콘티\n{json.dumps(view(sb), ensure_ascii=False)}\n\n"
-         "할 일: writer 스킬 5장 '내기 전 스스로 검사'를 모두 통과하게 script · caption · title 을 고친다. 장면 수와 순서는 그대로. 뜻(사실)은 바꾸지 않는다. 고칠 게 없으면 원래 값을 그대로 돌려준다.")
+         f"\n\n# 감지기가 찾은 AI 티(꼭 고친다)\n{json.dumps(found, ensure_ascii=False)}\n\n# 길이 예산(넘기면 음성 뒤 검사 L70 · L05 에 막혀 대본을 다시 고치게 된다)\n{length_budget(sb)}"
+         f"\n\n# 콘티\n{json.dumps(view(sb), ensure_ascii=False)}\n\n"
+         "할 일: writer 스킬 5장 '내기 전 스스로 검사'를 모두 통과하게 script · caption · title 을 고친다. 장면 수와 순서는 그대로. 뜻(사실)은 바꾸지 않는다. "
+         "길이 예산을 넘기지 않는다(줄일 때는 곁가지를 덜고, 늘릴 이유가 없으면 늘리지 않는다). 고칠 게 없으면 원래 값을 그대로 돌려준다.")
     return SYS.format(role="각본가", fmt=fmt), p
+
+
+def _narration_max() -> int:
+    try:
+        s = json.loads((ROOT / "engine" / "spec" / "schema" / "storyboard.schema.json").read_text("utf-8"))
+        return int(json.dumps(s).split('"narration": {"type": "string", "maxLength": ', 1)[1].split(",", 1)[0])
+    except (OSError, ValueError, IndexError):
+        return 60
+
+
+NARRATION_MAX = _narration_max()   # 콘티 스키마의 장면 대사 한도(lint L01)
+
+
+def length_budget(sb: dict) -> str:
+    """각본가가 쓰기 전에 아는 길이 상한 — 2026-11-18: 11-17 제작 9편에서 각본가 126번(137분) · 시청자 155번(82분).
+    각본가가 예산 없이 쓰면 음성 뒤 L70(전체) · L05(훅)에 막혀 대사를 줄이고, 줄인 대사가 승인을 깨 검토가 처음부터 다시 돌았다"""
+    import lint
+    scenes = sb.get("scenes") or []
+    speed = float((sb.get("voice") or {}).get("speed") or 1.0) or 1.0
+    cps = lint.SPEECH_CPS * speed
+    mx = lint.LONG_MAX_SEC if sb.get("allow_long") else lint.SCOPE_MAX_SEC.get(sb.get("format") or "", 40)
+    now = [len(str(x.get("narration") or "").replace(" ", "")) for x in scenes]
+    rows = [f"- 전체 나레이션(공백 뺀 글자): 지금 {sum(now)}자 / 상한 {int(mx * cps * 0.92)}자({mx}초 · 초당 {cps:.1f}자)",
+            f"- 장면 하나의 나레이션: 공백 포함 {NARRATION_MAX}자 이하(넘긴 장면은 버려진다)"
+            + "".join(f" · {i + 1}장면 지금 {len(str(x.get('narration') or ''))}자" for i, x in enumerate(scenes) if len(str(x.get("narration") or "")) > NARRATION_MAX - 8)]
+    hook = next((i for i, x in enumerate(scenes) if x.get("role") == "hook"), None)
+    if hook is not None:
+        try:
+            hmax = max(lint.LIM["hook_sec_max"], lint.ref_first_shot(sb) + 0.5)
+        except Exception:  # noqa: BLE001 - 레퍼런스 카드가 없을 때
+            hmax = lint.LIM["hook_sec_max"]
+        rows.append(f"- 훅(장면 {hook + 1}): 지금 {now[hook]}자 / 상한 {int(hmax * cps * 0.95)}자({hmax:.1f}초)")
+    return "\n".join(rows)
 
 
 def viewer_issues(sb: dict, who: str) -> list:
@@ -159,8 +194,14 @@ def writer_apply(sb: dict, patch: dict) -> list[str]:
     if isinstance(patch.get("script"), str):
         parts = [x.strip() for x in patch["script"].split("/")]
         if len(parts) == len(scn) and all(parts):
-            if patch["script"] != sb.get("script"):
-                sb["script"] = patch["script"]
+            # 장면 대사 스키마 한도(60자)를 넘긴 칸은 받지 않고 원래 대사를 둔다 — 2026-11-18 실측: 넘긴 대사가 L01 로 막혀 각본가를 두 번 더 불렀다
+            over = [i for i, t in enumerate(parts) if len(t) > NARRATION_MAX]
+            parts = [scn[i].get("narration") or t if i in over else t for i, t in enumerate(parts)]
+            new = " / ".join(parts)
+            if over:
+                ch.append("한도 넘긴 대사 버림: " + ", ".join(f"{i + 1}장면" for i in over))
+            if new != " / ".join(s.get("narration") or "" for s in scn):
+                sb["script"] = new
                 for s, t in zip(scn, parts):
                     s["narration"] = t
                 ch.append("script")
@@ -404,6 +445,21 @@ def review_io(sb: dict, sbp: Path) -> tuple[str, str]:
 OWNER = {"writer": ("L03", "L04", "L05", "L08", "L13", "L14", "L31", "L51", "L52", "L55"), "director": ("L41", "L50", "L54", "L29", "L32"), "designer": ("L12", "L33", "L34", "L35", "L53")}
 
 
+def _hard_lint(sb: dict) -> set:
+    """막는 검사 실패(L)의 (코드, 장면) — 각본가 수정 전후 비교용"""
+    import lint
+    try:
+        return {(f[0], f[1] if len(f) > 2 else None) for f in lint.lint(sb) if not str(f[0]).startswith("T")}
+    except Exception:  # noqa: BLE001 - 검사가 깨지면 비교하지 않는다(받아들임)
+        return set()
+
+
+def _lint_lines(sb: dict, keys: list) -> list[str]:
+    import lint
+    want = set(keys)
+    return [f"{c} {f'{s + 1}장면 ' if isinstance(s, int) else ''}{m}" for c, s, m, *_ in lint.lint(sb) if (c, s) in want]
+
+
 def lint_owners(sbp: Path) -> dict:
     """lint 실패 줄 → 담당 단계별 목록"""
     r = subprocess.run([sys.executable, str(ROOT / "engine" / "checks" / "lint.py"), str(sbp)], capture_output=True, text=True, timeout=300)
@@ -439,16 +495,42 @@ def mark_approved(sbp: Path, **info) -> None:
     sb = json.loads(sbp.read_text("utf-8"))
     p = _approved_path(sb["id"])
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps({"words": words_hash(sb), "at": time.strftime("%Y-%m-%dT%H:%M:%S"), **info}, ensure_ascii=False), "utf-8")
+    p.write_text(json.dumps({"words": words_hash(sb), "texts": _texts(sb), "at": time.strftime("%Y-%m-%dT%H:%M:%S"), **info}, ensure_ascii=False), "utf-8")
+
+
+def _texts(sb: dict) -> list:
+    return [sb.get("title") or ""] + [f"{x.get('narration') or ''}\n{x.get('caption') or ''}" for x in sb.get("scenes") or []]
+
+
+SMALL_EDIT = 0.8   # 장면마다 승인된 말과 이만큼 같으면(길이 맞추기 · 낱말 손질) 승인을 유지한다
 
 
 def is_approved(sbp: Path) -> bool:
+    """같은 말이거나, 승인된 대본을 조금만 손본 말이면 승인으로 본다.
+    2026-11-18: 길이 검사를 맞추려 몇 글자 줄일 때마다 승인이 깨져 시청자 · 각본가가 처음부터 다시 돌았다(편당 약 24분).
+    장면 수가 바뀌었거나 어느 장면이든 크게 바뀌었으면 다시 검토한다."""
+    from difflib import SequenceMatcher
     try:
         sb = json.loads(sbp.read_text("utf-8"))
         rec = json.loads(_approved_path(sb["id"]).read_text("utf-8"))
-        return rec.get("words") == words_hash(sb)
     except (OSError, ValueError, KeyError):
         return False
+    if rec.get("words") == words_hash(sb):
+        return True
+    old, new = rec.get("texts") or [], _texts(sb)
+    return bool(old) and len(old) == len(new) and all(SequenceMatcher(None, a, b).ratio() >= SMALL_EDIT for a, b in zip(old, new))
+
+
+WRITER_MAX = 3   # 영상 하나에 각본가 실제 실행 상한 — 넘으면 남은 대사 문제는 에이전트가 직접 고친다(FLUMA_WRITER_MAX 로 바꿈)
+
+
+def _writer_runs(sid: str, add: int = 0) -> int:
+    p = ROOT / "data" / "compositions" / sid / "skill_pass" / "writer_runs.json"
+    n = (json.loads(p.read_text("utf-8")).get("n", 0) if p.exists() else 0) + add
+    if add:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps({"n": n}), "utf-8")
+    return n
 
 
 def produce_skill_steps(sbp: Path) -> list[str]:
@@ -561,6 +643,8 @@ def comprehension_loop(sbp: Path, force: bool = False, rounds: int = 2, always_w
         score, open_ = viewer_open(sbp)
         if score >= 8 or len(open_) <= 1 or (prev and score <= prev[0] and len(open_) >= prev[1]):
             break
+        if always_write and score >= 7:   # 처음 쓰기(시청자 → 각본가 → 시청자)를 이미 거쳤고 관문(7)을 넘으면 한 바퀴 더 돌지 않는다(2026-11-18: 각본가 · 시청자 한 쌍 약 100초)
+            break
         prev = (score, len(open_))
         out.append(run_pass("writer", sbp, True))
         out.append(run_pass("viewer", sbp, False))
@@ -585,6 +669,12 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
     if pre is None and not force and rec_p.exists() and json.loads(rec_p.read_text("utf-8")).get("hash") == h:
         _log_skill_timing(sid, name, time.perf_counter() - t_pass, skipped=True)
         return {"pass": name, "skipped": "입력 그대로"}
+    wmax = int(os.environ.get("FLUMA_WRITER_MAX") or WRITER_MAX)
+    if name == "writer" and _writer_runs(sid) >= wmax:
+        _log_skill_timing(sid, name, time.perf_counter() - t_pass, skipped=True, capped=True)
+        return {"pass": name, "skipped": f"각본가 상한({wmax}회/영상) — 남은 대사 문제는 에이전트가 직접 고친다"}
+    if name == "writer":
+        _writer_runs(sid, add=1)
     t_ag = time.perf_counter()
     if name == "review":
         patch, cost = claude(system, prompt, timeout=1500, tools="Read", dirs=[str(ROOT / "data" / "workspace" / "stills"), str(ROOT / "data" / "compositions" / sb["id"])])
@@ -594,7 +684,27 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
         patch, cost = claude(system, prompt)
     _log_skill_timing(sid, f"{name}_agent", time.perf_counter() - t_ag)
     costs = [cost]
+    before = _hard_lint(json.loads(sbp.read_text("utf-8"))) if name == "writer" else None
     changed = apply(sb, patch)
+    if name == "writer" and changed:
+        new = sorted(_hard_lint(sb) - before)
+        if new:   # 한 번은 깬 검사를 알려 주고 다시 쓰게 한다(버리면 각본가 한 번 · 약 60초가 그냥 사라졌다)
+            msgs = _lint_lines(sb, new)
+            patch2, cost2 = claude(system, prompt + "\n\n# 직전 답이 새로 깬 검사 — 이것을 깨지 않게 다시 낸다(나머지 고친 점은 살린다)\n" + "\n".join(msgs))
+            costs.append(cost2)
+            sb2 = json.loads(sbp.read_text("utf-8"))
+            ch2 = apply(sb2, patch2)
+            new2 = sorted(_hard_lint(sb2) - before) if ch2 else []
+            if not new2:
+                sb, patch, changed, new = sb2, patch2, ch2 + ["(검사를 알려 준 뒤 다시 씀)"], []
+            else:
+                new = new2
+            cost = sum(costs)
+        if new:   # 그래도 검사 실패를 새로 만들면 받지 않는다 — 대본이 나빠지지 않게(2026-11-18 실측: 고친 대사가 L08 · L51 · L01 을 새로 깨 되먹임 · 재시도가 이어졌다)
+            rec = {"pass": name, "hash": h, "changed": [], "rejected": [f"{c} {s if s is not None else ''}".strip() for c, s in new], "cost_usd": round(cost, 4), "patch": patch}
+            rec_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
+            _log_skill_timing(sid, name, time.perf_counter() - t_pass, changed=0, rejected=len(new))
+            return {"pass": name, "changed": [], "why": [f"새 검사 실패를 만들어 버림: {', '.join(rec['rejected'][:6])}"], "cost_usd": round(cost, 4)}
     if name == "designer":
         from ui_build import scene_ui_satisfied  # noqa: E402
 

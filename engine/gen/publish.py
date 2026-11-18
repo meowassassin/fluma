@@ -41,6 +41,11 @@ def no_mock(pid: str, stage: str) -> None:
     bad = asm.videomod.mock_shots(pid)
     if bad:
         fail("publish", stage=stage, error=f"샷 {bad} 이(가) 시험용 mock 클립이다 — 실제 생성 경로(video.py run --shots {','.join(map(str, bad))})로 다시 만들고 검토 통과 뒤 진행")
+    sys.path.insert(0, str(ROOT / "engine" / "checks"))
+    import quality_gate   # produce 의 품질 관문에서 막음이 남은 영상은 최종본 · 업로드로 내보내지 않는다
+    left = quality_gate.check(pid)
+    if left:
+        fail("publish", stage=stage, error=f"품질 막음 {len(left)}건이 남았다 — produce 로 고친 뒤 진행: " + " / ".join(left[:4]), block=left)
 
 
 def final(pid: str) -> str:

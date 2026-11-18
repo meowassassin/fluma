@@ -108,13 +108,63 @@ def build(job) -> Path:
 def render(job) -> Path:
     proj = build(job)
     out = job.work / "silent.mp4"
-    args = [_cli(), "render", "--project", proj, "--comp", "Main", "--out", out, "--format", "h264", "--audio", "off", "--fps", str(job.fps)]
-    if job.draft:
-        args += ["--resolution", "half", "--quality", "draft"]
+    extra = ["--resolution", "half", "--quality", "draft"] if job.draft else []
+    if os.environ.get("FLUMA_SEGCACHE", "1") != "0":
+        try:
+            if _render_segments(job, proj, out, extra):
+                return out
+        except Exception as e:  # noqa: BLE001 - 캐시는 빨리 가는 길일 뿐, 실패하면 전체 렌더
+            print(f"[craft] 구간 캐시를 쓰지 못해 전체 렌더: {str(e)[:200]}", file=sys.stderr)
+    args = [_cli(), "render", "--project", proj, "--comp", "Main", "--out", out, "--format", "h264", "--audio", "off", "--fps", str(job.fps), *extra]
     run(args, cwd=job.work, env=_env(), label="effectcraft render", timeout=1800)
     if not out.exists():
         raise SystemExit("EffectCraft 렌더 출력이 없습니다")
     return out
+
+
+def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
+    """장면 구간마다 열쇠로 캐시하고 바뀐 구간만 그린 뒤 이어 붙인다(engine/craft/renderer/segcache.py)"""
+    import shutil
+    import subprocess
+    import time
+    sys.path.insert(0, str(Path(__file__).parent))
+    from segcache import frames, plan
+    p = plan(proj, job.fps, {"extra": extra, "cli": _cli().name})
+    if not p:
+        return False
+    segs, total = p
+    cache = paths(job)[0] / "segcache"
+    cache.mkdir(parents=True, exist_ok=True)
+    t0, made = time.time(), 0
+    for s in segs:
+        f = cache / f"{s['key']}.mp4"
+        s["file"] = f
+        if f.exists() and f.stat().st_size > 1000:
+            continue
+        tmp = f.with_suffix(".part.mp4")
+        run([_cli(), "render", "--project", proj, "--comp", "Main", "--out", tmp, "--format", "h264", "--audio", "off", "--fps", str(job.fps),
+             # 렌더는 start ≤ k/fps < end 인 프레임 k 를 그린다 — 경계를 반 프레임 당겨야 소수 반올림에 흔들리지 않는다(실측: 6.666667 이 200번째 프레임을 빼먹음)
+             "--start", f"{max(0.0, (s['f0'] - 0.5) / job.fps):.6f}", "--end", f"{(s['f1'] - 0.5) / job.fps:.6f}", *extra], cwd=job.work, env=_env(), label="effectcraft render(구간)", timeout=1800)
+        if not tmp.exists() or frames(tmp) != s["f1"] - s["f0"]:
+            tmp.unlink(missing_ok=True)
+            return False
+        tmp.replace(f)
+        made += 1
+    lst = job.work / "segments.txt"
+    lst.write_text("".join(f"file '{s['file'].as_posix()}'\n" for s in segs), "utf-8")
+    tmp_out = out.with_suffix(".cat.mp4")
+    r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(tmp_out)], capture_output=True, text=True)
+    if r.returncode != 0 or frames(tmp_out) != total:
+        tmp_out.unlink(missing_ok=True)
+        return False
+    shutil.move(str(tmp_out), out)
+    print(f"[craft] 구간 렌더: {len(segs)}구간 중 {made}구간만 새로 그림({time.time() - t0:.1f}초)", file=sys.stderr)
+    # 오래된 구간 파일 정리(이번에 안 쓴 것 중 하루 지난 것)
+    keep = {s["file"].name for s in segs}
+    for f in cache.glob("*.mp4"):
+        if f.name not in keep and time.time() - f.stat().st_mtime > 86400:
+            f.unlink(missing_ok=True)
+    return True
 
 
 def snapshot(job, seconds):

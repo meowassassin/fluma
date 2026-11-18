@@ -328,10 +328,12 @@ def lint(sb: dict, recent_titles=None) -> list:
 
     scenes = sb.get("scenes", [])
 
-    # L02 길이 합계
+    # L02 길이 합계 — 음성을 아직 안 만든(대사가 바뀐) 장면이 있으면 권고(T02): 음성 단계가 sec · duration_sec 를 실측으로 다시 쓴다
+    #     2026-11-18: 11-17 제작에서 에이전트가 곧 덮어쓰일 sec 를 58번 · duration_sec 를 19번 손으로 맞췄다
     total = sum(s.get("sec", 0) for s in scenes)
     if abs(total - sb.get("duration_sec", 0)) > 1:
-        fails.append(("L02", None, f"장면 합계 {total}s != duration {sb.get('duration_sec')}s"))
+        provisional = any((x.get("narration") or "").strip() for x in scenes) and len(measured_scenes(sb)) < sum(1 for x in scenes if (x.get("narration") or "").strip())
+        fails.append(("T02" if provisional else "L02", None, f"장면 합계 {total}s != duration {sb.get('duration_sec')}s" + (" — 음성 단계가 실측으로 맞춘다(손대지 않는다)" if provisional else "")))
     for code, msg in scope_problems(sb):
         fails.append((code, None, msg))
 
@@ -358,7 +360,8 @@ def lint(sb: dict, recent_titles=None) -> list:
             cps = n_syl / sec
             lo_eff = 0 if (music_led or not nar) else lo     # 감성·무음 장면은 하한 없음, 상한만
             if not (lo_eff <= cps <= hi):
-                fails.append(("L04", i, f"음성 {n_syl}자/{sec}s = {cps:.1f}자/초 (허용 {lo_eff}~{hi}, 공백 제외)"))
+                # 나레이션이 있으면 sec 는 임시 값이다 — 음성 단계가 실측 길이로 다시 쓰고 L14 · L70 이 실제 값으로 본다(권고 T04, sec 를 손으로 맞추지 않는다)
+                fails.append(("T04" if nar else "L04", i, f"음성 {n_syl}자/{sec}s = {cps:.1f}자/초 (허용 {lo_eff}~{hi}, 공백 제외)" + (" — 음성 전 어림, 음성 단계가 sec 를 맞춘다" if nar else "")))
 
         # L05 훅 길이 — 레퍼런스 스타일 카드가 있으면 그 영상의 첫 컷 길이(+0.5초)까지 허용
         hook_max = max(LIM["hook_sec_max"], ref_first_shot(sb) + 0.5)

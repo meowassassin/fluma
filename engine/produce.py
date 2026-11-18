@@ -551,6 +551,13 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         print(f"[제작] ui 병렬 빌드 생략: {e}", flush=True)
 
+    # 2.9) 디자이너 정지 화면 검토(skill_pass review) — 렌더 앞에서. 정지 화면은 영상이 아니라 프로젝트에서 바로 그린다(engine/core/still.py → snapshot)
+    #      2026-11-18: 렌더 뒤에 검토하면 바뀐 값(글자 위치 등)이 화면 전체에 걸려 두 번째 렌더가 통째로 돌았다(90초)
+    if deep and not a.scenes:
+        rr = step("review", [PY, "engine/story/skill_pass.py", "review", rel], timeout=2400)
+        print("\n".join(ln for ln in (rr.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
+        sb = json.loads(sp.read_text("utf-8"))
+
     # 3) 재료 · 초안 렌더(재료는 렌더가 만든다 — engine/craft/materials.py)
     outfile_label = "완성" if not use_draft else "초안"
     cmd = [PY, "engine/render.py", rel] + (["--draft"] if use_draft else []) + (["--scenes", a.scenes] if a.scenes else []) + (["--aspect", a.aspect] if a.aspect else [])
@@ -561,20 +568,10 @@ def main() -> int:
         fail("produce", stage="render", error=(b.get("error") or [(r.stderr or r.stdout).strip()[-300:]])[0], time=[f"{k}:{v}" for k, v in TIMES.items()])
     video = ROOT / b["file"][0]
 
-    # 3.5) 디자이너 정지 화면 검토(skill_pass review) — 장면마다 정지 화면을 열어 겹침 · 잘림 · 작은 주인공을 값으로 고치고, 바뀌면 한 번 더 렌더
+    # 3.5) 렌더 뒤 자동 다듬기(refine)는 켤 때만 — 정지 화면 검토(review)는 렌더 앞(2.9)에서 한다
     #      2026-11-11: 디자인 값을 정해 놓고 결과를 안 봐서 터미널이 잘리고 숫자가 글자와 겹쳤다
-    if deep and not a.scenes:
-        rr = step("review", [PY, "engine/story/skill_pass.py", "review", rel], timeout=2400)
-        print("\n".join(ln for ln in (rr.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
-        if rr.returncode == 0 and '"changed": [' in (rr.stdout or "") and '"changed": []' not in (rr.stdout or ""):
-            sb = json.loads(sp.read_text("utf-8"))
-            r = step("render", cmd)
-            b = block(r.stdout)
-            if r.returncode != 0 or b.get("head") != "FLUMA_RESULT":
-                save_times(sid)
-                fail("produce", stage="render", error=(b.get("error") or [(r.stderr or r.stdout).strip()[-300:]])[0], time=[f"{k}:{v}" for k, v in TIMES.items()])
-            video = ROOT / b["file"][0]
-        if deep and os.environ.get("FLUMA_DEEP_REFINE") == "1":   # 자동 다듬기(refine)는 켤 때만 — 2026-11-17 실측 219초(영상 하나 15분 안에 못 들어옴). 정지 화면 검토(review)는 그대로
+    if deep and not a.scenes:   # (정지 화면 검토는 렌더 앞 2.9 로 옮김)
+        if os.environ.get("FLUMA_DEEP_REFINE") == "1":   # 자동 다듬기(refine)는 켤 때만 — 2026-11-17 실측 219초(영상 하나 15분 안에 못 들어옴). 정지 화면 검토(review)는 그대로
             rf = step("refine", [PY, "engine/story/skill_pass.py", "refine", rel], timeout=2700)
             print("\n".join(ln for ln in (rf.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
             if rf.returncode == 0 and '"kept": [{' in (rf.stdout or ""):
@@ -583,15 +580,16 @@ def main() -> int:
                 if r.returncode == 0 and b.get("head") == "FLUMA_RESULT":
                     video = ROOT / b["file"][0]
     # 렌더가 찍은 편집 밀도 · 템포 문제(✗ 실패 · △ 권고)
-    warns = [ln.strip() for ln in r.stdout.splitlines() if re.match(r"^\s*[✗△]", ln)]
-    # 레퍼런스 대조(engine/checks/refmatch.py): 재료가 만들어진 뒤에 본다 — 맨 앞에 둬야 잘리지 않는다
-    import refmatch
-    warns = [f"D03 {n}장면 {mid}: {why} — python3 engine/checks/refmatch.py sheet {rel} {mid} 로 그림을 보고 ok" for n, mid, why in refmatch.status(sb)] + warns
-    warns += [f"{c} {m}" for c, m in soft]
-    # 렌더 결과를 재는 디자인 검사(engine/checks/designcheck.py) · 앱을 얼마나 깊게 썼나
-    from designcheck import findings as _df
-    _found = _df(video, sb) if not a.scenes else []
-    warns = [f"{x['code']} {str(x['scene']) + '장면 ' if x['scene'] else ''}{x['msg']}" for x in _found] + warns
+    # 품질 관문(engine/checks/quality_gate.py): 경고를 막음 · 권고로 나눈다 — 막음이 남으면 완성본으로 내보내지 않는다(2026-11-18)
+    import quality_gate as qg
+    issues = [qg.from_render_line(ln) for ln in r.stdout.splitlines() if re.match(r"^\s*[✗△]", ln)]
+    import refmatch   # 레퍼런스 대조: ref 를 적었는데 나란히 보지 않은 재료
+    issues = [qg.issue("D03", n, f"{mid}: {why} — python3 engine/checks/refmatch.py sheet {rel} {mid} 로 그림을 보고 ok") for n, mid, why in refmatch.status(sb)] + issues
+    from designcheck import findings as _df   # 렌더 결과를 재는 디자인 검사
+    issues = [qg.issue(x["code"], x["scene"], x["msg"], x.get("block")) for x in (_df(video, sb) if not a.scenes else [])] + issues
+    issues += [qg.issue(c, None, m, block=False) for c, m in soft]      # 말투 · 구성 · 절차(lint T · D01 · D02 · D04 · D05 · R) — 권고
+    q_block, q_waived, q_adv = qg.split(sb, issues)
+    warns = [qg.line(x) for x in q_block + q_adv]
     import usage as _usage
     depth = _usage.depth(sid)
 
@@ -620,7 +618,14 @@ def main() -> int:
              f"목소리: {vo.get('engine')} · {vo.get('id') or '기본'} · ×{vo.get('speed', 1)}" + (f" — {vo['why']}" if vo.get("why") else "")]
     if mu.get("upload_sound"):
         sound.append("업로드 때 붙일 수 있는 유행곡(쇼츠 편집기 '사운드 추가'): " + " / ".join(mu["upload_sound"][:3]))
-    ok("produce", file=b["file"][0], media=media, warn=warns[:16], lint_soft=len(soft), depth=depth, sound=sound,
+    if not a.scenes:
+        qg.save(sid, b["file"][0], q_block, q_waived, q_adv)
+    if q_block and not a.scenes:
+        fail("produce", stage="quality", error=f"막음 {len(q_block)}건이 남아 완성본이 아니다 — 고친 뒤 다시(고칠 장면만: knob.py preview --scene N 으로 확인 → 마지막에 전체 produce 한 번)",
+             block=[qg.line(x) for x in q_block], advise=[qg.line(x) for x in q_adv], waived=[f"{qg.line(x)} — 면제: {x['waived']}" for x in q_waived],
+             file=b["file"][0], media=media, time=[f"{k}:{v}" for k, v in TIMES.items()],
+             next="막음을 모두 고친다. 사용자가 그대로 두라고 한 항목만 콘티 waivers 에 {\"코드:장면\": {\"why\": ..., \"user_said\": 사용자 말 그대로}} 로 적는다(스스로 면제 금지)")
+    ok("produce", file=b["file"][0], media=media, warn=warns, advise=len(q_adv), waived=[f"{qg.line(x)} — 면제: {x['waived']}" for x in q_waived], lint_soft=len(soft), depth=depth, sound=sound,
        time=[f"{k}:{v}" for k, v in TIMES.items()], next="먼저 '초안 · 레퍼런스 나란히'(sheet.png)를 Read 로 보고 director 검사(화면이 바뀌는 리듬 · 피사체 크기 · 글자 크기 · 시선 한 곳)로 레퍼런스와 견준다. "
             "고칠 장면만 있을 때는 전체 produce 를 반복하지 말고 knob.py set + knob.py preview --scene N(또는 produce.py --scenes N --no-audio) 로 확인한 뒤, 마지막에 한 번만 전체 produce")
 

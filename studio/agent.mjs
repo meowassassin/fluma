@@ -30,6 +30,10 @@ export const TOOLS = [
   "Bash(mkdir -p data/*)", "Bash(cp data/*)", "Bash(mv data/*)",
   "Bash(cd *)",          // 2026-11-10: 'cd /app && python3 engine/…' 조합이 막혀 에이전트가 우회하느라 호출이 늘었다 — cd 는 무해(뒤 명령은 각자 규칙대로)
 ];
+export const absEngineTools = (root) => {
+  const r = root.replace(/\/+$/, "");
+  return [`Bash(python3 ${r}/engine/*)`, `Bash(python ${r}/engine/*)`, `Bash(.venv/bin/python ${r}/engine/*)`, `Bash(${r}/.venv/bin/python engine/*)`, `Bash(${r}/.venv/bin/python ${r}/engine/*)`];
+};
 // 키·인증 파일은 읽지도 못하게
 // 저장소 코드 · 설정은 고치지 못하게 — 쓰기는 acceptEdits(저장소 안 파일 편집 자동 허용)로 열고 여기서 막는다.
 // 2026-11-09: Claude Code 2.1 에서 경로 허용 규칙(Write(./data/…/**))만으로는 쓰기가 자주 막혀, 기획 대화마다 '쓰기 승인해 달라'고 멈췄다
@@ -564,7 +568,8 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       bin = process.env.SF_CLAUDE_BIN || "claude";
       args = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
         first ? "--session-id" : "--resume", sess.sessionId,
-        "--permission-mode", "acceptEdits", "--allowedTools", ...TOOLS, "--disallowedTools", ...DENY,
+        // 엔진 명령을 절대 경로로 불러도 허용(2026-11-18: 'python3 /…/engine/produce.py' 가 상대 경로 규칙에 안 맞아 막히고 왕복이 한 번 더 들었다)
+        "--permission-mode", "acceptEdits", "--allowedTools", ...TOOLS, ...absEngineTools(ROOT), "--disallowedTools", ...DENY,
         "--append-system-prompt", sys];
       // 사용자가 설정에서 켠 MCP 서버: 그 서버의 도구를 모두 허용(mcp__<이름>)
       const mcp = mcpRunConfig(createCrafts(ROOT).mcpServers());   // 사용자 MCP + 설치된 Craft 앱(벡터 · 모션 · 이미지 …)

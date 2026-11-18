@@ -114,12 +114,9 @@ def status(sb: dict) -> list[tuple[int, str, str]]:
     sid = sb["id"]
     st = _state(sid)
     out = []
-    has_ref = bool(sb.get("reference"))
     for n, m in _mats(sb):
         mid = m.get("id") or ""
-        if not m.get("ref"):
-            if has_ref and m.get("type") in NEEDS_REF:
-                out.append((n, mid, f"레퍼런스 콘티의 {m.get('type')} 재료에 ref 없음 — 레퍼런스 영상 · 시각을 적고 대조한다"))
+        if not m.get("ref"):   # 2026-11-18: 'ref 없음'은 경고하지 않는다 — 11-17 D03 57건이 전부 이 경우(직접 그린 2D 재료) · 실제 대조 누락은 0건
             continue
         rec = _rec(sid, n, mid)
         if not rec.get("file"):
