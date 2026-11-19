@@ -60,3 +60,12 @@ def test_release_report_counts_chosen_features():
     sb = {"scenes": [{**_craft("K.fx(t, 'ec.stylize.glow', {})"), "features": ["ec.blur.gaussian"]}]}
     r = rr.craft_features("zz-none", sb)
     assert r["chosen"] == 2
+
+
+def test_craft_search_korean_benchmark():
+    """한국어로 찾았을 때 맞는 효과가 상위 5개 안에(2026-11-19 기준선 3/24 → 고친 뒤 24/24)"""
+    import json as _j
+    from craft import craft_catalog as cc
+    b = _j.loads((ROOT / "tests" / "craft_search_bench.json").read_text("utf-8"))
+    top5 = sum(any(r["id"] in ans for _, r in cc.search(q, n=5)) for q, ans in b.items())
+    assert top5 >= len(b) - 2, f"top5 {top5}/{len(b)}"

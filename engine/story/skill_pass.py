@@ -523,7 +523,7 @@ def run_refine_hook(sbp: Path) -> dict:
     rel, n = str(sbp.relative_to(ROOT)), hi + 1
     fmt = '{"kept": [{"scene": 번호, "target": "motion|sound|edit|재료 id", "features": ["카탈로그 id"], "why": ""}], "tried": ["시도했지만 안 남긴 것"], "left": ["못 한 것"]}'
     p = (f"# 스킬: refine\n{skill_text('refine')}\n\n# 콘티 경로\n{rel}\n# 다듬을 장면\n{n}(훅 — 영상의 첫인상)\n\n"
-         f"할 일: 이 장면 하나만 다듬는다. ① `python3 engine/craft/session.py show {rel} {n}` ② `python3 engine/craft/craft_catalog.py search \"<하고 싶은 일>\"` 로 "
+         f"할 일: 이 장면 하나만 다듬는다. ① `python3 engine/craft/session.py show {rel} {n}` ② `python3 engine/craft/craft_catalog.py search \"<하고 싶은 일 — 영어로: glow · film grain · light sweep …>\"` 로 "
          "EffectCraft 효과 · 프리셋 · 글자 애니메이터 · 빛 · 질감 중 이 장면 뜻에 맞는 1~2개를 고른다(K 도형을 더하는 건 다듬기가 아니다) "
          f"③ `session.py try {rel} {n} --target motion --pass '<JSON>'` → 전 · 후 PNG 를 Read 로 반드시 열어 본다 ④ 분명히 좋아졌을 때만 `session.py keep`(--why 필수). "
          "시도는 최대 3번. 마지막에 JSON 하나로 보고.")

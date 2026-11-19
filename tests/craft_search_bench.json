@@ -1,0 +1,111 @@
+{
+ "빛나는 강조": [
+  "ec.stylize.glow",
+  "layer.style.outerGlow",
+  "ec.vr.glow"
+ ],
+ "네온 글자": [
+  "ec.stylize.glow",
+  "filter.gallery.neonGlow",
+  "neon_wipe",
+  "layer.style.outerGlow"
+ ],
+ "필름 그레인": [
+  "ec.noise.addgrain"
+ ],
+ "종이 질감": [
+  "filter.gallery.notePaper",
+  "filter.gallery.waterPaper",
+  "ec.noise.addgrain",
+  "ec.noise.fractal"
+ ],
+ "글자 타이핑": [
+  "typewriter"
+ ],
+ "화면 흔들림": [
+  "shake",
+  "camera_shake",
+  "keys.wiggle",
+  "wiggleSoft"
+ ],
+ "글리치": [
+  "ec.vr.digitalglitch",
+  "glitch",
+  "rgb_split",
+  "ec.vr.chromaticaberrations"
+ ],
+ "숫자 카운트 올라가기": [
+  "ec.text.numbers"
+ ],
+ "물결 왜곡": [
+  "ec.distort.wavewarp",
+  "ec.distort.ripple",
+  "ec.distort.ccripplepulse"
+ ],
+ "파티클 반짝이": [
+  "ec.sim.ccparticlesystems2",
+  "ec.sim.ccparticleworld",
+  "ec.sim.ccstarburst"
+ ],
+ "빛 줄기": [
+  "ec.generate.cclightrays",
+  "ec.generate.cclightburst",
+  "vr_light_rays"
+ ],
+ "빛이 훑고 지나감": [
+  "ec.generate.cclightsweep",
+  "sweepingLight",
+  "light_sweep"
+ ],
+ "그림자": [
+  "ec.perspective.dropshadow",
+  "layer.style.dropShadow"
+ ],
+ "배경 흐리게": [
+  "ec.blur.gaussian",
+  "ec.blur.fastbox",
+  "ec.blur.cameralens",
+  "ec.blur.compound"
+ ],
+ "방사형 흐림 속도감": [
+  "ec.blur.ccradial",
+  "ec.blur.ccradialfast",
+  "ec.blur.radial"
+ ],
+ "색 따뜻하게": [
+  "ec.color.photofilter",
+  "ec.color.colorbalance",
+  "Warm Negative",
+  "color_balance"
+ ],
+ "거품": [
+  "ec.sim.ccbubbles"
+ ],
+ "선이 그려지는 효과": [
+  "ec.generate.writeon",
+  "ec.generate.scribble",
+  "ec.generate.stroke",
+  "shape.stroke.taper"
+ ],
+ "그라데이션 배경": [
+  "ec.generate.gradientramp",
+  "ec.generate.fourcolor",
+  "layer.style.gradientOverlay"
+ ],
+ "렌즈 플레어": [
+  "ec.generate.lensflare"
+ ],
+ "화살표": [
+  "shape.arrow"
+ ],
+ "3D 카메라 회전": [
+  "camera.orbit",
+  "camera.orbitNull"
+ ],
+ "모자이크 픽셀": [
+  "ec.stylize.mosaic"
+ ],
+ "번개": [
+  "ec.generate.advancedlightning"
+ ]
+}

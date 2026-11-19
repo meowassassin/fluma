@@ -27,7 +27,7 @@ TOOLS = ROOT / "tools" / "crafts"
 # 한국어로 찾을 때 — 자주 쓰는 낱말을 영어 검색어로 넓힌다
 KO = {
     "화살표": "arrow", "곡선": "curve bezier", "박스": "box rectangle", "상자": "box rectangle", "글자": "text type", "자막": "caption subtitle",
-    "그림자": "shadow drop", "흐림": "blur", "흐리게": "blur", "확대": "zoom scale magnify", "줌": "zoom scale", "색": "color colour",
+    "그림자": "shadow drop", "흐림": "blur", "흐리게": "blur gaussian", "확대": "zoom scale magnify", "줌": "zoom scale", "색": "color colour",
     "보정": "correct grade adjust", "누끼": "cutout remove background mask", "배경": "background", "지우기": "remove erase delete", "제거": "remove reduce removal", "등장": "in reveal intro appear", 
     "마스크": "mask", "추적": "track tracker", "전환": "transition", "퇴장": "out exit",
     "애니메이션": "animation animate preset", "프리셋": "preset", "템플릿": "template", "형광펜": "highlight", "강조": "highlight emphasis",
@@ -36,9 +36,31 @@ KO = {
     "목소리": "voice dialogue speech", "녹음": "record", "잡음": "noise", "리버브": "reverb", "이퀄라이저": "eq equalizer",
     "회전": "rotate turntable orbit", "3d": "3d camera extrude", "재질": "material texture", "도면": "drawing dimension plot",
     "썸네일": "thumbnail export frame", "내보내기": "export render", "카드": "card frame", "레이어": "layer", "손그림": "brush pencil width sketch",
-    "붓": "brush", "선": "stroke line path", "점선": "dash dashed stroke", "패턴": "pattern", "그라데이션": "gradient", "빛": "light glow",
+    "붓": "brush", "선": "stroke line path", "점선": "dash dashed stroke", "패턴": "pattern", "그라데이션": "gradient ramp", "빛": "light glow",
     "흔들림": "wiggle shake stabilize", "속도": "speed time remap", "빨리": "speed fast", "자르기": "crop trim cut", "맞추기": "fit align",
+    # 영상 · 모션그래픽 낱말(2026-11-19: '필름 그레인' · '네온' · '글리치' · '파티클' 이 '없음' — 사전이 작아 24개 중 3개만 찾았다)
+    "빛나": "glow", "빛남": "glow", "광채": "glow", "후광": "glow halo", "네온": "neon glow", "발광": "glow",
+    "그레인": "grain", "필름": "film grain", "노이즈": "noise grain", "질감": "texture grain noise paper", "종이": "paper", "먼지": "dust scratches",
+    "타이핑": "typewriter", "타자": "typewriter", "한 글자씩": "typewriter", "글리치": "glitch digital chromatic rgb", "치지직": "glitch",
+    "숫자": "numbers number", "카운트": "numbers count", "올라가": "numbers", "물결": "wave ripple", "출렁": "wave warp",
+    "왜곡": "distort warp", "파티클": "particle", "입자": "particle", "반짝": "particle star sparkle glint", "별": "star",
+    "빛줄기": "light rays", "줄기": "rays", "훑": "sweep", "스윕": "sweep", "번쩍": "flash burst exposure", "플레어": "lens flare", "렌즈": "lens",
+    "블러": "blur", "흐림": "blur", "흐리": "blur", "방사": "radial", "속도감": "radial motion blur", "모션블러": "motion blur",
+    "따뜻": "warm photo filter balance", "차갑": "cool photo filter balance", "톤": "color grade tone", "색감": "color grade look",
+    "거품": "bubbles", "비눗방울": "bubbles", "그려지": "write scribble stroke", "그려": "write scribble stroke", "손글씨": "write scribble",
+    "번개": "lightning", "전기": "lightning", "모자이크": "mosaic", "픽셀": "mosaic pixel", "카메라": "camera", "궤도": "orbit",
+    "그림자": "shadow drop", "외곽선": "stroke outline", "테두리": "stroke outline border", "말풍선": "callout speech balloon",
+    "튀어": "pop bounce", "통통": "bounce", "탄력": "bounce elastic", "스르륵": "fade dissolve", "녹아": "dissolve",
+    "타원": "ellipse", "원": "circle ellipse", "사각형": "rectangle", "다각형": "polygon", "구름": "cloud fractal", "연기": "smoke fractal turbulent",
+    "불": "fire flame", "비": "rain", "눈송이": "snow", "물": "water caustics", "유리": "glass refraction", "거울": "mirror reflect",
 }
+# 영상 장면에 잘 안 쓰는 앱(문서 · CAD · 3D) — 질의가 그 뜻을 말할 때만 올린다
+APP_PRIOR = {"effectcraft": 3.0, "filmcraft": 1.5, "photocraft": 1.0, "vectorcraft": 1.0, "lightcraft": 0.5, "figcraft": 0.0, "soundcraft": 0.0,
+             "designcraft": -1.0, "deckcraft": -2.0, "wordcraft": -2.0, "gridcraft": -2.0, "pdfcraft": -2.0, "craft-anything": -1.0,
+             "cadcraft": -4.0, "solidcraft": -4.0, "texturecraft": -3.0}
+APP_WORDS = {"cadcraft": ("도면", "cad", "치수", "평면도"), "solidcraft": ("3d 제품", "모형", "제품 3d", "solid", "분해"), "texturecraft": ("재질", "texture 3d", "pbr"),
+             "deckcraft": ("슬라이드", "발표"), "wordcraft": ("문서", "워드"), "gridcraft": ("표", "엑셀", "스프레드"), "pdfcraft": ("pdf",)}
+UI_CMD = re.compile(r"^(view|pref|learn|help|window|time\.|file\.(run|new|open|close|recent)|edit\.(undo|redo)|markers\.|tool\.)")
 
 EXTRAS = {   # 효과 · 프리셋 목록(명령 목록에 안 나오는 실제 기능 이름들)
     "effectcraft": [("effect", ["exec", "effect.list", "--json"]), ("preset", ["exec", "anim.builtinPresets", "--json"]), ("preset", ["exec", "text.presets", "--json"])],
@@ -232,19 +254,36 @@ def probe_note(app: str, cid: str) -> str:
 def search(q: str, app: str | None = None, n: int = 15) -> list[tuple[float, dict]]:
     """맞은 뜻의 수가 먼저(여러 뜻을 함께 맞춘 항목이 위), 같으면 이름 · 라벨에 맞은 것이 위"""
     cons = _concepts(q)
+    ql = q.lower()
     scored = []
     for r in load(app):
         head = f"{r['id']} {r['label']}".lower()
         rest = f"{r['menu']} {r['params']} {r['summary']}".lower()
         hit, s = 0, 0.0
+        label = str(r.get("label") or "").lower().strip(" .…")
         for alts in cons:
             best = max((10.0 if re.search(rf"\b{re.escape(t)}", head) else 2.0 if re.search(rf"\b{re.escape(t)}", rest) else 0.0) for t in alts)
             if best:
                 hit += 1
                 s += best
+                s += 1.5 * (sum(1 for t in alts if re.search(rf"\b{re.escape(t)}", head)) - 1 if best >= 10 else 0)   # 'Drop Shadow' 처럼 한 뜻의 낱말을 여럿 맞춤
+                if label in alts or label == " ".join(alts[:2]):
+                    s += 6.0                                                                    # 이름이 검색어 그 자체('Glow' · 'Shake' · 'Arrow')
         if hit:
+            if hit < len(cons):                      # 뜻을 일부만 맞춘 항목은 덜(모든 뜻을 맞춘 항목이 위)
+                s *= 0.6
+            s += 3.0 if r["kind"] in ("effect", "preset") else 0.0     # 화면을 바꾸는 효과 · 프리셋 먼저(명령은 대개 조작 · 설정)
+            s += APP_PRIOR.get(r["app"], 0.0)
+            if any(w in ql for w in APP_WORDS.get(r["app"], ())):
+                s += 8.0
+            if r["kind"] == "command" and UI_CMD.search(r["id"]):
+                s -= 6.0
+            if ".obsolete." in r["id"]:
+                s -= 5.0
+            if (".audio." in r["id"] or r["app"] == "soundcraft") and not re.search(r"소리|음향|오디오|audio|sound|voice|목소리", ql):
+                s -= 5.0                                 # 화면 효과를 찾는데 소리 효과가 위로 오지 않게('wave distortion' → 오디오 왜곡)
             scored.append((s, r))
-    scored.sort(key=lambda x: (-x[0], x[1]["kind"] != "command", x[1]["app"], x[1]["id"]))
+    scored.sort(key=lambda x: (-x[0], x[1]["kind"] == "command", x[1]["app"], x[1]["id"]))
     return scored[:n]
 
 
