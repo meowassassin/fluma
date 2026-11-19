@@ -2019,6 +2019,9 @@ refreshAgents().then(() => publish({ kind: "registry", name: "agents" }));
 // 에이전트가 파일을 쓰는 서버이므로 이 컴퓨터에서만 접속 가능하게 한다
 // 기본은 이 컴퓨터에서만(127.0.0.1). 컨테이너에서는 FLUMA_HOST=0.0.0.0 — 키 · 파일 접근이 있는 API 라 외부에 열지 않는다
 const HOST = process.env.FLUMA_HOST || "127.0.0.1";
-const server = app.listen(PORT, HOST, () => console.log(`[api] http://${HOST}:${PORT}  root=${ROOT}`));
+const server = app.listen(PORT, HOST, () => {
+  console.log(`[api] http://${HOST}:${PORT}  root=${ROOT}`);
+  setTimeout(() => agent.resumeInterrupted().then((r) => r.length && console.log("[agent] 끊긴 자동 진행:", JSON.stringify(r))).catch((e) => console.error("[agent] 이어가기 실패", e)), 5000);
+});
 const shutdown = () => { agent.shutdown(); for (const j of jobs.list()) if (!jobs.TERMINAL.has(j.status)) jobs.cancel(j.id); server.close(); setTimeout(() => process.exit(0), 1500).unref(); };
 process.on("SIGTERM", shutdown); process.on("SIGINT", shutdown);
