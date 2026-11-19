@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { api, errMsg } from "./api";
 import { qc, qk } from "./queries";
 import { t } from "./i18n";
+import { useUi } from "./ui";
 import type { AgentEvent, ChatContext, ChatMessage, ChatTool, MemoryRef, Todo } from "./types";
 
 export interface LiveTurn {
@@ -112,7 +113,9 @@ export async function sendMessage(id: string, message: string, opts: { skill?: s
   if (!message.trim() || s.sending) return false;
   patch(id, { sending: true, error: null });
   try {
-    await api.send(id, { message: message.trim(), skill: opts.skill ?? null, scene: opts.scene ?? null, steer: !!s.live, interrupt: !!s.live && !!opts.interrupt, context: opts.context });
+    // 자동 진행(채팅창 스위치) — 켜져 있으면 에이전트가 선택지를 묻지 않고 추천안으로 완성까지 이어 간다(서버 agent.mjs)
+    const context = { ...(opts.context ?? {}), ...(useUi.getState().autopilot ? { autopilot: true } : {}) };
+    await api.send(id, { message: message.trim(), skill: opts.skill ?? null, scene: opts.scene ?? null, steer: !!s.live, interrupt: !!s.live && !!opts.interrupt, context });
     return true;
   } catch (e) { patch(id, { error: errMsg(e) }); return false; }
   finally { patch(id, { sending: false }); }

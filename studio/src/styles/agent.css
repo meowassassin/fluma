@@ -172,3 +172,10 @@
 .stage-d.err { color: var(--danger); }
 .stage-dn { color: var(--tx-3); flex: none; width: 52px; }
 .stage-da { color: var(--tx-4); font-family: var(--mono); word-break: break-all; }
+
+/* 자동 진행 스위치(채팅 입력창) — 켜면 선택지를 묻지 않고 완성까지 */
+.composer-bar .autopilot { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; font-size: 12px; color: var(--tx-3); cursor: pointer; user-select: none; white-space: nowrap; }
+.composer-bar .autopilot .switch { width: 28px; height: 16px; }
+.composer-bar .autopilot .switch i { width: 10px; height: 10px; }
+.composer-bar .autopilot.on { color: var(--primary); }
+.composer-bar .autopilot .switch.on i { transform: translateX(12px); }

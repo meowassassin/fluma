@@ -14,6 +14,7 @@ order: 0
 - **material**(실제 자료 편집 — 기본): 설명 · 뉴스 · 비교 · 순위 · 사용법 · 광고. 화면 녹화 · 원문 문서 · 출처 있는 숫자 · 사진 · 스톡 · 퍼온 클립 여러 개 · 차트, 그리고 Craft 2D(VectorCraft 그림 → EffectCraft 움직임 · 도식 · 모션그래픽) → storyboard · produce 스킬.
 - **clip**(클립 재편집): 원본 영상 하나를 다시 엮는 밈 · 반응 · 더빙 자막 → asset-edit 스킬.
 - 두 경로를 ```choices``` 로(추천을 첫째에 이유와 함께). **고른 뒤** `python3 engine/gen/route.py set <id> <material|clip> --why "<이유>" --topic "<주제>"`. '알아서'면 `--by default`.
+- **자동 진행**(<FLUMA_CONTEXT> 에 "진행 방식: 자동 진행"): 선택지를 띄우지 않는다 — 추천안(vet 통과)을 골라 한 줄로 알리고 `route.py set … --by default` → storyboard → produce 까지 이어 간다.
 - **묻지 않고 바로 가는 경우**: 추천이 material 이고 '완성까지' · '만들어 줘' 처럼 끝까지 하라는 뜻이면 `--by default` 로 정하고 한 줄로 알린 뒤 storyboard · produce 까지 이어 간다.
 - 사용자가 AI 생성 영상을 원하면: 이 도구는 생성 모델을 쓰지 않는다고 알리고, 같은 장면을 실제 자료 · 2D 로 어떻게 연출할지 제안한다.
 

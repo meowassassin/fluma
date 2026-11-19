@@ -7,7 +7,7 @@
 // 다른 점: 권한을 bypass 하지 않고 허용 목록으로 제한한다 (쓰기는 콘텐츠 폴더만).
 import { spawn, execFile, execFileSync } from "node:child_process";
 import { randomUUID, createHash } from "node:crypto";
-import { promises as fs, existsSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
+import { promises as fs, existsSync, readFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { resolveRuntime, codexArgs, codexPrompt, makeCodexParser, agyArgs, makeAgyParser, cursorArgs, makeCursorParser, agentEnv } from "./runtimes.mjs";
 import { pythonCmd, spawnTarget } from "./platform.mjs";
@@ -47,8 +47,27 @@ const DENY = [...PROTECT.flatMap((p) => [`Edit(${p})`, `Write(${p})`]),
 const TRACKED = WRITABLE.filter((p) => !p.startsWith("data/workspace/tmp"));  // 임시 폴더는 변경 목록에 안 띄움
 
 const autoChain = new Map();   // 프로젝트 → 사용자 말 이후 자동 이어가기를 몇 번 연속으로 했나
+const pilotChain = new Map();  // 프로젝트 → 사용자 말 이후 자동 진행(선택지 대신 고르기)을 몇 번 했나
 
 /** 에이전트가 사용자 답을 기다리며 턴을 끝냈나 — 선택지 블록이 있거나, 마지막 문장이 질문 */
+// 자동 진행(채팅창 스위치): 턴이 선택지 · 질문으로 끝나면 서버가 추천안(첫째 선택지)으로 대신 답한다.
+// 되돌릴 수 없거나 사람만 할 수 있는 일(업로드 · 녹화 · 키 · 로그인 · 결제 · 크레딧)은 고르지 않고 사용자에게 남긴다
+export const PILOT_MAX = 8;
+const PILOT_HOLD = /업로드|올려|올리|공개|publish|upload|녹화|로그인|log ?in|API ?키|키를|결제|크레딧|credit|삭제|지워/i;
+export function pilotReply(text) {
+  const t = String(text || "");
+  const blocks = [...t.matchAll(/```choices\n([\s\S]*?)```/g)];
+  if (blocks.length) {
+    const opts = blocks[blocks.length - 1][1].split("\n").map((x) => x.replace(/^[-*\s①-⑨\d.)]+/, "").trim()).filter(Boolean);
+    const pick = opts.find((o) => !/직접 말할|직접 입력|내가 고를/.test(o));
+    if (!pick || PILOT_HOLD.test(pick)) return null;
+    return `(자동 진행) ${pick}`;
+  }
+  const tail = t.replace(/```[\s\S]*?```/g, "").trim().slice(-400);
+  if (PILOT_HOLD.test(tail)) return null;
+  return "(자동 진행) 추천하는 쪽으로 직접 정하고, 묻지 말고 영상 완성(품질 관문 막음 0)까지 이어서 진행해 줘.";
+}
+
 export function waitsForUser(text) {
   const t = String(text || "").trim();
   if (!t) return false;
@@ -378,6 +397,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const lines = ["<FLUMA_CONTEXT>", `화면: ${MENU_LABEL[menu] || menu}${menu === "studio" ? ` · 프로젝트 ${project}` : ""}`];
     if (context?.selection) lines.push(`선택: ${String(context.selection).slice(0, 600)}`);
     if (context?.note) lines.push(String(context.note).slice(0, 600));
+    if (context?.autopilot) lines.push("진행 방식: 자동 진행(사용자가 켬) — 선택지를 띄우지 말고 추천안을 스스로 골라 한 줄로 알린 뒤 다음 단계로 간다(경로는 route.py --by default). 영상 완성(품질 관문 막음 0)까지 이어서 한다. 사람만 할 수 있는 것(업로드 · 녹화 · API 키 · 로그인)만 묻는다.");
     lines.push(`임시 폴더: ${tmp}/`);
     // 사용자가 올린 사진 · 영상 (data/public/uploads/<id>/) — 장면에 쓰라고 하면 이것을 쓴다
     try {
@@ -477,10 +497,11 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     slots.add(project);
     try { return await startInner(project, opts); } catch (e) { unbusy(project); throw e; }
   }
-  async function startInner(project, { message, look, template, skill: skillIn, scene, model, context, auto }) {
+  async function startInner(project, { message, look, template, skill: skillIn, scene, model, context, auto, pilot }) {
     let skill = skillIn;
-    if (!auto) { clearTimeout(autoTimers.get(project)); autoTimers.delete(project); autoChain.set(project, 0); }   // 사용자가 직접 보내면 예약된 자동 이어가기는 취소 · 연속 횟수 0
+    if (!auto) { clearTimeout(autoTimers.get(project)); autoTimers.delete(project); autoChain.set(project, 0); pilotChain.set(project, 0); }   // 사용자가 직접 보내면 예약된 자동 이어가기는 취소 · 연속 횟수 0
     else if (!autoTimers.has(project)) { unbusy(project); return { sessionId: null }; }   // 그사이 멈췄으면 자동 이어가기 안 함
+    else if (pilot) { autoTimers.delete(project); pilotChain.set(project, (pilotChain.get(project) ?? 0) + 1); }
     else { autoTimers.delete(project); autoChain.set(project, (autoChain.get(project) ?? 0) + 1); }
     // 장면 코멘트는 따로 고른 스킬이 없으면 scene-edit 를 쓴다
     if (scene != null && !skill && existsSync(path.join(ROOT, ".claude", "skills", "scene-edit", "SKILL.md"))) skill = "scene-edit";
@@ -659,9 +680,19 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       const chain = autoChain.get(project) ?? 0;
       // 사용 한도 · 크레딧 · 로그인 오류는 다시 보내도 똑같이 실패한다 — 이어가기 없이 사용자에게 알린다
       const blocked = /usage limit|rate.?limit|quota|credits?|not logged in|log ?in required|unauthori[sz]ed|\b40[13]\b|\b429\b/i.test(errorText || "");
-      if (!ok && !userStopped && !killed && !run.result && !asked && !blocked && chain < 2) {
+      const pilotOn = !!context?.autopilot;
+      // 이번 턴에 품질 관문을 막음 0 으로 통과했으면(완성) 자동 진행은 여기서 멈춘다 — 다듬기 선택지를 계속 골라 고치기를 반복하지 않게
+      let finished = false;
+      try {
+        const qf = path.join(ROOT, "data", "workspace", "tmp", project, "quality.json");
+        if (existsSync(qf) && statSync(qf).mtimeMs >= run.startedAt) finished = !(JSON.parse(readFileSync(qf, "utf8")).block || []).length;
+      } catch { finished = false; }
+      const pilotMsg = pilotOn && !finished && ok && asked && !userStopped && !killed && (pilotChain.get(project) ?? 0) < PILOT_MAX ? pilotReply(run.text) : null;
+      if (pilotMsg) {                                   // 자동 진행: 선택지 · 질문에 추천안으로 대신 답하고 이어 간다
+        autoTimers.set(project, setTimeout(() => start(project, { message: pilotMsg, look, template, skill, scene, model, context, auto: true, pilot: true }).catch(() => {}), 1200));
+      } else if (!ok && !userStopped && !killed && !run.result && !asked && !blocked && chain < 2) {
         autoTimers.set(project, setTimeout(() => start(project, { message: "(자동 이어가기) 방금 작업이 중간에 끊겼어. 이미 한 일은 다시 하지 말고, 남은 단계부터 이어서 마무리해 줘.", look, template, skill, scene, model, context, auto: true }).catch(() => {}), 1500));
-      } else if (ok && !auto && !userStopped && !asked && skill !== "plan") {
+      } else if (ok && (!auto || pilotOn) && !userStopped && !asked && skill !== "plan") {
         const missing = missingComposition(files);
         if (missing) {
           autoTimers.set(project, setTimeout(() => start(project,

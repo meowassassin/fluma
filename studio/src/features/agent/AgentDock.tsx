@@ -6,7 +6,7 @@ import React, { createContext, memo, useContext, useEffect, useLayoutEffect, use
 import { toast } from "sonner";
 import { Icon } from "../../ui/Icon";
 import { FlumaBounce, FlumaStrain, FlumaGlyph } from "../../ui/BrandIcons";
-import { Button, IconButton, Menu, Spinner, Tip, composing, confirmDialog, cx } from "../../ui/kit";
+import { Button, IconButton, Menu, Spinner, Switch, Tip, composing, confirmDialog, cx } from "../../ui/kit";
 import { connect, doing, resetSession, sendMessage, stopAgent, unqueueMessage, useSession, TOOL_KO, type LiveTurn } from "../../lib/agent";
 import { api, errMsg } from "../../lib/api";
 import { AttachChips, AttachMenu, attachNote, useAttachments } from "./attachments";
@@ -255,6 +255,8 @@ const Todos: React.FC<{ todos: Todo[]; done?: boolean }> = ({ todos, done }) => 
 const Composer: React.FC<AgentDockProps & { live: boolean; sending: boolean; stopping: boolean }> = ({ sessionId, context, chip, placeholder, prefill, onPrefillUsed, live, sending, stopping, defaultSkill }) => {
   const [text, setText] = useState("");
   const [skill, setSkill] = useState<string | null>(null);
+  const autopilot = useUi((s) => s.autopilot);
+  const setUi = useUi((s) => s.set);
   const ta = useRef<HTMLTextAreaElement>(null);
   const { data: skills = [] } = useSkills();
   // 첨부: 사용자가 찍은 영상 · 사진을 이 영상(프로젝트)의 uploads 로 올리고, 보낼 때 정확한 경로를 메시지에 붙인다
@@ -288,6 +290,12 @@ const Composer: React.FC<AgentDockProps & { live: boolean; sending: boolean; sto
         <div className="composer-bar">
           {canAttach && <AttachMenu attach={attach} />}
           <Menu align="start" trigger={<Button size="sm" variant="ghost" icon="wand" aria-label={t("스킬 고르기")}>{t("스킬")}</Button>} items={skills.length ? skills.map((k) => ({ label: `/${k.name}`, onSelect: () => setSkill(k.name) })) : [{ label: t("스킬 없음"), disabled: true, onSelect: () => {} }]} />
+          <Tip label={t("켜면 선택지를 묻지 않고 추천안을 골라 영상 완성까지 이어서 진행해요 (업로드 · 녹화 · 키처럼 사람만 할 수 있는 일은 물어요)")}>
+            <label className={cx("autopilot", autopilot && "on")}>
+              <Switch on={autopilot} onChange={(v) => setUi({ autopilot: v })} label={t("자동 진행")} />
+              <span>{t("자동 진행")}</span>
+            </label>
+          </Tip>
           <span className="grow" />
           <span className="composer-hint faint">{live ? t("Ctrl+Enter 끼어들기") : t("Enter 보내기 · Shift+Enter 줄바꿈")}</span>
           {live && text.trim() && <Tip label={t("지금 하던 일을 멈추고 이 말을 바로 보내기")} kbd="Mod+Enter"><Button size="sm" variant="secondary" icon="skipFwd" disabled={sending || uploading} onClick={() => send(true)}>{t("끼어들기")}</Button></Tip>}

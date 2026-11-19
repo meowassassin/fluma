@@ -43,7 +43,7 @@ export interface Settings {
 }
 
 // ---------- 에이전트 ----------
-export interface ChatContext { menu?: "trends" | "studio" | "plan"; selection?: string; note?: string }
+export interface ChatContext { menu?: "trends" | "studio" | "plan"; selection?: string; note?: string; autopilot?: boolean }
 export interface MemoryRef { id: string; title: string; scope: string; type: string }
 export interface ChatTool { name: string; input: string; error?: boolean; id?: string; out?: string[]; t0?: number }
 export interface Todo { content: string; status: "pending" | "in_progress" | "completed"; activeForm?: string }
