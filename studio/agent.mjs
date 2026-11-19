@@ -606,6 +606,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     if (safe.dropped.length) console.warn(`[agent] 로그인 모드라 결제 경로를 바꾸는 환경 변수를 넘기지 않음: ${safe.dropped.join(", ")}`);
     // FLUMA_AGENT_*: 엔진 스크립트가 '누가 만들었나'를 결과 파일에 적는다(파이프라인 뷰는 설정이 아니라 이 기록을 보여 준다)
     const child = spawn(st.cmd, args, { cwd: ROOT, env: { ...safe.env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1", ...rt.env,
+      FLUMA_API: `http://127.0.0.1:${process.env.PORT || 4310}`, FLUMA_PROJECT: project,   // engine/core/batch.py(일괄 제작)가 서버에 요청할 때
       FLUMA_AGENT_RUNTIME: rt.runtime || "", FLUMA_AGENT_MODEL: (rt.runtime === "claude" ? (model || rt.model || process.env.SF_AGENT_MODEL) : rt.model) || "" }, stdio, shell: st.shell, detached: process.platform !== "win32" });
     const run = { project, live: true, child, events: [], clients: clientsOf(project), stdinOpen: rt.runtime === "claude", text: "", tools: [], todos: null, startedAt: Date.now(), runtime: rt.label, skill: skill || null };
     runs.set(project, run);

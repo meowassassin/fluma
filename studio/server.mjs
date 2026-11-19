@@ -1528,6 +1528,50 @@ app.post("/api/projects/:id/chat", ah(async (req, res) => {
   res.json({ ok: true, mode: r?.waiting ? "waiting" : "start", ...r });
 }));
 app.get("/api/agent/active", (_req, res) => res.json(agent.active()));
+// ---------- 일괄 제작: 한 대화에서 "○○ 주제로 10개" → 주제마다 새 영상 프로젝트 + 자동 진행(완성까지) ----------
+// 영상마다 대화 · 맥락이 따로라 길어지지 않고, 동시 실행 수는 에이전트 대기열(maxConcurrent)이 정한다(2026-11-19 — 시리즈 탭을 없앤 뒤 대신)
+const BATCH_DIR = path.join(ROOT, "data", "workspace", "batches");
+const batchFile = (id) => path.join(BATCH_DIR, `${String(id).replace(/[^A-Za-z0-9_-]/g, "")}.json`);
+const newProjectId = (k) => {
+  const d = new Date();
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `${date}-s${(Date.now() + k).toString(36).slice(-6)}-01`;
+};
+app.post("/api/batch", ah(async (req, res) => {
+  const b = req.body || {};
+  const from = b.from ? checkId(String(b.from), { allowSystem: true }) : null;
+  const topics = (Array.isArray(b.topics) ? b.topics : []).map((x) => (typeof x === "string" ? { topic: x } : x)).filter((x) => x && String(x.topic || "").trim()).slice(0, 20);
+  if (!topics.length) throw bad("topics 가 필요합니다(주제 1~20개)");
+  const bid = `b${Date.now().toString(36)}`;
+  const items = topics.map((x, k) => ({ project: newProjectId(k), topic: String(x.topic).trim().slice(0, 200), note: String(x.note || "").slice(0, 600) }));
+  const all = items.map((x) => x.topic);
+  for (const [k, it] of items.entries()) {
+    const others = all.filter((t) => t !== it.topic).slice(0, 12).join(" · ");
+    const message = `"${it.topic}" 주제로 쇼츠 영상 한 편을 처음부터 완성(품질 관문 막음 0)까지 만들어 줘.${it.note ? ` 요청: ${it.note}` : ""}\n` +
+      `일괄 제작 ${k + 1}/${items.length}${from ? ` — ${from} 대화에서 요청` : ""}. 같은 묶음의 다른 영상과 각도 · 구성 · 화풍이 겹치지 않게(다른 주제: ${others}).`;
+    const context = { autopilot: true, note: `일괄 제작 ${bid} (${k + 1}/${items.length})`, ...(b.youtubeAccount ? { youtubeAccount: b.youtubeAccount } : {}) };
+    try { await agent.start(it.project, { message, skill: "plan", context }); it.started = true; }
+    catch (e) { it.error = String(e?.message || e).slice(0, 200); }
+  }
+  const rec = { id: bid, from, created: new Date().toISOString(), items };
+  await fs.mkdir(BATCH_DIR, { recursive: true });
+  await atomicWrite(batchFile(bid), JSON.stringify(rec, null, 1));
+  res.status(202).json(rec);
+}));
+app.get("/api/batch/:id", ah(async (req, res) => {
+  const rec = await readJson(batchFile(req.params.id), null);
+  if (!rec) throw notFound("그런 일괄 제작이 없습니다");
+  const active = new Map(agent.active().map((a) => [a.id, a]));
+  const items = await Promise.all(rec.items.map(async (it) => {
+    const q = await readJson(path.join(ROOT, "data", "workspace", "tmp", it.project, "quality.json"), null);
+    const a = active.get(it.project);
+    const state = q && !(q.block || []).length ? "done" : a ? (a.waiting ? "waiting" : "running") : q ? "blocked" : it.error ? "error" : "stopped";
+    const video = q?.video && existsSync(path.join(ROOT, q.video)) ? q.video : null;
+    return { ...it, state, video, block: q ? (q.block || []).length : null, doing: a?.label || a?.tool?.name || null };
+  }));
+  const count = (s) => items.filter((x) => x.state === s).length;
+  res.json({ ...rec, items, summary: { total: items.length, done: count("done"), running: count("running"), waiting: count("waiting"), blocked: count("blocked") + count("error") + count("stopped") } });
+}));
 // 홈 대화 목록: 영상(프로젝트)마다의 대화 기록 — 콘티가 아직 없는 기획 대화도 포함
 app.get("/api/chats", ah(async (_req, res) => {
   const dir = path.join(ROOT, "data", "workspace", "sessions");

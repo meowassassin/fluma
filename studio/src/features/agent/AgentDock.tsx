@@ -364,6 +364,7 @@ export const Md = memo<{ text: string }>(({ text }) => {
       const lang = line.slice(3).trim(); const buf: string[] = []; i++; while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
       if (lang === "choices") { out.push(<Choices key={i} items={buf.map((b) => b.replace(/^\s*[-*•]\s*/, "").trim()).filter(Boolean)} />); continue; }
       if (lang === "brief") { out.push(<Brief key={i} rows={parseBrief(buf.join("\n"))} />); continue; }
+      if (lang === "batch") { const bid = buf.join("").trim(); if (/^b[a-z0-9]+$/.test(bid)) out.push(<BatchBox key={i} id={bid} />); continue; }
       if (lang === "titles") { out.push(<Titles key={i} items={buf.map((b) => b.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean)} />); continue; }
       if (lang === "desc") { out.push(<Desc key={i} text={buf.join("\n").trim()} />); continue; }
       if (lang === "media") { out.push(<MediaRow key={i} ver={ver} items={buf.map(parseMedia).filter((x): x is MediaRef => !!x)} />); continue; }
@@ -500,6 +501,37 @@ export const Brief: React.FC<{ rows: [string, string][] }> = ({ rows }) => (
 export const lastBrief = (texts: string[]): [string, string][] | null => {
   for (let i = texts.length - 1; i >= 0; i--) { const m = /```brief\n([\s\S]*?)```/.exec(texts[i] || ""); if (m) return parseBrief(m[1]); }
   return null;
+};
+
+/* ---------- 일괄 제작 진행(engine/core/batch.py · /api/batch) ---------- */
+type BatchItem = { project: string; topic: string; state: string; video?: string | null; block?: number | null };
+type BatchRec = { id: string; items: BatchItem[]; summary: { total: number; done: number; running: number; waiting: number; blocked: number } };
+const BATCH_STATE: Record<string, string> = { done: "완성", running: "만드는 중", waiting: "차례 기다림", blocked: "막힘", stopped: "멈춤", error: "시작 못 함" };
+const BatchBox: React.FC<{ id: string }> = ({ id }) => {
+  const [rec, setRec] = useState<BatchRec | null>(null);
+  const nav = useNavigate();
+  useEffect(() => {
+    let on = true, timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      try { const r = await fetch(`/api/batch/${id}`); if (r.ok && on) setRec(await r.json()); } catch { /* 다음에 */ }
+      if (on) timer = setTimeout(tick, 5000);
+    };
+    tick();
+    return () => { on = false; clearTimeout(timer); };
+  }, [id]);
+  if (!rec) return <div className="ytbox faint">{t("일괄 제작 불러오는 중…")}</div>;
+  const s = rec.summary;
+  return (
+    <div className="ytbox batchbox">
+      <div className="ytbox-h"><Icon n="list" s={13} />{t("일괄 제작")} <span className="faint">{t("완성 {d}/{n} · 만드는 중 {r} · 기다림 {w}{b}", { d: s.done, n: s.total, r: s.running, w: s.waiting, b: s.blocked ? ` · ${t("막힘 {k}", { k: s.blocked })}` : "" })}</span></div>
+      {rec.items.map((it) => (
+        <button key={it.project} className={cx("batch-i", `st-${it.state}`)} onClick={() => nav(`/?c=${it.project}`)} title={t("이 영상 대화 열기")}>
+          <span className="batch-st">{t(BATCH_STATE[it.state] ?? it.state)}</span><span className="grow ellipsis">{it.topic}</span>
+          {it.state === "running" && <Spinner />}
+          {it.state === "done" && <Icon n="check" s={13} />}
+        </button>))}
+    </div>
+  );
 };
 
 /* ---------- 유튜브 제목 후보 · 설명 ---------- */
