@@ -848,6 +848,16 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
     changed = apply(sb, patch)
     if name == "writer" and changed:
         new = sorted(_hard_lint(sb) - before)
+        if new and all(sc is not None for _, sc in new):   # 장면에서 깬 검사면 그 장면 글만 되돌리고 나머지 고친 점은 받는다 — 각본가를 다시 부르지 않는다(2026-11-19: 다시 부른 것까지 버려져 165초가 사라짐)
+            orig = sbio.load(sbp)
+            bad = {int(sc) for _, sc in new}
+            for k in bad:
+                if k < len(sb.get("scenes") or []) and k < len(orig.get("scenes") or []):
+                    for f in ("narration", "caption"):
+                        sb["scenes"][k][f] = orig["scenes"][k].get(f)
+            if not sorted(_hard_lint(sb) - before):
+                changed = [c for c in changed if not any(str(c).startswith(f"s{k + 1}.") for k in bad)] + [f"(장면 {', '.join(str(k + 1) for k in sorted(bad))} 은 검사를 깨서 되돌림)"]
+                new = []
         if new:   # 한 번은 깬 검사를 알려 주고 다시 쓰게 한다(버리면 각본가 한 번 · 약 60초가 그냥 사라졌다)
             msgs = _lint_lines(sb, new)
             patch2, cost2 = claude(system, prompt + "\n\n# 직전 답이 새로 깬 검사 — 이것을 깨지 않게 다시 낸다(나머지 고친 점은 살린다)\n" + "\n".join(msgs))
