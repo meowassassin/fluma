@@ -16,7 +16,6 @@ import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import { createAgent } from "./agent.mjs";
-import { createSeriesRunner } from "./seriesRunner.mjs";
 import { NAME_RE as MCP_NAME, loadMcp, normalize as mcpNormalize, publicMcp, saveMcp, testMcp } from "./mcp.mjs";
 import { createJobs } from "./jobs.mjs";
 import { createCrafts } from "./crafts.mjs";
@@ -53,17 +52,9 @@ for (const p of [path.join(userHome, ".local", "bin"), path.join(userHome, ".npm
 process.on("unhandledRejection", (e) => console.error("[api] 처리되지 않은 거부:", e));
 process.on("uncaughtException", (e) => { console.error("[api] 처리되지 않은 예외 — 종료 (systemd 가 다시 띄움):", e); process.exit(1); });
 
-let seriesRunner;
 const agent = createAgent({
   ROOT, env: process.env,
-  onState: (id, running) => {
-    publish({ kind: "agent", id, running });
-    if (!running) seriesRunner?.onAgentIdle(id).catch((e) => console.error("[series]", e));
-  },
-});
-seriesRunner = createSeriesRunner({
-  ROOT, agent,
-  onChange: (run) => publish({ kind: "series", id: run.id, status: run.status, current: run.current, total: run.episodes?.length }),
+  onState: (id, running) => publish({ kind: "agent", id, running }),
 });
 const jobs = createJobs({ onChange: (j) => publish({ kind: "job", id: j.project ?? undefined, job: j }) });
 
@@ -1822,157 +1813,6 @@ app.delete("/api/memory/:id", ah(async (req, res) => {
   if (r.code !== 0) throw new HttpError(500, "memory_failed", "기억을 지우지 못했습니다");
   invalidate("memory"); await memoryList();
   res.json({ ok: true });
-}));
-
-// ---------- 라이브러리 (Library) & 자동화 (Automation) API ----------
-const PRESETS_FILE = path.join(ROOT, "data", "workspace", "presets.json");
-const AUTO_HIST_FILE = path.join(ROOT, "data", "workspace", "automation-history.json");
-
-app.get("/api/library/presets", ah(async (_req, res) => {
-  const presets = (await readJson(PRESETS_FILE, [])) || [];
-  res.json(presets);
-}));
-
-app.post("/api/library/presets", ah(async (req, res) => {
-  const p = req.body;
-  if (!p || !p.name) throw bad("프리셋 이름이 필요합니다");
-  const presets = (await readJson(PRESETS_FILE, [])) || [];
-  const id = p.id || `preset-${Date.now().toString(36)}`;
-  const idx = presets.findIndex((x) => x.id === id);
-  const entry = { ...p, id, updated_at: new Date().toISOString() };
-  if (idx >= 0) presets[idx] = entry;
-  else presets.push(entry);
-  await atomicWrite(PRESETS_FILE, JSON.stringify(presets, null, 2));
-  res.json({ ok: true, preset: entry });
-}));
-
-app.delete("/api/library/presets/:id", ah(async (req, res) => {
-  const id = req.params.id;
-  let presets = (await readJson(PRESETS_FILE, [])) || [];
-  presets = presets.filter((x) => x.id !== id);
-  await atomicWrite(PRESETS_FILE, JSON.stringify(presets, null, 2));
-  res.json({ ok: true });
-}));
-
-// ---------- 자동화 (Automation) API ----------
-app.post("/api/automation/verify", ah(async (req, res) => {
-  const { count = 1 } = req.body || {};
-  const n = Math.max(1, Math.min(20, Number(count) || 1));
-  const dailyUploadQuotaUnits = 10000;
-  const costPerUpload = 1600;
-  let todayUsedUnits = 0;
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const history = (await readJson(AUTO_HIST_FILE, [])) || [];
-  for (const h of history) {
-    if (h.date?.startsWith(todayStr) && h.uploads) todayUsedUnits += h.uploads * costPerUpload;
-  }
-  const remainingUploadUnits = Math.max(0, dailyUploadQuotaUnits - todayUsedUnits);
-  const maxByYt = Math.floor(remainingUploadUnits / costPerUpload);
-  const tokensNeeded = n * 15000;
-  const maxViable = Math.min(n, Math.max(1, maxByYt));
-
-  const warnings = [];
-  if (n > maxByYt) {
-    warnings.push(`유튜브 일일 업로드 쿼터(10,000점) 제한으로 안전한 생성 권장 편수는 최대 ${Math.max(1, maxByYt)}편입니다.`);
-  }
-
-  res.json({
-    ok: true,
-    requestedCount: n,
-    maxViable,
-    feasible: n <= maxViable,
-    breakdown: {
-      antigravityTokens: {
-        needed: tokensNeeded,
-        available: 1000000,
-        ok: true,
-      },
-      youtubeDailyQuota: {
-        neededUnits: n * costPerUpload,
-        dailyLimit: dailyUploadQuotaUnits,
-        costPerVideo: costPerUpload,
-        maxVideosPerDay: maxByYt,
-        ok: n <= maxByYt,
-      },
-      hasYouTubeToken: yt.status().connected || existsSync(path.join(ROOT, "data", "workspace", "youtube_tokens.json")),
-    },
-    warnings,
-  });
-}));
-
-app.get("/api/automation/history", ah(async (_req, res) => {
-  const history = (await readJson(AUTO_HIST_FILE, [])) || [];
-  const list = history.slice(-50).reverse();
-  res.json({ history: list, list });
-}));
-
-app.delete("/api/automation/history", ah(async (_req, res) => {
-  await atomicWrite(AUTO_HIST_FILE, "[]");
-  res.json({ ok: true });
-}));
-
-// ---------- 시리즈 양산 (Fluma 내장 큐, n8n 불필요) ----------
-app.post("/api/series/start", ah(async (req, res) => {
-  const { theme, topics, count, presetId, route, maxEpisodes } = req.body || {};
-  const run = await seriesRunner.start({ theme, topics, count, presetId, route, maxEpisodes });
-  const nowIso = new Date().toISOString();
-  const history = (await readJson(AUTO_HIST_FILE, [])) || [];
-  history.push({
-    id: run.id,
-    batchId: run.id,
-    date: nowIso,
-    triggeredAt: nowIso,
-    videoCount: run.episodes.length,
-    topicsCount: run.episodes.length,
-    topics: run.episodes.map((e) => e.topic),
-    presetId: run.presetId,
-    autopilot: true,
-    status: "in_progress",
-    kind: "series",
-  });
-  await atomicWrite(AUTO_HIST_FILE, JSON.stringify(history, null, 2));
-  res.json({ ok: true, seriesId: run.id, run });
-}));
-
-app.get("/api/series/runs", ah(async (_req, res) => {
-  res.json({ runs: await seriesRunner.list() });
-}));
-
-app.get("/api/series/runs/:id", ah(async (req, res) => {
-  const run = await seriesRunner.get(req.params.id);
-  if (!run) throw notFound("시리즈 실행을 찾을 수 없습니다");
-  res.json({ run });
-}));
-
-app.post("/api/series/runs/:id/stop", ah(async (req, res) => {
-  const run = await seriesRunner.stop(req.params.id);
-  if (!run) throw notFound("시리즈 실행을 찾을 수 없습니다");
-  res.json({ ok: true, run });
-}));
-
-// 레거시: 예전 클라이언트가 부르면 시리즈 시작으로 위임
-app.post("/api/automation/trigger-n8n", ah(async (req, res) => {
-  const { topics = [], count = 1, presetId, theme } = req.body || {};
-  const run = await seriesRunner.start({
-    theme: theme || topics[0] || "IT 쇼츠",
-    topics: topics.length > 1 ? topics : [],
-    count,
-    presetId,
-    route: "material",
-  });
-  res.json({ ok: true, batchId: run.id, seriesId: run.id, legacy: true, run });
-}));
-
-// (n8n API 제거됨 — 2026-11-16)
-const _n8nRemoved = async (_req, res) => sendError(res, 410, "n8n_removed", "n8n 연동은 제거되었습니다. 자동화 화면에서 시리즈 양산을 사용하세요.");
-app.get("/api/n8n/config", ah(_n8nRemoved));
-app.post("/api/n8n/config", ah(_n8nRemoved));
-app.get("/api/n8n/status", ah(_n8nRemoved));
-app.post("/api/n8n/deploy", ah(_n8nRemoved));
-app.post("/api/n8n/sync", ah(_n8nRemoved));
-app.post("/api/n8n/activate", ah(_n8nRemoved));
-app.get("/api/n8n/executions", ah(async (_req, res) => {
-  res.json({ executions: [], removed: true });
 }));
 
 // ---------- 캐릭터 ----------
