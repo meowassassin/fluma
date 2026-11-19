@@ -542,6 +542,13 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         print(f"[제작] ui 병렬 빌드 생략: {e}", flush=True)
 
+    # 2.85) 훅 장면 하나만 앱 기능으로 다듬기(skill_pass refine_hook) — 영상당 한 번, 훅 장면이 그대로면 건너뜀. 끄려면 FLUMA_HOOK_REFINE=0
+    #       2026-11-19: 전체 refine 은 219초라 꺼 두었고, 그 결과 에이전트가 Craft 기능을 0.9% 만 썼다
+    if deep and not a.scenes and os.environ.get("FLUMA_HOOK_REFINE", "1") != "0":
+        rh = step("refine_hook", [PY, "engine/story/skill_pass.py", "refine_hook", rel], timeout=1200)
+        print("\n".join(ln for ln in (rh.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
+        sb = json.loads(sp.read_text("utf-8"))
+
     # 2.9) 디자이너 정지 화면 검토(skill_pass review) — 렌더 앞에서. 정지 화면은 영상이 아니라 프로젝트에서 바로 그린다(engine/core/still.py → snapshot)
     #      2026-11-18: 렌더 뒤에 검토하면 바뀐 값(글자 위치 등)이 화면 전체에 걸려 두 번째 렌더가 통째로 돌았다(90초)
     if deep and not a.scenes:

@@ -1838,6 +1838,14 @@
         "camera": {
           "type": "object",
           "description": "물리 카메라 — follow: [{t|at, x, y, zoom} | {t|at, body, material, zoom}], stiffness, damping (engine/craft/motion.py camera_follow_jsx)"
+        },
+        "features": {
+          "type": "array",
+          "description": "이 장면에 쓰려고 고른 Craft 앱 기능(craft_catalog.py search 결과의 id — 예: ec.stylize.glow · ec.generate.cclightsweep · layer.style.dropShadow). 2~3개. 장면 코드에서 K.fx 등으로 실제로 쓴다(lint T69)",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6
         }
       }
     },

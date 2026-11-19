@@ -496,6 +496,49 @@ def run_refine(sbp: Path) -> dict:
     return rec
 
 
+def _hook_index(sb: dict) -> int:
+    sc = sb.get("scenes") or []
+    return next((i for i, x in enumerate(sc) if x.get("role") == "hook"), 0)
+
+
+def run_refine_hook(sbp: Path) -> dict:
+    """훅 장면 하나만 앱 기능으로 다듬는다(2026-11-19: refine 은 영상 전체 · 문제 있을 때만이라 한 번도 안 돌았고, 에이전트는 Craft 기능 9,152개 중 0.9% 만 썼다).
+    영상당 한 번 · 훅 장면 내용이 바뀌지 않으면 다시 하지 않는다. 결과가 좋아졌을 때만 keep"""
+    sb = json.loads(sbp.read_text("utf-8"))
+    sid = sb["id"]
+    hi = _hook_index(sb)
+    scene = (sb.get("scenes") or [{}])[hi]
+    h = hashlib.sha1(json.dumps({"m": scene.get("materials"), "r": scene.get("refine")}, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
+    rec_p = ROOT / "data" / "compositions" / sid / "skill_pass" / "refine_hook.json"
+    try:
+        old = json.loads(rec_p.read_text("utf-8"))
+    except (OSError, ValueError):
+        old = {}
+    if h in (old.get("hash"), old.get("hash_after")):
+        return {"pass": "refine_hook", "skipped": "훅 장면 그대로"}
+    if _runs(sid, "refine_hook") >= pass_max("refine_hook"):
+        return {"pass": "refine_hook", "skipped": f"refine_hook 상한({pass_max('refine_hook')}회/영상)"}
+    _runs(sid, "refine_hook", add=1)
+    t0 = time.perf_counter()
+    rel, n = str(sbp.relative_to(ROOT)), hi + 1
+    fmt = '{"kept": [{"scene": 번호, "target": "motion|sound|edit|재료 id", "features": ["카탈로그 id"], "why": ""}], "tried": ["시도했지만 안 남긴 것"], "left": ["못 한 것"]}'
+    p = (f"# 스킬: refine\n{skill_text('refine')}\n\n# 콘티 경로\n{rel}\n# 다듬을 장면\n{n}(훅 — 영상의 첫인상)\n\n"
+         f"할 일: 이 장면 하나만 다듬는다. ① `python3 engine/craft/session.py show {rel} {n}` ② `python3 engine/craft/craft_catalog.py search \"<하고 싶은 일>\"` 로 "
+         "EffectCraft 효과 · 프리셋 · 글자 애니메이터 · 빛 · 질감 중 이 장면 뜻에 맞는 1~2개를 고른다(K 도형을 더하는 건 다듬기가 아니다) "
+         f"③ `session.py try {rel} {n} --target motion --pass '<JSON>'` → 전 · 후 PNG 를 Read 로 반드시 열어 본다 ④ 분명히 좋아졌을 때만 `session.py keep`(--why 필수). "
+         "시도는 최대 3번. 마지막에 JSON 하나로 보고.")
+    allowed = ["Bash(python3 engine/craft/session.py:*)", "Bash(python3 engine/core/still.py:*)", "Bash(python3 engine/craft/recipes.py:*)", "Bash(python3 engine/craft/craft_catalog.py:*)", "Read"]
+    res, cost = claude(SYS.format(role="다듬기(refine · 훅 장면)", fmt=fmt), p, timeout=900, tools="Bash,Read", dirs=[str(ROOT)], allowed=allowed, cwd=str(ROOT))
+    sb2 = json.loads(sbp.read_text("utf-8"))
+    sc2 = (sb2.get("scenes") or [{}])[hi]
+    h2 = hashlib.sha1(json.dumps({"m": sc2.get("materials"), "r": sc2.get("refine")}, ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
+    rec = {"pass": "refine_hook", "scene": n, "hash": h, "hash_after": h2, "kept": res.get("kept"), "tried": res.get("tried"), "left": res.get("left"), "cost_usd": round(cost, 4)}
+    rec_p.parent.mkdir(parents=True, exist_ok=True)
+    rec_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
+    _log_skill_timing(sid, "refine_hook", time.perf_counter() - t0, kept=len(res.get("kept") or []))
+    return rec
+
+
 def _digest(files: list[str]) -> str:
     """정지 화면 내용의 지문 — 검토 캐시 키(파일 이름은 시각이라 같아도 그림이 바뀔 수 있다)"""
     h = hashlib.sha1()
@@ -604,7 +647,7 @@ def is_approved(sbp: Path) -> bool:
 WRITER_MAX = 3   # (예전 이름 — PASS_MAX["writer"])
 # 영상 하나에 단계별 실제 LLM 실행 상한. 넘으면 그 단계는 건너뛰고 남은 문제는 에이전트가 직접 고친다(FLUMA_PASS_MAX_<이름> 으로 바꿈).
 # 2026-11-18 실측(11-17 9편): 시청자 최대 40번 · 각본가 33번/편 — 제작을 다시 돌릴 때마다 입력이 조금씩 바뀌어 단계가 매번 다시 돌았다.
-PASS_MAX = {"writer": WRITER_MAX, "viewer": 4, "director": 2, "designer": 2, "review": 4}
+PASS_MAX = {"writer": WRITER_MAX, "viewer": 4, "director": 2, "designer": 2, "review": 4, "refine_hook": 2}
 
 
 def pass_max(name: str) -> int:
@@ -894,7 +937,7 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("which", choices=["all", "pipeline", "comprehension", "visual", "viewer", "writer", "director", "designer", "review", "refine", "status"])
+    ap.add_argument("which", choices=["all", "pipeline", "comprehension", "visual", "viewer", "writer", "director", "designer", "review", "refine", "refine_hook", "status"])
     ap.add_argument("storyboard")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
@@ -907,11 +950,11 @@ def main() -> int:
         ok("skill_pass", status=json.dumps(recs, ensure_ascii=False))
         return 0
     out = []
-    if a.which == "refine":
+    if a.which in ("refine", "refine_hook"):
         try:
-            r = run_refine(sbp)
+            r = run_refine(sbp) if a.which == "refine" else run_refine_hook(sbp)
         except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as e:
-            fail("skill_pass", stage="refine", error=str(e)[:400])
+            fail("skill_pass", stage=a.which, error=str(e)[:400])
         print(f"[스킬 단계] {json.dumps(r, ensure_ascii=False)}", flush=True)
         ok("skill_pass", passes=json.dumps([r], ensure_ascii=False))
         return 0

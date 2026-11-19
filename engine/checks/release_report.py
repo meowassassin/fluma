@@ -30,6 +30,37 @@ def _jsonl(p: Path, sid: str) -> list[dict]:
         return []
 
 
+SKELETON_STEPS = {"script.run", "comp.new", "edit.pasteSvg", "document.export", "file.export", "file.new"}
+
+
+def craft_features(sid: str, sb: dict) -> dict:
+    """Craft 사용 깊이 — features: 이 영상에서 쓴 고유 기능(엔진 조립 기록 usage.json + 에이전트가 고른 것),
+    chosen: 에이전트가 직접 고른 기능(K.fx 효과 · 재료 단계 명령 · scenes[].features · refine 으로 남긴 단계)"""
+    import re
+    chosen: set = set()
+    for sc in sb.get("scenes") or []:
+        chosen |= {str(f) for f in sc.get("features") or [] if f}
+        for m in sc.get("materials") or []:
+            if not isinstance(m, dict) or m.get("type") != "craft":
+                continue
+            for st in m.get("steps") or []:
+                sid_ = str((st or {}).get("id") or "")
+                if sid_ and sid_ not in SKELETON_STEPS:
+                    chosen.add(f"{m.get('app')}:{sid_}")
+                chosen |= set(re.findall(r"K\.fx\([^,]+,\s*['\"]([^'\"]+)", json.dumps(st, ensure_ascii=False).replace('\\"', '"')))
+        for r in sc.get("refine") or []:
+            for st in (r or {}).get("steps") or []:
+                if (st or {}).get("id"):
+                    chosen.add(f"refine:{st['id']}")
+    used: set = set()
+    try:
+        u = json.loads((ROOT / "data" / "compositions" / sid / "craft" / "usage.json").read_text("utf-8"))
+        used = {f"{x.get('app')}:{x.get('id')}" for x in u.get("features") or []}
+    except (OSError, ValueError):
+        pass
+    return {"features": len(used | chosen), "chosen": len(chosen)}
+
+
 def measure(sid: str) -> dict:
     s = json.loads((WS / "sessions" / f"{sid}.json").read_text("utf-8"))
     msgs = s.get("messages") or []
@@ -76,6 +107,7 @@ def measure(sid: str) -> dict:
         out["flow"] = _lint.flow_sig(sbj)
         out["kit_only"] = f"{len(_lint.kit_only_scenes(sbj))}/{len(scn)}"
         out["accent"] = ((sbj.get("direction") or {}).get("color_accent"))
+        out.update(craft_features(sid, sbj))
     except (OSError, ValueError, ImportError):
         out.update(flow=None, kit_only=None, accent=None)
     out["pass"] = {k: (out[k] <= v) for k, v in LIMITS.items()} | {"finished": out["finished"], "no_waiver": out["waived"] == 0}
@@ -99,6 +131,7 @@ def main() -> int:
         print(f"  produce {r['produce_runs']}회(렌더까지 {r['produce_full']}회 · 렌더 {r['render_sec']}초) · LLM 단계 {r['llm_calls']}회 {r['llm_pass_sec']}초")
         print(f"  품질 관문: 막음 {r['block']} · 권고 {r['advise']} · 면제 {r['waived']}")
         print(f"  다양성: 흐름 {r.get('flow')} · K 키트만 쓴 장면 {r.get('kit_only')} · 강조색 {r.get('accent')}")
+        print(f"  Craft 깊이: 고유 기능 {r.get('features')}개 · 에이전트가 직접 고른 기능 {r.get('chosen')}개")
         print("  기준: " + " · ".join(f"{k} {'✓' if v else '✗'}" for k, v in r["pass"].items()))
     streak = 0
     for r in rows:

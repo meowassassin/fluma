@@ -588,6 +588,7 @@ def lint(sb: dict, recent_titles=None) -> list:
 
     fails += variety(sb)
     fails += craft_depth(sb)
+    fails += [(c, i, m) for c, i, m in feature_plan(sb)]
     return fails
 
 
@@ -855,6 +856,26 @@ def kit_only_scenes(sb: dict) -> list[int]:
                 break
         if not native:
             out.append(i)
+    return out
+
+
+def feature_plan(sb: dict) -> list:
+    """T69 — 장면마다 고른 앱 기능(scenes[].features)이 없거나, 고른 기능을 장면 코드에서 안 씀(권고)"""
+    out = []
+    if sb.get("variant_of") or sb.get("format") in ("clip", "daily"):
+        return out
+    for i, sc in enumerate(sb.get("scenes") or []):
+        crafts = [m for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("type") == "craft"]
+        if not crafts:
+            continue
+        feats = [str(f) for f in sc.get("features") or [] if f]
+        if not feats:
+            out.append(("T69", i, "이 장면에 쓸 앱 기능을 고르지 않음 — craft_catalog.py search \"<하고 싶은 일>\" 로 2~3개 골라 scenes[].features 에 id 를 적고 장면 코드에서 쓴다"))
+            continue
+        code = json.dumps(crafts, ensure_ascii=False)
+        unused = [f for f in feats if f not in code]
+        if unused:
+            out.append(("T69", i, f"고른 기능을 장면 코드에서 안 씀: {', '.join(unused[:4])} — K.fx(L, '<id>', …) 또는 해당 앱 단계로 쓴다"))
     return out
 
 

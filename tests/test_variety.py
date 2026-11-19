@@ -44,3 +44,19 @@ def test_accent_not_fixed_red():
     import direct
     picks = {direct.ref_accent("no-such-ref", f"vid-{i}") for i in range(8)}
     assert "#ff2d2d" not in picks and len(picks) > 1
+
+
+def test_feature_plan_requires_and_uses():
+    sc = _craft("K.shape()")
+    assert lint.feature_plan({"scenes": [sc]})                      # 고른 기능 없음
+    sc2 = {**_craft("var t=K.text('a',1,1,9,'#fff'); K.fx(t,'ec.stylize.glow',{})"), "features": ["ec.stylize.glow"]}
+    assert not lint.feature_plan({"scenes": [sc2]})
+    sc3 = {**_craft("K.shape()"), "features": ["ec.stylize.glow"]}
+    assert "안 씀" in lint.feature_plan({"scenes": [sc3]})[0][2]
+
+
+def test_release_report_counts_chosen_features():
+    import release_report as rr
+    sb = {"scenes": [{**_craft("K.fx(t, 'ec.stylize.glow', {})"), "features": ["ec.blur.gaussian"]}]}
+    r = rr.craft_features("zz-none", sb)
+    assert r["chosen"] == 2
