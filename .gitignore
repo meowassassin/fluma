@@ -25,6 +25,7 @@ engine/*/renderer/.venv/
 
 # Craft 앱 설치본 (engine/craft/crafts.py)
 tools/crafts/
+tools/fonts/
 tools/toolchains/
 tools/python313/
 

@@ -352,14 +352,21 @@ def designer_io(sb: dict, sbp: Path) -> tuple[str, str]:
             st += f"\n## {rid}\n" + f.read_text("utf-8")[:3000]
     crafts = skill_text("crafts")
     astryx = crafts[crafts.find("## 앱 · 대시보드 화면은 Astryx"):][:2500] if "Astryx" in crafts else ""
-    fmt = ('{"direction": {"layout": "full|band", "subs": {"y": 0~1, "box": true|false}, "screen_text_y": 0~1, "font_title": "", "font_body": "", "cam_push": 1.0~1.1}, '
+    try:                                                  # 쓸 수 있는 글꼴(목록 — 없으면 렌더 때 받는다)
+        import fonts as _fonts
+        font_list = "\n".join(f"- {f['ps']} ({f['name']}) · {'/'.join(f.get('use', []))} · {f['mood']}" for f in _fonts.catalog())
+    except Exception:  # noqa: BLE001
+        font_list = ""
+    fmt = ('{"direction": {"layout": "full|band", "subs": {"y": 0~1, "box": true|false}, "screen_text_y": 0~1, "font_title": "PostScript 이름", "font_subs": "PostScript 이름", "font_body": "PostScript 이름", "cam_push": 1.0~1.1}, '
            '"materials": {"재료 id": {"adjust": {"scale": 배수(0.6~1.6), "dx": 화면 너비 비율(-0.25~0.25), "dy": 화면 높이 비율(-0.25~0.25)}, "color": "#RRGGBB(overlay 주석만)"}}, "ui_scenes": [{"scene": 장면 번호, "replace": "바꿀 재료 id 또는 null", "what": "앱 화면 설명", "components": ["Table", "Badge"]}], "why": ["이유"]}')
     p = (f"# 스킬: designer\n{skill_text('designer')}\n\n# 앱 화면 규칙(crafts 스킬)\n{astryx}\n\n# 레퍼런스 실측(style.md)\n{st}\n\n# 콘티\n{json.dumps(view(sb, True), ensure_ascii=False)}\n\n"
          "할 일: designer 3장 검사(시선 한 곳 · 안전 영역 · 띠를 70% 이상 채움 · 글자 세 단계 · 앞 장면과 다른 구도)를 통과하게 값을 정한다. "
          "재료는 crafts 기술 증거(web · screen · icon · photo · doc_quote)가 주인공 — info_card·diagram·mock ui_mock 으로 장면을 채우지 않는다(L59~L63). "
          "실험 결과 · 로그 · 데이터가 '앱 화면'으로 보이면 web · 실캡처가 우선이고, 그다음에만 ui_scenes(없으면 빈 배열). "
          "콘티 materials[].ui 에 .tsx 가 이미 있고 빌드가 되면 ui_scenes 에 넣지 않는다 — adjust·layout 만 고친다. 실제 촬영 · 실제 출력 화면은 바꾸지 않는다. "
-         "화면 전체 2D 장면(type craft · place full)은 장면 코드가 배치를 정한다 — 그 재료에는 adjust(scale · dx · dy · rot)를 주지 않는다(줘도 쓰이지 않음).")
+         "화면 전체 2D 장면(type craft · place full)은 장면 코드가 배치를 정한다 — 그 재료에는 adjust(scale · dx · dy · rot)를 주지 않는다(줘도 쓰이지 않음). "
+         "글꼴: 아래 목록에서 이 영상의 주제 · 톤(direction.art · concept)에 맞게 제목(font_title) · 자막(font_subs) · 본문(font_body)을 고른다 — 자막은 오래 읽으니 또렷한 것, 제목은 성격 있는 것. 최근 영상과 같은 조합을 피하고 기본(Pretendard)만 고르지 않는다."
+         + (f"\n\n# 쓸 수 있는 글꼴(PostScript 이름 · 쓰임 · 분위기)\n{font_list}" if font_list else ""))
     return SYS.format(role="디자이너", fmt=fmt), p
 
 
@@ -375,7 +382,7 @@ def designer_apply(sb: dict, patch: dict) -> list[str]:
             d["subs"] = {**(d.get("subs") or {}), **sub}; ch.append("subs")
     if isinstance(pd.get("screen_text_y"), (int, float)) and 0.08 <= pd["screen_text_y"] <= 0.3 and float(pd["screen_text_y"]) != d.get("screen_text_y"):
         d["screen_text_y"] = float(pd["screen_text_y"]); ch.append("screen_text_y")
-    for k in ("font_title", "font_body"):
+    for k in ("font_title", "font_subs", "font_body"):
         if isinstance(pd.get(k), str) and pd[k] and pd[k] != d.get(k):
             d[k] = pd[k]; ch.append(k)
     if isinstance(pd.get("cam_push"), (int, float)) and 1.0 <= pd["cam_push"] <= 1.1 and float(pd["cam_push"]) != d.get("cam_push"):

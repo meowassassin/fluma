@@ -40,7 +40,7 @@ SKIP = re.compile(r"^(app\.(quit|exit)|help\.|learn\.|window\.|scriptui\.|shortc
 def env() -> dict:
     SANDBOX.mkdir(parents=True, exist_ok=True)
     return {**os.environ, "HOME": str(SANDBOX), "XDG_CONFIG_HOME": str(SANDBOX / ".config"), "XDG_DATA_HOME": str(SANDBOX / ".local"),
-            "DO_NOT_TRACK": "1", "EFFECTCRAFT_FONT_DIRS": str(ROOT / "engine" / "assets" / "fonts"),
+            "DO_NOT_TRACK": "1", "EFFECTCRAFT_FONT_DIRS": __import__("fonts").font_dirs(),
             "SOUNDCRAFT_NO_PREFS": "1", "VECTORCRAFT_NO_PREFS": "1"}
 
 

@@ -170,6 +170,22 @@ FONTS = {"sans": "Pretendard-Black", "sans-bold": "Pretendard-Bold", "sans-regul
 _INSTALLED = set(FONTS.values()) | {"Pretendard-ExtraBold"}
 
 
+def _catalog_font(name: str) -> str | None:
+    """글꼴 목록(engine/assets/fonts/catalog.json)에서 PostScript 이름 · 파일 이름 · 한국어 이름('도현' · '주아')으로 찾기 — 없으면 렌더 직전에 받는다"""
+    try:
+        import fonts as _fonts
+        cat = _fonts.catalog()
+    except Exception:  # noqa: BLE001
+        return None
+    key = re.sub(r"[\s_-]+", "", name).lower()
+    norm = lambda k: re.sub(r"[\s_-]+", "", k or "").lower()  # noqa: E731
+    for want in (key, key + "bold", key + "black", key + "extrabold", key + "regular"):   # 이름만 적었으면 굵은 쪽부터(제목 · 자막)
+        for f in cat:
+            if want in (norm(f["ps"]), norm(f.get("file")), norm(f.get("name"))):
+                return f["ps"]
+    return None
+
+
 def resolve_font(name: str | None, default: str) -> str:
     """'Noto Serif CJK KR' · '명조' · 'serif light' · 'SongMyung-Regular' → 설치된 글꼴. 모르는 이름은 계열(세리프 · 산세리프 · 손글씨)로 가깝게"""
     n = str(name or "").strip()
@@ -177,6 +193,15 @@ def resolve_font(name: str | None, default: str) -> str:
         return default
     if n in _INSTALLED:
         return n
+    hit = _catalog_font(n)
+    if hit:
+        try:
+            import fonts as _fonts
+            _fonts.ensure([hit])
+            if _fonts.path_of(hit):
+                return hit
+        except Exception:  # noqa: BLE001 - 못 받으면 아래 계열로 가깝게
+            pass
     low = n.lower()
     if any(k in low for k in ("song", "송명", "display serif")):
         return FONTS["display-serif"]
@@ -1236,6 +1261,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
     W, H = width, height
     title_font = resolve_font(d.get("font_title"), font)       # 방향의 글꼴을 실제로 쓴다(설치된 것 중 가장 가까운 것)
     font = resolve_font(d.get("font_body"), font)
+    sub_font = resolve_font(d.get("font_subs"), font)          # 자막 글꼴(없으면 본문 글꼴) — 2026-11-19 사용자: 자막 · 화면 글자 글꼴도 다양하게
     J = Jsx()
     J(PRELUDE)
     J(f"var main = app.project.items.addComp('Main', {W}, {H}, 1, {total}, {fps});")
@@ -1517,7 +1543,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             hot = bool(re.search(r"\d", ch["text"])) or any(k and k in _norm(ch["text"]) for k in keys)
             fg = rgb(gs.get("hot", "#ffd60a")) if hot else rgb(gs.get("fg", "#ffffff"))   # 강조 낱말 색(방향 subs.hot — 밝은 상자면 빨강 등)
             stroke = "null, 0" if gs.get("box") else f"[0.02, 0.02, 0.05], {max(6, size // 5)}"     # 상자가 있으면 외곽선 없이(뭉개짐)
-            J(f"var s = txt(c, {js(f'Sub {i + 1:02d}')}, {js(ch['text'])}, {js(font)}, {size}, {js(fg)}, {stroke}, [{W / 2}, {gs['y'] * H:.0f}]);")
+            J(f"var s = txt(c, {js(f'Sub {i + 1:02d}')}, {js(ch['text'])}, {js(sub_font)}, {size}, {js(fg)}, {stroke}, [{W / 2}, {gs['y'] * H:.0f}]);")
             J(f"fitText(s, {W * SAFE_TEXT_W:.0f});")   # 가운데 정렬 글자가 오른쪽 12%(좋아요 · 댓글 버튼)에 닿지 않게 — 길면 두 줄, 그래도 넘으면 줄임
             pop = f"var sS = s.property('Transform').property('Scale'); sS.setValueAtTime({a_:.3f}, [88, 88]); sS.setValueAtTime({a_ + 0.09:.3f}, [100, 100]);"
             J(f"s.inPoint = {a_:.3f}; s.outPoint = {b_:.3f};")

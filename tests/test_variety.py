@@ -86,3 +86,15 @@ def test_scene_file_inlined(tmp_path):
     assert lint.file_refs(sb)
     import shutil
     shutil.rmtree(d, ignore_errors=True)
+
+
+def test_font_catalog_names_resolve():
+    """글꼴 목록 — 이름 · 한국어 이름으로 찾고, 묶음 글꼴은 받지 않고 바로 쓴다"""
+    import fonts
+    cat = fonts.catalog()
+    assert len(cat) >= 30 and all(f.get("license") == "OFL" for f in cat)
+    assert all(fonts.path_of(f["ps"]) for f in cat if f.get("bundled"))
+    from craft import motion
+    assert motion._catalog_font("도현") == "DoHyeon-Regular"
+    assert motion._catalog_font("Gowun Batang") == "GowunBatang-Bold"
+    assert motion._catalog_font("없는 글꼴") is None

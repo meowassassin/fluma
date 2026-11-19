@@ -76,7 +76,7 @@ class Ctx:
     def run(self, args: list, what: str = "", env: dict | None = None, cwd: Path | None = None) -> str:
         args = [str(a) for a in args]
         e = {**os.environ, "DO_NOT_TRACK": "1", "SOUNDCRAFT_NO_PREFS": "1", "VECTORCRAFT_NO_PREFS": "1",
-             "WORDCRAFT_REGION": "ko-KR", "EFFECTCRAFT_FONT_DIRS": str(ROOT / "engine" / "assets" / "fonts"), **(env or {})}
+             "WORDCRAFT_REGION": "ko-KR", "EFFECTCRAFT_FONT_DIRS": __import__("fonts").font_dirs(), **(env or {})}
         t = self.left()
         try:
             r = subprocess.run(args, cwd=str(cwd or self.dir), text=True, capture_output=True, timeout=t, env=e,

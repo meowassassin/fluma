@@ -695,6 +695,11 @@ def _build_one(task: dict, sb: dict, sid: str, base: Path, reg: dict, plug: dict
 def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
     """콘티의 모든 재료를 만든다(입력이 같으면 다시 만들지 않음) → 재료 목록.
     indices: 장면 일부만 렌더할 때 각 장면의 원래 번호(0부터) — 재료 폴더 s<NN> 이 원래 번호와 맞게"""
+    try:                                                  # 이 영상이 쓰는 글꼴이 없으면 지금 받는다(필요할 때만 — 2026-11-19)
+        import fonts as _fonts
+        _fonts.ensure(_fonts.used_by(sb))
+    except Exception as e:  # noqa: BLE001 - 글꼴을 못 받아도 렌더는 비슷한 글꼴로 계속
+        print(f"[글꼴] 받기 실패: {e}")
     sid = sb["id"]
     reg = registry()
     plug, post = plugins()

@@ -3,7 +3,8 @@
 
   python3 engine/gen/publish.py final <plan id>                       # 최종 렌더(engine/render.py — 초안 아님)
   python3 engine/gen/publish.py upload <plan id> [--privacy private|unlisted|public] [--publish-at ISO]
-        # 사용자가 명시적으로 올리라고 할 때만. engine/publish/upload_youtube.py(중복 업로드 방지 · YOUTUBE_CLIENT_SECRET)
+        # 사용자가 명시적으로 올리라고 할 때만. engine/publish/upload_youtube.py(채널별 중복 업로드 방지).
+        # 채널 = 이 영상에 고른 것(data/compositions/<id>/youtube.account.json) → 없으면 설정의 기본 계정
   python3 engine/gen/publish.py feedback <plan id>                    # youtube.stats.json(작업 공간이 YouTube Analytics 에서 받아 둔 것) → 장면별 시청 지속
         # → data/public/trends/own/<id>.json + 트렌드 목록(index.json)에 '내 영상'으로 → plan.py trends 가 1단계 추천 재료로 함께 보여 준다
 분석 숫자는 YouTube Analytics 가 약 2일 늦게 채운다. 시청 지속(elapsedVideoTimeRatio → audienceWatchRatio)을 콘티 장면 경계(sec 누적)에 겹쳐
@@ -34,6 +35,20 @@ def published(pid: str) -> dict | None:
         return None
     rows = [json.loads(x) for x in PUBLISHED.read_text("utf-8").splitlines() if x.strip()]
     return next((r for r in reversed(rows) if r.get("id") == pid), None)
+
+
+def chosen_account(pid: str) -> str | None:
+    """작업 공간(채팅창 · 게시 화면)에서 이 영상에 고른 YouTube 채널 id — 없으면 None(업로드 스크립트가 기본 계정을 쓴다)"""
+    try:
+        cid = json.loads((ROOT / "data" / "compositions" / pid / "youtube.account.json").read_text("utf-8")).get("id") or None
+    except (OSError, ValueError, AttributeError):
+        return None
+    try:   # 끊긴 계정이면 고르지 않은 것으로(기본 계정) — 계정 id 만 본다
+        st = json.loads((Path.home() / ".shortsforge" / "youtube.json").read_text("utf-8"))
+        ids = {a.get("id") for a in st.get("accounts") or [] if isinstance(a, dict)} | {(st.get("channel") or {}).get("id")}
+    except (OSError, ValueError, AttributeError):
+        return None
+    return cid if cid in ids else None
 
 
 def no_mock(pid: str, stage: str) -> None:
@@ -90,6 +105,9 @@ def upload(pid: str, privacy: str, publish_at: str | None) -> dict:
         target = outs[-1]
 
     cmd = [sys.executable, "engine/publish/upload_youtube.py", f"data/storyboards/{pid}.json", str(target.relative_to(ROOT)), "--privacy", privacy]
+    acc = chosen_account(pid)
+    if acc:
+        cmd += ["--account", acc]
     if publish_at:
         cmd += ["--publish-at", publish_at]
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=3600)

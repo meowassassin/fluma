@@ -54,7 +54,8 @@ def test_usage_record_counts_features(tmp_path, monkeypatch):
 def test_fonts_install_copies_repo_fonts(tmp_path):
     sys.path.insert(0, str(ROOT / "engine" / "core"))
     import fonts
-    assert fonts.install(tmp_path) == len(fonts.FILES)
+    got = len(list(fonts.EXT.glob("*.ttf"))) if fonts.EXT.exists() else 0   # 저장소 글꼴 + 필요할 때 받은 글꼴(2026-11-19)
+    assert fonts.install(tmp_path) == len(fonts.FILES) + got
     assert fonts.install(tmp_path) == 0                  # 이미 있으면 건너뛴다
 
 

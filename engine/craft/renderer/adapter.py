@@ -37,7 +37,7 @@ def _cli() -> Path:
 
 def _env() -> dict:
     # 저장소의 글꼴(Pretendard 등)을 시스템에 설치하지 않고 넘긴다
-    return {**os.environ, "DO_NOT_TRACK": "1", "EFFECTCRAFT_FONT_DIRS": str(ROOT / "engine" / "assets" / "fonts")}
+    return {**os.environ, "DO_NOT_TRACK": "1", "EFFECTCRAFT_FONT_DIRS": __import__("fonts").font_dirs()}
 
 
 def available():

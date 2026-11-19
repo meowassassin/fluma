@@ -1,0 +1,486 @@
+{
+ "_설명": "영상 글꼴 목록 — 모두 OFL(상업 사용 가능). ps = 글꼴의 PostScript 이름(콘티 · K.text 에 적는 이름), file = 파일 이름(다를 때만). bundled 는 저장소 engine/assets/fonts, 나머지는 영상이 그 글꼴을 쓸 때 렌더 직전에 tools/fonts 로 받는다. use: title 제목 · subs 자막 · caption 화면 글자 · body 본문",
+ "fonts": [
+  {
+   "ps": "Pretendard-Black",
+   "name": "프리텐다드 Black",
+   "mood": "표준 굵은 고딕 · 기본 제목 · 자막",
+   "use": [
+    "title",
+    "subs"
+   ],
+   "bundled": true,
+   "license": "OFL"
+  },
+  {
+   "ps": "Pretendard-ExtraBold",
+   "name": "프리텐다드 ExtraBold",
+   "mood": "굵은 고딕 · 자막",
+   "use": [
+    "subs"
+   ],
+   "bundled": true,
+   "license": "OFL"
+  },
+  {
+   "ps": "Pretendard-Bold",
+   "name": "프리텐다드 Bold",
+   "mood": "고딕 · 본문",
+   "use": [
+    "body",
+    "subs"
+   ],
+   "bundled": true,
+   "license": "OFL"
+  },
+  {
+   "ps": "Pretendard-Regular",
+   "name": "프리텐다드 Regular",
+   "mood": "가는 고딕 · 본문 · 주석",
+   "use": [
+    "body"
+   ],
+   "bundled": true,
+   "license": "OFL"
+  },
+  {
+   "ps": "GowunBatang-Bold",
+   "name": "고운바탕 Bold",
+   "mood": "바탕 · 회고 · 진지",
+   "use": [
+    "title"
+   ],
+   "bundled": true,
+   "license": "OFL"
+  },
+  {
+   "ps": "GowunBatang-Regular",
+   "name": "고운바탕",
+   "mood": "바탕 본문 · 감성",
+   "use": [
+    "body"
+   ],
+   "bundled": true,
+   "license": "OFL"
+  },
+  {
+   "ps": "SongMyung-Regular",
+   "name": "송명",
+   "mood": "굵은 명조 · 사극 · 묵직",
+   "use": [
+    "title"
+   ],
+   "bundled": true,
+   "license": "OFL"
+  },
+  {
+   "ps": "NanumPen-Regular",
+   "name": "나눔펜",
+   "mood": "펜 손글씨 · 메모",
+   "use": [
+    "caption"
+   ],
+   "bundled": true,
+   "license": "OFL",
+   "file": "NanumPenScript-Regular"
+  },
+  {
+   "ps": "BlackHanSans-Regular",
+   "name": "검은고딕",
+   "mood": "극굵은 고딕 · 임팩트 · 예능",
+   "use": [
+    "title"
+   ],
+   "bundled": true,
+   "license": "OFL"
+  },
+  {
+   "ps": "Gugi-Regular",
+   "name": "구기",
+   "mood": "장식 고딕 · 독특",
+   "use": [
+    "title"
+   ],
+   "bundled": true,
+   "license": "OFL"
+  },
+  {
+   "ps": "Geist-Regular",
+   "name": "Geist",
+   "mood": "라틴 · 테크 · 숫자",
+   "use": [
+    "caption"
+   ],
+   "bundled": true,
+   "license": "OFL",
+   "file": "Geist"
+  },
+  {
+   "ps": "JetBrainsMono-ExtraBold",
+   "name": "JetBrains Mono",
+   "mood": "코드 · 터미널",
+   "use": [
+    "caption"
+   ],
+   "bundled": true,
+   "license": "OFL"
+  },
+  {
+   "ps": "DoHyeon-Regular",
+   "name": "도현",
+   "mood": "각진 굵은 고딕 · 레트로 간판 · 강한 제목",
+   "use": [
+    "title",
+    "caption"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/dohyeon/DoHyeon-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/dohyeon/OFL.txt"
+  },
+  {
+   "ps": "Jua-Regular",
+   "name": "주아",
+   "mood": "둥글고 굵은 · 귀엽고 친근 · 제목 · 자막",
+   "use": [
+    "title",
+    "subs"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/jua/Jua-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/jua/OFL.txt"
+  },
+  {
+   "ps": "Gaegu-Bold",
+   "name": "개구",
+   "mood": "손글씨 · 일기 · 귀여움",
+   "use": [
+    "caption",
+    "subs"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/gaegu/Gaegu-Bold.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/gaegu/OFL.txt"
+  },
+  {
+   "ps": "Dongle-Bold",
+   "name": "동글",
+   "mood": "둥글고 납작 · 캐주얼 · 자막",
+   "use": [
+    "subs",
+    "caption"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/dongle/Dongle-Bold.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/dongle/OFL.txt"
+  },
+  {
+   "ps": "Sunflower-Bold",
+   "name": "해바라기",
+   "mood": "단정한 굵은 고딕 · 정보 · 자막",
+   "use": [
+    "subs",
+    "body"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/sunflower/Sunflower-Bold.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/sunflower/OFL.txt"
+  },
+  {
+   "ps": "YeonSung-Regular",
+   "name": "연성",
+   "mood": "붓 느낌 · 레트로 · 옛날 이야기",
+   "use": [
+    "title",
+    "caption"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/yeonsung/YeonSung-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/yeonsung/OFL.txt"
+  },
+  {
+   "ps": "HiMelody-Regular",
+   "name": "하이멜로디",
+   "mood": "가벼운 손글씨 · 메모",
+   "use": [
+    "caption"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/himelody/HiMelody-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/himelody/OFL.txt"
+  },
+  {
+   "ps": "EastSeaDokdo-Regular",
+   "name": "동해독도",
+   "mood": "거친 붓 손글씨 · 강렬 · 감정",
+   "use": [
+    "title",
+    "caption"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/eastseadokdo/EastSeaDokdo-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/eastseadokdo/OFL.txt"
+  },
+  {
+   "ps": "GothicA1-Black",
+   "name": "고딕 A1",
+   "mood": "묵직한 고딕 · 뉴스 · 정보",
+   "use": [
+    "title",
+    "subs"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/gothica1/GothicA1-Black.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/gothica1/OFL.txt"
+  },
+  {
+   "ps": "NanumMyeongjoExtraBold",
+   "name": "나눔명조",
+   "mood": "명조 · 진지 · 회고 · 다큐",
+   "use": [
+    "title",
+    "caption"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/nanummyeongjo/NanumMyeongjo-ExtraBold.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/nanummyeongjo/OFL.txt",
+   "file": "NanumMyeongjo-ExtraBold"
+  },
+  {
+   "ps": "NanumGothicExtraBold",
+   "name": "나눔고딕",
+   "mood": "표준 굵은 고딕 · 정보 · 자막",
+   "use": [
+    "subs",
+    "body"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumgothic/NanumGothic-ExtraBold.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumgothic/OFL.txt",
+   "file": "NanumGothic-ExtraBold"
+  },
+  {
+   "ps": "IBMPlexSansKR-Bold",
+   "name": "IBM Plex Sans KR",
+   "mood": "테크 · 개발 · 정돈된 정보",
+   "use": [
+    "title",
+    "subs",
+    "body"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexsanskr/IBMPlexSansKR-Bold.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexsanskr/OFL.txt"
+  },
+  {
+   "ps": "Stylish-Regular",
+   "name": "스타일리시",
+   "mood": "얇고 세련 · 감성",
+   "use": [
+    "caption",
+    "title"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/stylish/Stylish-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/stylish/OFL.txt"
+  },
+  {
+   "ps": "SingleDay-Regular",
+   "name": "싱글데이",
+   "mood": "장식 · 귀여움 · 축제",
+   "use": [
+    "title"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/singleday/SingleDay-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/singleday/OFL.txt"
+  },
+  {
+   "ps": "BagelFatOne-Regular",
+   "name": "베이글 팻",
+   "mood": "아주 굵고 통통 · 임팩트 훅",
+   "use": [
+    "title"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/bagelfatone/BagelFatOne-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/bagelfatone/OFL.txt"
+  },
+  {
+   "ps": "GasoekOne-Regular",
+   "name": "가석",
+   "mood": "극굵은 포스터 · 임팩트 · 숫자",
+   "use": [
+    "title"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/gasoekone/GasoekOne-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/gasoekone/OFL.txt"
+  },
+  {
+   "ps": "Dokdo-Regular",
+   "name": "독도",
+   "mood": "거친 손글씨 · 낙서",
+   "use": [
+    "caption"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/dokdo/Dokdo-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/dokdo/OFL.txt"
+  },
+  {
+   "ps": "PoorStory-Regular",
+   "name": "푸어스토리",
+   "mood": "캐주얼 손글씨",
+   "use": [
+    "caption",
+    "subs"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/poorstory/PoorStory-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/poorstory/OFL.txt"
+  },
+  {
+   "ps": "GamjaFlower-Regular",
+   "name": "감자꽃",
+   "mood": "귀여운 손글씨",
+   "use": [
+    "caption"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/gamjaflower/GamjaFlower-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/gamjaflower/OFL.txt"
+  },
+  {
+   "ps": "CuteFont-Regular",
+   "name": "큐트",
+   "mood": "동화 · 귀여움",
+   "use": [
+    "caption",
+    "title"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/cutefont/CuteFont-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/cutefont/OFL.txt"
+  },
+  {
+   "ps": "KirangHaerang-Regular",
+   "name": "기랑해랑",
+   "mood": "복고 · 독특한 레트로",
+   "use": [
+    "title"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/kiranghaerang/KirangHaerang-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/kiranghaerang/OFL.txt"
+  },
+  {
+   "ps": "NanumBrush",
+   "name": "나눔붓",
+   "mood": "붓글씨 · 감성 · 전통",
+   "use": [
+    "title",
+    "caption"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumbrushscript/NanumBrushScript-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumbrushscript/OFL.txt",
+   "file": "NanumBrushScript-Regular"
+  },
+  {
+   "ps": "GowunDodum-Regular",
+   "name": "고운돋움",
+   "mood": "부드러운 본문 · 감성",
+   "use": [
+    "subs",
+    "body"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/gowundodum/GowunDodum-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/gowundodum/OFL.txt"
+  },
+  {
+   "ps": "Diphylleia-Regular",
+   "name": "디필레이아",
+   "mood": "우아한 명조 · 감성 · 고급",
+   "use": [
+    "title"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/diphylleia/Diphylleia-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/diphylleia/OFL.txt"
+  },
+  {
+   "ps": "GrandifloraOne-Regular",
+   "name": "그랜디플로라",
+   "mood": "장식 명조 · 클래식",
+   "use": [
+    "title"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/grandifloraone/GrandifloraOne-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/grandifloraone/OFL.txt"
+  },
+  {
+   "ps": "MoiraiOne-Regular",
+   "name": "모이라이",
+   "mood": "기하학 · 미래 · 독특",
+   "use": [
+    "title"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/moiraione/MoiraiOne-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/moiraione/OFL.txt"
+  },
+  {
+   "ps": "BlackAndWhitePicture-Regular",
+   "name": "흑백사진",
+   "mood": "흑백 영화 · 레트로 장식",
+   "use": [
+    "title"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/blackandwhitepicture/BlackAndWhitePicture-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/blackandwhitepicture/OFL.txt"
+  },
+  {
+   "ps": "Orbit-Regular",
+   "name": "오르빗",
+   "mood": "미래 · 테크 · 레트로 게임",
+   "use": [
+    "title",
+    "caption"
+   ],
+   "bundled": false,
+   "license": "OFL",
+   "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/orbit/Orbit-Regular.ttf",
+   "license_url": "https://raw.githubusercontent.com/google/fonts/main/ofl/orbit/OFL.txt"
+  }
+ ]
+}
