@@ -317,6 +317,20 @@ def main() -> int:
         fail("produce", stage="storyboard", error=f"콘티가 없습니다: {a.storyboard}")
     sb = json.loads(sp.read_text("utf-8"))
     sid = sb["id"]
+    # 자동 진행: 막음 0 으로 완성한 뒤의 전체 제작(다듬기)은 한 번만 — 2026-11-19 실측: 완성 뒤 스스로 렌더 6번 더 · 10분
+    if os.environ.get("FLUMA_AUTOPILOT") and not a.scenes and not a.prep and not os.environ.get("FLUMA_POLISH_OK"):
+        qf0 = ROOT / "data" / "workspace" / "tmp" / sid / "quality.json"
+        pf0 = qf0.with_name("polish.json")
+        try:
+            done0 = qf0.exists() and not (json.loads(qf0.read_text("utf-8")).get("block") or [])
+        except ValueError:
+            done0 = False
+        if done0:
+            n0 = (json.loads(pf0.read_text("utf-8")).get("n", 0) if pf0.exists() else 0)
+            if n0 >= 1:
+                fail("produce", stage="autopilot", error="자동 진행: 이미 완성(막음 0)했고 다듬기 제작도 한 번 했다 — 더 렌더하지 말고 완성 영상을 media 로 보여 주며 끝낸다",
+                     file=str(qf0.relative_to(ROOT)))
+            pf0.write_text(json.dumps({"n": n0 + 1}), "utf-8")
     lock_f0 = ROOT / "data" / "workspace" / "tmp" / sid / "produce.lock"
     prep_f = ROOT / "data" / "compositions" / sid / "prep.json"
     if a.prep_status:

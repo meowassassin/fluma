@@ -398,7 +398,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const lines = ["<FLUMA_CONTEXT>", `화면: ${MENU_LABEL[menu] || menu}${menu === "studio" ? ` · 프로젝트 ${project}` : ""}`];
     if (context?.selection) lines.push(`선택: ${String(context.selection).slice(0, 600)}`);
     if (context?.note) lines.push(String(context.note).slice(0, 600));
-    if (context?.autopilot) lines.push("진행 방식: 자동 진행(사용자가 켬) — 선택지를 띄우지 말고 추천안을 스스로 골라 한 줄로 알린 뒤 다음 단계로 간다(경로는 route.py --by default). 영상 완성(품질 관문 막음 0)까지 이어서 한다. 사람만 할 수 있는 것(업로드 · 녹화 · API 키 · 로그인)만 묻는다. 단계를 마칠 때마다(① 기획 기록 · prepare.py ② bundle.py 검사 통과 ③ 제작 · 관문) 한 줄 보고로 턴을 끝낸다 — 다음 단계는 새 대화에서 파일(기획 기록 · prepare.json · 콘티)을 읽고 이어 간다.");
+    if (context?.autopilot) lines.push("진행 방식: 자동 진행(사용자가 켬) — 선택지를 띄우지 말고 추천안을 스스로 골라 한 줄로 알린 뒤 다음 단계로 간다(경로는 route.py --by default). 영상 완성(품질 관문 막음 0)까지 이어서 한다. 사람만 할 수 있는 것(업로드 · 녹화 · API 키 · 로그인)만 묻는다. 단계를 마칠 때마다(① 기획 기록 · prepare.py ② bundle.py 검사 통과 ③ 제작 · 관문) 한 줄 보고로 턴을 끝낸다 — 다음 단계는 새 대화에서 파일(기획 기록 · prepare.json · 콘티)을 읽고 이어 간다. 막음 0 으로 완성되면 정지 화면을 한 번 보고, 큰 문제(글자 잘림 · 빈 화면 · 틀린 사실 · 깨진 장면)만 모아 한 번에 고쳐 마지막 제작 한 번 — 그 뒤엔 더 다듬지 않고 끝낸다(엔진도 막는다). 고칠 곳이 여럿이면 Edit 를 한 응답에 나란히 보낸다(한 칸 고치고 검사 · 렌더 반복 금지).");
     // 이 영상을 올릴 YouTube 채널(채팅창에서 고름) — 이름만. 토큰은 서버 밖으로 나오지 않는다
     if (context?.youtubeAccount?.title && !project.startsWith("_")) lines.push(`유튜브 계정: ${String(context.youtubeAccount.title).replace(/\s+/g, " ").slice(0, 80)} (업로드는 이 계정으로 — publish.py upload 가 이 영상의 선택을 따른다)`);
     lines.push(`임시 폴더: ${tmp}/`);
@@ -509,7 +509,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
   }
   async function startInner(project, { message, look, template, skill: skillIn, scene, model, context, auto, pilot }) {
     let skill = skillIn;
-    if (!auto) { clearTimeout(autoTimers.get(project)); autoTimers.delete(project); autoChain.set(project, 0); pilotChain.set(project, 0); }   // 사용자가 직접 보내면 예약된 자동 이어가기는 취소 · 연속 횟수 0
+    if (!auto) { clearTimeout(autoTimers.get(project)); autoTimers.delete(project); autoChain.set(project, 0); pilotChain.set(project, 0); fs.rm(path.join(ROOT, "data", "workspace", "tmp", project, "polish.json"), { force: true }).catch(() => {}); }   // 사용자가 새로 말하면 완성 뒤 다듬기 횟수도 다시   // 사용자가 직접 보내면 예약된 자동 이어가기는 취소 · 연속 횟수 0
     else if (!autoTimers.has(project)) { unbusy(project); return { sessionId: null }; }   // 그사이 멈췄으면 자동 이어가기 안 함
     else if (pilot) { autoTimers.delete(project); pilotChain.set(project, (pilotChain.get(project) ?? 0) + 1); }
     else { autoTimers.delete(project); autoChain.set(project, (autoChain.get(project) ?? 0) + 1); }
@@ -614,7 +614,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     if (safe.dropped.length) console.warn(`[agent] 로그인 모드라 결제 경로를 바꾸는 환경 변수를 넘기지 않음: ${safe.dropped.join(", ")}`);
     // FLUMA_AGENT_*: 엔진 스크립트가 '누가 만들었나'를 결과 파일에 적는다(파이프라인 뷰는 설정이 아니라 이 기록을 보여 준다)
     const child = spawn(st.cmd, args, { cwd: ROOT, env: { ...safe.env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1", ...rt.env,
-      FLUMA_API: `http://127.0.0.1:${process.env.PORT || 4310}`, FLUMA_PROJECT: project,   // engine/core/batch.py(일괄 제작)가 서버에 요청할 때
+      FLUMA_API: `http://127.0.0.1:${process.env.PORT || 4310}`, FLUMA_PROJECT: project, ...(context?.autopilot ? { FLUMA_AUTOPILOT: "1" } : {}),   // engine/core/batch.py(일괄 제작)가 서버에 요청할 때
       FLUMA_AGENT_RUNTIME: rt.runtime || "", FLUMA_AGENT_MODEL: (rt.runtime === "claude" ? (model || rt.model || process.env.SF_AGENT_MODEL) : rt.model) || "" }, stdio, shell: st.shell, detached: process.platform !== "win32" });
     const run = { project, live: true, child, events: [], clients: clientsOf(project), stdinOpen: rt.runtime === "claude", text: "", tools: [], todos: null, startedAt: Date.now(), runtime: rt.label, skill: skill || null };
     runs.set(project, run);

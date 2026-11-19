@@ -91,7 +91,7 @@ def main() -> int:
         print(f"△ {x}")
     rel = f"data/storyboards/{sid}.json"
     if hard:
-        fail("bundle", stage="check", error=f"막힘 {len(hard)}건 — 모두 고쳐 묶음을 다시 apply(한 번에)", file=rel, hard=str(len(hard)), soft=str(len(soft)))
+        fail("bundle", stage="check", error=f"막힘 {len(hard)}건 — 전부 한 번에 고친다(묶음을 Write 로 통째로 다시 쓰거나 Edit 를 한 응답에 나란히) → 다시 apply 한 번", file=rel, hard=str(len(hard)), soft=str(len(soft)))
     ok("bundle", file=rel, soft=str(len(soft)), next=f"python3 engine/produce.py {rel} --prep --bg → 재료 · 장면 확인 → python3 engine/produce.py {rel}")
     return 0
 
