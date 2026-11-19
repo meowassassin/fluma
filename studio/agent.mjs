@@ -53,7 +53,7 @@ const pilotChain = new Map();  // 프로젝트 → 사용자 말 이후 자동 �
 // 자동 진행(채팅창 스위치): 턴이 선택지 · 질문으로 끝나면 서버가 추천안(첫째 선택지)으로 대신 답한다.
 // 되돌릴 수 없거나 사람만 할 수 있는 일(업로드 · 녹화 · 키 · 로그인 · 삭제)은 고르지 않고 사용자에게 남긴다.
 // 결제 · 크레딧은 뺐다(2026-11-19 영상 생성 제거 뒤 결제를 묻는 단계가 없다 — 유료는 Typecast 음성뿐이고 제작 중 자동으로 쓴다)
-export const PILOT_MAX = 8;
+export const PILOT_MAX = 15;   // 사용자 말 하나에 자동으로 이어 보내는 최대 횟수(끝나지 않는 고리 방지)
 const PILOT_HOLD = /업로드|올려|올리|공개|publish|upload|녹화|로그인|log ?in|API ?키|키를|삭제|지워/i;
 export function pilotReply(text) {
   const t = String(text || "");
@@ -681,14 +681,17 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       const chain = autoChain.get(project) ?? 0;
       // 사용 한도 · 크레딧 · 로그인 오류는 다시 보내도 똑같이 실패한다 — 이어가기 없이 사용자에게 알린다
       const blocked = /usage limit|rate.?limit|quota|credits?|not logged in|log ?in required|unauthori[sz]ed|\b40[13]\b|\b429\b/i.test(errorText || "");
-      const pilotOn = !!context?.autopilot;
+      const pilotOn = !!context?.autopilot && !project.startsWith("_");   // 작업 공간 대화(트렌드 · 홈)는 완성할 영상이 없다
       // 이번 턴에 품질 관문을 막음 0 으로 통과했으면(완성) 자동 진행은 여기서 멈춘다 — 다듬기 선택지를 계속 골라 고치기를 반복하지 않게
       let finished = false;
       try {
         const qf = path.join(ROOT, "data", "workspace", "tmp", project, "quality.json");
         if (existsSync(qf) && statSync(qf).mtimeMs >= run.startedAt) finished = !(JSON.parse(readFileSync(qf, "utf8")).block || []).length;
       } catch { finished = false; }
-      const pilotMsg = pilotOn && !finished && ok && asked && !userStopped && !killed && (pilotChain.get(project) ?? 0) < PILOT_MAX ? pilotReply(run.text) : null;
+      // 자동 진행 = 완성까지 그냥 간다: 질문으로 끝났으면 추천안으로 답하고, 진행 보고로 끝났어도 완성 전이면 이어서 보낸다
+      const pilotMsg = pilotOn && !finished && ok && !userStopped && !killed && (pilotChain.get(project) ?? 0) < PILOT_MAX
+        ? (asked ? pilotReply(run.text) : "(자동 진행) 아직 완성 전이야(이번에 품질 관문을 막음 0 으로 통과한 영상이 없음). 묻지 말고 남은 단계를 이어서 완성까지 진행해 줘.")
+        : null;
       if (pilotMsg) {                                   // 자동 진행: 선택지 · 질문에 추천안으로 대신 답하고 이어 간다
         autoTimers.set(project, setTimeout(() => start(project, { message: pilotMsg, look, template, skill, scene, model, context, auto: true, pilot: true }).catch(() => {}), 1200));
       } else if (!ok && !userStopped && !killed && !run.result && !asked && !blocked && chain < 2) {

@@ -34,6 +34,30 @@ sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engin
 from tts import synth, duration, write_silence, resolve, read_words, restore_punct, DEFAULT_VOICE, FFMPEG, SR  # noqa: E402
 from tts import engine_available as tts_available  # noqa: E402
 FALLBACK_ORDER = ("elevenlabs", "typecast", "supertonic", "edge")   # 막혔을 때 넘어갈 순서(유료 · 자연스러움 → 무료)
+
+
+def voice_gender(prov: str, vid: str | None, sb: dict) -> str | None:
+    """지금 목소리의 성별(M · F) — 콘티 voice.gender, 없으면 엔진 목소리 목록(Typecast 는 캐시)에서"""
+    g = (sb.get("voice") or {}).get("gender")
+    if g in ("M", "F"):
+        return g
+    try:
+        import tts as _tts
+        vs = _tts.typecast_voices() if prov == "typecast" else (_tts.voice_meta(prov).get("voices") or [])
+    except Exception:  # noqa: BLE001 - 목록을 못 읽으면 성별 없이
+        return None
+    return next((v.get("gender") for v in vs if v.get("id") == vid and v.get("gender") in ("M", "F")), None)
+
+
+def fallback_voice(eng: str, gender: str | None) -> str | None:
+    """다른 엔진으로 넘어갈 때 그 엔진에서 같은 성별 목소리(목록 첫째) — 2026-11-19: 기본 목소리로 넘어가 여성 → 남성처럼 톤이 바뀌었다"""
+    try:
+        import tts as _tts
+        vs = _tts.voice_meta(eng).get("voices") or []
+    except Exception:  # noqa: BLE001
+        return None
+    same = [v for v in vs if gender and v.get("gender") == gender]
+    return (same or vs or [{}])[0].get("id")
 TOKENS = json.loads((ROOT / "engine" / "spec" / "tokens" / "default.json").read_text(encoding="utf-8"))
 from craft.music_pick import music_on  # noqa: E402
 SFX_DIR = ROOT / "assets" / "sfx"
@@ -403,10 +427,12 @@ def main():
             print(f"[음성] {prov} 합성 실패: {str(e)[:200]}", file=sys.stderr)
             if not nxt:
                 raise
-            print(f"[음성] {prov} 대신 {nxt} 로 자동 전환합니다", file=sys.stderr)
-            sb.setdefault("voice", {})["fallback"] = {"from": prov, "to": nxt, "why": str(e)[:200]}
+            gender = voice_gender(prov, vid, sb)
+            nvid = fallback_voice(nxt, gender)
+            print(f"[음성] {prov} 대신 {nxt} 로 자동 전환합니다" + (f" — 같은 성별({gender}) 목소리 {nvid}" if gender and nvid else ""), file=sys.stderr)
+            sb.setdefault("voice", {})["fallback"] = {"from": prov, "to": nxt, "voice": nvid, "gender": gender, "why": str(e)[:200]}
             _save()
-            prov, vid, style, vopts = nxt, None, None, {}
+            prov, vid, style, vopts = nxt, nvid, None, {}
     if not tried and (sb.get("voice") or {}).pop("fallback", None) is not None:   # 이번엔 원래 엔진으로 됐다 — 지난 전환 기록 지움
         _save()
 
