@@ -27,6 +27,9 @@ order: 0
   레퍼런스는 이 순서로 한 번씩: `trends.py search` → `python3 engine/research/ref_pick.py --request <rid>`(표 + 썸네일 시트 한 장만 Read) → 2~3편을 `analyze_ref.py <id1> <id2> <id3>` 한 명령 → 필요한 편만 `look.py sheet <id>`.
   `xray.json` 의 `understanding`(훅 · 반전 · 편집 문법 · 빌릴 것 · 베끼면 안 되는 것)을 읽고 **추천 선택지 2~4개**(훅 · 플롯 한 줄 · 화면 재료 · 길이, 근거 쇼츠 id)를 ```choices``` 로.
 
+## 빠른 길(기본)
+`python3 engine/story/prepare.py <id> "<주제>"` 한 번이 경로 기록 · 레퍼런스 찾기 · 분석 · 이미 보여 준 선택지를 다 한다(아래 단계를 하나씩 부르지 말 것). 그 요약을 보고 사실 조사(WebSearch) · 각도가 다른 선택지만 네가 한다. 레퍼런스가 엉뚱하면 `--queries "검색어"` 또는 `--refs a b c`.
+
 ## 여러 편 요청
 "○○ 주제로 N개"면 주제 N개(각도가 서로 다르게, vet 통과)를 뽑아 보여 주고 `python3 engine/core/batch.py start "주제 1" …` 로 넘긴다 — 주제마다 새 영상 대화가 자동 진행으로 완성까지. 이 대화에서 직접 만들지 않는다. 답에 ```batch 블록(묶음 id).
 

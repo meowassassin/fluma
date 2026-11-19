@@ -398,7 +398,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const lines = ["<FLUMA_CONTEXT>", `화면: ${MENU_LABEL[menu] || menu}${menu === "studio" ? ` · 프로젝트 ${project}` : ""}`];
     if (context?.selection) lines.push(`선택: ${String(context.selection).slice(0, 600)}`);
     if (context?.note) lines.push(String(context.note).slice(0, 600));
-    if (context?.autopilot) lines.push("진행 방식: 자동 진행(사용자가 켬) — 선택지를 띄우지 말고 추천안을 스스로 골라 한 줄로 알린 뒤 다음 단계로 간다(경로는 route.py --by default). 영상 완성(품질 관문 막음 0)까지 이어서 한다. 사람만 할 수 있는 것(업로드 · 녹화 · API 키 · 로그인)만 묻는다.");
+    if (context?.autopilot) lines.push("진행 방식: 자동 진행(사용자가 켬) — 선택지를 띄우지 말고 추천안을 스스로 골라 한 줄로 알린 뒤 다음 단계로 간다(경로는 route.py --by default). 영상 완성(품질 관문 막음 0)까지 이어서 한다. 사람만 할 수 있는 것(업로드 · 녹화 · API 키 · 로그인)만 묻는다. 단계를 마칠 때마다(① 기획 기록 · prepare.py ② bundle.py 검사 통과 ③ 제작 · 관문) 한 줄 보고로 턴을 끝낸다 — 다음 단계는 새 대화에서 파일(기획 기록 · prepare.json · 콘티)을 읽고 이어 간다.");
     // 이 영상을 올릴 YouTube 채널(채팅창에서 고름) — 이름만. 토큰은 서버 밖으로 나오지 않는다
     if (context?.youtubeAccount?.title && !project.startsWith("_")) lines.push(`유튜브 계정: ${String(context.youtubeAccount.title).replace(/\s+/g, " ").slice(0, 80)} (업로드는 이 계정으로 — publish.py upload 가 이 영상의 선택을 따른다)`);
     lines.push(`임시 폴더: ${tmp}/`);
@@ -433,6 +433,13 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     }
     const last = [...(s.messages || [])].reverse().find((m) => m.role === "assistant" && m.text);
     if (last) out.push(`직전 답(요약): ${String(last.text).replace(/\s+/g, " ").slice(0, 500)}`);
+    const prep = path.join(ROOT, "data", "compositions", project, "prepare.json");
+    if (existsSync(prep)) {
+      try {
+        const pj = JSON.parse(readFileSync(prep, "utf8"));
+        out.push(`기획 준비(prepare.json): 주제 ${pj.topic} · 레퍼런스 ${(pj.references || []).map((r) => r.id).join(" ")} · 조사 파일 ${existsSync(path.join(ROOT, pj.research_file || "")) ? "있음" : "아직"} — 자세한 건 ${path.relative(ROOT, prep)}`);
+      } catch { /* 생략 */ }
+    }
     const sbp = path.join(ROOT, "data", "storyboards", `${project}.json`);
     if (existsSync(sbp)) {
       try {
@@ -525,7 +532,8 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         first = !s.sessionId || !claudeUsed;
         // 대화 갈아타기: 한 Claude 대화에 턴이 쌓이면 매 턴 앞 대화 전체(정지 화면 · 도구 출력 포함)를 다시 읽어 턴 비용이 계속 커졌다
         // (2026-11-09 영상: 턴 비용 0.8 → 36.7, 전체의 3/4 이 쌓인 대화 다시 읽기). ROTATE 턴마다 새 대화로 시작하고, 상태는 코드가 요약해 넘긴다
-        if (claudeUsed && s.sessionId && (s.claudeTurns ?? 0) >= ROTATE && !project.startsWith("_")) {
+        // 자동 진행은 단계(기획 → 콘티 → 제작)마다 새 대화로 — 앞 단계 도구 출력을 다시 읽지 않게(2026-11-19 토큰: 호출당 컨텍스트 14만 → 단계 시작 4~5만)
+        if (claudeUsed && s.sessionId && (pilot || (s.claudeTurns ?? 0) >= ROTATE) && !project.startsWith("_")) {
           s.sessionId = randomUUID(); first = true; rotated = true; s.claudeTurns = 0;
         }
       }

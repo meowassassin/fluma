@@ -34,7 +34,7 @@ order: 1
    - **엔진은 Craft 하나** — `engine: "craft"`. 장면에 보일 것은 아래 '장면 재료(materials)' 칸으로 적고, 제작은 produce 스킬이 한다(HyperFrames · Manim 은 제거).
    - **장면 설계 = 무엇을 어떤 순서로 보여 줄지**: 장면마다 필요한 재료를 주제에 맞게 설계한다(템플릿 고르기 아님). 로고는 `icon`(engine/capture/icons.py), 정밀 도표는 `chart` · `diagram`, 3D 제품은 `model3d`(SolidCraft 제품 형태 — crafts 스킬). 실사 장면은 실제 자료(퍼온 클립 `clip.py` · 무료 스톡 `stock` · 자료 사진 `relic`)로.
      · `cue` 는 그 요소가 나타나거나 움직이는 **나레이션 단어**. 화면은 이 단어 시각에 맞춰 움직인다(음성이 기준).
-4. **검사**: `python3 engine/checks/lint.py data/storyboards/<id>.json` → L 규칙 없을 때까지. 통과 시 `production_ready: true` 가 콘티에 찍힌다(lint가 기록 · 또는 `python3 engine/story/production_ready.py data/storyboards/<id>.json`).
+4. **쓰기 + 검사는 한 번에(2026-11-19 속도)**: 콘티 · 장면 코드(`scenes/sNN.jsx`) · 형태(`forms/*.json`) · 조사 사실을 묶음 JSON 하나로 써서 `python3 engine/story/bundle.py apply <묶음.json>` — 저장하고 모든 검사(L · 형태)를 음성 전에 돌려 막힘을 한꺼번에 보여 준다. 막힘을 모두 고쳐 묶음을 다시 apply(한 칸씩 고치고 검사 반복 금지). 따로 쓸 때는 `python3 engine/checks/lint.py data/storyboards/<id>.json` → L 규칙 없을 때까지. 통과 시 `production_ready: true` 가 콘티에 찍힌다(lint가 기록 · 또는 `python3 engine/story/production_ready.py data/storyboards/<id>.json`).
 5. **오븐 전 마무리**: ui_mock 에 `ui: data/compositions/<id>/ui/….tsx` 가 있으면 채팅에서 TSX를 쓰고 build는 produce가 병렬로 — produce 안 designer Astryx Agent 는 **ui 없거나 L53일 때만**.
 6. **음성 길이**(선택): `python3 engine/voice/assemble_audio.py data/storyboards/<id>.json` 후 다시 lint (L14).
 

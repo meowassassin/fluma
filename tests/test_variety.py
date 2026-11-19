@@ -110,3 +110,28 @@ def test_direction_modes_fill_defaults_but_keep_explicit():
     assert design.with_mode(sb)["direction"]["layout"] == "card"
     assert design.with_mode({"direction": {"mode": "comic"}})["direction"]["subs"]["bubble"] is True
     assert design.with_mode({"direction": {}}) == {"direction": {}}
+
+
+def test_bundle_writes_files_inside_composition_and_checks(tmp_path, monkeypatch):
+    import json, sys
+    sys.path.insert(0, str(ROOT / "engine" / "story"))
+    import bundle
+    sid = "2026-11-19-ztestbd-01"
+    sb = json.loads((ROOT / "engine" / "spec" / "examples" / "storyboard.example.json").read_text("utf-8"))
+    sb["id"] = sid
+    f = tmp_path / "b.json"
+    f.write_text(json.dumps({"storyboard": sb, "files": {"scenes/s01.jsx": "K.scene(3);"}}), "utf-8")
+    try:
+        assert bundle.apply(f) == sid
+        assert (ROOT / "data" / "compositions" / sid / "scenes" / "s01.jsx").read_text() == "K.scene(3);"
+        hard, soft = bundle.check(sid)
+        assert isinstance(hard, list) and isinstance(soft, list)
+        f.write_text(json.dumps({"storyboard": sb, "files": {"../../escape.txt": "x"}}), "utf-8")
+        import pytest
+        with pytest.raises(SystemExit):
+            bundle.apply(f)
+    finally:
+        import shutil
+        shutil.rmtree(ROOT / "data" / "compositions" / sid, ignore_errors=True)
+        for x in (ROOT / "data" / "storyboards").glob(f"{sid}.json*"):
+            x.unlink()
