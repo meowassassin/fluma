@@ -51,9 +51,10 @@ const pilotChain = new Map();  // 프로젝트 → 사용자 말 이후 자동 �
 
 /** 에이전트가 사용자 답을 기다리며 턴을 끝냈나 — 선택지 블록이 있거나, 마지막 문장이 질문 */
 // 자동 진행(채팅창 스위치): 턴이 선택지 · 질문으로 끝나면 서버가 추천안(첫째 선택지)으로 대신 답한다.
-// 되돌릴 수 없거나 사람만 할 수 있는 일(업로드 · 녹화 · 키 · 로그인 · 결제 · 크레딧)은 고르지 않고 사용자에게 남긴다
+// 되돌릴 수 없거나 사람만 할 수 있는 일(업로드 · 녹화 · 키 · 로그인 · 삭제)은 고르지 않고 사용자에게 남긴다.
+// 결제 · 크레딧은 뺐다(2026-11-19 영상 생성 제거 뒤 결제를 묻는 단계가 없다 — 유료는 Typecast 음성뿐이고 제작 중 자동으로 쓴다)
 export const PILOT_MAX = 8;
-const PILOT_HOLD = /업로드|올려|올리|공개|publish|upload|녹화|로그인|log ?in|API ?키|키를|결제|크레딧|credit|삭제|지워/i;
+const PILOT_HOLD = /업로드|올려|올리|공개|publish|upload|녹화|로그인|log ?in|API ?키|키를|삭제|지워/i;
 export function pilotReply(text) {
   const t = String(text || "");
   const blocks = [...t.matchAll(/```choices\n([\s\S]*?)```/g)];

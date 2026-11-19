@@ -283,9 +283,6 @@ def _attach(sid: str, tmp: Path, prep: bool) -> int:
     return fin[1]
 
 
-FULL_MAX = 3   # 영상 하나에 전체 제작(렌더까지) 상한 — 릴리즈 기준과 같다
-
-
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("storyboard")
@@ -300,7 +297,7 @@ def main() -> int:
     ap.add_argument("--prep", action="store_true", help="대본만 먼저: 이해 관문(시청자 · 각본가) · 음악 · 목소리 · 음성까지 하고 멈춘다 — "
                     "에이전트가 그동안 재료(2D 장면)를 짜고, 끝나면 그냥 produce 를 다시 부른다(대본이 그대로면 대본 단계는 건너뜀)")
     ap.add_argument("--prep-status", action="store_true", help="뒤에서 돌린 --prep 결과만 본다(돌는 중 · 끝 · 막힘과 이유)")
-    ap.add_argument("--final", action="store_true", help=f"전체 제작 상한({FULL_MAX}회)을 넘겨 마지막 한 번 — 고칠 것을 --scenes N 으로 다 확인한 뒤에만")
+    ap.add_argument("--final", action="store_true", help="(예전 옵션 · 무시) 전체 제작 상한은 2026-11-19 없앴다")
     ap.add_argument("--bg", action="store_true", help="(--prep 과 함께) 뒤에서 돌리고 바로 돌아온다 — 기록은 data/workspace/tmp/<id>/prep.log")
     a = ap.parse_args()
     if a.fast:
@@ -320,18 +317,6 @@ def main() -> int:
         fail("produce", stage="storyboard", error=f"콘티가 없습니다: {a.storyboard}")
     sb = json.loads(sp.read_text("utf-8"))
     sid = sb["id"]
-    # 전체 제작 상한 — 2026-11-19 실측: 영상 3편에 produce 77번(편당 약 26번). 조금 고칠 때마다 전체를 돌렸다.
-    #   고칠 장면은 --scenes N(그 장면만 · 검토 · 다듬기 없이 빠름)으로 확인하고, 전체는 마지막에 한 번(--final)
-    full_run = not (a.scenes or a.prep or a.prep_status or a.bg)
-    if full_run:
-        rp = ROOT / "data" / "compositions" / sid / "produce_runs.json"
-        try:
-            runs = json.loads(rp.read_text("utf-8")).get("full", 0)
-        except (OSError, ValueError):
-            runs = 0
-        if runs >= FULL_MAX and not a.final:
-            fail("produce", stage="budget", error=f"전체 제작을 이미 {runs}번 했다(상한 {FULL_MAX}) — 남은 고칠 것은 장면만 확인한다",
-                 next=f"python3 engine/produce.py {a.storyboard} --scenes <고친 장면> --no-audio 로 확인 → 다 고친 뒤 마지막에 python3 engine/produce.py {a.storyboard} --final 한 번")
     lock_f0 = ROOT / "data" / "workspace" / "tmp" / sid / "produce.lock"
     prep_f = ROOT / "data" / "compositions" / sid / "prep.json"
     if a.prep_status:
@@ -576,9 +561,6 @@ def main() -> int:
     outfile_label = "완성" if not use_draft else "초안"
     cmd = [PY, "engine/render.py", rel] + (["--draft"] if use_draft else []) + (["--scenes", a.scenes] if a.scenes else []) + (["--aspect", a.aspect] if a.aspect else [])
     r = step("render", cmd)
-    if full_run:                                        # 렌더까지 간 전체 제작만 센다(검사에서 일찍 멈춘 것은 세지 않음)
-        rp.parent.mkdir(parents=True, exist_ok=True)
-        rp.write_text(json.dumps({"full": runs + 1}), "utf-8")
     b = block(r.stdout)
     if r.returncode != 0 or b.get("head") != "FLUMA_RESULT":
         save_times(sid)
