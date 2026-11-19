@@ -564,6 +564,17 @@ def main() -> int:
         print("\n".join(ln for ln in (rh.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
         sb = json.loads(sp.read_text("utf-8"))
 
+    # 2.88) 렌더 전 화면 검사(engine/checks/preflight.py, 10초 · LLM 없음) — 빈 화면(D10) · 자막 · 제목 자리에 깔린 내용을 재서
+    #       막을 것이 있으면 검토(LLM 1분) · 렌더 전에 멈춘다(2026-11-19 실측: 이 막음들이 렌더 뒤에야 나와 고치고 다시 렌더하기가 여러 번)
+    if not a.scenes and not a.keep_going and os.environ.get("FLUMA_PREFLIGHT", "1") != "0":
+        pf = step("preflight", [PY, "engine/checks/preflight.py", sid], timeout=600)
+        pb = block(pf.stdout)
+        if pf.returncode == 0 and str((pb.get("hard") or ["0"])[0]) != "0":
+            save_times(sid)
+            fail("produce", stage="preflight", error=f"렌더 전 화면 검사 막음 {pb['hard'][0]}건 — 렌더 · 검토 전에 한 번에 고친다",
+                 block=[ln for ln in (pf.stdout or "").splitlines() if ln.startswith("✗")], advise=[ln for ln in (pf.stdout or "").splitlines() if ln.startswith("△")],
+                 media=pb.get("media") or [], next="시트(빨간 띠 = 자막 · 제목 자리)를 Read 로 한 번 보고 ✗ 를 모두 고친 뒤(장면 코드 · knob.py set) 다시 produce — python3 engine/checks/preflight.py <id> 로 렌더 없이 먼저 확인 가능")
+
     # 2.9) 디자이너 정지 화면 검토(skill_pass review) — 렌더 앞에서. 정지 화면은 영상이 아니라 프로젝트에서 바로 그린다(engine/core/still.py → snapshot)
     #      2026-11-18: 렌더 뒤에 검토하면 바뀐 값(글자 위치 등)이 화면 전체에 걸려 두 번째 렌더가 통째로 돌았다(90초)
     if deep and not a.scenes:

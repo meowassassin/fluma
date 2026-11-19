@@ -222,6 +222,26 @@ def is_serif(font: str) -> bool:
     return font in (FONTS["serif"], FONTS["serif-regular"], FONTS["display-serif"])
 
 
+NO_OVERLAY = False      # preflight.py 가 켠다 — 자막 · 고정 제목 없이 내용만 그린다
+
+
+def overlay_zones(sb: dict, W: int = 1080, H: int = 1920) -> dict:
+    """자막 · 고정 제목이 덮는 자리(화면 비율 y0, y1) — preflight 가 그 밑에 깔린 내용을 잰다"""
+    sb = _design.with_mode(sb)
+    g = grammar(sb)
+    d = sb.get("direction") or {}
+    gs = g["subs"]
+    hh = float(gs.get("h", 0.024)) * 1.75 * 1.3 + (34 / H if gs.get("bubble") else 18 / H if gs.get("box") else 0.004)
+    z = {"subs": [round(float(gs["y"]) - hh, 3), round(float(gs["y"]) + hh, 3)]}
+    spoken = any((s.get("narration") or "").strip() for s in sb.get("scenes") or [])
+    pin = not (d.get("pin_title") is False or sb.get("pin_title") is False) and (d.get("pin_title") or sb.get("pin_title") or (spoken and len(sb.get("title") or "") <= 24))
+    if pin and d.get("pin", True):
+        z["title"] = [round(PIN_Y - 0.03, 3), round(PIN_Y + 0.03, 3)]
+    if d.get("letterbox"):
+        z["letterbox"] = [0.0, float(d["letterbox"])]
+    return z
+
+
 def grammar(sb: dict) -> dict:
     g = dict(sb.get("grammar") or {})
     g.setdefault("subs", {"y": 0.76, "h": 0.024, "box": False, "fg": "#ffffff"})
@@ -1554,6 +1574,8 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         _mx = int(gs.get("max_chars") or subs_max_chars(sb, gs))
         sub_chunks = clause_chunks(words, _mx) if _sm == "clause" else chunks(words, max_chars=min(_mx, 13), max_words=4 if _mx >= 13 else 2)
         for i, ch in enumerate(sub_chunks):
+            if NO_OVERLAY:     # 렌더 전 검사(engine/checks/preflight.py): 자막 밑에 깔린 내용을 보려고 자막을 뺀다
+                break
             a_, b_ = max(0.0, ch["start"] - start), min(sec, ch["end"] - start)
             if b_ <= a_:
                 continue
@@ -1598,7 +1620,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         if prev is not None and "zoom" in str(prev.get("transition") or d.get("transition") or "") and sec > 0.8:
             J(f"var zI = sl.property('Transform').property('Scale'); zI.setValueAtTime({start:.3f}, [135, 135]); zI.setValueAtTime({start + 0.4:.3f}, [100, 100]); ease(zI, 70);")
     # 위쪽 고정 주제 제목(레퍼런스: '컴퓨터 버그의 유래'처럼 영상 내내 위에 떠 있음) — 콘티 direction.pin_title > pin_title > 짧은 제목
-    if pin:
+    if pin and not NO_OVERLAY:
         J("\n// ---------- 위쪽 고정 주제 제목(영상 전체)")
         psz = max(36, min(52, int(W * 0.84 / max(1, len(pin)))))   # 한 줄에 들어가게
         J(f"var pt = txt(main, 'PinTitle', {js(pin)}, {js(font)}, {psz}, [1, 1, 1], null, 0, [{W / 2}, {H * PIN_Y:.0f}]);")
