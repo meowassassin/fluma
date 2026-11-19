@@ -155,6 +155,9 @@ def write_pcm(path: Path, pcm: bytes):
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes(pcm)
 
 
+ENGINE_PACE = {"supertonic": 1.18}
+
+
 def speed_up(src: Path, factor: float, dst: Path):
     subprocess.run([FFMPEG, "-y", "-loglevel", "error", "-i", str(src), "-filter:a", f"atempo={factor:.3f}",
                     "-ar", str(SR), "-ac", "1", "-sample_fmt", "s16", str(dst)], check=True)
@@ -374,7 +377,8 @@ def main():
         _save()
         print(f"[음성] 말 주도 박자 — 합성 배속 ×{sb['voice']['speed']}")
     # 말 속도(콘티 voice.speed, 0.8~1.6): 엔진이 직접 빠르게 말한다(합성 뒤 빨리 감기보다 자연스럽다)
-    speed = max(0.8, min(1.6, float((sb.get("voice") or {}).get("speed") or 1.0)))
+    # 엔진마다 기본 말 빠르기가 다르다 — 콘티 글자 수 기준(초당 5.5~6자)에 맞춰 곱한다(2026-11-19: Supertonic ×1.0 이 초당 4.8자라 36초 대본이 43초로 늘어 L70 · L05 에 막힘)
+    speed = max(0.8, min(1.6, float((sb.get("voice") or {}).get("speed") or 1.0) * ENGINE_PACE.get(prov, 1.0)))
     led = speech_led(sb)
     style = ((sb.get("voice") or {}).get("style") or "").strip() or None
     vopts = voice_opts(sb)
