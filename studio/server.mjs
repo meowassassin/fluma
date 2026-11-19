@@ -1095,26 +1095,35 @@ app.get("/api/youtube/callback", ah(async (req, res) => {
   try { const back = await yt.callback(String(req.query.code || ""), String(req.query.state || "")); res.redirect(`${back}${back.includes("?") ? "&" : "?"}connected=1`); }
   catch (e) { res.redirect(`http://localhost:4311/settings/youtube?error=${encodeURIComponent(String(e.message || e))}`); }
 }));
-app.delete("/api/youtube", ah(async (_req, res) => { await yt.disconnect(); res.json(yt.status()); }));
-app.get("/api/youtube/avatar", ah(async (_req, res) => {
-  const f = await yt.avatar(path.join(ROOT, "data", "workspace", "cache"));
+app.delete("/api/youtube", ah(async (_req, res) => { await yt.disconnect(); res.json(yt.status()); }));   // 모두 끊기
+// 계정(채널) 여러 개: 하나 끊기 · 기본 정하기. id = 채널 id(UC…)
+const ytId = (v) => { const s = String(v ?? ""); if (!/^[\w-]{2,64}$/.test(s)) throw bad("잘못된 계정 id"); return s; };
+app.delete("/api/youtube/:acc", ah(async (req, res) => { await yt.disconnect(ytId(req.params.acc)); res.json(yt.status()); }));
+app.post("/api/youtube/default", ah(async (req, res) => {
+  try { yt.setDefault(ytId(req.body?.id)); } catch (e) { if (e.status === 404) throw notFound(e.message); throw e; }
+  res.json(yt.status());
+}));
+const ytAcc = (q) => (q == null || q === "" ? undefined : ytId(q));   // ?account= — 없으면 기본 계정
+app.get("/api/youtube/avatar", ah(async (req, res) => {
+  const f = await yt.avatar(path.join(ROOT, "data", "workspace", "cache"), ytAcc(req.query.id));
   if (!f) throw notFound("채널 아이콘이 없습니다");
   res.set("Cache-Control", "max-age=86400").sendFile(f);
 }));
-app.post("/api/youtube/refresh", ah(async (_req, res) => { await yt.refreshChannel(); res.json(yt.status()); }));
+app.post("/api/youtube/refresh", ah(async (req, res) => { await yt.refreshChannel(ytAcc(req.query.account ?? req.body?.id)); res.json(yt.status()); }));
 // 채널의 영상 목록 · 아무 영상의 통계(Fluma 밖에서 올린 것도) · 콘티와 연결
 const ytErr = (e) => { throw Object.assign(new HttpError(e.status === 409 || e.status === 401 ? 409 : 502, "youtube", String(e.message || e))); };
-app.get("/api/youtube/videos", ah(async (_req, res) => { try { res.json(await yt.videos()); } catch (e) { ytErr(e); } }));
+app.get("/api/youtube/videos", ah(async (req, res) => { const acc = ytAcc(req.query.account); try { res.json(await yt.videos(50, acc)); } catch (e) { ytErr(e); } }));
 app.get("/api/youtube/videos/:vid/stats", ah(async (req, res) => {
   const vid = String(req.params.vid); if (!/^[\w-]{6,20}$/.test(vid)) throw bad("잘못된 영상 id");
+  const acc = ytAcc(req.query.account);
   const cache = path.join(ROOT, "data", "workspace", "cache", `yt-stats-${vid}.json`);
   const old = await readJson(cache, null);
   if (old && !req.query.fresh && Date.now() - Date.parse(old.at) < 10 * 60_000) return res.json(old);
   let out;
   // 시작일 = 게시일(모르면 채널 목록에서 찾는다) — 2005년부터 하루씩 받지 않게
   let since = String(req.query.since || "");
-  if (!since) since = ((await yt.videos().catch(() => [])).find((x) => x.videoId === vid)?.published || new Date(Date.now() - 90 * 864e5).toISOString()).slice(0, 10);
-  try { out = { ...(await yt.stats(vid, since)), scenes: [] }; } catch (e) { ytErr(e); }
+  if (!since) since = ((await yt.videos(50, acc).catch(() => [])).find((x) => x.videoId === vid)?.published || new Date(Date.now() - 90 * 864e5).toISOString()).slice(0, 10);
+  try { out = { ...(await yt.stats(vid, since, acc)), scenes: [] }; } catch (e) { ytErr(e); }
   out.record = { videoId: vid, url: `https://youtube.com/shorts/${vid}`, uploaded_at: out.live?.snippet?.publishedAt ?? null, privacy: out.live?.status?.privacyStatus ?? "", title: out.live?.snippet?.title ?? vid, file: "" };
   await atomicWrite(cache, JSON.stringify(out));
   res.json(out);
@@ -1122,14 +1131,34 @@ app.get("/api/youtube/videos/:vid/stats", ah(async (req, res) => {
 app.post("/api/projects/:id/youtube/link", ah(async (req, res) => {
   const id = checkId(req.params.id); if (!existsSync(sbPath(id))) throw notFound("콘티가 없습니다");
   const vid = String(req.body?.videoId || ""); if (!/^[\w-]{6,20}$/.test(vid)) throw bad("잘못된 영상 id");
-  const v = (await yt.videos().catch(ytErr)).find((x) => x.videoId === vid);
-  if (!v) throw notFound("내 채널에서 그 영상을 찾지 못했어요");
-  const rec = { videoId: vid, url: `https://youtube.com/shorts/${vid}`, uploaded_at: v.published, privacy: v.privacy, title: v.title, file: "", linked: true };
+  const acc = req.body?.account ? ytId(req.body.account) : await projAccount(id);
+  const v = (await yt.videos(50, acc).catch(ytErr)).find((x) => x.videoId === vid);
+  if (!v) throw notFound("그 채널에서 영상을 찾지 못했어요");
+  const rec = { videoId: vid, url: `https://youtube.com/shorts/${vid}`, uploaded_at: v.published, privacy: v.privacy, title: v.title, file: "", linked: true, account: yt.resolve(acc) };
   await atomicWrite(ytRec(id), JSON.stringify(rec, null, 1));
   res.json(rec);
 }));
 
 const ytRec = (id) => path.join(ROOT, "data", "compositions", id, "youtube.json");
+// 영상(프로젝트)마다 올릴 채널: data/compositions/<id>/youtube.account.json { id } — 없거나 끊긴 계정이면 기본 계정.
+// engine/gen/publish.py · engine/publish/upload_youtube.py 도 같은 파일을 읽는다
+const ytAccFile = (id) => path.join(ROOT, "data", "compositions", id, "youtube.account.json");
+async function projAccount(id) { const c = (await readJson(ytAccFile(id), null))?.id; return yt.has(c) ? c : yt.status().default; }
+const accInfo = (accId) => yt.status().accounts.find((a) => a.id === accId) ?? null;
+app.get("/api/projects/:id/youtube-account", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const chosen = (await readJson(ytAccFile(id), null))?.id ?? null;
+  const eff = await projAccount(id);
+  res.json({ chosen: yt.has(chosen) ? chosen : null, id: eff ?? null, account: accInfo(eff) });
+}));
+app.put("/api/projects/:id/youtube-account", ah(async (req, res) => {
+  const id = checkId(req.params.id);
+  const want = req.body?.id;
+  if (want == null || want === "") await fs.rm(ytAccFile(id), { force: true });   // 비우면 기본 계정을 따른다
+  else { const acc = ytId(want); if (!yt.has(acc)) throw notFound("그 YouTube 계정은 연결돼 있지 않아요"); await atomicWrite(ytAccFile(id), JSON.stringify({ id: acc, at: new Date().toISOString() }, null, 1)); }
+  const eff = await projAccount(id);
+  res.json({ chosen: want ? String(want) : null, id: eff ?? null, account: accInfo(eff) });
+}));
 /** 올릴 파일: 최종 렌더(가장 새 것), 없으면 초안 */
 const uploadFile = async (id) => {
   const outs = existsSync(OUT) ? (await fs.readdir(OUT)).filter((n) => n.startsWith(id) && n.endsWith(".mp4")).map((n) => path.join(OUT, n)) : [];
@@ -1140,7 +1169,8 @@ const uploadFile = async (id) => {
 app.get("/api/projects/:id/youtube", ah(async (req, res) => {
   const id = checkId(req.params.id);
   const f = await uploadFile(id);
-  res.json({ ...yt.status(), record: await readJson(ytRec(id), null), file: f ? { name: path.basename(f), draft: /-draft/.test(path.basename(f).slice(id.length)), size: statSync(f).size } : null });
+  const acc = await projAccount(id);
+  res.json({ ...yt.status(), account: acc ?? null, record: await readJson(ytRec(id), null), file: f ? { name: path.basename(f), draft: /-draft/.test(path.basename(f).slice(id.length)), size: statSync(f).size } : null });
 }));
 app.post("/api/projects/:id/youtube/upload", ah(async (req, res) => {
   const id = checkId(req.params.id); if (!existsSync(sbPath(id))) throw notFound("콘티가 없습니다");
@@ -1148,12 +1178,15 @@ app.post("/api/projects/:id/youtube/upload", ah(async (req, res) => {
   if (!yt.status().connected) throw conflict("YouTube 계정이 연결되지 않았어요 — 설정 → YouTube");
   const sb = await readJson(sbPath(id), {});
   const b = req.body || {};
+  // 올릴 채널: 이 요청이 고른 것 → 이 영상에 고른 것 → 기본
+  const acc = b.account ? ytId(b.account) : await projAccount(id);
+  if (!yt.has(acc)) throw conflict("그 YouTube 계정은 연결돼 있지 않아요 — 설정 → YouTube");
   const meta = { title: String(b.title || sb.title || id), description: String(b.description || ""), tags: Array.isArray(b.tags) ? b.tags.map(String).slice(0, 15) : [],
     privacy: ["private", "unlisted", "public"].includes(b.privacy) ? b.privacy : "private", synthetic: !!b.synthetic, language: sb.language || "ko" };
   const j = jobs.create({ type: "upload", project: id, key: `upload:${id}`, label: "YouTube 업로드", work: async (h) => {
     h.progress(0, "업로드 시작");
-    const videoId = await yt.upload(f, meta, (p) => h.progress(p, `올리는 중 ${Math.round(p * 100)}%`));
-    const rec = { videoId, url: `https://youtube.com/shorts/${videoId}`, uploaded_at: new Date().toISOString(), privacy: meta.privacy, title: meta.title, file: path.basename(f) };
+    const videoId = await yt.upload(f, meta, (p) => h.progress(p, `올리는 중 ${Math.round(p * 100)}%`), acc);
+    const rec = { videoId, url: `https://youtube.com/shorts/${videoId}`, uploaded_at: new Date().toISOString(), privacy: meta.privacy, title: meta.title, file: path.basename(f), account: acc };
     await atomicWrite(ytRec(id), JSON.stringify(rec, null, 1));
     return { result: rec };
   } });
@@ -1167,7 +1200,7 @@ app.get("/api/projects/:id/youtube/stats", ah(async (req, res) => {
   const cache = path.join(ROOT, "data", "compositions", id, "youtube.stats.json");
   const old = await readJson(cache, null);
   if (old && !req.query.fresh && Date.now() - Date.parse(old.at) < 10 * 60_000) return res.json(old);
-  const st = await yt.stats(rec.videoId, rec.uploaded_at);
+  const st = await yt.stats(rec.videoId, rec.uploaded_at, rec.account && yt.has(rec.account) ? rec.account : await projAccount(id));   // 올린 채널의 분석
   const sb = await readJson(sbPath(id), { scenes: [] });
   const total = (sb.scenes || []).reduce((a, x) => a + (x.sec || 0), 0) || 1;
   let t = 0;
@@ -1453,6 +1486,8 @@ app.post("/api/upload", ah(async (req, res) => {
   const file = within(OUT, name); if (!existsSync(file)) throw notFound("렌더 파일이 없습니다");
   if (!["private", "unlisted", "public"].includes(privacy)) throw bad("공개 범위가 올바르지 않습니다");
   const args = ["engine/publish/upload_youtube.py", `data/storyboards/${id}.json`, file, "--privacy", privacy];
+  const acc = req.body?.account ? ytId(req.body.account) : await projAccount(id);
+  if (acc) args.push("--account", acc);
   if (publishAt) { if (!/^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})?$/.test(String(publishAt))) throw bad("예약 시각 형식이 올바르지 않습니다"); args.push("--publish-at", String(publishAt)); }
   const r = await py(args, { timeout: 15 * 60e3, signal: requestSignal(req, res) });
   if (r.canceled) return;
@@ -1856,7 +1891,7 @@ app.post("/api/automation/verify", ah(async (req, res) => {
         maxVideosPerDay: maxByYt,
         ok: n <= maxByYt,
       },
-      hasYouTubeToken: existsSync(path.join(ROOT, "data", "workspace", "youtube_tokens.json")),
+      hasYouTubeToken: yt.status().connected || existsSync(path.join(ROOT, "data", "workspace", "youtube_tokens.json")),
     },
     warnings,
   });

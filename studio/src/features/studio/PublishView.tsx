@@ -8,10 +8,11 @@ import { Button, Tag, cx } from "../../ui/kit";
 import { Icon } from "../../ui/Icon";
 import { errMsg } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import type { Storyboard } from "../../lib/types";
+import type { Storyboard, YtAccount } from "../../lib/types";
+import { YtAvatar, setProjectYtAccount } from "../settings/ytAccounts";
 
-type Rec = { videoId: string; url: string; uploaded_at: string; privacy: string; title: string; file: string };
-type Info = { connected: boolean; channel: { title: string } | null; record: Rec | null; file: { name: string; draft: boolean; size: number } | null };
+type Rec = { videoId: string; url: string; uploaded_at: string; privacy: string; title: string; file: string; account?: string };
+type Info = { connected: boolean; channel: YtAccount | null; accounts: YtAccount[]; default: string | null; account: string | null; record: Rec | null; file: { name: string; draft: boolean; size: number } | null };
 type Rep = { cols: string[]; rows: (string | number)[][]; error?: string };
 type Stats = { none?: boolean; at: string; record: Rec; summary: Rep; retention: Rep; traffic: Rep; daily: Rep; demo: Rep; duration: number;
   live: { statistics?: Record<string, string>; status?: { privacyStatus?: string; uploadStatus?: string } } | null;
@@ -41,7 +42,7 @@ const UploadForm: React.FC<{ projectId: string; sb: Storyboard; info: Info; onDo
     setBusy(true);
     try {
       const r = await fetch(`/api/projects/${projectId}/youtube/upload`, { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description: desc, tags: tags.split(/[,\s#]+/).filter(Boolean), privacy }) });
+        body: JSON.stringify({ title, description: desc, tags: tags.split(/[,\s#]+/).filter(Boolean), privacy, account: info.account }) });
       const j = await r.json(); if (!r.ok) throw new Error(j?.error?.message ?? `HTTP ${r.status}`);
       toast.success(t("업로드를 시작했어요"), { description: t("끝나면 여기서 통계를 볼 수 있어요") });
       onDone();
@@ -49,8 +50,9 @@ const UploadForm: React.FC<{ projectId: string; sb: Storyboard; info: Info; onDo
   };
   return (
     <div className="einfo pub">
-      <h3><Icon n="upload" s={18} />{t("YouTube 에 올리기")} <span className="faint small">· {info.channel?.title}</span></h3>
-      <LinkExisting projectId={projectId} onDone={onDone} />
+      <h3><Icon n="upload" s={18} />{t("YouTube 에 올리기")}</h3>
+      <AccountPick projectId={projectId} info={info} onDone={onDone} />
+      <LinkExisting projectId={projectId} account={info.account} onDone={onDone} />
       {!info.file ? <p className="faint">{t("올릴 영상이 없어요 — 먼저 렌더해 주세요")}</p> : <>
         <p className="faint small">{t("파일")}: {info.file.name}{info.file.draft && <> · <Tag tone="warn">{t("초안")}</Tag> {t("최종 렌더가 없어 초안을 올립니다")}</>}</p>
         <label>{t("제목")}<input value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} /></label>
@@ -61,6 +63,21 @@ const UploadForm: React.FC<{ projectId: string; sb: Storyboard; info: Info; onDo
         <div><Button variant="primary" icon="upload" loading={busy} disabled={!title.trim()} onClick={go}>{t("올리기")}</Button></div>
       </>}
     </div>
+  );
+};
+
+/** 올릴 채널 — 채팅창의 채널 고르기와 같은 값(영상마다 저장) */
+const AccountPick: React.FC<{ projectId: string; info: Info; onDone: () => void }> = ({ projectId, info, onDone }) => {
+  const cur = info.accounts.find((a) => a.id === info.account) ?? null;
+  const pick = async (id: string) => { try { await setProjectYtAccount(projectId, id); onDone(); } catch (e) { toast.error(t("채널을 바꾸지 못했어요"), { description: errMsg(e) }); } };
+  return (
+    <label className="yt-acc-pick">{t("올릴 채널")}
+      <span className="row gap"><YtAvatar a={cur} s={22} />
+        <select value={info.account ?? ""} onChange={(e) => pick(e.target.value)} disabled={info.accounts.length < 2}>
+          {info.accounts.map((a) => <option key={a.id} value={a.id}>{a.title}{a.id === info.default ? ` (${t("기본")})` : ""}</option>)}
+        </select>
+        <Link className="faint small" to="/settings/youtube">{t("채널 추가 · 관리")}</Link></span>
+    </label>
   );
 };
 
@@ -155,11 +172,12 @@ const Retention: React.FC<{ s?: Stats }> = ({ s }) => {
 };
 
 /** 이미 채널에 올린 영상을 이 콘티와 연결 — 그 영상의 이탈 곡선이 이 콘티의 장면에 겹친다 */
-const LinkExisting: React.FC<{ projectId: string; onDone: () => void }> = ({ projectId, onDone }) => {
+const LinkExisting: React.FC<{ projectId: string; account: string | null; onDone: () => void }> = ({ projectId, account, onDone }) => {
   const [open, setOpen] = useState(false);
-  const { data: vids } = useQuery<ChannelVideo[]>({ queryKey: ["yt-videos"], enabled: open, queryFn: async ({ signal }) => (await fetch("/api/youtube/videos", { signal })).json() });
+  const { data: vids } = useQuery<ChannelVideo[]>({ queryKey: ["yt-videos", account], enabled: open,
+    queryFn: async ({ signal }) => { const r = await fetch(`/api/youtube/videos${account ? `?account=${encodeURIComponent(account)}` : ""}`, { signal }); const j = await r.json(); if (!r.ok) throw new Error(j?.error?.message ?? `HTTP ${r.status}`); return j; } });
   const link = async (videoId: string) => {
-    const r = await fetch(`/api/projects/${projectId}/youtube/link`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ videoId }) });
+    const r = await fetch(`/api/projects/${projectId}/youtube/link`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ videoId, account }) });
     const j = await r.json(); if (!r.ok) { toast.error(t("연결하지 못했어요"), { description: j?.error?.message }); return; }
     toast.success(t("이 영상과 연결했어요")); onDone();
   };

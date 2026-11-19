@@ -399,6 +399,8 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     if (context?.selection) lines.push(`선택: ${String(context.selection).slice(0, 600)}`);
     if (context?.note) lines.push(String(context.note).slice(0, 600));
     if (context?.autopilot) lines.push("진행 방식: 자동 진행(사용자가 켬) — 선택지를 띄우지 말고 추천안을 스스로 골라 한 줄로 알린 뒤 다음 단계로 간다(경로는 route.py --by default). 영상 완성(품질 관문 막음 0)까지 이어서 한다. 사람만 할 수 있는 것(업로드 · 녹화 · API 키 · 로그인)만 묻는다.");
+    // 이 영상을 올릴 YouTube 채널(채팅창에서 고름) — 이름만. 토큰은 서버 밖으로 나오지 않는다
+    if (context?.youtubeAccount?.title && !project.startsWith("_")) lines.push(`유튜브 계정: ${String(context.youtubeAccount.title).replace(/\s+/g, " ").slice(0, 80)} (업로드는 이 계정으로 — publish.py upload 가 이 영상의 선택을 따른다)`);
     lines.push(`임시 폴더: ${tmp}/`);
     // 사용자가 올린 사진 · 영상 (data/public/uploads/<id>/) — 장면에 쓰라고 하면 이것을 쓴다
     try {

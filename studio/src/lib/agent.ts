@@ -5,7 +5,7 @@ import { api, errMsg } from "./api";
 import { qc, qk } from "./queries";
 import { t } from "./i18n";
 import { useUi } from "./ui";
-import type { AgentEvent, ChatContext, ChatMessage, ChatTool, MemoryRef, Todo } from "./types";
+import type { AgentEvent, ChatContext, ChatMessage, ChatTool, MemoryRef, Todo, YtProjectAccount } from "./types";
 
 export interface LiveTurn {
   user: string; skill: string | null; scene: number | null; started: number;
@@ -114,7 +114,9 @@ export async function sendMessage(id: string, message: string, opts: { skill?: s
   patch(id, { sending: true, error: null });
   try {
     // 자동 진행(채팅창 스위치) — 켜져 있으면 에이전트가 선택지를 묻지 않고 추천안으로 완성까지 이어 간다(서버 agent.mjs)
-    const context = { ...(opts.context ?? {}), ...(useUi.getState().autopilot ? { autopilot: true } : {}) };
+    // 이 영상을 올릴 YouTube 채널(채팅창에서 고름) — 이름 · id 만 붙인다
+    const yt = id.startsWith("_") ? null : qc.getQueryData<YtProjectAccount>(["yt-account", id])?.account;
+    const context = { ...(opts.context ?? {}), ...(useUi.getState().autopilot ? { autopilot: true } : {}), ...(yt ? { youtubeAccount: { id: yt.id, title: yt.title } } : {}) };
     await api.send(id, { message: message.trim(), skill: opts.skill ?? null, scene: opts.scene ?? null, steer: !!s.live, interrupt: !!s.live && !!opts.interrupt, context });
     return true;
   } catch (e) { patch(id, { error: errMsg(e) }); return false; }

@@ -17,6 +17,7 @@ import { useUi } from "../../lib/ui";
 import type { ChatContext, ChatMessage, Todo } from "../../lib/types";
 import { t } from "../../lib/i18n";
 import { Stages } from "./stages";
+import { YtAvatar, setProjectYtAccount, useProjectYtAccount, useYoutube } from "../settings/ytAccounts";
 
 export interface AgentDockProps {
   sessionId: string;
@@ -296,6 +297,7 @@ const Composer: React.FC<AgentDockProps & { live: boolean; sending: boolean; sto
               <span>{t("자동 진행")}</span>
             </label>
           </Tip>
+          {canAttach && <YtPicker projectId={sessionId} />}
           <span className="grow" />
           <span className="composer-hint faint">{live ? t("Ctrl+Enter 끼어들기") : t("Enter 보내기 · Shift+Enter 줄바꿈")}</span>
           {live && text.trim() && <Tip label={t("지금 하던 일을 멈추고 이 말을 바로 보내기")} kbd="Mod+Enter"><Button size="sm" variant="secondary" icon="skipFwd" disabled={sending || uploading} onClick={() => send(true)}>{t("끼어들기")}</Button></Tip>}
@@ -308,6 +310,27 @@ const Composer: React.FC<AgentDockProps & { live: boolean; sending: boolean; sto
         </div>
       </div>
     </div>
+  );
+};
+
+/** 이 영상을 올릴 YouTube 채널 — 연결한 채널이 2개 이상일 때만 고른다(하나면 이름만). 고른 채널은 에이전트 맥락에도 붙는다(lib/agent sendMessage) */
+const YtPicker: React.FC<{ projectId: string }> = ({ projectId }) => {
+  const { data: y } = useYoutube();
+  const { data: pa } = useProjectYtAccount(projectId);
+  const nav = useNavigate();
+  if (!y?.connected || !pa) return null;
+  const cur = pa.account;
+  const pick = async (id: string | null) => { try { await setProjectYtAccount(projectId, id); } catch (e) { toast.error(t("채널을 바꾸지 못했어요"), { description: errMsg(e) }); } };
+  return (
+    <Menu align="start" side="top" trigger={
+      <button className="yt-pick" aria-label={t("올릴 YouTube 채널")} title={t("이 영상을 올릴 YouTube 채널")}>
+        <YtAvatar a={cur} s={16} /><span className="ellipsis">{cur?.title ?? t("채널")}</span><Icon n="chevron" s={11} />
+      </button>}
+      items={[
+        ...y.accounts.map((a) => ({ label: `${a.title}${a.id === y.default ? ` · ${t("기본")}` : ""}`, icon: a.id === pa.id ? "check" : undefined, onSelect: () => pick(a.id) })),
+        "sep" as const,
+        { label: t("채널 추가 · 관리"), icon: "gear", onSelect: () => nav("/settings/youtube") },
+      ]} />
   );
 };
 

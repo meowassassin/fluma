@@ -43,7 +43,12 @@ export interface Settings {
 }
 
 // ---------- 에이전트 ----------
-export interface ChatContext { menu?: "trends" | "studio" | "plan"; selection?: string; note?: string; autopilot?: boolean }
+export interface ChatContext { menu?: "trends" | "studio" | "plan"; selection?: string; note?: string; autopilot?: boolean; youtubeAccount?: { id: string; title: string } }
+/** 연결한 YouTube 채널(계정) — 비밀 값 없음 */
+export interface YtAccount { id: string; title: string; handle?: string | null; thumb?: string | null; subscribers?: number | null; videos?: number | null; connected_at?: string | null }
+export interface YtStatus { configured: boolean; connected: boolean; redirect: string; accounts: YtAccount[]; default: string | null; channel: YtAccount | null }
+/** 영상(프로젝트)마다 올릴 채널 — chosen: 직접 고른 것(없으면 기본을 따름), id/account: 실제로 쓸 것 */
+export interface YtProjectAccount { chosen: string | null; id: string | null; account: YtAccount | null }
 export interface MemoryRef { id: string; title: string; scope: string; type: string }
 export interface ChatTool { name: string; input: string; error?: boolean; id?: string; out?: string[]; t0?: number }
 export interface Todo { content: string; status: "pending" | "in_progress" | "completed"; activeForm?: string }

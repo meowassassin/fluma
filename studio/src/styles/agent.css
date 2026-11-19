@@ -179,3 +179,7 @@
 .composer-bar .autopilot .switch i { width: 10px; height: 10px; }
 .composer-bar .autopilot.on { color: var(--primary); }
 .composer-bar .autopilot .switch.on i { transform: translateX(12px); }
+/* 채팅창 — 올릴 YouTube 채널 고르기 */
+.composer-bar .yt-pick { display: inline-flex; align-items: center; gap: 5px; max-width: 140px; height: 24px; padding: 0 6px; border: 0; border-radius: 6px; background: none; color: var(--tx-3); font-size: 12px; cursor: pointer; }
+.composer-bar .yt-pick:hover { background: var(--bg-2); color: var(--tx-1); }
+.composer-bar .yt-pick > svg:last-child { transform: rotate(90deg); flex: none; }

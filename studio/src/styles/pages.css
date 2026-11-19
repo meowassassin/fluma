@@ -309,3 +309,9 @@
 .pub-link .link-btn { display: inline-flex; gap: 6px; align-items: center; border: 0; background: none; color: var(--brand); cursor: pointer; padding: 0; font: inherit; }
 .pub-link .yt-vids { margin-top: 8px; }
 
+/* YouTube 채널 여러 개 */
+.yt-av { border-radius: 50%; object-fit: cover; flex: none; background: var(--bg-3); }
+.yt-av-x { display: inline-grid; place-items: center; color: var(--tx-2); font-weight: 600; }
+.yt-accs { gap: 8px; }
+.yt-ch.on { border-color: var(--primary); }
+.yt-acc-pick select { min-width: 180px; }
