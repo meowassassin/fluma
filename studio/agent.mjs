@@ -209,12 +209,10 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       const body = readIf(path.join(ROOT, ".claude", "skills", "storyboard", "SKILL.md"));
       if (body) parts.push(`## 함께 쓰는 스킬: storyboard (콘티 작성 규칙)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
     }
-    // 감독 · 작가 · 디자이너 스킬은 기획 · 콘티 · 제작 · 장면 고치기에 함께 주입
+    // 감독 · 작가 · 디자이너 스킬은 매 턴 붙이지 않는다 — 엔진 단계(skill_pass 의 감독 · 각본가 · 디자이너 · 검토)가 같은 스킬로 콘티를 고친다.
+    // 2026-11-19 실측: 셋을 붙이면 호출마다 약 1.3만 토큰이 늘었다(한 편에 도구 호출 100~370번). 직접 고칠 때만 Read 로 연다.
     if (!project.startsWith("_") && (["plan", "storyboard", "produce", "refine", "scene-edit", undefined, null, ""].includes(skill) || (skill || "").startsWith("format-"))) {
-      for (const n of ["director", "writer", "designer"]) {
-        const body = readIf(path.join(ROOT, ".claude", "skills", n, "SKILL.md"));
-        if (body) parts.push(`## 함께 쓰는 스킬: ${n} (.claude/skills/${n}/SKILL.md — 늘 적용)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
-      }
+      parts.push("## 감독 · 각본가 · 디자이너 스킬\n대사 · 연출 · 화면 디자인은 produce 의 엔진 단계가 같은 스킬(.claude/skills/director · writer · designer/SKILL.md)로 맞춘다. 사용자가 그 부분을 직접 고치라고 할 때만 해당 SKILL.md 를 Read 로 열어 규칙대로 고친다.");
     }
     if (!project.startsWith("_") && skill !== "scene-edit" && skill !== "plan" && existsSync(path.join(ROOT, "data", "storyboards", `${project}.json`))) {
       const body = readIf(path.join(ROOT, ".claude", "skills", "scene-edit", "SKILL.md"));
@@ -557,7 +555,10 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         first ? "--session-id" : "--resume", sess.sessionId,
         // 엔진 명령을 절대 경로로 불러도 허용(2026-11-18: 'python3 /…/engine/produce.py' 가 상대 경로 규칙에 안 맞아 막히고 왕복이 한 번 더 들었다)
         "--permission-mode", "acceptEdits", "--allowedTools", ...TOOLS, ...absEngineTools(ROOT), "--disallowedTools", ...DENY,
-        "--append-system-prompt", sys];
+        "--append-system-prompt", sys,
+        // 이 컴퓨터 사용자의 개인 MCP 연결 · 플러그인 · 개인 설정을 물려받지 않는다(2026-11-19 실측: 호출마다 약 1.7만 토큰 — Notion · Gamma 같은 연결과 플러그인 스킬 목록).
+        // 쓰는 MCP 는 아래 --mcp-config(사용자가 Fluma 에 붙인 서버 + 켠 Craft 앱)뿐, 설정은 이 저장소(.claude/settings*.json)만
+        "--strict-mcp-config", "--setting-sources", "project"];
       // 사용자가 설정에서 켠 MCP 서버: 그 서버의 도구를 모두 허용(mcp__<이름>)
       const mcp = mcpRunConfig(createCrafts(ROOT).mcpServers());   // 사용자 MCP + 설치된 Craft 앱(벡터 · 모션 · 이미지 …)
       if (mcp) {

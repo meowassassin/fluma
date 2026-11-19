@@ -726,6 +726,8 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
                         f.unlink(missing_ok=True)
         for i, m in enumerate(sc.get("materials") or []):
             m = expand_recipe({"id": m.get("id") or f"m{i + 1}", **m})
+            from craft import scenefile                 # "$FILE:…/scenes/s01.jsx" → 장면 코드 파일 내용(캐시 키 · $CUE 가 파일 내용으로 계산되게 맨 앞에서)
+            m = scenefile.inline(m)
             from craft import cues                      # "$CUE:낱말" → 그 낱말을 말하는 순간(장면 기준 초) — 말과 맞춘 움직임
             m = cues.resolve(m, sb, n - 1)
             t = m.get("type")

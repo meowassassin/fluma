@@ -588,6 +588,7 @@ def lint(sb: dict, recent_titles=None) -> list:
 
     fails += variety(sb)
     fails += craft_depth(sb)
+    fails += file_refs(sb)
     fails += [(c, i, m) for c, i, m in feature_plan(sb)]
     return fails
 
@@ -834,11 +835,17 @@ def variety(sb: dict) -> list:
 NATIVE = re.compile(r"K\.fx\(|addProperty\(|applyPreset|applyBuiltinPreset|applyTextPreset|textPreset|camera\.|light\.|layer\.style")
 
 
+def _mats(sc: dict) -> list[dict]:
+    """장면 재료 — "$FILE:" 장면 코드 파일은 내용으로 펼쳐서 본다"""
+    from craft import scenefile
+    return [scenefile.inline_safe(m) for m in sc.get("materials") or [] if isinstance(m, dict)]
+
+
 def kit_only_scenes(sb: dict) -> list[int]:
     """K 도형 · 글자만으로 그린 장면(앱 효과 · 프리셋 · 실제 자료 · 다른 앱이 하나도 없음) 번호"""
     out = []
     for i, sc in enumerate(sb.get("scenes") or []):
-        mats = [m for m in sc.get("materials") or [] if isinstance(m, dict)]
+        mats = _mats(sc)
         if not mats:
             continue
         native = False
@@ -865,7 +872,7 @@ def feature_plan(sb: dict) -> list:
     if sb.get("variant_of") or sb.get("format") in ("clip", "daily"):
         return out
     for i, sc in enumerate(sb.get("scenes") or []):
-        crafts = [m for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("type") == "craft"]
+        crafts = [m for m in _mats(sc) if m.get("type") == "craft"]
         if not crafts:
             continue
         feats = [str(f) for f in sc.get("features") or [] if f]
@@ -876,6 +883,20 @@ def feature_plan(sb: dict) -> list:
         unused = [f for f in feats if f not in code]
         if unused:
             out.append(("T69", i, f"고른 기능을 장면 코드에서 안 씀: {', '.join(unused[:4])} — K.fx(L, '<id>', …) 또는 해당 앱 단계로 쓴다"))
+    return out
+
+
+def file_refs(sb: dict) -> list:
+    """L39 — "$FILE:" 장면 코드 파일이 없거나 저장소 밖"""
+    import json as _j
+    from craft import scenefile
+    out = []
+    for i, sc in enumerate(sb.get("scenes") or []):
+        for ref in re.findall(r'"(\$FILE:[^"]+)"', _j.dumps(sc.get("materials") or [], ensure_ascii=False)):
+            try:
+                scenefile.inline(ref)
+            except RuntimeError as e:
+                out.append(("L39", i, str(e)))
     return out
 
 

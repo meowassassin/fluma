@@ -1,5 +1,5 @@
 {
- "_설명": "2D 설명 장면 예시(시험됨, 2026-11-17) — VectorCraft 로 그리고 EffectCraft 로 말($CUE)에 맞춰 움직인다. 콘티 scenes[].materials 에 그대로 넣고 좌표 · 색 · 글자 · $CUE 낱말만 바꾼다. EffectCraft 코드의 K.* 는 engine/craft/jsx/kit.jsx(자동으로 붙음). 2026-11-19: 장면마다 EffectCraft 효과를 K.fx 로 하나 이상(craft_catalog.py search) — K 도형 · 글자만이면 lint L69. 콘티에는 concept{angle, breaks, structure} · direction.art{palette{bg, ink, accent}, rule, avoid} 를 영상마다 새로(L67 · L68).",
+ "_설명": "2D 설명 장면 예시(시험됨, 2026-11-17) — VectorCraft 로 그리고 EffectCraft 로 말($CUE)에 맞춰 움직인다. 콘티 scenes[].materials 에 그대로 넣고 좌표 · 색 · 글자 · $CUE 낱말만 바꾼다. EffectCraft 코드의 K.* 는 engine/craft/jsx/kit.jsx(자동으로 붙음). 2026-11-19: 장면마다 EffectCraft 효과를 K.fx 로 하나 이상(craft_catalog.py search) — K 도형 · 글자만이면 lint L69. 콘티에는 concept{angle, breaks, structure} · direction.art{palette{bg, ink, accent}, rule, avoid} 를 영상마다 새로(L67 · L68). 장면 코드는 파일로: data/compositions/<id>/scenes/sNN.jsx 에 쓰고 code 칸은 \"$FILE:data/compositions/<id>/scenes/sNN.jsx\"(아래 예시는 보기 쉽게 코드를 그대로 둠).",
  "materials": [
   {
    "id": "art",

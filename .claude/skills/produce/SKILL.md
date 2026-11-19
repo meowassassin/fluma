@@ -24,6 +24,7 @@ order: 2
 - 제작 중 같은 프로젝트 plan 턴은 스튜디오가 막음(`produce.lock`).
 - 종료 0 → media 로 완성 영상을 보여 주고, **'초안 · 레퍼런스 나란히' 시트 한 장만** Read 로 본다(장면별 그림을 하나씩 열거나 `preview.py` 를 따로 돌리지 않는다 — 2026-11-16: 그림 10여 장 · 미리보기 두 번에 6분). 고칠 장면이 있으면 그 장면만 `produce.py --scenes N --no-audio` 로 다시 만들고 그 장면 그림만 본다. 일부 장면만 `knob.py preview`
 - 종료 1 stage=lint → 걸린 규칙만 고쳐 다시 · stage=render → error 짧은 이유로 고쳐 다시
+- **전체 제작은 영상당 3번까지(stage=budget)**: 고칠 것은 `produce.py <콘티> --scenes N --no-audio`(그 장면만, 빠름)로 확인하고, 다 고친 뒤 마지막 한 번만 `--final` 로 전체. 장면 코드는 `data/compositions/<id>/scenes/sNN.jsx` 파일을 Write 로 고친다.
 - **종료 1 stage=quality → 완성이 아니다.** `block` 목록(결과 화면 · 소리를 잰 신호: D03 대조 누락 · D10 80% 넘게 빈 화면 · D11~D15 · T32 · T33 · ✗)을 **모두** 고친다 — 그 장면만 `knob.py set` → `knob.py preview --scene N` 으로 확인 → 마지막에 전체 produce 한 번. 사용자에게 "완성"이라고 말하지 않는다. 사용자가 그대로 두라고 한 항목만 콘티 `waivers` 에 `{"D10:3": {"why": "…", "user_said": "사용자 말 그대로"}}` — **스스로 면제하지 않는다**(engine/checks/quality_gate.py).
 - 종료 0 이어도 `warn`(권고: 말투 · 구성 · 절차 · D10 72~80%)은 **전부 읽고** 고칠 수 있으면 고친다. 남기는 것은 사용자에게 무엇을 · 왜 남겼는지 한 줄씩 알린다(숨기지 않는다).
 - 종료 10 → 사용자 녹화(L36) · 스톡 키(L38)를 한 번에 부탁

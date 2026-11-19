@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401
 WS = ROOT / "data" / "workspace"
 LIMITS = {"agent_min": 15.0, "produce_full": 3, "block": 0, "fix_turns": 2}
 
@@ -40,8 +41,9 @@ def craft_features(sid: str, sb: dict) -> dict:
     chosen: set = set()
     for sc in sb.get("scenes") or []:
         chosen |= {str(f) for f in sc.get("features") or [] if f}
-        for m in sc.get("materials") or []:
-            if not isinstance(m, dict) or m.get("type") != "craft":
+        from craft import scenefile
+        for m in (scenefile.inline_safe(x) for x in sc.get("materials") or [] if isinstance(x, dict)):
+            if m.get("type") != "craft":
                 continue
             for st in m.get("steps") or []:
                 sid_ = str((st or {}).get("id") or "")

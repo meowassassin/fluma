@@ -69,3 +69,20 @@ def test_craft_search_korean_benchmark():
     b = _j.loads((ROOT / "tests" / "craft_search_bench.json").read_text("utf-8"))
     top5 = sum(any(r["id"] in ans for _, r in cc.search(q, n=5)) for q, ans in b.items())
     assert top5 >= len(b) - 2, f"top5 {top5}/{len(b)}"
+
+
+def test_scene_file_inlined(tmp_path):
+    from craft import scenefile
+    d = ROOT / "data" / "workspace" / "tmp" / "zz-scenefile"
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / "s01.jsx"
+    f.write_text("var t=K.text('a',1,1,9,'#fff'); K.fx(t,'ec.stylize.glow',{});", "utf-8")
+    ref = f"$FILE:{f.relative_to(ROOT)}"
+    sc = {"features": ["ec.stylize.glow"], "materials": [{"type": "craft", "app": "effectcraft", "steps": [{"id": "script.run", "params": {"code": ref}}]}]}
+    assert "K.fx" in scenefile.inline(sc["materials"][0])["steps"][0]["params"]["code"]
+    sb = {"format": "concept", "scenes": [sc] * 3}
+    assert not lint.craft_depth(sb) and not lint.feature_plan(sb) and not lint.file_refs(sb)
+    f.unlink()
+    assert lint.file_refs(sb)
+    import shutil
+    shutil.rmtree(d, ignore_errors=True)
