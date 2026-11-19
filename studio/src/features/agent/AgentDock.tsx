@@ -14,7 +14,7 @@ import { qc, qk, useActiveAgents, useProjects, useSkills } from "../../lib/queri
 import { useNavigate } from "react-router-dom";
 import * as RDialog from "@radix-ui/react-dialog";
 import { useUi } from "../../lib/ui";
-import type { ChatContext, ChatMessage, Todo } from "../../lib/types";
+import type { ChatContext, ChatMessage, Todo, UploadMeta } from "../../lib/types";
 import { t } from "../../lib/i18n";
 import { Stages } from "./stages";
 import { YtAvatar, setProjectYtAccount, useProjectYtAccount, useYoutube } from "../settings/ytAccounts";
@@ -48,8 +48,13 @@ const ApplyCtx = createContext<string | null>(null);
 const MediaCtx = createContext<string | null>(null);
 async function applyUpload(projectId: string, patch: { title?: string; caption?: string; hashtags?: string[] }) {
   try {
+    // 유튜브 업로드 정보(콘티 upload)에 적용 — 화면 안 고정 제목(title)은 건드리지 않는다. by: user 면 자동 생성이 덮지 않는다
     const sb = await api.storyboard(projectId);
-    await api.saveStoryboard(projectId, { ...sb, ...patch });
+    const up: UploadMeta = { ...(sb.upload ?? {}), by: "user" };
+    if (patch.title) up.title = patch.title;
+    if (patch.caption !== undefined) { up.description = patch.caption; delete up.full; }
+    if (patch.hashtags) up.hashtags = patch.hashtags;
+    await api.saveStoryboard(projectId, { ...sb, upload: up });
     qc.invalidateQueries({ queryKey: qk.storyboard(projectId) }); qc.invalidateQueries({ queryKey: qk.projects });
     toast.success(patch.title ? t("제목을 적용했어요") : t("설명을 적용했어요"));
   } catch (e) { toast.error(t("적용하지 못했어요"), { description: errMsg(e) }); }
@@ -503,9 +508,9 @@ const Titles: React.FC<{ items: string[] }> = ({ items }) => {
   const [picked, setPicked] = useState<string | null>(null);
   return (
     <div className="ytbox">
-      <div className="ytbox-h"><Icon n="text" s={13} />{t("제목 후보")} <span className="faint">{t("누르면 이 영상 제목으로")}</span></div>
+      <div className="ytbox-h"><Icon n="text" s={13} />{t("제목 후보")} <span className="faint">{t("누르면 이 영상의 유튜브 제목으로")}</span></div>
       {items.map((it) => (
-        <button key={it} className={cx("yt-title", picked === it && "on")} disabled={!pid} onClick={async () => { if (!pid) return; await applyUpload(pid, { title: it.slice(0, 40) }); setPicked(it); }}>
+        <button key={it} className={cx("yt-title", picked === it && "on")} disabled={!pid} onClick={async () => { if (!pid) return; await applyUpload(pid, { title: it.slice(0, 100) }); setPicked(it); }}>
           <span className="grow">{it}</span><span className="mono faint">{t("{n}자", { n: it.length })}</span>{picked === it && <Icon n="check" s={13} />}
         </button>))}
     </div>

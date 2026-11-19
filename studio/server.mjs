@@ -1181,7 +1181,10 @@ app.post("/api/projects/:id/youtube/upload", ah(async (req, res) => {
   // 올릴 채널: 이 요청이 고른 것 → 이 영상에 고른 것 → 기본
   const acc = b.account ? ytId(b.account) : await projAccount(id);
   if (!yt.has(acc)) throw conflict("그 YouTube 계정은 연결돼 있지 않아요 — 설정 → YouTube");
-  const meta = { title: String(b.title || sb.title || id), description: String(b.description || ""), tags: Array.isArray(b.tags) ? b.tags.map(String).slice(0, 15) : [],
+  // 비어 있으면 완성 뒤 만든 업로드 정보(콘티 upload — engine/publish/metadata.py)를 쓴다: 검색용 제목 · 출처 · 해시태그까지 든 설명 · 태그
+  const up = sb.upload || {};
+  const bodyTags = Array.isArray(b.tags) ? b.tags.map(String).filter(Boolean) : [];
+  const meta = { title: String(b.title || up.title || sb.title || id), description: String(b.description || up.full || up.description || ""), tags: (bodyTags.length ? bodyTags : (up.tags || []).map(String)).slice(0, 15),
     privacy: ["private", "unlisted", "public"].includes(b.privacy) ? b.privacy : "private", synthetic: !!b.synthetic, language: sb.language || "ko" };
   const j = jobs.create({ type: "upload", project: id, key: `upload:${id}`, label: "YouTube 업로드", work: async (h) => {
     h.progress(0, "업로드 시작");

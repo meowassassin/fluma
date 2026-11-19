@@ -10,11 +10,15 @@ export interface Scene {
   sfx?: string; music_cue?: string; engine?: string; template?: string;
   beat?: string; screen?: string; elements?: unknown[];
 }
+export interface UploadMeta { title?: string; titles?: string[]; description?: string; full?: string; hashtags?: string[]; tags?: string[]; by?: "auto" | "user"; hash?: string; why?: string }
+
 export interface Storyboard {
   id: string; version: number; title: string; topic?: string; format: Format | string;
   audience?: string | null; brand?: string | null; badge?: string | null; character?: string | null;
   engine?: string | null; template?: string | null; duration_sec: number;
   hook_number?: string | null; scenes: Scene[]; cta: string; caption?: string; hashtags?: string[]; sources?: string[];
+  /** 유튜브 업로드 정보(완성 뒤 engine/publish/metadata.py) — 화면 제목 title 과 별개 */
+  upload?: UploadMeta;
   constraints?: string[]; reference?: string[]; voice?: { engine?: string; id?: string | null } | null;
   direction?: Record<string, string>;
   /** 의도 카드 — 사용자가 원하는 것(이 영상의 규칙). 확인 전엔 최종 렌더가 막힌다(engine/checks/gate.py) */

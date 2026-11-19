@@ -118,9 +118,9 @@ def credentials():
     return creds
 
 
-def build_description(sb: dict) -> str:
-    parts = [sb.get("caption", "").strip()]
-    srcs = [s for s in sb.get("sources", []) if str(s).startswith("http")]
+def source_lines(sb: dict) -> list[str]:
+    """설명란 출처 — 콘티 sources(조사) + 퍼온 클립 · 짤 출처(clip.py · meme.py 가 남긴 기록)"""
+    srcs = [s for s in sb.get("sources") or [] if str(s).startswith("http")]
     base = ROOT / "data" / "public" / "elements" / sb.get("id", "")
     for mp in sorted(base.glob("*/meta.json")) if base.exists() else []:          # 퍼온 클립 · 짤 출처(clip.py · meme.py 가 남긴 기록)
         try:
@@ -130,12 +130,22 @@ def build_description(sb: dict) -> str:
         so = m.get("source") or {}
         if m.get("kind") in ("clip", "meme") and so.get("url"):
             srcs.append(f"{so.get('author') or '?'} · {so.get('title') or ''} — {so['url']}")
+    return list(dict.fromkeys(srcs))
+
+
+def build_description(sb: dict) -> str:
+    """설명란 — 완성 뒤 만든 업로드 정보(콘티 upload, engine/publish/metadata.py)가 있으면 그것, 없으면 caption + 출처 + 면책 + 해시태그"""
+    if (sb.get("upload") or {}).get("description"):
+        from metadata import full_description
+        return full_description(sb, sb["upload"])
+    parts = [(sb.get("caption") or "").strip()]
+    srcs = source_lines(sb)
     if srcs:
-        parts.append("출처:\n" + "\n".join(dict.fromkeys(srcs)))
+        parts.append("출처:\n" + "\n".join(srcs))
     d = DISCLAIMER.get(sb.get("format"))
     if d and d not in parts[0]:
         parts.append(d)
-    tags = " ".join(h for h in sb.get("hashtags", []) if h.startswith("#"))
+    tags = " ".join(h for h in sb.get("hashtags") or [] if h.startswith("#"))
     if tags:
         parts.append(tags + " #Shorts")
     return "\n\n".join(p for p in parts if p)
@@ -180,9 +190,9 @@ def main():
         status["publishAt"] = dt.datetime.fromisoformat(args.publish_at).astimezone(dt.timezone.utc).isoformat().replace("+00:00", "Z")
     body = {
         "snippet": {
-            "title": sb["title"][:100],
+            "title": ((sb.get("upload") or {}).get("title") or sb["title"])[:100],          # 검색 · 추천용 제목(metadata.py) → 없으면 화면 제목
             "description": build_description(sb)[:5000],
-            "tags": [h.lstrip("#") for h in sb.get("hashtags", [])][:30],
+            "tags": ((sb.get("upload") or {}).get("tags") or [h.lstrip("#") for h in sb.get("hashtags") or []])[:30],
             "categoryId": category,
             "defaultLanguage": "ko",
         },

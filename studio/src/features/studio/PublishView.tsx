@@ -36,8 +36,10 @@ export const PublishView: React.FC<{ projectId: string; sb: Storyboard }> = ({ p
 };
 
 const UploadForm: React.FC<{ projectId: string; sb: Storyboard; info: Info; onDone: () => void }> = ({ projectId, sb, info, onDone }) => {
-  const [title, setTitle] = useState(sb.title ?? "");
-  const [desc, setDesc] = useState(""), [tags, setTags] = useState(""), [privacy, setPrivacy] = useState("private"), [busy, setBusy] = useState(false);
+  // 완성 뒤 자동으로 만든 업로드 정보(콘티 upload)로 미리 채운다 — 고쳐서 올릴 수 있다
+  const up = sb.upload;
+  const [title, setTitle] = useState(up?.title ?? sb.title ?? "");
+  const [desc, setDesc] = useState(up?.full ?? up?.description ?? ""), [tags, setTags] = useState((up?.tags ?? []).join(", ")), [privacy, setPrivacy] = useState("private"), [busy, setBusy] = useState(false);
   const go = async () => {
     setBusy(true);
     try {
