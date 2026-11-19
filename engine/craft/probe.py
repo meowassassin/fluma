@@ -314,7 +314,7 @@ class PhotoCraft:
 
 # ---------------------------------------------------------------- 나머지 앱: 범용 실행기(craft_script)로 명령 하나씩
 EXT = {"vectorcraft": "vectorcraft", "soundcraft": "scraft", "filmcraft": "fcproj", "figcraft": "figcraft", "designcraft": "designcraft",
-       "deckcraft": "deckcraft", "pdfcraft": "pdf", "gridcraft": "xlsx",
+       "deckcraft": "deckcraft", "pdfcraft": "pdf", "solidcraft": "sc", "cadcraft": "dxf", "texturecraft": "tcraft", "gridcraft": "xlsx",
        "wordcraft": "docx", "lightcraft": "lcraft"}
 
 

@@ -46,7 +46,7 @@ python3 engine/doctor.py --fix
 ```
 
 이 명령 하나로 **전부** 설치합니다: `.venv` 와 파이썬 패키지 전체(`requirements-full.txt`), Chromium, 오픈소스
-[Craft 앱](https://github.com/storytold)(MIT / Apache-2.0) 13개 전부(설치하면 약 1GB, SHA256SUMS 로 검증해 `tools/crafts/` 에),
+[Craft 앱](https://github.com/storytold)(MIT / Apache-2.0) 16개 전부(약 1.4GB, SHA256SUMS 로 검증해 `tools/crafts/` 에),
 분석 · 누끼 모델, npm 패키지. Node · ffmpeg 는 설치 방법만 *알려 주며* 관리자 권한이 필요 없습니다.
 
 용량이 부족하면 `python3 engine/doctor.py --fix --profile lite --core` 로 최소만(핵심 Craft 앱 7개, 모델 없음) 설치합니다.
@@ -124,7 +124,7 @@ CPU 종류도 상관없습니다: 이미지는 Intel · AMD(amd64)와 Apple Sili
 GPU 로 3D 렌더: Linux 는 스크립트가 자동으로 연결합니다. macOS · Windows 의 Docker 는 GPU 를 컨테이너에 넘기지 못해 CPU 로 돕니다 — GPU 가 꼭 필요하면 아래 '바로 설치'(그 컴퓨터의 GPU 를 그대로 씀).
 
 끝입니다. 에이전트는 내 컴퓨터의 Claude Code · Codex 로그인(`~/.claude` · `~/.codex`)을 그대로 쓰고, 작업물은 Docker 볼륨에 남습니다.
-이미지에 전부(파이썬 패키지 전체 · Craft 앱 13개 · 분석 모델) 들어 있습니다.
+이미지에 전부(파이썬 패키지 전체 · Craft 앱 16개 · 분석 모델) 들어 있습니다.
 작게 빌드하려면: `PROFILE=lite CRAFTS=core MODELS=0 docker compose build`.
 
 Docker 가 없으면: [Docker Desktop](https://www.docker.com/products/docker-desktop/)(macOS · Windows), Linux 는 Docker Engine.

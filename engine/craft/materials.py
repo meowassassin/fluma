@@ -483,9 +483,11 @@ def _editable(old: dict, d: Path) -> Path | None:
 
 
 def _depends(t: str, m: dict) -> str | None:
-    """같은 장면의 다른 재료를 읽어 만드는 재료 → 그 재료 id (overlay 의 target)"""
+    """같은 장면의 다른 재료를 읽어 만드는 재료 → 그 재료 id (overlay 의 target · drawing 의 model id)"""
     if t == "overlay" and m.get("target"):
         return str(m["target"])
+    if t == "drawing" and isinstance(m.get("model"), str) and m["model"]:
+        return m["model"]
     return None
 
 

@@ -48,6 +48,8 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 | 문서 화면 (`document`) | WordCraft | 쓰는 중(adapters/wordcraft.py): 9:16 쪽으로 다시 배치 · 글자 일괄 확대, 진짜 `format.highlight`, 변경 추적(`review.compare`), 메모 말풍선. 안 쓰는 것: 대본 md ↔ docx |
 | 웹 · 터미널 실제 화면 (후보 `web-screen` 등) | craft-anything | 연결 없음. `web-walkthrough-record`(360×640@3x), `web_site_capture`, 터미널 기록. `--deep --allow-run` 필요. 기존 `web`(webrec.py) 재료와 겹치는지 먼저 본다 |
 | 실사 · 생성 영상 합성(`live`) | EffectCraft | 카메라를 풀어(시야각 자동 탐색, 독립 오차 `follow_px`) 글자 · 그림을 그 공간에 붙인다. 인물 뒤로 지나가기(`behind`) · 물체 따라가기(`follow`) · 색 바꾸기(`recolor`) · 바닥에 선 정지 물체 지우기(`remove`). 카메라가 움직이는 영상만 풀린다 |
+| 3D 제품(`model3d`) | SolidCraft + TextureCraft | 쓰는 중(adapters/solidcraft.py · texturecraft.py): 내장 형태 5종(case · phone · bottle · tumbler · puck) · 명령 목록 · STEP/STL 불러오기 → fine OBJ → TextureCraft 재질(쉬운 이름 → PBR) · 로고 데칼 · MCP `viewport_render`(장당 0.3초) 정지 컷 · turntable mp4, 분해도는 SolidCraft `explode.create` + `motion.export_animation` |
+| 도면 (`drawing`) | CADCraft (+ SolidCraft `file.export_view_dxf`) | 쓰는 중(adapters/cadcraft.py): DXF · 명령 · 3D 모형 → 3각법 투영도 + 치수 3개, MCP `render` 9:16 어두운 CAD 화면 또는 흰 종이(plot 단색 후처리), 빨간 구름 `revcloud` |
 
 ## 앱 섞기 — 한 장면에서 함께 쓰기
 - **겹치기:** 재료 `"layer": "over"` 는 앞 재료 위에 얹는다(`cue` · `start` 로 나오는 때).
@@ -58,6 +60,7 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 - **문서 · 약관 · 논문 근거**: PDF 는 `doc_quote`(PdfCraft 진짜 형광펜 · 박스 · 잘라내기 · 개인정보 가림), docx · 직접 쓴 문구는 `document`(WordCraft), 바뀐 부분은 `track`(변경 추적).
 - **비교 · 수치**: 계산은 GridCraft, 그림은 EffectCraft. 표는 DeckCraft, 단계 · 순환은 DeckCraft SmartArt.
 - **감성 · 광고 스틸**: `photo_grade`(LightCraft 룩)로 톤 통일 → EffectCraft 느린 밀기. 기사 · 캡처 한 장은 `photo` + `frame: card`(PhotoCraft 장면 카드).
+- **제품**: `model3d`(정지 컷 · turntable · 분해도) + `drawing`(치수 · 투영도). 실제 제품이면 STEP 원본.
 - **매일 반복(format-daily)**: `template_card`(VectorCraft 변수 + CSV) 또는 `info_card`(DesignCraft `data.merge`) 중 하나만 고른다.
 - **훅 · 표지**: `thumbnail`(DesignCraft 세로 · 가로), 조립 때 FilmCraft `file.exportFrame` 이 훅 장면 프레임을 `edit/<id>.thumb.png` 로도 뽑는다.
 
@@ -77,6 +80,9 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 | DesignCraft | 547 | [reference/designcraft.md](reference/designcraft.md) |
 | GridCraft | 372 (+함수 515) | [reference/gridcraft.md](reference/gridcraft.md) |
 | PdfCraft | 183 | [reference/pdfcraft.md](reference/pdfcraft.md) |
+| SolidCraft | 570 | [reference/solidcraft.md](reference/solidcraft.md) |
+| CADCraft | 451 | [reference/cadcraft.md](reference/cadcraft.md) |
+| TextureCraft | 162 | [reference/texturecraft.md](reference/texturecraft.md) |
 | craft-anything | 315 | [reference/craft-anything.md](reference/craft-anything.md) |
 
 ## 4. 헤드리스 한계
@@ -84,7 +90,7 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 - **모델 내려받기 금지라 못 쓰는 것**: FilmCraft Whisper 음성 인식 · Kokoro TTS, EffectCraft 로토 · 얼굴 · SAM, LightCraft AI 마스크 · Denoise · 얼굴, PhotoCraft Generative Fill · Neural Filters(누끼는 고전 알고리즘이라 단순 배경만).
 - **앱 창이 있어야 하는 것**: 모든 앱의 UI 스크린샷 · `ui_*` 조작(`--bridge` · `--control` · `--connect`), SoundCraft 녹음, FigCraft 프로토타입 재생. 단 LightCraft `snapshot` 은 창 없이 앱 화면 PNG 를 낸다.
 - **움직임이 없는 앱**: DesignCraft · FigCraft · DeckCraft(빌드 애니메이션 렌더 없음) · WordCraft 는 정지 PNG 만. 움직임은 EffectCraft 에 넘긴다.
-- **느린 것**: EffectCraft CPU 렌더(1080×1920 4초에 25초), FilmCraft 자막 번인(3초에 9.4초).
+- **느린 것**: EffectCraft CPU 렌더(1080×1920 4초에 25초), FilmCraft 자막 번인(3초에 9.4초), SolidCraft progressive(40초).
 - **OCR**: PdfCraft 는 영어만. 한국어 UI 화면의 글자 좌표는 못 얻는다.
 - **craft-anything**: 기본 clean room 이라 `--deep --allow-run` 없이는 웹 · 실행 도구가 거부된다.
 
@@ -97,9 +103,9 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 5. **오프셋은 UTF-8 바이트**: WordCraft `inspect`, DesignCraft `text.select`.
 6. **PhotoCraft `run` 은 입력을 위치 인자로** 받는다(`run <FILE> --cmd …`, `--in` 은 없다). 예전 `materials.py photo()` 의 `--in` 호출은 고쳤고, 보통은 `adapters/photocraft.py` 가 photo 를 맡는다.
 7. **자막 겹침**: 기본 엔진은 EffectCraft 가 자막을 그린다. FilmCraft 자막 번인 · `createCaptions` 를 같이 쓰면 두 번 나온다.
-8. **세로 화면**: FilmCraft 내장 그래픽 템플릿 · DeckCraft 템플릿은 16:9 용 이다.
-9. **편집 파일을 남긴다**: 사람이 고칠 수 있게 PNG 와 함께 `.ecproj` · `.fcproj` · `.vectorcraft` · `.psd` · `.designcraft` 등을 둔다. PNG 저장은 평탄화된다.
-   재료 기록에 `editable` + `editable_hash` 가 있으면(illustration · photo 카드 · 화면 다듬기) `materials.build` 가 고친 파일을 알아보고 그 파일로 다시 만든다. lightcraft · wordcraft · deckcraft · figcraft · designcraft · template_card 의 편집 파일은 아직 다시 반영되지 않는다(콘티를 고쳐 다시 만들면 덮어씀).
+8. **세로 화면**: FilmCraft 내장 그래픽 템플릿 · DeckCraft 템플릿은 16:9 용, CADCraft CLI PNG 는 2400×1600 고정(9:16 은 MCP `render`), SolidCraft `--view iso` 는 9:16 에서 잘린다.
+9. **편집 파일을 남긴다**: 사람이 고칠 수 있게 PNG 와 함께 `.ecproj` · `.scraft` · `.fcproj` · `.vectorcraft` · `.psd` · `.designcraft` 등을 둔다. PNG 저장은 평탄화된다.
+   재료 기록에 `editable` + `editable_hash` 가 있으면(illustration · photo 카드 · 화면 다듬기 · model3d · drawing) `materials.build` 가 고친 파일을 알아보고 그 파일로 다시 만든다. lightcraft · wordcraft · deckcraft · figcraft · designcraft · template_card 의 편집 파일은 아직 다시 반영되지 않는다(콘티를 고쳐 다시 만들면 덮어씀).
 10. **경로는 절대 경로**. VectorCraft 는 `VECTORCRAFT_NO_PREFS=1` 을 붙인다.
 11. **verified=false 기능은 먼저 시험**: EffectCraft Magnify(원이 안 보임) · 트래킹, FilmCraft auto_reframe, WordCraft `review.compare`, PdfCraft `doc_compare`, DesignCraft flex · 변형본 등은 참고 문서의 "미확인" 표시를 보고 렌더로 확인한 뒤 쓴다.
 12. **가상 내용 주의**: FigCraft · DeckCraft 템플릿은 가상 브랜드다. 실제 서비스 설명에는 실제 캡처를 쓴다.

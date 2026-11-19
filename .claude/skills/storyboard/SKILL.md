@@ -31,7 +31,7 @@ order: 1
    - **분위기**(예: "전문적이고 세련된")는 `constraints` 에 한 줄 남긴다(사람 · 비평용 — 엔진은 글을 해석하지 않는다). **엔진이 꼭 지켜야 하는 금지**는 `intent.ban` 에 값으로: `number_punch`(숫자 크게 덧씌우기) · `sfx` · `music` · `bg_motion`.
    - 화면 글자 `caption` 은 나레이션이 있어도 위쪽 띠에 강조색으로 따로 나온다(훅 세 칸의 '화면 글자' — 말을 받아 적지 않는다). 끄려면 `direction.screen_text: false`.
    - **엔진은 Craft 하나** — `engine: "craft"`. 장면에 보일 것은 아래 '장면 재료(materials)' 칸으로 적고, 제작은 produce 스킬이 한다(HyperFrames · Manim 은 제거).
-   - **장면 설계 = 무엇을 어떤 순서로 보여 줄지**: 장면마다 필요한 재료를 주제에 맞게 설계한다(템플릿 고르기 아님). 로고는 `icon`(engine/capture/icons.py), 정밀 도표는 `chart` · `diagram`. 실사 장면은 실제 자료(퍼온 클립 `clip.py` · 무료 스톡 `stock` · 자료 사진 `relic`)로.
+   - **장면 설계 = 무엇을 어떤 순서로 보여 줄지**: 장면마다 필요한 재료를 주제에 맞게 설계한다(템플릿 고르기 아님). 로고는 `icon`(engine/capture/icons.py), 정밀 도표는 `chart` · `diagram`, 3D 제품은 `model3d`(SolidCraft 제품 형태 — crafts 스킬). 실사 장면은 실제 자료(퍼온 클립 `clip.py` · 무료 스톡 `stock` · 자료 사진 `relic`)로.
      · `cue` 는 그 요소가 나타나거나 움직이는 **나레이션 단어**. 화면은 이 단어 시각에 맞춰 움직인다(음성이 기준).
 4. **검사**: `python3 engine/checks/lint.py data/storyboards/<id>.json` → L 규칙 없을 때까지. 통과 시 `production_ready: true` 가 콘티에 찍힌다(lint가 기록 · 또는 `python3 engine/story/production_ready.py data/storyboards/<id>.json`).
 5. **오븐 전 마무리**: ui_mock 에 `ui: data/compositions/<id>/ui/….tsx` 가 있으면 채팅에서 TSX를 쓰고 build는 produce가 병렬로 — produce 안 designer Astryx Agent 는 **ui 없거나 L53일 때만**.

@@ -1,0 +1,208 @@
+{
+ "name": "product-explode",
+ "app": "solidcraft",
+ "desc": "3D 부품 분해 애니메이션(프레임 → mp4)",
+ "purpose": [
+  "product",
+  "3d",
+  "explain"
+ ],
+ "look": [
+  "render",
+  "motion"
+ ],
+ "features": [
+  "parameters.add",
+  "sketch.create",
+  "sketch.rectangle.rounded",
+  "solid.extrude",
+  "solid.shell",
+  "appearance.assign",
+  "sketch.create",
+  "sketch.rectangle.rounded",
+  "solid.extrude",
+  "appearance.assign",
+  "component.from_bodies",
+  "explode.create",
+  "motion.export_animation"
+ ],
+ "slots": [],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "solidcraft",
+  "steps": [
+   {
+    "id": "parameters.add",
+    "params": {
+     "name": "W",
+     "value": "80 mm"
+    }
+   },
+   {
+    "id": "sketch.create",
+    "params": {
+     "plane": "XY"
+    }
+   },
+   {
+    "id": "sketch.rectangle.rounded",
+    "params": {
+     "p0": [
+      0,
+      0
+     ],
+     "p1": [
+      "W",
+      50
+     ],
+     "radius": 8
+    }
+   },
+   {
+    "id": "solid.extrude",
+    "params": {
+     "distance": 30
+    }
+   },
+   {
+    "id": "solid.shell",
+    "params": {
+     "faces": [
+      [
+       40,
+       25,
+       30
+      ]
+     ],
+     "thickness": 2
+    }
+   },
+   {
+    "id": "appearance.assign",
+    "params": {
+     "bodies": [
+      "Body1"
+     ],
+     "color": "#3b82f6"
+    }
+   },
+   {
+    "id": "sketch.create",
+    "params": {
+     "plane": {
+      "origin": [
+       0,
+       0,
+       30
+      ],
+      "x_dir": [
+       1,
+       0,
+       0
+      ],
+      "y_dir": [
+       0,
+       1,
+       0
+      ]
+     }
+    }
+   },
+   {
+    "id": "sketch.rectangle.rounded",
+    "params": {
+     "p0": [
+      0,
+      0
+     ],
+     "p1": [
+      80,
+      50
+     ],
+     "radius": 8
+    }
+   },
+   {
+    "id": "solid.extrude",
+    "params": {
+     "distance": 4,
+     "operation": "new_body"
+    }
+   },
+   {
+    "id": "appearance.assign",
+    "params": {
+     "bodies": [
+      "Body2"
+     ],
+     "color": "#f97316"
+    }
+   },
+   {
+    "id": "component.from_bodies",
+    "params": {
+     "bodies": [
+      "Body1",
+      "Body2"
+     ]
+    }
+   },
+   {
+    "id": "explode.create",
+    "params": {
+     "name": "open",
+     "moves": [
+      {
+       "occurrence": "Body2",
+       "translate": [
+        0,
+        0,
+        40
+       ]
+      }
+     ]
+    }
+   },
+   {
+    "id": "motion.export_animation",
+    "params": {
+     "view": "open",
+     "back": true,
+     "samples": 21,
+     "path": "$FRAMES",
+     "width": 540,
+     "height": 960,
+     "fps": 20,
+     "grid": false,
+     "axes": false,
+     "camera": {
+      "target": [
+       40,
+       25,
+       40
+      ],
+      "yaw": 0.7,
+      "pitch": 0.45,
+      "distance": 300
+     }
+    }
+   }
+  ],
+  "export": {
+   "camera": {
+    "target": [
+     40,
+     25,
+     15
+    ],
+    "yaw": 0.8,
+    "pitch": 0.5,
+    "distance": 320
+   },
+   "format": "mp4",
+   "fps": 20
+  }
+ },
+ "preview": "product-explode.jpg"
+}

@@ -1,0 +1,162 @@
+{"id": "edit.undo", "kind": "command", "label": "Undo", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 edit.undo 실패 — texturecraft-cli batch: error: step 0 (`edit.undo`) failed: `edit.undo` is not available: nothing to undo"}
+{"id": "edit.redo", "kind": "command", "label": "Redo", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 edit.redo 실패 — texturecraft-cli batch: error: step 0 (`edit.redo`) failed: `edit.redo` is not available: nothing to redo"}
+{"id": "edit.history", "kind": "command", "label": "History", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.add.paint", "kind": "command", "label": "Add paint layer", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.add.fill", "kind": "command", "label": "Add fill layer", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.add.group", "kind": "command", "label": "Add folder", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.remove", "kind": "command", "label": "Remove layer(s)", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.duplicate", "kind": "command", "label": "Duplicate layer(s)", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.group", "kind": "command", "label": "Group layer(s)", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.select", "kind": "command", "label": "Select layer", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.rename", "kind": "command", "label": "Rename layer", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 layer.rename 실패 — texturecraft-cli batch: error: step 0 (`layer.rename`) failed: `layer.rename`: `name` is required"}
+{"id": "layer.visible", "kind": "command", "label": "Toggle layer visibility", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.move", "kind": "command", "label": "Move layer", "menu": "", "run": "error", "msg": "texturecraft: 1번째 명령 layer.move 실패 — texturecraft-cli batch: error: step 0 (`layer.move`) failed: `layer.move`: give `delta`, `index` or `above`"}
+{"id": "layer.blend", "kind": "command", "label": "Set channel blending", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.fill.set", "kind": "command", "label": "Set fill source", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 layer.fill.set 실패 — texturecraft-cli batch: error: step 0 (`layer.fill.set`) failed: `layer.fill.set`: `channel` is required"}
+{"id": "layer.fill.projection", "kind": "command", "label": "Set fill projection", "menu": "", "run": "error", "msg": "texturecraft: 1번째 명령 layer.fill.projection 실패 — texturecraft-cli batch: error: step 0 (`layer.fill.projection`) failed: not a fill layer"}
+{"id": "layer.colorTag", "kind": "command", "label": "Set layer color tag", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.list", "kind": "command", "label": "List layers", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.copy", "kind": "command", "label": "Copy layer(s)", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.cut", "kind": "command", "label": "Cut layer(s)", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.paste", "kind": "command", "label": "Paste layer(s)", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 layer.paste 실패 — texturecraft-cli batch: error: step 0 (`layer.paste`) failed: `layer.paste` is not available: the layer clipboard is empty"}
+{"id": "layer.flatten", "kind": "command", "label": "Flatten layer", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.instantiateAll", "kind": "command", "label": "Instantiate across texture sets", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.instance", "kind": "command", "label": "Create instance", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.pasteInstance", "kind": "command", "label": "Paste as instance", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 layer.pasteInstance 실패 — texturecraft-cli batch: error: step 0 (`layer.pasteInstance`) failed: `layer.pasteInstance` is not available: the layer clipboard is empty"}
+{"id": "layer.set", "kind": "command", "label": "Set layer properties                 {layer?, heightMask?", "menu": "", "run": "error", "msg": "texturecraft: 1번째 명령 layer.set 실패 — texturecraft-cli batch: error: step 0 (`layer.set`) failed: `layer.set`: give `heightMask` or `geometryMask`"}
+{"id": "mask.add.white", "kind": "command", "label": "Add white mask", "menu": "", "run": "ok", "visible": false}
+{"id": "mask.add.black", "kind": "command", "label": "Add black mask", "menu": "", "run": "ok", "visible": false}
+{"id": "mask.add.colorSelection", "kind": "command", "label": "Add mask with color selection", "menu": "", "run": "ok", "visible": false}
+{"id": "mask.toggle", "kind": "command", "label": "Toggle mask", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 mask.toggle 실패 — texturecraft-cli batch: error: step 0 (`mask.toggle`) failed: \"Layer 1\" has no mask"}
+{"id": "mask.invertBackground", "kind": "command", "label": "Invert mask background", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 mask.invertBackground 실패 — texturecraft-cli batch: error: step 0 (`mask.invertBackground`) failed: \"Layer 1\" has no mask"}
+{"id": "mask.invert", "kind": "command", "label": "Invert mask", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 mask.invert 실패 — texturecraft-cli batch: error: step 0 (`mask.invert`) failed: \"Layer 1\" has no mask"}
+{"id": "mask.clear", "kind": "command", "label": "Clear mask", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 mask.clear 실패 — texturecraft-cli batch: error: step 0 (`mask.clear`) failed: \"Layer 1\" has no mask"}
+{"id": "mask.remove", "kind": "command", "label": "Remove mask", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 mask.remove 실패 — texturecraft-cli batch: error: step 0 (`mask.remove`) failed: the layer has no mask"}
+{"id": "effect.add.paint", "kind": "command", "label": "Add paint", "menu": "", "run": "ok", "visible": false}
+{"id": "effect.add.fill", "kind": "command", "label": "Add fill", "menu": "", "run": "ok", "visible": false}
+{"id": "effect.add.generator", "kind": "command", "label": "Add generator", "menu": "", "run": "ok", "visible": false}
+{"id": "effect.add.levels", "kind": "command", "label": "Add levels", "menu": "", "run": "ok", "visible": false}
+{"id": "effect.add.filter", "kind": "command", "label": "Add filter", "menu": "", "run": "ok", "visible": false}
+{"id": "effect.add.compare", "kind": "command", "label": "Add compare mask", "menu": "", "run": "ok", "visible": false}
+{"id": "effect.add.anchor", "kind": "command", "label": "Add anchor point", "menu": "", "run": "ok", "visible": false}
+{"id": "effect.set", "kind": "command", "label": "Edit effect", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 effect.set 실패 — texturecraft-cli batch: error: step 0 (`effect.set`) failed: `effect.set`: `effect` is required (no effect is selected)"}
+{"id": "effect.remove", "kind": "command", "label": "Remove effect", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 effect.remove 실패 — texturecraft-cli batch: error: step 0 (`effect.remove`) failed: `effect.remove`: `effect` is required (no effect is selected)"}
+{"id": "effect.duplicate", "kind": "command", "label": "Duplicate effect", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 effect.duplicate 실패 — texturecraft-cli batch: error: step 0 (`effect.duplicate`) failed: `effect.duplicate`: `effect` is required (no effect is selected)"}
+{"id": "effect.move", "kind": "command", "label": "Move effect", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 effect.move 실패 — texturecraft-cli batch: error: step 0 (`effect.move`) failed: `effect.move`: `effect` is required (no effect is selected)"}
+{"id": "effect.histogram", "kind": "command", "label": "Effect input histogram", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 effect.histogram 실패 — texturecraft-cli batch: error: step 0 (`effect.histogram`) failed: `effect.histogram`: `effect` is required (no effect is selected)"}
+{"id": "effect.copy", "kind": "command", "label": "Copy effect", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 effect.copy 실패 — texturecraft-cli batch: error: step 0 (`effect.copy`) failed: `effect.copy`: `effect` is required (no effect is selected)"}
+{"id": "effect.cut", "kind": "command", "label": "Cut effect", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 effect.cut 실패 — texturecraft-cli batch: error: step 0 (`effect.cut`) failed: `effect.copy`: `effect` is required (no effect is selected)"}
+{"id": "effect.paste", "kind": "command", "label": "Paste effect", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 effect.paste 실패 — texturecraft-cli batch: error: step 0 (`effect.paste`) failed: `effect.paste` is not available: the clipboard holds no effect"}
+{"id": "tool.paint", "kind": "command", "label": "Paint", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.eraser", "kind": "command", "label": "Eraser", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.projection", "kind": "command", "label": "Projection", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.polygonFill", "kind": "command", "label": "Polygon fill", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.smudge", "kind": "command", "label": "Smudge", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.clone", "kind": "command", "label": "Clone", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.colorPicker", "kind": "command", "label": "Color picker", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.geometryMask", "kind": "command", "label": "Geometry mask", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.select", "kind": "command", "label": "Select tool", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 tool.select 실패 — texturecraft-cli batch: error: step 0 (`tool.select`) failed: `tool.select`: `tool` is required"}
+{"id": "tool.brush", "kind": "command", "label": "Brush settings                       {size?", "menu": "", "run": "ok", "visible": false}
+{"id": "alpha.list", "kind": "command", "label": "List brush alphas", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.material", "kind": "command", "label": "Tool material", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.stencil", "kind": "command", "label": "Projection stencil", "menu": "", "run": "error", "msg": "texturecraft: 1번째 명령 tool.stencil 실패 — texturecraft-cli batch: error: step 0 (`tool.stencil`) failed: `tool.stencil`: no stencil: give `image`"}
+{"id": "tool.cloneSource", "kind": "command", "label": "Set clone source", "menu": "", "run": "error", "msg": "texturecraft: 1번째 명령 tool.cloneSource 실패 — texturecraft-cli batch: error: step 0 (`tool.cloneSource`) failed: `tool.cloneSource`: give `uv: [u, v]` or `x` and `y`"}
+{"id": "tool.fillMode", "kind": "command", "label": "Polygon fill mode", "menu": "", "run": "ok", "visible": false}
+{"id": "tool.stroke", "kind": "command", "label": "Paint stroke", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 tool.stroke 실패 — texturecraft-cli batch: error: step 0 (`tool.stroke`) failed: `tool.stroke`: `points` must be an array of [x, y]"}
+{"id": "tool.strokeUv", "kind": "command", "label": "Paint stroke in the 2D view", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 tool.strokeUv 실패 — texturecraft-cli batch: error: step 0 (`tool.strokeUv`) failed: `tool.strokeUv`: `points` must be an array of [u, v]"}
+{"id": "tool.click", "kind": "command", "label": "Tool click", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 tool.click 실패 — texturecraft-cli batch: error: step 0 (`tool.click`) failed: `tool.click`: `x` and `y` are required"}
+{"id": "tool.state", "kind": "command", "label": "Tool state", "menu": "", "run": "ok", "visible": false}
+{"id": "brush.preset.list", "kind": "command", "label": "List brush presets", "menu": "", "run": "ok", "visible": false}
+{"id": "brush.preset.apply", "kind": "command", "label": "Apply brush preset", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 brush.preset.apply 실패 — texturecraft-cli batch: error: step 0 (`brush.preset.apply`) failed: `brush.preset.apply`: `preset` is required"}
+{"id": "brush.preset.save", "kind": "command", "label": "Save brush preset", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 brush.preset.save 실패 — texturecraft-cli batch: error: step 0 (`brush.preset.save`) failed: `brush.preset.save`: `path` is required"}
+{"id": "brush.preset.load", "kind": "command", "label": "Load brush preset", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 brush.preset.load 실패 — texturecraft-cli batch: error: step 0 (`brush.preset.load`) failed: `brush.preset.load`: `path` is required"}
+{"id": "tool.path", "kind": "command", "label": "Path", "menu": "", "run": "ok", "visible": false}
+{"id": "path.edit", "kind": "command", "label": "Edit path", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 path.edit 실패 — texturecraft-cli batch: error: step 0 (`path.edit`) failed: `path.edit`: `effect` (a path sublayer id) is required"}
+{"id": "path.remove", "kind": "command", "label": "Remove path", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 path.remove 실패 — texturecraft-cli batch: error: step 0 (`path.remove`) failed: `path.remove`: `effect` (a path sublayer id) is required"}
+{"id": "viewport.frame", "kind": "command", "label": "Show entire mesh", "menu": "", "run": "ok", "visible": false}
+{"id": "viewport.displayMaterial", "kind": "command", "label": "Display material", "menu": "", "run": "ok", "visible": false}
+{"id": "viewport.nextChannel", "kind": "command", "label": "Display next channel", "menu": "", "run": "ok", "visible": false}
+{"id": "viewport.previousChannel", "kind": "command", "label": "Display previous channel", "menu": "", "run": "ok", "visible": false}
+{"id": "viewport.nextMeshMap", "kind": "command", "label": "Display next mesh map", "menu": "", "run": "ok", "visible": false}
+{"id": "viewport.previousMeshMap", "kind": "command", "label": "Display previous mesh map", "menu": "", "run": "ok", "visible": false}
+{"id": "viewport.view", "kind": "command", "label": "Set view mode", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 viewport.view 실패 — texturecraft-cli batch: error: step 0 (`viewport.view`) failed: `viewport.view`: `mode` is required"}
+{"id": "camera.set", "kind": "command", "label": "Set camera", "menu": "", "run": "ok", "visible": false}
+{"id": "camera.get", "kind": "command", "label": "Get camera", "menu": "", "run": "ok", "visible": false}
+{"id": "camera.orbit", "kind": "command", "label": "Orbit camera", "menu": "", "run": "ok", "visible": false}
+{"id": "display.set", "kind": "command", "label": "Display settings                     {environment?", "menu": "", "run": "ok", "visible": false}
+{"id": "camera.list", "kind": "command", "label": "Cameras", "menu": "", "run": "ok", "visible": false}
+{"id": "camera.add", "kind": "command", "label": "Save view as camera", "menu": "", "run": "ok", "visible": false}
+{"id": "camera.select", "kind": "command", "label": "Select camera", "menu": "", "run": "ok", "visible": false}
+{"id": "camera.remove", "kind": "command", "label": "Remove camera", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 camera.remove 실패 — texturecraft-cli batch: error: step 0 (`camera.remove`) failed: `camera.remove` is not available: the project has no saved cameras"}
+{"id": "camera.rename", "kind": "command", "label": "Rename camera", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 camera.rename 실패 — texturecraft-cli batch: error: step 0 (`camera.rename`) failed: `camera.rename` is not available: the project has no saved cameras"}
+{"id": "viewport.focusAt", "kind": "command", "label": "Focus depth of field here", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 viewport.focusAt 실패 — texturecraft-cli batch: error: step 0 (`viewport.focusAt`) failed: `viewport.focusAt`: `x` and `y` (viewport pixels) are required"}
+{"id": "viewport.quickMask", "kind": "command", "label": "Enable quick mask", "menu": "", "run": "ok", "visible": false}
+{"id": "viewport.quickMask.edit", "kind": "command", "label": "Edit quick mask", "menu": "", "run": "ok", "visible": false}
+{"id": "viewport.quickMask.invert", "kind": "command", "label": "Invert quick mask", "menu": "", "run": "ok", "visible": false}
+{"id": "textureSet.select", "kind": "command", "label": "Select texture set", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 textureSet.select 실패 — texturecraft-cli batch: error: step 0 (`textureSet.select`) failed: `textureSet.select`: valid `ts` index required"}
+{"id": "textureSet.list", "kind": "command", "label": "List texture sets", "menu": "", "run": "ok", "visible": false}
+{"id": "textureSet.inspect", "kind": "command", "label": "Inspect texture set", "menu": "", "run": "ok", "visible": false}
+{"id": "textureSet.resolution", "kind": "command", "label": "Texture set size", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 textureSet.resolution 실패 — texturecraft-cli batch: error: step 0 (`textureSet.resolution`) failed: `textureSet.resolution`: `resolution` is required"}
+{"id": "textureSet.channel.add", "kind": "command", "label": "Add channel", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 textureSet.channel.add 실패 — texturecraft-cli batch: error: step 0 (`textureSet.channel.add`) failed: `textureSet.channel`: `channel` is required"}
+{"id": "textureSet.channel.remove", "kind": "command", "label": "Remove channel", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 textureSet.channel.remove 실패 — texturecraft-cli batch: error: step 0 (`textureSet.channel.remove`) failed: `textureSet.channel`: `channel` is required"}
+{"id": "textureSet.visible", "kind": "command", "label": "Toggle texture set visibility", "menu": "", "run": "ok", "visible": true, "thumb": "data/workspace/probe/texturecraft/cmd/textureSet_visible.png"}
+{"id": "textureSet.visibility", "kind": "command", "label": "Show or hide texture sets", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 textureSet.visibility 실패 — texturecraft-cli batch: error: step 0 (`textureSet.visibility`) failed: `textureSet.visibility`: `mode` must be showAll, hideAll, invert or solo"}
+{"id": "textureSet.rename", "kind": "command", "label": "Rename texture set", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 textureSet.rename 실패 — texturecraft-cli batch: error: step 0 (`textureSet.rename`) failed: `textureSet.rename`: `name` is required"}
+{"id": "textureSet.settings", "kind": "command", "label": "Texture set settings", "menu": "", "run": "ok", "visible": false}
+{"id": "textureSet.parts", "kind": "command", "label": "List mesh parts", "menu": "", "run": "ok", "visible": false}
+{"id": "textureSet.meshMap.set", "kind": "command", "label": "Use image as mesh map", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 textureSet.meshMap.set 실패 — texturecraft-cli batch: error: step 0 (`textureSet.meshMap.set`) failed: `textureSet.meshMap.set`: `map` is required"}
+{"id": "textureSet.meshMap.clear", "kind": "command", "label": "Clear mesh map", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 textureSet.meshMap.clear 실패 — texturecraft-cli batch: error: step 0 (`textureSet.meshMap.clear`) failed: `textureSet.meshMap.clear`: `map` is required"}
+{"id": "textureSet.tile.resolution", "kind": "command", "label": "UV tile resolution", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 textureSet.tile.resolution 실패 — texturecraft-cli batch: error: step 0 (`textureSet.tile.resolution`) failed: `textureSet.tile.resolution`: `tile` (a UDIM number) is required"}
+{"id": "textureSet.uvTiles", "kind": "command", "label": "UV tiles mode", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 textureSet.uvTiles 실패 — texturecraft-cli batch: error: step 0 (`textureSet.uvTiles`) failed: `textureSet.uvTiles`: `enabled` (true or false) is required"}
+{"id": "project.templates", "kind": "command", "label": "Project templates", "menu": "", "run": "ok", "visible": false}
+{"id": "project.template.save", "kind": "command", "label": "Save project settings as template", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 project.template.save 실패 — texturecraft-cli batch: error: step 0 (`project.template.save`) failed: `project.template.save`: a template name must be 1 to 128 characters"}
+{"id": "project.new", "kind": "command", "label": "New project from a built-in mesh", "menu": "", "run": "ok", "visible": false}
+{"id": "project.sample", "kind": "command", "label": "Open sample project", "menu": "", "run": "ok", "visible": true, "thumb": "data/workspace/probe/texturecraft/cmd/project_sample.png"}
+{"id": "project.inspect", "kind": "command", "label": "Inspect project", "menu": "", "run": "ok", "visible": false}
+{"id": "material.apply", "kind": "command", "label": "Add smart material", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 material.apply 실패 — texturecraft-cli batch: error: step 0 (`material.apply`) failed: `material.apply`: `material` is required"}
+{"id": "material.list", "kind": "command", "label": "List materials", "menu": "", "run": "ok", "visible": false}
+{"id": "bake.autoRebake", "kind": "command", "label": "Auto-rebake", "menu": "", "run": "ok", "visible": false}
+{"id": "bake.autoRebake.run", "kind": "command", "label": "Run Auto-rebake", "menu": "", "run": "error", "msg": "texturecraft: 1번째 명령 bake.autoRebake.run 실패 — texturecraft-cli batch: error: step 0 (`bake.autoRebake.run`) failed: `bake.autoRebake.run`: no Auto-rebake map is set; run bake.autoRebake {map} first"}
+{"id": "bake.run", "kind": "command", "label": "Bake mesh maps", "menu": "", "run": "ok", "visible": true, "thumb": "data/workspace/probe/texturecraft/cmd/bake_run.png"}
+{"id": "bake.settings", "kind": "command", "label": "Bake settings                        {ts?", "menu": "", "run": "ok", "visible": false}
+{"id": "bake.highPoly.add", "kind": "command", "label": "Add high definition mesh", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 bake.highPoly.add 실패 — texturecraft-cli batch: error: step 0 (`bake.highPoly.add`) failed: `bake.highPoly.add`: `path` is required"}
+{"id": "bake.highPoly.remove", "kind": "command", "label": "Remove high definition mesh", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 bake.highPoly.remove 실패 — texturecraft-cli batch: error: step 0 (`bake.highPoly.remove`) failed: `bake.highPoly.remove`: `index`, `name` or `all` is required"}
+{"id": "bake.highPoly.list", "kind": "command", "label": "List high definition meshes", "menu": "", "run": "ok", "visible": false}
+{"id": "bake.cage.set", "kind": "command", "label": "Load cage mesh", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 bake.cage.set 실패 — texturecraft-cli batch: error: step 0 (`bake.cage.set`) failed: `bake.cage.set`: `path` is required"}
+{"id": "bake.cage.clear", "kind": "command", "label": "Remove cage mesh", "menu": "", "run": "ok", "visible": false}
+{"id": "bake.skew.set", "kind": "command", "label": "Set skew correction", "menu": "", "run": "ok", "visible": false}
+{"id": "bake.skew.paint", "kind": "command", "label": "Paint skew correction", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 bake.skew.paint 실패 — texturecraft-cli batch: error: step 0 (`bake.skew.paint`) failed: `bake.skew.paint`: `points` is required: [[u, v], ...]"}
+{"id": "bake.skew.clear", "kind": "command", "label": "Remove skew correction", "menu": "", "run": "ok", "visible": false}
+{"id": "file.importMaterialX", "kind": "command", "label": "Import MaterialX material...", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 file.importMaterialX 실패 — texturecraft-cli batch: error: step 0 (`file.importMaterialX`) failed: `file.importMaterialX`: `path` is required"}
+{"id": "file.new", "kind": "command", "label": "New project from a mesh file", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 file.new 실패 — texturecraft-cli batch: error: step 0 (`file.new`) failed: `file.new`: `mesh` is required"}
+{"id": "file.open", "kind": "command", "label": "Open...", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 file.open 실패 — texturecraft-cli batch: error: step 0 (`file.open`) failed: `file.open`: `path` is required"}
+{"id": "file.save", "kind": "command", "label": "Save", "menu": "", "run": "needs_context", "msg": "texturecraft: 1번째 명령 file.save 실패 — texturecraft-cli batch: error: step 0 (`file.save`) failed: `file.save`: the project has no file yet: give `path` (Save as)"}
+{"id": "file.saveAs", "kind": "command", "label": "Save as...", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 file.saveAs 실패 — texturecraft-cli batch: error: step 0 (`file.saveAs`) failed: `file.saveAs`: `path` is required"}
+{"id": "file.saveCopy", "kind": "command", "label": "Save a copy...", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 file.saveCopy 실패 — texturecraft-cli batch: error: step 0 (`file.saveCopy`) failed: `file.saveCopy`: `path` is required"}
+{"id": "file.close", "kind": "command", "label": "Close", "menu": "", "run": "ok", "visible": false}
+{"id": "file.reimportMesh", "kind": "command", "label": "Reimport mesh", "menu": "", "run": "error", "msg": "texturecraft: 1번째 명령 file.reimportMesh 실패 — texturecraft-cli batch: error: step 0 (`file.reimportMesh`) failed: `file.reimportMesh`: built-in meshes can't be reimported; give `path`"}
+{"id": "file.exportTextures", "kind": "command", "label": "Export textures", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 file.exportTextures 실패 — texturecraft-cli batch: error: step 0 (`file.exportTextures`) failed: `file.exportTextures`: `dir` is required"}
+{"id": "file.exportMesh", "kind": "command", "label": "Export Mesh...", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 file.exportMesh 실패 — texturecraft-cli batch: error: step 0 (`file.exportMesh`) failed: `file.exportMesh`: `path` is required"}
+{"id": "export.plan", "kind": "command", "label": "List export outputs", "menu": "", "run": "ok", "visible": false}
+{"id": "export.presets", "kind": "command", "label": "Export presets", "menu": "", "run": "ok", "visible": false}
+{"id": "export.preset.get", "kind": "command", "label": "Get an export preset", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 export.preset.get 실패 — texturecraft-cli batch: error: step 0 (`export.preset.get`) failed: `export.preset.get`: `name` is required"}
+{"id": "export.preset.save", "kind": "command", "label": "Save a user export preset            {preset", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 export.preset.save 실패 — texturecraft-cli batch: error: step 0 (`export.preset.save`) failed: `export.preset.save`: `preset` is required"}
+{"id": "export.preset.remove", "kind": "command", "label": "Remove a user export preset", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 export.preset.remove 실패 — texturecraft-cli batch: error: step 0 (`export.preset.remove`) failed: `export.preset.remove`: `name` is required"}
+{"id": "resource.import", "kind": "command", "label": "Import resources", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 resource.import 실패 — texturecraft-cli batch: error: step 0 (`resource.import`) failed: `resource.import`: `path` is required"}
+{"id": "resource.list", "kind": "command", "label": "List resources", "menu": "", "run": "ok", "visible": false}
+{"id": "resource.remove", "kind": "command", "label": "Remove resource", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 resource.remove 실패 — texturecraft-cli batch: error: step 0 (`resource.remove`) failed: `resource.remove`: `name` is required"}
+{"id": "file.removeUnused", "kind": "command", "label": "Remove unused resources...", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.add.image", "kind": "command", "label": "Add fill layer from image", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 layer.add.image 실패 — texturecraft-cli batch: error: step 0 (`layer.add.image`) failed: `layer.add.image`: `name` is required"}
+{"id": "material.save", "kind": "command", "label": "Create smart material", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 material.save 실패 — texturecraft-cli batch: error: step 0 (`material.save`) failed: `material.save`: `path` is required"}
+{"id": "material.load", "kind": "command", "label": "Add smart material from file", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 material.load 실패 — texturecraft-cli batch: error: step 0 (`material.load`) failed: `material.load`: `path` is required"}
+{"id": "material.link.set", "kind": "command", "label": "Set material parameter", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 material.link.set 실패 — texturecraft-cli batch: error: step 0 (`material.link.set`) failed: `material.link.set`: `id` is required"}
+{"id": "material.link.preset", "kind": "command", "label": "Apply material preset", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 material.link.preset 실패 — texturecraft-cli batch: error: step 0 (`material.link.preset`) failed: `material.link.preset`: `name` is required"}
+{"id": "material.link.cook", "kind": "command", "label": "Re-cook MaterialCraft material", "menu": "", "run": "error", "msg": "texturecraft: 1번째 명령 material.link.cook 실패 — texturecraft-cli batch: error: step 0 (`material.link.cook`) failed: `material.link`: layer 1 is not a MaterialCraft material"}
+{"id": "material.link.saveSource", "kind": "command", "label": "Save MaterialCraft package", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 material.link.saveSource 실패 — texturecraft-cli batch: error: step 0 (`material.link.saveSource`) failed: `material.link.saveSource`: `path` is required"}
+{"id": "mask.smart.apply", "kind": "command", "label": "Apply smart mask", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 mask.smart.apply 실패 — texturecraft-cli batch: error: step 0 (`mask.smart.apply`) failed: `mask.smart.apply`: `name` is required"}
+{"id": "mask.smart.list", "kind": "command", "label": "List smart masks", "menu": "", "run": "ok", "visible": false}
+{"id": "filter.list", "kind": "command", "label": "List filters", "menu": "", "run": "ok", "visible": false}
+{"id": "layer.add.decal", "kind": "command", "label": "Add decal", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 layer.add.decal 실패 — texturecraft-cli batch: error: step 0 (`layer.add.decal`) failed: `layer.add.decal`: `image` is required"}
+{"id": "layer.decal.set", "kind": "command", "label": "Edit decal", "menu": "", "run": "error", "msg": "texturecraft: 1번째 명령 layer.decal.set 실패 — texturecraft-cli batch: error: step 0 (`layer.decal.set`) failed: `layer.decal.set`: the layer is not a decal (layer.add.decal)"}
+{"id": "text.fonts", "kind": "command", "label": "List fonts", "menu": "", "run": "ok", "visible": false}
+{"id": "resource.text", "kind": "command", "label": "Add text                             {text (lines split at \\n), font?", "menu": "", "run": "needs_params", "msg": "texturecraft: 1번째 명령 resource.text 실패 — texturecraft-cli batch: error: step 0 (`resource.text`) failed: `resource.text`: `text` is required"}

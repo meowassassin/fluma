@@ -63,6 +63,10 @@ def material_kind(rec: dict) -> str:
     t = rec.get("type")
     if t in ("chart", "text", "stat", "icon", "diagram", "info_card", "template_card", "thumbnail"):
         return "그래픽"
+    if t == "model3d":
+        return "3D 제품"
+    if t == "drawing":
+        return "도면"
     if t == "document":
         return "문서 캡처"
     if t == "photo_grade":
@@ -188,7 +192,7 @@ def scope_problems(sb: dict, estimate: bool = False) -> list:
 
 
 IMAGE_LIKE = {"chart", "doc_quote", "illustration", "icon", "photo", "screen", "web", "video", "stock", "meme", "image",
-              "photo_grade", "document", "diagram", "ui_mock", "info_card", "template_card", "live"}   # 그림 · 영상 파일이 생기는 재료(주석을 얹을 수 있음)
+              "photo_grade", "document", "diagram", "ui_mock", "info_card", "template_card", "model3d", "drawing", "live"}   # 그림 · 영상 파일이 생기는 재료(주석을 얹을 수 있음)
 
 
 def material_spec_checks(sb: dict) -> list:
@@ -249,7 +253,9 @@ def material_spec_checks(sb: dict) -> list:
                     out.append(("L39", i, f"{tag}: live 는 items 또는 cuts 가 있어야 함 — 없으면 video 재료로"))
                 for it in m.get("items") or []:
                     k = it.get("kind")
-                    if k in ("text", "image") and not it.get("follow"):
+                    if k == "model3d" and not (it.get("script") and it.get("at")):
+                        out.append(("L39", i, f"{tag}: {it.get('id')} — model3d 는 script · at(바닥 픽셀)이 필요"))
+                    elif k in ("text", "image") and not it.get("follow"):
                         out.append(("L39", i, f"{tag}: {it.get('id')} — {k} 는 follow 가 필요(at 또는 cut)"))
                     elif k == "text" and it.get("follow", {}).get("cut") and it["follow"]["cut"] not in (m.get("cuts") or {}):
                         out.append(("L39", i, f"{tag}: {it.get('id')} — cuts 에 {it['follow']['cut']} 이 없음"))
@@ -258,6 +264,21 @@ def material_spec_checks(sb: dict) -> list:
                 for n_, c_ in (m.get("cuts") or {}).items():
                     if not any(x.get("kind", "fg") == "fg" for x in c_.get("strokes") or []):
                         out.append(("L39", i, f"{tag}: cuts.{n_} — fg 획이 필요"))
+            elif t == "model3d":
+                ids = [x.get("id") for x in sc.get("materials") or []]
+                for k, v in (m.get("uses") or {}).items():
+                    if v not in ids[:ids.index(m.get("id"))] if m.get("id") in ids else True:
+                        out.append(("L39", i, f"{tag}: uses '{k}' 의 재료 {v} 가 같은 장면 앞쪽에 없습니다"))
+                need("shape", "commands", "src", what="내장 형태 · SolidCraft 명령 · STEP/STL 원본"); exists("src")
+                if m.get("method") == "blender" or m.get("script"):
+                    out.append(("L39", i, f"{tag}: Blender 는 2026-11-11 제거 — shape · commands · src(SolidCraft)로"))
+                if m.get("turntable") and m.get("exploded"):
+                    out.append(("L39", i, f"{tag}: turntable 과 exploded 는 하나만(재료 하나 = 영상 하나)"))
+            elif t == "drawing":
+                need("src", "cmd", "commands", "model", what="DXF · CADCraft 명령 · 3D 모형"); exists("src")
+                mo = m.get("model")
+                if isinstance(mo, str) and mo and seen.get(mo) != "model3d":
+                    out.append(("L39", i, f"{tag}: model {mo} 은 이 장면에서 도면보다 앞선 model3d 재료여야 함(다른 장면이면 model 에 형태 칸을 다시 쓴다)"))
             elif t == "video" and m.get("in") is not None and m.get("out") is not None and float(m["out"]) <= float(m["in"]):
                 out.append(("L39", i, f"{tag}: out 이 in 보다 뒤여야 함"))
             if m.get("method"):                        # 같은 재료를 다른 앱으로(materials.methods)

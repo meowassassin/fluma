@@ -1,0 +1,137 @@
+{
+ "name": "floorplan-dims",
+ "app": "cadcraft",
+ "desc": "평면도: 벽 · 실 이름 · 치수(가로 출력 — window 권장)",
+ "purpose": [
+  "drawing",
+  "plan"
+ ],
+ "look": [
+  "blueprint",
+  "technical"
+ ],
+ "features": [
+  "rectang",
+  "rectang",
+  "line",
+  "text",
+  "text",
+  "setvar",
+  "dimlinear"
+ ],
+ "slots": [
+  {
+   "at": "/steps/3/params/text",
+   "kind": "text",
+   "example": "거실 18㎡"
+  },
+  {
+   "at": "/steps/4/params/text",
+   "kind": "text",
+   "example": "침실 12㎡"
+  }
+ ],
+ "tested": "2026-11-06",
+ "material": {
+  "type": "craft",
+  "app": "cadcraft",
+  "steps": [
+   {
+    "id": "rectang",
+    "params": {
+     "p1": [
+      0,
+      0
+     ],
+     "p2": [
+      3600,
+      6400
+     ]
+    }
+   },
+   {
+    "id": "rectang",
+    "params": {
+     "p1": [
+      200,
+      200
+     ],
+     "p2": [
+      3400,
+      6200
+     ]
+    }
+   },
+   {
+    "id": "line",
+    "params": {
+     "points": [
+      [
+       200,
+       3200
+      ],
+      [
+       3400,
+       3200
+      ]
+     ]
+    }
+   },
+   {
+    "id": "text",
+    "params": {
+     "at": [
+      1800,
+      4700
+     ],
+     "text": "거실 18㎡",
+     "height": 250,
+     "justify": "MC"
+    }
+   },
+   {
+    "id": "text",
+    "params": {
+     "at": [
+      1800,
+      1700
+     ],
+     "text": "침실 12㎡",
+     "height": 250,
+     "justify": "MC"
+    }
+   },
+   {
+    "id": "setvar",
+    "params": {
+     "name": "DIMSCALE",
+     "value": 80
+    }
+   },
+   {
+    "id": "dimlinear",
+    "params": {
+     "p1": [
+      0,
+      0
+     ],
+     "p2": [
+      3600,
+      0
+     ],
+     "at": [
+      1800,
+      -500
+     ]
+    }
+   }
+  ],
+  "export": {
+   "size": [
+    1080,
+    1920
+   ]
+  }
+ },
+ "preview": "floorplan-dims.jpg"
+}
