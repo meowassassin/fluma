@@ -744,6 +744,8 @@ def viewer_open(sbp: Path) -> tuple[int, list]:
         r = json.loads(f.read_text("utf-8"))
     except (OSError, ValueError):
         return 0, []
+    if r.get("stale"):           # 상한에 닿아 고친 대본을 다시 못 봤다 — 옛 판정으로 막지 않는다
+        return STORY_BLOCK_BELOW, []
     score = int((r.get("patch") or {}).get("score") or r.get("score") or 0)
     return score, [i for i in viewer_issues(sb, "writer") if i.get("kind") in BLOCKING]
 
@@ -825,7 +827,7 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
         return {"pass": name, "skipped": "입력 그대로"}
     cap = pass_max(name)
     if pre is None and _runs(sid, name) >= cap:
-        if name == "review" and rec_p.exists():   # 그림이 바뀌었는데 다시 못 봤다 — 지난 검토의 문제는 막음이 아니라 권고로(품질 관문 D21)
+        if name in ("review", "viewer") and rec_p.exists():   # 그림 · 대본이 바뀌었는데 다시 못 봤다 — 지난 검토는 막음이 아니라 권고로(D21 · 이해 관문, 2026-11-19: 상한 뒤 옛 판정이 고친 대본을 계속 막음)
             r0 = json.loads(rec_p.read_text("utf-8")); r0["stale"] = True
             rec_p.write_text(json.dumps(r0, ensure_ascii=False, indent=1), "utf-8")
         _log_skill_timing(sid, name, time.perf_counter() - t_pass, skipped=True, capped=True)
