@@ -1234,6 +1234,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
               font: str = "Pretendard-Black") -> str:
     """콘티 → JSX(EffectCraft 스크립트). 실행하면 out_project 에 .ecproj 가 저장된다"""
     sid = sb["id"]
+    sb = _design.with_mode(sb)        # 연출 모드(쇼츠 · 애니메이션 · 만화 · 영화)의 기본값 — 직접 적은 칸이 이긴다
     _design.apply_art(sb)             # 고른 느낌 · 디자인 팔레트를 색 칸에(정의만 있고 아무도 안 불렀다 — 2026-11-11 점검)
     global THEME
     _dd = sb.get("direction") or {}
@@ -1463,6 +1464,8 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             st_y = float(d.get("screen_text_y", 0.17)) * H
             if pin:   # 고정 제목 상자 아래로(겹치지 않게)
                 st_y = max(st_y, PIN_Y * H + 64 + st_size * 0.75)
+            if d.get("letterbox"):   # 영화 모드: 위 검은 띠 아래 그림 안으로
+                st_y = max(st_y, float(d["letterbox"]) * H + st_size * 1.2)
             st_col = rgb(d.get("color_accent") or "#ff5a36")
             J(f"var stx = txt(c, 'Screen text', {js(cap)}, {js(title_font)}, {st_size}, {js(st_col)}, null, 0, [{W / 2}, {st_y:.0f}]);"
               f" var sto = stx.property('Transform').property('Opacity'); sto.setValueAtTime(0, 0); sto.setValueAtTime(0.15, 0); sto.setValueAtTime(0.45, 100);"
@@ -1527,6 +1530,20 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 J(f"var pn = txt(c, 'Punch', {js(num)}, {js(font)}, {min(300, int(W * 1.1 / max(2, len(num))))}, [1, 0.84, 0.04], [0.02, 0.02, 0.05], 14, [{W / 2}, {H * 0.47:.0f}]); pn.inPoint = {tw:.2f}; pn.outPoint = {tw + 0.95:.2f};")
                 J(f"var pS = pn.property('Transform').property('Scale'); pS.setValueAtTime({tw:.2f}, [55, 55]); pS.setValueAtTime({tw + 0.12:.2f}, [112, 112]); pS.setValueAtTime({tw + 0.22:.2f}, [100, 100]); pS.setValueAtTime({tw + 0.95:.2f}, [104, 104]);")
                 J(f"var pO = pn.property('Transform').property('Opacity'); pO.setValueAtTime({tw + 0.8:.2f}, 100); pO.setValueAtTime({tw + 0.95:.2f}, 0);")
+        # 연출 모드 덧그림 — 자막보다 아래 층: 영화 레터박스(위아래 검은 띠) · 만화 칸 테두리(흰 여백 + 검은 선)
+        if d.get("letterbox"):
+            lb = float(d["letterbox"]) * H
+            J(f"var lbT = c.layers.addSolid([0, 0, 0], 'Letterbox top', {W}, {int(lb) + 2}, 1); lbT.property('Transform').property('Position').setValue([{W / 2}, {lb / 2:.0f}]);"
+              f" var lbB = c.layers.addSolid([0, 0, 0], 'Letterbox bottom', {W}, {int(lb) + 2}, 1); lbB.property('Transform').property('Position').setValue([{W / 2}, {H - lb / 2:.0f}]);")
+        if d.get("panel"):
+            gut = int(W * 0.035)
+            J(f"var pf = c.layers.addShape(); pf.name = 'Panel frame'; var pg = pf.property('Contents').addProperty('ADBE Vector Group');"
+              f" var pr = pg.property('Contents').addProperty('ADBE Vector Shape - Rect'); pr.property('Size').setValue([{W - gut}, {H - gut}]); pr.property('Position').setValue([0, 0]);"
+              f" var ps = pg.property('Contents').addProperty('ADBE Vector Graphic - Stroke'); ps.property('Color').setValue([1, 1, 1]); ps.property('Stroke Width').setValue({gut});"
+              f""
+              f" var pg2 = pf.property('Contents').addProperty('ADBE Vector Group'); var pr3 = pg2.property('Contents').addProperty('ADBE Vector Shape - Rect'); pr3.property('Size').setValue([{W - 2 * gut}, {H - 2 * gut}]);"
+              f" var ps2 = pg2.property('Contents').addProperty('ADBE Vector Graphic - Stroke'); ps2.property('Color').setValue([0.05, 0.05, 0.06]); ps2.property('Stroke Width').setValue(8);"
+              f" pf.property('Transform').property('Position').setValue([{W / 2}, {H / 2}]);")
         # 자막: 구절 단위(레퍼런스는 한 번에 한 구절을 크게) — 숫자 · 핵심어가 든 구절은 노란색
         gs = g["subs"]
         size = int(gs["h"] * H * 1.75)
@@ -1548,7 +1565,9 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             pop = f"var sS = s.property('Transform').property('Scale'); sS.setValueAtTime({a_:.3f}, [88, 88]); sS.setValueAtTime({a_ + 0.09:.3f}, [100, 100]);"
             J(f"s.inPoint = {a_:.3f}; s.outPoint = {b_:.3f};")
             if gs.get("box"):   # 자막 상자(방향 subs.box) — 글자 뒤 반투명 판, 그 구절 동안만
-                J(f"var sbx = fitBox(c, {js(f'SubBox {i + 1:02d}')}, {js(f'Sub {i + 1:02d}')}, {js(rgb(gs.get('bg', '#0b0d12')))}, 36, 18, 14); sbx.inPoint = {a_:.3f}; sbx.outPoint = {b_:.3f};")
+                bub = bool(gs.get("bubble"))     # 만화 모드: 둥근 말풍선 + 검은 테두리
+                J(f"var sbx = fitBox(c, {js(f'SubBox {i + 1:02d}')}, {js(f'Sub {i + 1:02d}')}, {js(rgb(gs.get('bg', '#0b0d12')))}, {64 if bub else 36}, {34 if bub else 18}, {120 if bub else 14}); sbx.inPoint = {a_:.3f}; sbx.outPoint = {b_:.3f};"
+                  + (" var bst = sbx.property('Contents').property(1).property('Contents').addProperty('ADBE Vector Graphic - Stroke'); bst.property('Color').setValue([0.05, 0.05, 0.06]); bst.property('Stroke Width').setValue(6);" if bub else ""))
             if sub_preset:   # 글자 프리셋 — 자막 길이의 60%(최대 0.45초) 안에 다 나오게
                 J(f"if (!textPreset(c, s, {js(sub_preset)}, {a_:.3f}, {min(0.45, 0.6 * (b_ - a_)):.3f})) {{ {pop} }}")
             elif DZ["text_pop"]:

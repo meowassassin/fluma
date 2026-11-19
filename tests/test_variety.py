@@ -98,3 +98,15 @@ def test_font_catalog_names_resolve():
     assert motion._catalog_font("도현") == "DoHyeon-Regular"
     assert motion._catalog_font("Gowun Batang") == "GowunBatang-Bold"
     assert motion._catalog_font("없는 글꼴") is None
+
+
+def test_direction_modes_fill_defaults_but_keep_explicit():
+    from craft import design
+    sb = {"direction": {"mode": "cinematic", "layout": "card", "subs": {"y": 0.7}}}
+    d = design.with_mode(sb)["direction"]
+    assert d["letterbox"] and d["pin_title"] is False and d["layout"] == "full"      # 레퍼런스가 채운 layout 은 모드가 이긴다
+    assert d["subs"]["y"] == 0.7 and d["subs"]["box"] is False                       # 직접 적은 자막 칸은 그대로, 나머지는 모드
+    sb["direction"]["layout_user"] = True
+    assert design.with_mode(sb)["direction"]["layout"] == "card"
+    assert design.with_mode({"direction": {"mode": "comic"}})["direction"]["subs"]["bubble"] is True
+    assert design.with_mode({"direction": {}}) == {"direction": {}}

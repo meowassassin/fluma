@@ -380,7 +380,7 @@ def style_card(sb: dict) -> dict | None:
 
 
 # 디자이너 단계(skill_pass designer · review)가 정하는 칸 — 제작마다 카드로 덮으면 디자이너 · 검토가 매번 같은 값을 다시 넣느라 LLM 을 또 불렀다(2026-11-18 실측: 제작마다 검토 32~65초)
-DESIGNER_KEYS = ("layout", "screen_text_y", "font_title", "font_subs", "font_body", "cam_push")
+DESIGNER_KEYS = ("layout", "screen_text_y", "font_title", "font_subs", "font_body", "cam_push", "mode", "letterbox", "panel", "layout_user")   # mode 등: 연출 모드(craft/design.py MODES)
 
 
 def design_merge(sb: dict) -> dict:

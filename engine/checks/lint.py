@@ -831,6 +831,9 @@ def variety(sb: dict) -> list:
         if isinstance(last, dict) and pa.get("accent") and str(pa.get("accent")).lower() == str(last.get("accent") or "").lower() \
                 and str(pa.get("bg") or "").lower() == str(last.get("bg") or "").lower():
             out.append(("T68", None, f"바탕 · 강조색이 직전 영상({recent[0].get('id')})과 같다 — 화풍이 반복돼 보인다"))
+        modes = [str((r.get("direction") or {}).get("mode") or "shorts") for r in recent[:3]]
+        if len(modes) == 3 and len(set(modes)) == 1 and str(d0.get("mode") or "shorts") == modes[0]:
+            out.append(("T68", None, f"연출 모드가 최근 3편과 같다({modes[0]}) — 주제에 맞으면 animation · comic · cinematic 도 고려(디자이너 스킬 0장)"))
         st0 = ((d0.get("art") or {}).get("style"))
         if st0 and st0 == (((recent[0].get("direction") or {}).get("art") or {}).get("style")):
             out.append(("T68", None, f"형태 화풍(art.style)이 직전 영상과 같다({st0}) — flat · cel · sketch · clay 중 바꿔 본다"))

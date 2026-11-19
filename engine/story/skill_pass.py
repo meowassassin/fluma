@@ -357,7 +357,7 @@ def designer_io(sb: dict, sbp: Path) -> tuple[str, str]:
         font_list = "\n".join(f"- {f['ps']} ({f['name']}) · {'/'.join(f.get('use', []))} · {f['mood']}" for f in _fonts.catalog())
     except Exception:  # noqa: BLE001
         font_list = ""
-    fmt = ('{"direction": {"layout": "full|band", "subs": {"y": 0~1, "box": true|false}, "screen_text_y": 0~1, "font_title": "PostScript 이름", "font_subs": "PostScript 이름", "font_body": "PostScript 이름", "cam_push": 1.0~1.1}, '
+    fmt = ('{"direction": {"layout": "full|band", "subs": {"y": 0~1, "box": true|false}, "screen_text_y": 0~1, "font_title": "PostScript 이름", "font_subs": "PostScript 이름", "font_body": "PostScript 이름", "cam_push": 1.0~1.1, "mode": "shorts|animation|comic|cinematic", "letterbox": 0~0.25}, '
            '"materials": {"재료 id": {"adjust": {"scale": 배수(0.6~1.6), "dx": 화면 너비 비율(-0.25~0.25), "dy": 화면 높이 비율(-0.25~0.25)}, "color": "#RRGGBB(overlay 주석만)"}}, "ui_scenes": [{"scene": 장면 번호, "replace": "바꿀 재료 id 또는 null", "what": "앱 화면 설명", "components": ["Table", "Badge"]}], "why": ["이유"]}')
     p = (f"# 스킬: designer\n{skill_text('designer')}\n\n# 앱 화면 규칙(crafts 스킬)\n{astryx}\n\n# 레퍼런스 실측(style.md)\n{st}\n\n# 콘티\n{json.dumps(view(sb, True), ensure_ascii=False)}\n\n"
          "할 일: designer 3장 검사(시선 한 곳 · 안전 영역 · 띠를 70% 이상 채움 · 글자 세 단계 · 앞 장면과 다른 구도)를 통과하게 값을 정한다. "
@@ -382,6 +382,10 @@ def designer_apply(sb: dict, patch: dict) -> list[str]:
             d["subs"] = {**(d.get("subs") or {}), **sub}; ch.append("subs")
     if isinstance(pd.get("screen_text_y"), (int, float)) and 0.08 <= pd["screen_text_y"] <= 0.3 and float(pd["screen_text_y"]) != d.get("screen_text_y"):
         d["screen_text_y"] = float(pd["screen_text_y"]); ch.append("screen_text_y")
+    if pd.get("mode") in ("shorts", "animation", "comic", "cinematic") and pd["mode"] != d.get("mode"):
+        d["mode"] = pd["mode"]; ch.append("mode")
+    if isinstance(pd.get("letterbox"), (int, float)) and 0 <= pd["letterbox"] <= 0.25 and float(pd["letterbox"]) != d.get("letterbox"):
+        d["letterbox"] = float(pd["letterbox"]); ch.append("letterbox")
     for k in ("font_title", "font_subs", "font_body"):
         if isinstance(pd.get(k), str) and pd[k] and pd[k] != d.get(k):
             d[k] = pd[k]; ch.append(k)
