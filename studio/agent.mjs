@@ -507,7 +507,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     slots.add(project);
     try { return await startInner(project, opts); } catch (e) { unbusy(project); throw e; }
   }
-  async function startInner(project, { message, look, template, skill: skillIn, scene, model, context, auto, pilot }) {
+  async function startInner(project, { message, look, template, skill: skillIn, scene, model, context, auto, pilot, resumed }) {
     let skill = skillIn;
     if (!auto) { clearTimeout(autoTimers.get(project)); autoTimers.delete(project); autoChain.set(project, 0); pilotChain.set(project, 0); fs.rm(path.join(ROOT, "data", "workspace", "tmp", project, "polish.json"), { force: true }).catch(() => {}); }   // 사용자가 새로 말하면 완성 뒤 다듬기 횟수도 다시   // 사용자가 직접 보내면 예약된 자동 이어가기는 취소 · 연속 횟수 0
     else if (!autoTimers.has(project)) { unbusy(project); return { sessionId: null }; }   // 그사이 멈췄으면 자동 이어가기 안 함
@@ -521,6 +521,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     // Claude 세션을 실제로 연 적이 있어야 --resume (같은 대화를 Codex 로만 하다가 Claude 로 바꾸면 새 세션으로 시작)
     let first = false, ctx = null, rotated = false;
     const sess = await mutate(project, async (s) => {
+      s.autopilot = !!context?.autopilot;                   // 서버가 다시 켜질 때 끊긴 자동 진행을 이어 가려고(resumeInterrupted)
+      if (context?.autopilot) s.pilotContext = context;
+      if (!auto && !resumed) s.resumes = 0;
       if (rtPre === "cursor") {
         first = !s.cursorSession;
       } else if (rtPre === "codex") {
@@ -814,7 +817,30 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     return () => clients.delete(res);
   }
 
+  /** 서버 재시작(메모리 부족 · 업데이트)으로 끊긴 자동 진행을 이어 간다 — 마지막 말이 답 없는 사용자 말인 자동 진행 대화만.
+   *  같은 곳에서 계속 죽는 영상이 끝없이 다시 돌지 않게 대화마다 2번까지(사용자가 말하면 다시 0). 대기열(maxConcurrent)을 그대로 따른다. */
+  async function resumeInterrupted() {
+    const names = await fs.readdir(SESS).catch(() => []);
+    const out = [];
+    for (const n of names) {
+      if (!n.endsWith(".json") || n.startsWith("_")) continue;
+      const id = n.slice(0, -5);
+      let s;
+      try { s = await load(id); } catch { continue; }
+      const last = (s.messages || []).at(-1);
+      if (!s.autopilot || !last || last.role !== "user" || Date.now() - (last.ts || 0) > 6 * 3600e3) continue;
+      if ((s.resumes ?? 0) >= 2) { out.push({ id, skipped: "이어가기 2번 다 씀" }); continue; }
+      if (busy.has(id) || runs.get(id)?.live) continue;
+      await mutate(id, (s2) => { s2.resumes = (s2.resumes ?? 0) + 1; });
+      start(id, { message: `(자동 진행 · 서버 재시작 ${(s.resumes ?? 0) + 1}/2) 서버가 다시 켜지며 작업이 끊겼어. 이미 한 일은 다시 하지 말고 파일 상태에서 이어서 완성까지 진행해 줘. 같은 단계에서 또 끊기면(메모리 부족 등) 그 단계를 가볍게(장면만 · 낮은 해상도) 바꿔 봐.`,
+        context: s.pilotContext || { autopilot: true }, resumed: true }).catch(() => {});
+      out.push({ id, resumed: true });
+    }
+    return out;
+  }
+
   return {
+    resumeInterrupted,
     history: async (id) => ({ ...(await load(id)), running: busy.has(id) || !!runs.get(id)?.live, queued: (queued.get(id) || []).map((x) => x.message) }),
     running: (id) => busy.has(id) || !!runs.get(id)?.live,
     reset: async (id) => {
