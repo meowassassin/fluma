@@ -514,16 +514,7 @@ def main() -> int:
     if not (sb.get("direction") or {}).get("locked") and not sb.get("variant_of"):
         soft.append(("D01", f"디자인 방향을 사용자가 고르지 않음 — 전체 초안 전에 python3 engine/story/directions.py propose {rel} 로 시안을 보여 주고 고르게(지금은 레퍼런스에서 잰 값 · 없으면 효과 없음)"))
 
-    # 2-0a) 콘셉트를 벌려 보고 사람이 골랐나(engine/story/concepts.py) — 건너뛰면 첫 안으로 굳는다(권고)
-    if not sb.get("concept") and not sb.get("variant_of") and not sb.get("reference_skip"):
-        soft.append(("D04", "콘셉트를 고르지 않음 — 콘티 전에 engine/story/concepts.py 로 안 6~8개를 벌리고 5초 시안을 보여 고르게"))
-
-    # 2-0a2) 아트 디렉션 — 영상마다 시각 언어를 정한다(없으면 고정 템플릿 모양)
-    if not sb.get("variant_of"):
-        from craft.design import art_problems
-        _ap = art_problems(sb)
-        if _ap:
-            soft.append(("D05", " · ".join(_ap) + " — 콘티 direction.art 에 palette · rule · avoid 를 정하기(produce 스킬)"))
+    # 2-0a) 콘셉트(각도 · 깨는 것 · 흐름) · 아트 디렉션은 lint 가 막는다(L66 · L67 · L68, 2026-11-19 — 권고로 두니 매 영상 건너뛰어 다 비슷해졌다)
 
     # 2-0a3) 시청 지속 — 형식 반복 · 한 사람만 · 실제 자료 없음 · 긴 정지(모든 영상에 드는 규칙)
     if not sb.get("variant_of"):

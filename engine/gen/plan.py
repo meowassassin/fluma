@@ -43,7 +43,66 @@ def load(pid: str) -> tuple[Path, dict]:
 
 
 # ── 트렌드 → 추천 선택지 재료 ──
-def trend_brief(request: str | None, label: str | None, top: int) -> dict:
+# ── 선택지 다양성(2026-11-19: 같은 요청 'IT 실무자 영상'에 10번 모두 git 실수 · 금요일 배포 · AI 도구 비교 · DNS 가 다시 나왔다) ──
+ANGLES = ("실제 사건", "숫자 · 실험", "오해 깨기", "역사 · 유래", "대결 · 비교", "따라 하기", "비유 · 해부", "시점 바꾸기", "반전")
+SIM_SAME = 0.45          # 새 선택지 글자 두 개 묶음 중 과거 선택지에 들어 있는 비율 — 이 이상이면 사실상 같은 소재
+
+
+def _grams(t: str) -> set:
+    t = re.sub(r"[\s\W_]+", "", str(t or "").lower())
+    return {t[i:i + 2] for i in range(len(t) - 1)}
+
+
+def _sim(a: str, b: str) -> float:
+    """a(새 선택지)의 글자 묶음이 b 에 들어 있는 비율 — 과거 선택지는 설명이 길어 합집합 비율로는 같은 소재를 못 잡았다"""
+    x, y = _grams(a), _grams(b)
+    return len(x & y) / max(1, min(len(x), len(y)))
+
+
+def offered(days: int = 30, limit: int = 60) -> list[str]:
+    """이미 사용자에게 보여 준 선택지(작업 공간 대화의 ```choices) + 만든 영상 주제 — 새 선택지가 겹치면 안 되는 목록"""
+    cut = time.time() - days * 86400
+    out: list[str] = []
+    for f in sorted((ROOT / "data" / "workspace" / "sessions").glob("*.json"), key=lambda p: -p.stat().st_mtime):
+        if f.stat().st_mtime < cut:
+            break
+        try:
+            msgs = json.loads(f.read_text("utf-8")).get("messages") or []
+        except (OSError, ValueError):
+            continue
+        for m in msgs:
+            if m.get("role") != "assistant":
+                continue
+            for blk in re.findall(r"```choices\n(.*?)```", m.get("text") or "", re.S):
+                out += [re.sub(r"^[-\s①-⑨\d.)]+", "", x).strip() for x in blk.strip().split("\n") if x.strip()]
+    for f in PLANS.glob("*.json"):
+        try:
+            t = json.loads(f.read_text("utf-8")).get("topic")
+        except (OSError, ValueError):
+            continue
+        if t:
+            out.append(str(t))
+    seen, res = set(), []
+    for x in out:
+        if x and "직접 말할" not in x and x not in seen:
+            seen.add(x); res.append(x)
+    return res[:limit]
+
+
+def vet(options: list[str]) -> dict:
+    """새 선택지 검사 — 이미 보여 준 것과 겹침 · 서로 겹침. 겹치면 그 선택지를 다른 각도로 바꾼다"""
+    past = offered()
+    rows = []
+    for i, o in enumerate(options):
+        hit = max(((p, _sim(o, p)) for p in past), key=lambda x: x[1], default=(None, 0.0))
+        twin = max(((options[j], _sim(o, options[j])) for j in range(len(options)) if j != i), key=lambda x: x[1], default=(None, 0.0))
+        rows.append({"option": o, "same_as_past": hit[0] if hit[1] >= SIM_SAME else None, "past_sim": round(hit[1], 2),
+                     "same_as_other": twin[0] if twin[1] >= SIM_SAME else None})
+    bad = [r for r in rows if r["same_as_past"] or r["same_as_other"]]
+    return {"ok": not bad, "rows": rows, "past_count": len(past)}
+
+
+def trend_brief(request: str | None, label: str | None, top: int, query: str | None = None) -> dict:
     """기존 트렌드 분석(trends.py index · X-ray recipe)을 그대로 읽어 요약 — 새 분석은 하지 않는다"""
     idx = json.loads((TRENDS / "index.json").read_text("utf-8")) if (TRENDS / "index.json").exists() else {"items": []}
     items = idx.get("items") or []
@@ -51,6 +110,12 @@ def trend_brief(request: str | None, label: str | None, top: int) -> dict:
         items = [x for x in items if x.get("request") == request]
     if label:
         items = [x for x in items if label in str(x.get("label") or "")]
+    matched = True
+    if query:                                    # 사용자 주제와 맞는 쇼츠만(전체 목록 조회수 순이면 매번 같은 영상이 맨 위에 온다)
+        words = [w.lower() for w in re.split(r"[\s,·/]+", query) if len(w) >= 2]
+        hit = [x for x in items if any(w in f"{x.get('title') or ''} {x.get('label') or ''}".lower() for w in words)]
+        matched = len(hit) >= 3
+        items = hit if matched else items
     if not items and not list((TRENDS / "own").glob("*.json")):
         return {"error": "트렌드 결과 없음 — 먼저 trends 스킬(engine/research/trends.py search)로 찾는다", "requests": [r.get("id") for r in (idx.get("requests") or [])[-5:]]}
     items = sorted(items, key=lambda x: -(x.get("views") or 0))
@@ -65,11 +130,13 @@ def trend_brief(request: str | None, label: str | None, top: int) -> dict:
         own.append({"plan": o["id"], "topic": o.get("topic"), "trend_option": o.get("trend_option"), "views": o.get("views"),
                     "avg_view_pct": o.get("avg_view_pct"), "worst_shots": o.get("worst")})
     vis = Counter(x.get("visual") for x in items if x.get("visual"))
-    if "3d" not in vis:
-        vis["3d"] = max(18, len(items) // 6)
-    return {"count": len(items), "own": own, "hooks": Counter(x.get("hook") for x in items if x.get("hook")).most_common(5),
-            "visual": vis.most_common(5), "top": refs,
-            "how": "이 재료로 추천 선택지 2~4개(훅 · 플롯 · 화풍 · 길이 · 근거 쇼츠)를 사용자에게 보여 주고 고르게 하거나 설명을 듣는다. 화풍은 레퍼런스·트렌드 상위 쇼츠에서 뽑은 것을 우선하고, 비닐토이 3D 는 레퍼런스나 사용자가 그 스타일을 고른 경우에만 추천한다. 고른 것은 trend.option 에 기록한다."}
+    past = offered()
+    return {"count": len(items), "topic_matched": matched, "own": own, "hooks": Counter(x.get("hook") for x in items if x.get("hook")).most_common(5),
+            "visual": vis.most_common(5), "top": refs, "angles": list(ANGLES), "already_offered": past[:40],
+            "how": ("추천 선택지 3개(+ '직접 말할게')를 만든다. 규칙: ① 선택지마다 angles 중 서로 다른 각도 ② already_offered 와 같은 소재 · 같은 사례를 다시 내지 않는다(같은 분야의 뻔한 소재 — 예: git 실수 · 금요일 배포 · DNS — 는 이미 쓴 것) "
+                    "③ 근거 쇼츠 id 를 함께. 보여 주기 전에 python3 engine/gen/plan.py vet \"<선택지1>\" \"<선택지2>\" \"<선택지3>\" 로 겹침을 확인하고 걸린 것은 바꾼다. "
+                    + ("" if matched else "topic_matched=false — 이 주제의 쇼츠가 목록에 거의 없다: 먼저 trends 스킬(trends.py search \"<주제>\")로 찾고 다시 부른다. ")
+                    + "고른 것은 trend.option 에 기록한다.")}
 
 
 # ── 프롬프트 조립(3 · 4단계가 같은 함수를 쓴다) ──
@@ -166,13 +233,22 @@ def made_by() -> dict | None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sp = ap.add_subparsers(dest="cmd", required=True)
-    t = sp.add_parser("trends"); t.add_argument("--request"); t.add_argument("--label"); t.add_argument("--top", type=int, default=8)
+    t = sp.add_parser("trends"); t.add_argument("--request"); t.add_argument("--label"); t.add_argument("--query", help="사용자 주제 낱말(제목 · 라벨에서 찾음)"); t.add_argument("--top", type=int, default=8)
+    v = sp.add_parser("vet"); v.add_argument("options", nargs="+")
     n = sp.add_parser("new"); n.add_argument("id"); n.add_argument("--topic", required=True); n.add_argument("--aspect", default="9:16")
     rs = sp.add_parser("research"); rs.add_argument("id"); rs.add_argument("--file"); rs.add_argument("--skip"); rs.add_argument("--style-skip")
     c = sp.add_parser("check"); c.add_argument("id")
     a = ap.parse_args()
     if a.cmd == "trends":
-        print(json.dumps(trend_brief(a.request, a.label, a.top), ensure_ascii=False, indent=1)); return 0
+        print(json.dumps(trend_brief(a.request, a.label, a.top, a.query), ensure_ascii=False, indent=1)); return 0
+    if a.cmd == "vet":
+        r = vet(a.options)
+        for row in r["rows"]:
+            mark = "✗" if row["same_as_past"] or row["same_as_other"] else "✓"
+            why = (f" — 이미 보여 줌: {row['same_as_past']}" if row["same_as_past"] else "") + (f" — 다른 선택지와 같음: {row['same_as_other']}" if row["same_as_other"] else "")
+            print(f"{mark} {row['option']}{why}")
+        (ok if r["ok"] else lambda *a_, **k: fail("plan", stage="vet", error="겹치는 선택지가 있다 — 다른 각도 · 다른 소재로 바꿔 다시 vet"))("plan", past=str(r["past_count"]))
+        return 0
     if a.cmd == "research":
         if a.skip is None and a.style_skip is None and not a.file and not _find_research_file(a.id, load(a.id)[1].get("topic") or ""):
             fail("plan", stage="research", error=f"data/research/{a.id}.json 이 없음 — 먼저 WebSearch 로 facts JSON 을 저장하거나 --skip \"이유\" 지정")

@@ -586,6 +586,8 @@ def lint(sb: dict, recent_titles=None) -> list:
     except ImportError:
         pass
 
+    fails += variety(sb)
+    fails += craft_depth(sb)
     return fails
 
 
@@ -761,6 +763,111 @@ def audio_fit(sb: dict) -> list:
             cut = max(1, math.ceil(n * (1 - sec * 1.05 / real)))
             out.append(("L14", i, f"실측 음성 {real:.2f}s > 장면 {sec}s×{AUDIO_FIT_MAX} — 나레이션을 약 {cut}자 줄이거나 sec 를 늘리세요"))
     return out
+
+
+VARIETY_EXEMPT = ("ranking", "daily", "clip")      # 형식 자체가 같은 틀인 것(순위 · 매일 시세 · 클립 반응)
+
+
+def _recent_boards(sid: str, n: int = 6) -> list[dict]:
+    out = []
+    for f in sorted((ROOT / "data" / "storyboards").glob("*.json"), key=lambda x: -x.stat().st_mtime):
+        if f.stem == sid:
+            continue
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if d.get("variant_of"):
+            continue
+        out.append(d)
+        if len(out) >= n:
+            break
+    return out
+
+
+def flow_sig(sb: dict) -> str:
+    """장면 흐름 모양 — 연속된 같은 역할은 하나로(hook→item×5→outro = hook→item→outro)"""
+    sig = []
+    for s in sb.get("scenes") or []:
+        r = s.get("role") or "?"
+        if not sig or sig[-1] != r:
+            sig.append(r)
+    return "→".join(sig)
+
+
+def variety(sb: dict) -> list:
+    """영상마다 다르게(2026-11-19: 9편 중 6편이 hook→item×N→outro, 8편이 같은 빨강 · 기본 글꼴 — 사용자 '구조 · 화풍 · 구성이 다 비슷하다').
+    L66 흐름이 최근 영상 2편 이상과 같음 · L67 콘셉트(각도 · 깨는 것) 없음 · L68 아트 디렉션 없음 · T68 색 · 글꼴이 직전 영상과 같음"""
+    out = []
+    if sb.get("variant_of") or sb.get("format") in VARIETY_EXEMPT:
+        return out
+    recent = _recent_boards(str(sb.get("id") or ""))
+    sig = flow_sig(sb)
+    same = [d.get("id") for d in recent if flow_sig(d) == sig]
+    if len(same) >= 2 and len(sb.get("scenes") or []) >= 4:
+        out.append(("L66", None, f"장면 흐름이 최근 영상 {len(same)}편과 같다({sig}) — concept.structure 를 바꾼다(예: 사건 재구성 · 질문→실험→반전 · 저울 비교 · 시간 순 · 오해→진실). 역할 이름만 바꾸지 말고 장면이 하는 일을 바꾼다"))
+    c = sb.get("concept") if isinstance(sb.get("concept"), dict) else {}
+    miss = [k for k in ("angle", "breaks", "structure") if not str(c.get(k) or "").strip()]
+    if miss:
+        out.append(("L67", None, f"concept.{' · '.join(miss)} 없음 — angle(각도: 실제 사건 · 숫자 실험 · 오해 깨기 · 역사 · 대결 · 따라 하기 · 비유 · 시점 · 반전), "
+                                 "breaks(이 주제 쇼츠가 다들 하는 것 중 깨는 것 하나), structure(장면 흐름 한 줄)를 콘티에 적는다"))
+    try:
+        from craft.design import art_problems
+        ap = art_problems(sb)
+    except Exception:
+        ap = []
+    if ap:
+        out.append(("L68", None, " · ".join(ap) + " — direction.art 에 palette{bg, ink, accent} · rule(이 영상의 구도 원칙) · avoid 를 이 영상에 맞게 정한다(최근 영상과 다르게)"))
+    pa = ((sb.get("direction") or {}).get("art") or {}).get("palette") or {}
+    if recent and isinstance(pa, dict) and pa:
+        last = ((recent[0].get("direction") or {}).get("art") or {}).get("palette") or {}
+        d0 = sb.get("direction") or {}
+        if isinstance(last, dict) and pa.get("accent") and str(pa.get("accent")).lower() == str(last.get("accent") or "").lower() \
+                and str(pa.get("bg") or "").lower() == str(last.get("bg") or "").lower():
+            out.append(("T68", None, f"바탕 · 강조색이 직전 영상({recent[0].get('id')})과 같다 — 화풍이 반복돼 보인다"))
+        if d0.get("font_title") and d0.get("font_title") == (recent[0].get("direction") or {}).get("font_title"):
+            out.append(("T68", None, f"제목 글꼴이 직전 영상과 같다({d0.get('font_title')})"))
+    return out
+
+
+NATIVE = re.compile(r"K\.fx\(|addProperty\(|applyPreset|applyBuiltinPreset|applyTextPreset|textPreset|camera\.|light\.|layer\.style")
+
+
+def kit_only_scenes(sb: dict) -> list[int]:
+    """K 도형 · 글자만으로 그린 장면(앱 효과 · 프리셋 · 실제 자료 · 다른 앱이 하나도 없음) 번호"""
+    out = []
+    for i, sc in enumerate(sb.get("scenes") or []):
+        mats = [m for m in sc.get("materials") or [] if isinstance(m, dict)]
+        if not mats:
+            continue
+        native = False
+        for m in mats:
+            if m.get("type") != "craft" or (m.get("app") or "effectcraft") != "effectcraft":
+                native = True                            # 실제 자료(사진 · 화면 · 문서 …) · 다른 Craft 앱
+                break
+            for st in m.get("steps") or []:
+                sid_ = str((st or {}).get("id") or "")
+                code = json.dumps(st, ensure_ascii=False)
+                if sid_ not in ("script.run", "comp.new", "") or NATIVE.search(code):
+                    native = True
+                    break
+            if native:
+                break
+        if not native:
+            out.append(i)
+    return out
+
+
+def craft_depth(sb: dict) -> list:
+    """L69 — 장면 대부분이 K 키트 도형 · 글자뿐(2026-11-19 실측: 9편이 EffectCraft 효과 0개 · 명령 9,152개 중 0.9% — 영상이 다 같은 납작한 카드로 보였다)"""
+    if sb.get("variant_of") or sb.get("format") in ("clip", "daily"):
+        return []
+    sc = [s for s in sb.get("scenes") or [] if s.get("materials")]
+    bare = kit_only_scenes(sb)
+    if len(sc) >= 3 and len(bare) > len(sc) * 0.5:
+        return [("L69", None, f"{len(bare)}/{len(sc)}장면이 K 도형 · 글자뿐({', '.join(str(i + 1) for i in bare[:8])}장면) — 장면마다 craft_catalog.py search 로 EffectCraft 효과 · 프리셋을 골라 "
+                              "K.fx(L, '<id>', {속성: 값}) 로 걸거나, 실제 자료(화면 · 문서 · 사진) · 다른 Craft 앱 재료를 넣는다. 절반 이상의 장면에 필요")]
+    return []
 
 
 def recent_titles(n=30):

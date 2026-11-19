@@ -20,7 +20,9 @@ order: 0
 ## 1. 자료조사 · 레퍼런스 (기획 전에)
 - **사실 조사**: 설명 · 제품 · 사건 · 개념 주제면 `WebSearch`/`WebFetch` 로 사실을 모아 `data/research/<id>.json`(`facts[]` + `source` URL + `visual_entities[]`) → `python3 engine/gen/plan.py research <id>`(순수 밈 · 감성만 `--skip "<사유>"`).
 - **눈으로 확인**: 특정 화풍 · 작품 · 실제 제품/화면을 말했으면 기억으로 쓰지 않는다 — `python3 engine/research/ref_image.py search <id> "<영문 검색어>" --limit 6` → `candidates_sheet.jpg` 를 Read → `ref_image.py pick <id> <번호…> --role style|prop|background --note "<관찰>"`.
-- **트렌드 → 추천 선택지**: `python3 engine/gen/plan.py trends [--request <rid>] [--label <이름>]`. 없으면 trends 스킬(`trends.py search`).
+- **트렌드 → 추천 선택지**: `python3 engine/gen/plan.py trends --query "<사용자 주제 낱말>" [--request <rid>]`. `topic_matched=false` 면 trends 스킬(`trends.py search "<주제>"`)로 먼저 찾는다.
+  **선택지는 매번 달라야 한다**(같은 요청에 10번 모두 git 실수 · 금요일 배포 · DNS 가 나왔다): 3개 모두 `angles` 중 서로 다른 각도, 결과의 `already_offered`(이미 보여 준 선택지 · 만든 주제)와 같은 소재 금지.
+  보여 주기 전에 `python3 engine/gen/plan.py vet "<선택지1>" "<선택지2>" "<선택지3>"` — ✗ 는 다른 각도 · 다른 소재로 바꿔 다시 vet.
   레퍼런스는 이 순서로 한 번씩: `trends.py search` → `python3 engine/research/ref_pick.py --request <rid>`(표 + 썸네일 시트 한 장만 Read) → 2~3편을 `analyze_ref.py <id1> <id2> <id3>` 한 명령 → 필요한 편만 `look.py sheet <id>`.
   `xray.json` 의 `understanding`(훅 · 반전 · 편집 문법 · 빌릴 것 · 베끼면 안 되는 것)을 읽고 **추천 선택지 2~4개**(훅 · 플롯 한 줄 · 화면 재료 · 길이, 근거 쇼츠 id)를 ```choices``` 로.
 

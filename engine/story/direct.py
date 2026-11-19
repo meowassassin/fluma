@@ -252,6 +252,51 @@ def _sat(h: str) -> float:
     return 0 if mx == 0 else (mx - mn) / mx
 
 
+# 레퍼런스에서 강조색을 못 찾을 때 — 영상마다 다른 색(2026-11-19: 9편 중 8편이 같은 빨강 #ff2d2d 로 고정돼 화풍이 다 같아 보였다)
+ACCENTS = ("#ff5a36", "#ffd23f", "#3ddc97", "#4cc9f0", "#b388ff", "#ff6ec7", "#ff9f1c", "#2ec4b6", "#e71d36", "#9ef01a")
+
+
+def _recent_accents(exclude: str, n: int = 4) -> set[str]:
+    out = set()
+    for p in sorted((ROOT / "data" / "storyboards").glob("*.json"), key=lambda x: -x.stat().st_mtime):
+        if p.stem == exclude:
+            continue
+        try:
+            a = ((json.loads(p.read_text("utf-8")).get("direction") or {}).get("color_accent") or "").lower()
+        except (OSError, ValueError):
+            continue
+        if a:
+            out.add(a)
+        if len(out) >= n:
+            break
+    return out
+
+
+def ref_accent(card_id: str | None, sid: str, bg: str = "#000000") -> str:
+    """강조색 — 레퍼런스 화면에서 가장 눈에 띄는 색(채도 높고 면적이 있는 색). 없으면 최근 영상과 겹치지 않는 색을 영상 id 로 고른다"""
+    best, score = None, 0.0
+    try:
+        x = json.loads((ROOT / "data" / "public" / "trends" / "xray" / str(card_id) / "xray.json").read_text("utf-8"))
+        for sh in x.get("shots") or []:
+            for c in sh.get("palette") or []:
+                h, w = c.get("hex"), float(c.get("w") or 0)
+                if not (isinstance(h, str) and h.startswith("#")) or w < 0.01:
+                    continue
+                sat, lum = _sat(h), _hexlum(h)
+                if sat < 0.45 or not 0.25 < lum < 0.85 or abs(lum - _hexlum(bg)) < 0.3:   # 바탕과 밝기 차이가 있어야 강조가 된다
+                    continue
+                sc = sat * min(w, 0.3)
+                if sc > score:
+                    best, score = h, sc
+    except (OSError, ValueError, TypeError):
+        pass
+    if best:
+        return best
+    used = _recent_accents(sid)
+    pool = [c for c in ACCENTS if c not in used and abs(_hexlum(c) - _hexlum(bg)) >= 0.3] or list(ACCENTS)
+    return pool[int(hashlib.sha1(sid.encode()).hexdigest(), 16) % len(pool)]
+
+
 def colors(pick: dict, ref: dict | None, seed: int) -> dict:
     if pick["palette"] == "reference" and ref:
         pal = [c["hex"] if isinstance(c, dict) else c for c in (ref.get("palette") or [])]
@@ -394,7 +439,7 @@ def main():
     if card and not a.reroll:
         d = card["direction"]
         col = {"color_bg": d.get("color_bg", "#000000"), "color_surface": "#111111", "color_text": "#ffffff", "color_muted": "#9a9a9a",
-               "color_accent": "#ff2d2d", "color_caption_bg": d.get("caption_bg"), "color_caption_fg": d.get("caption_fg")}
+               "color_accent": ref_accent(card.get("id"), str(sb.get("id") or ""), d.get("color_bg", "#000000")), "color_caption_bg": d.get("caption_bg"), "color_caption_fg": d.get("caption_fg")}
         print(Path(ROOT / "data" / "public" / "trends" / "xray" / card["id"] / "style" / "style.md").read_text(encoding="utf-8"))
         if card.get("channel_card"):   # 구성 · 말투는 채널(여러 편) 카드가 기준 — 한 편 통계보다 먼저
             print(Path(ROOT / "data" / "public" / "trends" / "channels" / card["channel"] / "channel.md").read_text(encoding="utf-8").split("## 영상별 대사")[0])

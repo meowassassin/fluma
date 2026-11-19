@@ -68,6 +68,16 @@ def measure(sid: str) -> dict:
         "waived": len(q.get("waived") or []),
         "finished": bool(q) and not q.get("block"),
     }
+    try:                                          # 다양성 · 앱 깊이(2026-11-19) — 장면 흐름 · K 키트만 쓴 장면 비율
+        sys.path.insert(0, str(ROOT / "engine" / "checks"))
+        import lint as _lint
+        sbj = json.loads((ROOT / "data" / "storyboards" / f"{sid}.json").read_text("utf-8"))
+        scn = [s for s in sbj.get("scenes") or [] if s.get("materials")]
+        out["flow"] = _lint.flow_sig(sbj)
+        out["kit_only"] = f"{len(_lint.kit_only_scenes(sbj))}/{len(scn)}"
+        out["accent"] = ((sbj.get("direction") or {}).get("color_accent"))
+    except (OSError, ValueError, ImportError):
+        out.update(flow=None, kit_only=None, accent=None)
     out["pass"] = {k: (out[k] <= v) for k, v in LIMITS.items()} | {"finished": out["finished"], "no_waiver": out["waived"] == 0}
     out["ok"] = all(out["pass"].values())
     return out
@@ -88,6 +98,7 @@ def main() -> int:
         print(f"  사용자 턴 {r['turns']}(제작 시작 뒤 {r['fix_turns']}) · 도구 호출 {r['tool_calls']}")
         print(f"  produce {r['produce_runs']}회(렌더까지 {r['produce_full']}회 · 렌더 {r['render_sec']}초) · LLM 단계 {r['llm_calls']}회 {r['llm_pass_sec']}초")
         print(f"  품질 관문: 막음 {r['block']} · 권고 {r['advise']} · 면제 {r['waived']}")
+        print(f"  다양성: 흐름 {r.get('flow')} · K 키트만 쓴 장면 {r.get('kit_only')} · 강조색 {r.get('accent')}")
         print("  기준: " + " · ".join(f"{k} {'✓' if v else '✗'}" for k, v in r["pass"].items()))
     streak = 0
     for r in rows:

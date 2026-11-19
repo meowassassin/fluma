@@ -16,7 +16,8 @@ order: 1
 ## 순서
 1. **형식 결정**: `python3 engine/story/decide.py "<주제>" [형식] [목표 초]` 로 형식 · 길이와 그 형식의 **흔한 구조**(JSON `scenes`)를 받는다. 흔한 구조는 뼈대가 아니라 뻔함 지도 후보다 — 장면 흐름은 고른 콘셉트(`concept.structure`)를 따른다. 형식(광고|감성|시세|compare …)과 길이를 사용자가 말했으면 넘긴다 (주제 문장 규칙보다 우선). 해당 형식 스킬(`format-*`)이 있으면 그 규칙도 따른다.
 2. **조사 확인**: `data/research/` 에 이 주제의 사실이 있는지 본다. 없으면 `research` 스킬 순서대로 먼저 조사한다. 출처 있는 사실 5개 미만이면 멈추고 사용자에게 알린다.
-3. **작성**: `data/storyboards/<프로젝트 id>.json` 을 쓴다. 스키마 `engine/spec/schema/storyboard.schema.json`, 예시 `engine/spec/examples/storyboard.example.json`. **스키마 · 엔진 코드를 열어 칸을 찾지 않는다** — 예시를 복사해 고치고, 모르는 칸은 lint 메시지가 알려 준다(2026-11-16: 스키마 · 코드 찾기에 3분).
+3. **영상마다 다르게 — 쓰기 전에 정한다**(검사 L66 · L67 · L68 이 막는다): `concept` 에 `angle`(각도) · `breaks`(이 주제 쇼츠가 다들 하는 것 중 깨는 것) · `structure`(장면 흐름 한 줄 — 최근 영상과 다른 흐름: 사건 재구성 · 질문→실험→반전 · 저울 비교 · 시간 순 · 오해→진실 …), `direction.art` 에 `palette{bg, ink, accent}` · `rule` · `avoid`(최근 영상과 다른 색 · 글꼴 · 그림 규칙). `hook → item × N → outro` 는 최근에 너무 많이 썼다.
+   **작성**: `data/storyboards/<프로젝트 id>.json` 을 쓴다. 스키마 `engine/spec/schema/storyboard.schema.json`, 예시 `engine/spec/examples/storyboard.example.json`. **스키마 · 엔진 코드를 열어 칸을 찾지 않는다** — 예시를 복사해 고치고, 모르는 칸은 lint 메시지가 알려 준다(2026-11-16: 스키마 · 코드 찾기에 3분).
    **한 영상에 요점 하나 — 40초 이하(비교 · 순위 45초) · 장면 9개 이하**(L70, produce 가 대본 단계 전에 막는다). 곁가지(두 번째 언어 · 설정법 · 도구)는 다음 영상으로.
    사용자가 **길어도 된다**고 했으면 억지로 줄이지 말고 콘티에 `"allow_long": true`(90초 · 12장면까지) — 설명이 빠지면 이해가 깨진다(2026-11-17).
    **콘티는 한 번에 통째로 Write** 한다 — 같은 콘티를 Edit 로 여러 번 나눠 고치지 않는다(2026-11-17: Edit 17번 연달아 ≈ 10분). 고칠 곳이 여러 장면이면 전체를 다시 쓴다.

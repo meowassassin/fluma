@@ -723,7 +723,7 @@
     },
     "concept": {
       "type": "object",
-      "description": "사용자가 고른 콘셉트(engine/story/concepts.py pick)"
+      "description": "이 영상의 콘셉트 — angle(각도) · breaks(이 주제 쇼츠가 다들 하는 것 중 깨는 것) · structure(장면 흐름 한 줄). 없거나 흐름이 최근 영상과 같으면 lint L66 · L67. concepts.py pick 이 채우기도 한다"
     },
     "credits": {
       "type": "object"

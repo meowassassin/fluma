@@ -81,6 +81,16 @@ var K = (function () {
     /** 글자를 왼쪽부터 써 내려가기(Linear Wipe) — 글자 수에 맞는 속도 */
     write: function (L, t, d) { var w = L.property('Effects').addProperty('ADBE Linear Wipe'); w.property('Wipe Angle').setValue(270); w.property('Feather').setValue(30); var c = w.property('Transition Completion'); var n = 0; try { n = String(L.property('Source Text').value.text).length; } catch (x) {} c.setValue(100); c.setValueAtTime(t, 100); c.setValueAtTime(t + (d || Math.min(1.4, 0.12 + 0.07 * n)), 0); return L; },
     /** 자식이 부모 투명도를 따라가게(부모로 묶을 때) */
+    /** EffectCraft 효과 붙이기 — 이름은 카탈로그 id('ec.stylize.glow') · 화면 이름('Glow') · 내부 이름('ADBE Glo2') 모두 된다(craft_catalog.py search 로 찾음).
+     *  v = {속성 이름: 값 | [[초, 값], …](키프레임)}. 없는 이름이면 조용히 무시되던 것을 오류로 낸다(2026-11-19 시험) */
+    fx: function (L, name, v) {
+      var E = L.property('Effects'), n0 = E.numProperties; E.addProperty(name);
+      if (E.numProperties === n0) throw new Error('K.fx: 효과 없음 — ' + name + ' (craft_catalog.py search 로 id 확인)');
+      var f = E.property(E.numProperties);
+      for (var k in (v || {})) { var p = f.property(k); if (!p) throw new Error('K.fx: ' + name + ' 에 속성 없음 — ' + k);
+        var x = v[k]; if (x instanceof Array && x.length && x[0] instanceof Array) { for (var i = 0; i < x.length; i++) p.setValueAtTime(x[i][0], x[i][1]); } else p.setValue(x); }
+      return f;
+    },
     follow: function (child, parent) { child.parent = parent; K.O(child).expression = 'parent.transform.opacity'; return child; },
     /** 안전 영역 맞춤 — 장면 스크립트가 끝난 뒤 자동으로 불린다(craft_script.with_kit).
      *  묶음(맨 위 부모 레이어와 그 자식들)마다 움직임을 마친 자리(마지막 위치 · 크기 키)를 재서, 화면 가장자리(가로 m, 세로 m/2)를
