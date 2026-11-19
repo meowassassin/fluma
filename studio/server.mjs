@@ -1619,6 +1619,7 @@ function sanitizeAgent(a = {}) {
     cli: AGENTS.some((x) => x.id === a.cli && x.runs) ? a.cli : "claude",
     claudeModel: str(a.claudeModel), codexModel: str(a.codexModel), agyModel: str(a.agyModel), cursorModel: str(a.cursorModel),
     effort: EFFORTS.includes(a.effort) ? a.effort : "",
+    ...(Number(a.maxConcurrent) >= 1 ? { maxConcurrent: Math.min(4, Math.floor(Number(a.maxConcurrent))) } : {}),   // 동시에 도는 영상 대화 수(agent.mjs maxPar) — 전엔 저장 때 버려졌다
   };
 }
 app.get("/api/agents", ah(async (_req, res) => {
