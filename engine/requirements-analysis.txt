@@ -6,3 +6,4 @@ onnxruntime>=1.18               # OCR · CLIP 화면 분류 · 음원 분리 · 
 huggingface-hub>=0.24           # CLIP ONNX · whisper 모델 받기
 tokenizers>=0.19                # CLIP 글 토큰
 opencv-python-headless>=4.9,<5  # 컷 · 광류 · 추적
+numba>=0.60  # 형태(engine/craft/form) 렌더 가속 — 없으면 처음 쓸 때 자동 설치(autodeps)

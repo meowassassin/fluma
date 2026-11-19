@@ -1,0 +1,96 @@
+{
+ "name": "coffee mug",
+ "materials": {
+  "ceramic": {
+   "color": "#79c7b6",
+   "gloss": 0.6,
+   "spec_power": 60
+  },
+  "inside": {
+   "color": "#f3efe6",
+   "gloss": 0.4,
+   "spec_power": 40
+  },
+  "coffee": {
+   "color": "#5b3420",
+   "gloss": 0.9,
+   "spec_power": 120
+  }
+ },
+ "camera": {
+  "azimuth": 30,
+  "elevation": 26,
+  "fov": 30,
+  "fill": 0.8
+ },
+ "root": {
+  "op": "union",
+  "children": [
+   {
+    "op": "smooth_subtract",
+    "k": 0.03,
+    "children": [
+     {
+      "op": "smooth_union",
+      "k": 0.05,
+      "children": [
+       {
+        "prim": "cylinder",
+        "h": 0.45,
+        "r": 0.4,
+        "r_edge": 0.04,
+        "pos": [
+         0,
+         0.45,
+         0
+        ],
+        "mat": "ceramic"
+       },
+       {
+        "prim": "torus",
+        "R": 0.2,
+        "r": 0.055,
+        "pos": [
+         0.42,
+         0.46,
+         0
+        ],
+        "rot": [
+         90,
+         0,
+         0
+        ],
+        "scale": 1.0,
+        "mat": "ceramic"
+       }
+      ]
+     },
+     {
+      "prim": "cylinder",
+      "h": 0.5,
+      "r": 0.345,
+      "r_edge": 0.03,
+      "pos": [
+       0,
+       0.6,
+       0
+      ],
+      "mat": "inside"
+     }
+    ],
+    "cut_mat": true
+   },
+   {
+    "prim": "cylinder",
+    "h": 0.01,
+    "r": 0.35,
+    "pos": [
+     0,
+     0.72,
+     0
+    ],
+    "mat": "coffee"
+   }
+  ]
+ }
+}

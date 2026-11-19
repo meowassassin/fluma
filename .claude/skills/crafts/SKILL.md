@@ -48,6 +48,7 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 | 문서 화면 (`document`) | WordCraft | 쓰는 중(adapters/wordcraft.py): 9:16 쪽으로 다시 배치 · 글자 일괄 확대, 진짜 `format.highlight`, 변경 추적(`review.compare`), 메모 말풍선. 안 쓰는 것: 대본 md ↔ docx |
 | 웹 · 터미널 실제 화면 (후보 `web-screen` 등) | craft-anything | 연결 없음. `web-walkthrough-record`(360×640@3x), `web_site_capture`, 터미널 기록. `--deep --allow-run` 필요. 기존 `web`(webrec.py) 재료와 겹치는지 먼저 본다 |
 | 실사 · 생성 영상 합성(`live`) | EffectCraft | 카메라를 풀어(시야각 자동 탐색, 독립 오차 `follow_px`) 글자 · 그림을 그 공간에 붙인다. 인물 뒤로 지나가기(`behind`) · 물체 따라가기(`follow`) · 색 바꾸기(`recolor`) · 바닥에 선 정지 물체 지우기(`remove`). 카메라가 움직이는 영상만 풀린다 |
+| 사물 · 동물 · 캐릭터 그림 (`form`) | 형태 도구(engine/craft/form) | 쓰는 중: 기본 도형을 녹여 붙인 형태(SDF) → 화풍 flat · cel · sketch · clay(투명 PNG, 장당 1~5초, 화풍만 바꾸면 1초). 작성법 engine/craft/form/README.md · 미리보기 form_cli.py preview |
 | 3D 제품(`model3d`) | SolidCraft + TextureCraft | 쓰는 중(adapters/solidcraft.py · texturecraft.py): 내장 형태 5종(case · phone · bottle · tumbler · puck) · 명령 목록 · STEP/STL 불러오기 → fine OBJ → TextureCraft 재질(쉬운 이름 → PBR) · 로고 데칼 · MCP `viewport_render`(장당 0.3초) 정지 컷 · turntable mp4, 분해도는 SolidCraft `explode.create` + `motion.export_animation` |
 | 도면 (`drawing`) | CADCraft (+ SolidCraft `file.export_view_dxf`) | 쓰는 중(adapters/cadcraft.py): DXF · 명령 · 3D 모형 → 3각법 투영도 + 치수 3개, MCP `render` 9:16 어두운 CAD 화면 또는 흰 종이(plot 단색 후처리), 빨간 구름 `revcloud` |
 

@@ -224,6 +224,24 @@ def illustration(m: dict, out: Path, work: Path) -> dict:
     return info
 
 
+def form(m: dict, out: Path, work: Path) -> dict:
+    """형태(engine/craft/form): 에이전트가 데이터로 빚은 형태(scene · 또는 src 의 JSON)를 화풍(style)으로 → 투명 배경 PNG.
+    화풍을 안 적으면 영상 아트 디렉션(direction.art.style)을 따른다(build 가 넣어 줌)"""
+    from craft import form as F
+    sc = m.get("scene")
+    if isinstance(sc, str):                              # "$FILE:…" 로 펼친 JSON 글자
+        sc = json.loads(sc)
+    if not isinstance(sc, dict) and m.get("src"):
+        sc = json.loads(_abs(m["src"]).read_text("utf-8"))
+    if not isinstance(sc, dict):
+        raise RuntimeError(f"{m.get('id')}: form 재료는 scene(형태 JSON) 또는 src 가 필요합니다")
+    style = m.get("style") or "cel"
+    F.draw(sc, style, out, res=int(m.get("res") or 1080), view=m.get("view"), background=m.get("background"))
+    keep = out.with_suffix(".scene.json")                  # 사람이 고칠 수 있게 형태 데이터를 남긴다
+    keep.write_text(json.dumps(sc, ensure_ascii=False, indent=1), "utf-8")
+    return {"app": "form", "style": style, "as": "image", "editable": str(keep.relative_to(ROOT)) if keep.is_relative_to(ROOT) else str(keep)}
+
+
 def photo(m: dict, out: Path, work: Path) -> dict:
     """PhotoCraft: 사진 정리 · 누끼(피사체 선택 → 마스크). 보통은 adapters/photocraft.py 가 덮어쓴다(장면 카드 · 로고 지우기 …) —
     이것은 그 모듈을 못 불러올 때의 최소 길. PhotoCraft run 은 입력을 위치 인자로 받는다(--in 은 없음)"""
@@ -466,7 +484,8 @@ def stock(m: dict, out: Path, work: Path, sid: str) -> dict:
 
 MAT_VERSION = "12"    # 재료를 만드는 방식이 바뀌면 올린다(열쇠에 들어가 예전 결과를 다시 만든다) — 2: 아이콘 고해상도 · 영상 마지막 프레임 유지 · 요소 폴더 · 3: 차트 항목 아이콘 · 4: 앱별 어댑터 · 5: craft 재료 · 레시피 · 6: 생성 클립 · 7: 재료마다 방법(앱) 고르기 · 8: 느낌(feel) 입히기 · 9: 긴 생성 클립은 빠르게 해 끝을 지킴 · 10: 빠르기 상한 1.25배 · 11: 생성 경로 제거(완전 로컬) · 12: 웹 녹화 내용만 자르기 · 빈 시작 짧게
 #                       4: 앱별 어댑터(PhotoCraft 카드 · PdfCraft 진짜 형광펜 · FilmCraft 다듬기 · 새 재료 종류) · 사람이 고친 편집 파일 열쇠 일반화
-ADAPTERS = {"chart": chart, "doc_quote": doc_quote, "illustration": illustration, "photo": photo, "icon": illustration}   # icon: icons.py 로 받은 SVG
+BUILTIN = {"form"}   # Craft 앱 없이 엔진이 직접 만드는 재료(engine/craft/form)
+ADAPTERS = {"chart": chart, "doc_quote": doc_quote, "illustration": illustration, "photo": photo, "icon": illustration, "form": form}   # icon: icons.py 로 받은 SVG
 PASSTHROUGH = {"screen", "video", "image", "meme", "web"}    # meme: meme.py fetch 폴더 · web: webrec.py 폴더
 FEEL_TYPES = {"video", "stock", "photo", "image", "photo_grade"}   # 영상 느낌(direction.feel)을 입히는 실사 재료 — feel.py 와 같게
 
@@ -656,7 +675,7 @@ def _build_one(task: dict, sb: dict, sid: str, base: Path, reg: dict, plug: dict
         fn = fn or adapters.get(t)
         if fn is None:
             raise RuntimeError(f"'{t}' 재료의 기본 방법이 없습니다 — method 를 적으세요")
-        if fn is ADAPTERS.get(t) and t not in plug and (t if t != "icon" else "illustration") not in reg:
+        if fn is ADAPTERS.get(t) and t not in plug and t not in BUILTIN and (t if t != "icon" else "illustration") not in reg:
             raise RuntimeError(f"'{t}' 재료를 만들 Craft 앱이 설치되지 않았습니다(Craft 앱 화면에서 설치)")
         info = fn(m, out, d)
         if how:
@@ -736,6 +755,8 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             from craft import cues                      # "$CUE:낱말" → 그 낱말을 말하는 순간(장면 기준 초) — 말과 맞춘 움직임
             m = cues.resolve(m, sb, n - 1)
             t = m.get("type")
+            if t == "form" and not m.get("style"):          # 형태의 화풍 = 영상 아트 디렉션(direction.art.style)
+                m = {**m, "style": (((sb.get("direction") or {}).get("art") or {}).get("style")) or "cel"}
             dm = ((sb.get("direction") or {}).get("methods") or {}).get(t)
             if dm and not m.get("method"):           # 방향이 정한 방법(앱)도 재료 칸에 — 바뀌면 열쇠가 달라져 다시 만든다
                 m = {**m, "method": dm}

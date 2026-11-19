@@ -353,7 +353,7 @@
         },
         "art": {
           "type": "object",
-          "description": "이 영상의 시각 언어: palette{bg, ink, accent} · rule · avoid[]"
+          "description": "이 영상의 시각 언어: palette{bg, ink, accent} · rule · avoid[] · style(형태 재료의 화풍: flat 평면 일러스트 · cel 셀 카툰 · sketch 연필 스케치 · clay 클레이 3D — 최근 영상과 다르게)"
         },
         "color_bg": {
           "type": "string"
@@ -1226,7 +1226,8 @@
                   "live",
                   "archive",
                   "art",
-                  "relic"
+                  "relic",
+                  "form"
                 ]
               },
               "camera": {
@@ -1262,7 +1263,7 @@
               },
               "style": {
                 "type": "string",
-                "description": "overlay: clean(기본) · hand"
+                "description": "overlay: clean(기본) · hand / form: flat · cel · sketch · clay(없으면 direction.art.style)"
               },
               "beats": {
                 "type": "array",
@@ -1777,6 +1778,28 @@
               "args": {
                 "type": "object",
                 "description": "스크립트 재료(EffectCraft)가 읽는 바꿀 값 — 숫자를 코드에 박지 않고 여기에(knob.py 로 조정)"
+              },
+              "scene": {
+                "type": [
+                  "object",
+                  "string"
+                ],
+                "description": "form: 형태 데이터(부품 목록 — engine/craft/form/README.md) 또는 \"$FILE:…/sNN.form.json\""
+              },
+              "view": {
+                "type": "object",
+                "description": "form: 카메라 각도 {azimuth, elevation, fov, frame}"
+              },
+              "background": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "form: 바탕색(없으면 투명)"
+              },
+              "res": {
+                "type": "integer",
+                "description": "form: 출력 크기(기본 1080)"
               }
             }
           }

@@ -191,7 +191,7 @@ def scope_problems(sb: dict, estimate: bool = False) -> list:
     return out
 
 
-IMAGE_LIKE = {"chart", "doc_quote", "illustration", "icon", "photo", "screen", "web", "video", "stock", "meme", "image",
+IMAGE_LIKE = {"chart", "doc_quote", "illustration", "icon", "form", "photo", "screen", "web", "video", "stock", "meme", "image",
               "photo_grade", "document", "diagram", "ui_mock", "info_card", "template_card", "model3d", "drawing", "live"}   # 그림 · 영상 파일이 생기는 재료(주석을 얹을 수 있음)
 
 
@@ -279,6 +279,10 @@ def material_spec_checks(sb: dict) -> list:
                 mo = m.get("model")
                 if isinstance(mo, str) and mo and seen.get(mo) != "model3d":
                     out.append(("L39", i, f"{tag}: model {mo} 은 이 장면에서 도면보다 앞선 model3d 재료여야 함(다른 장면이면 model 에 형태 칸을 다시 쓴다)"))
+            elif t == "form":
+                need("scene", "src", what="형태 데이터(scene) 또는 그 JSON 파일(src)")
+                if m.get("style") and m["style"] not in ("flat", "cel", "sketch", "clay"):
+                    out.append(("L39", i, f"{tag}: style 은 flat · cel · sketch · clay 중 하나"))
             elif t == "video" and m.get("in") is not None and m.get("out") is not None and float(m["out"]) <= float(m["in"]):
                 out.append(("L39", i, f"{tag}: out 이 in 보다 뒤여야 함"))
             if m.get("method"):                        # 같은 재료를 다른 앱으로(materials.methods)
@@ -827,6 +831,9 @@ def variety(sb: dict) -> list:
         if isinstance(last, dict) and pa.get("accent") and str(pa.get("accent")).lower() == str(last.get("accent") or "").lower() \
                 and str(pa.get("bg") or "").lower() == str(last.get("bg") or "").lower():
             out.append(("T68", None, f"바탕 · 강조색이 직전 영상({recent[0].get('id')})과 같다 — 화풍이 반복돼 보인다"))
+        st0 = ((d0.get("art") or {}).get("style"))
+        if st0 and st0 == (((recent[0].get("direction") or {}).get("art") or {}).get("style")):
+            out.append(("T68", None, f"형태 화풍(art.style)이 직전 영상과 같다({st0}) — flat · cel · sketch · clay 중 바꿔 본다"))
         if d0.get("font_title") and d0.get("font_title") == (recent[0].get("direction") or {}).get("font_title"):
             out.append(("T68", None, f"제목 글꼴이 직전 영상과 같다({d0.get('font_title')})"))
     return out
