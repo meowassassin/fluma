@@ -317,7 +317,7 @@ SCREENS = ("screen", "video", "web", "stock")      # 실제 화면(캡처 · 녹
 
 
 def mat_kind(rec: dict) -> str:
-    """배치 방식을 정하는 종류. 기본 종류는 그대로, 앱 어댑터가 만든 새 종류(diagram · ui_mock · model3d …)는
+    """배치 방식을 정하는 종류. 기본 종류는 그대로, 앱 어댑터가 만든 새 종류(diagram · ui_mock …)는
     기록의 as(image|video) 힌트 > 파일 확장자(.mp4 류 → video, 나머지 그림 → image)로 기본 종류처럼 배치한다"""
     typ = rec.get("type") or ""
     if typ == "chart" and rec.get("as") in ("image", "video"):     # 다른 앱이 그림으로 만든 차트(chart@deckcraft) — 그림처럼 놓는다
@@ -354,7 +354,7 @@ def file_aspect(rec: dict) -> float | None:
 
 
 def covers_frame(rec: dict, W: int, H: int) -> bool:
-    """화면 비율 그대로 만든 그림 · 영상(PhotoCraft 장면 카드 full_frame, TextureCraft · SolidCraft 9:16 렌더 …)은 액자 없이 화면을 덮는다.
+    """화면 비율 그대로 만든 그림 · 영상(PhotoCraft 장면 카드 full_frame …)은 액자 없이 화면을 덮는다.
     실제 화면 캡처 · 녹화는 해당 없음(둥근 모서리 · 그림자 액자를 쓴다)"""
     if "_cover" not in rec:
         ar0 = file_aspect(rec) if rec.get("type") in ("video", "stock") else None

@@ -45,7 +45,7 @@ function episodePrompt(run, ep) {
   return [
     `[시리즈 자동 제작] 시리즈 ${run.id} · ${ep.n}/${run.episodes.length}편`,
     `이번 편 주제: ${ep.topic}`,
-    `경로: ${run.route || "material"} — generate는 사용자 승인 없이 쓰지 말고 material 우선.`,
+    `경로: ${run.route || "material"} (material: 실제 자료 + Craft · clip: 퍼온 클립 재편집).`,
     "사용자에게 터미널 명령 시키지 말고, 조사→콘티→produce까지 말로 멈추지 말고 완성 MP4를 media로 보여줘.",
     "선택지(choices)는 정말 막힐 때만. 같은 시리즈 톤·형식을 유지.",
     preset,
@@ -162,7 +162,7 @@ export function createSeriesRunner({ ROOT, agent, onChange = () => {} }) {
       id: `series-${Date.now().toString(36)}`,
       theme,
       presetId: body.presetId || null,
-      route: body.route === "generate" ? "generate" : "material",
+      route: body.route === "clip" ? "clip" : "material",
       autopilot: body.autopilot !== false,
       createdAt: new Date().toISOString(),
       status: "running",

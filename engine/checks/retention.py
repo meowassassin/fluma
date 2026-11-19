@@ -22,7 +22,7 @@ def form_of(sc: dict) -> str:
         t = m.get("type")
         if m.get("show") is False:                 # 다른 재료의 입력일 뿐 화면에 안 나온다
             continue
-        elif t in ("archive", "model3d", "video", "screen", "web", "chart", "doc_quote", "photo", "meme", "live"):
+        elif t in ("archive", "video", "screen", "web", "chart", "doc_quote", "photo", "meme", "live"):
             fs.append(t)
     return fs[0] if fs else (next((m.get("type") for m in sc.get("materials") or [] ), None) or "없음")
 

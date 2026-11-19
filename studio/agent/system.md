@@ -6,11 +6,11 @@
 
 ## 정본 파일
 
-- **생성 경로(`route: "generate"`) 샷 계획**: `data/shotplans/<프로젝트 id>.json` — 8초 이하 샷별 칸(크기 · 앵글 · 카메라 움직임 · 시작 상태 · 동작 · 끝 상태 · 배경 · 조명 · 소리)과 캐릭터(`identity` · `wardrobe`). 스키마 `engine/spec/schema/shotplan.schema.json`. 프롬프트는 통째로 자유 작문하지 않고 칸을 채워 `engine/gen/plan.py` 가 조립하게 한다.
-- **콘티(5단계 조립 또는 `route: "material"`)**: `data/storyboards/<프로젝트 id>.json` — 내용 · 타이밍의 정본. 스키마 `engine/spec/schema/storyboard.schema.json`
+- **기획 파일**: `data/shotplans/<프로젝트 id>.json` — 경로(`route`: `material` · `clip`) · 주제 · 이유. `engine/gen/plan.py` · `route.py` 가 쓴다.
+- **콘티(`route: "material"`)**: `data/storyboards/<프로젝트 id>.json` — 내용 · 타이밍의 정본. 스키마 `engine/spec/schema/storyboard.schema.json`
 - **엔진**:
-  - 생성 경로(1~4단계): `engine/gen/plan.py` → `character.py`(4방향 시트 · 승인 ①) → `keyframe.py`(시트 참조 키 프레임 · 승인 ②) → `video.py`(승인 키 프레임 기반 i2v 영상 생성)
-  - 편집 · 합성(5~6단계 및 `material` 경로): Craft(`assemble.py` / `produce.py`)로 초안(`draft`)을 만들고, 타임라인 편집기(`/veditor/<id>`, `editor_bridge.py`)로 넘겨 최종본을 내보낸다.
+  - 실제 자료(`material`): Craft(`produce.py`)로 초안(`draft`)을 만들고, 타임라인 편집기(`/veditor/<id>`, `editor_bridge.py`)로 넘겨 최종본을 내보낸다.
+  - 클립 재편집(`clip`): 퍼온 클립을 asset-edit 스킬로 다시 편집한다(`engine/capture/cutaway.py` · `engine/gen/dub.py`).
 - **실제 자료 경로(`route: "material"`) 전용 규칙**: 실제 자료(퍼온 클립 · 스톡 · 사진 · 화면 녹화) · UI/데이터 목업 · 문서 · 차트 · 도식으로 구성할 때는 인물 · 장면을 SVG 코드로 직접 그리지 않는다(`engine/capture/webrec.py` · `termrec.py` · `clip.py`).
 - 색 · 배치 · 움직임: 콘티 `direction` (`python3 engine/story/direct.py data/storyboards/<id>.json --write`)
 - 규칙집: `engine/spec/rules/rulebook.md` (읽기 전용. 바꾸고 싶으면 `engine/spec/rules/trends/proposals.md` 에 제안)
@@ -23,17 +23,14 @@
 - 기록이 남아야 하는 일: `look.py ref <id>`(레퍼런스 이해 → xray.json understanding, 분석 작업이 자동으로) · `cliches <콘티>`(뻔함 지도 초안) · `moments <영상> --want "…"`(원하는 순간) · `critique <콘티>`(초안 비평) · `clip <콘티> <재료>` · `ask <…> --q "…"`. 이때 보는 눈은 설정된 에이전트다.
 - 사용자가 "애플 감성"처럼 기준을 말하면 `python3 engine/look/anchor.py set <콘티> <레퍼런스 id ...> --words "<그대로>"` → 기준 프레임 · 시각 문법을 보여 주고 확인받는다. 시안 · 초안은 `anchor.py match <콘티> <그림 ...>` 로 6점 이상인지.
 
-## 숏폼 생성 파이프라인 (2026-11-12 — 스펙: 볼트 02 Architecture/숏폼 생성 파이프라인)
-오케스트레이터(Claude Code · Codex · Antigravity)가 누구든 같은 명령을 쓴다. **수동(검토) 모드** — 단계마다 사용자 승인 · 선택 뒤에 다음으로.
-**먼저 경로**: 에이전트가 요청 · 링크 · 레퍼런스를 보고 생성(아래 1~6) · 클립 재편집(asset-edit) · 실제 자료 편집(storyboard · produce) 중 추천과 이유를 정해 선택지로 보여 주고, **사용자가 고른다**(그다음 `engine/gen/route.py set`). 실제 자료로 충분하면 생성을 추천하지 않는다.
-1. 기획 `engine/gen/plan.py` — trends(기존 트렌드 + 내 영상 성과) → 추천 선택지 → 8초 이하 샷 칸 → check. 샷 계획 `data/shotplans/<id>.json`.
-2. 캐릭터 시트 · 승인 ① `engine/gen/character.py` — needs_character 일 때만, front → back · left · right(개별 파일, 나노 바나나 via agy).
-3. 키 프레임 · 승인 ② `engine/gen/keyframe.py` — 샷별 시작(끝) 프레임, 캐릭터는 그림 안에(4단계는 시작 프레임만 넘긴다).
-4. 영상 생성 `engine/gen/video.py` — 승인 ② 샷만, 경로 B(gflow MCP, 기본) / A(Antigravity, 크레딧 부족 시) 영상 단위 선택, 샷당 3회, 무한 재시도 금지, 잠금 · 고장은 보고.
-5. 커스터마이징 `engine/gen/assemble.py` — 통과 클립 → Craft 편집(자막 · 길이 · 효과 · TTS 나레이션 초안), 음악 보류.
-   - **엔진 2개의 역할 규칙**: Craft는 그 전 단계 초안(draft)만 만듭니다. 사람이 타임라인 편집기(/veditor/<id>)로 넘겨 편집기에서 내보낸 것(exported.mp4 / <id>-editor.mp4)이 최종본입니다.
-6. `engine/gen/publish.py` — 최종본 배포(편집기 내보내기 영상 우선) → (사용자 요청 시) 업로드 → feedback 으로 트렌드에 되먹임.
-승인 ① · ② · 샷 검토 · 편집 초안은 작업 공간 화면 /videos?open=<id>(영상 목록 → 파이프라인 펼침)에서도 사용자가 직접 본다. 실제 클립을 다시 편집하는 쇼츠(밈 · 반응 · 더빙 자막)는 **실제 에셋 경로** — 2~4단계 없이 asset-edit 스킬(`engine/capture/cutaway.py` · `engine/gen/dub.py`). 단계별 자세한 순서는 스킬 plan · character-sheet · keyframes · video-gen · edit-shots · publish. 확정된 결정(스펙)을 바꾸지 않고, 스펙에 없는 결정은 사용자에게 묻는다.
+## 제작 경로
+오케스트레이터(Claude Code · Codex · Antigravity)가 누구든 같은 명령을 쓴다. 경로는 둘이다 — AI 그림 · 영상 생성 경로는 없다.
+**먼저 경로**: 에이전트가 요청 · 링크 · 레퍼런스를 보고 실제 자료 편집(storyboard · produce) · 클립 재편집(asset-edit) 중 추천과 이유를 정해 선택지로 보여 주고, **사용자가 고른다**(그다음 `engine/gen/route.py set <id> <material|clip>`).
+1. 기획 `engine/gen/plan.py` — trends(기존 트렌드 + 내 영상 성과) → 추천 선택지 → 경로 결정.
+2. `material`: 조사 → 콘티 → `engine/produce.py` 초안 → 장면 다듬기(refine). `clip`: asset-edit 스킬 → `engine/gen/dub.py build`.
+   - **엔진 2개의 역할 규칙**: Craft는 초안(draft)만 만듭니다. 사람이 타임라인 편집기(/veditor/<id>)로 넘겨 편집기에서 내보낸 것(exported.mp4 / <id>-editor.mp4)이 최종본입니다.
+3. `engine/gen/publish.py` — 최종본 배포(편집기 내보내기 영상 우선) → (사용자 요청 시) 업로드 → feedback 으로 트렌드에 되먹임.
+초안 · 진행 상태는 작업 공간 화면 /videos?open=<id>(영상 목록 → 파이프라인 펼침)에서도 사용자가 직접 본다. 확정된 결정(스펙)을 바꾸지 않고, 스펙에 없는 결정은 사용자에게 묻는다.
 
 ## 작업 규칙
 
@@ -41,7 +38,7 @@
 2. **만들기 전에 레퍼런스부터**: 같은 주제 · 형식의 실제 쇼츠 2~3편을 골라(trends 스킬) X-ray · 채널 카드로 분해하고, 대사 말투 · 컷 리듬 · 화면 종류를 거기서 가져온다(검사 L30 · L31). 조사 없이 바로 쓰지 않는다. 브랜드 · 회사 영상이면 그 회사의 공식 채널을 직접 판단해 고른다(`trends.py channels`).
    **레퍼런스 고르기 · 분석은 이 순서로 한 번씩**(2026-11-17: 출력을 grep 으로 여러 번 보고 썸네일을 한 장씩 열어 고르기에만 5~12분): `trends.py search` → `python3 engine/research/ref_pick.py --request <r… id>`(표 + 썸네일 시트 한 장 — 이 한 장만 Read) → 2~3편을 골라 `analyze_ref.py <id1> <id2> <id3>` 한 명령(동시에 돈다) → 시트가 필요하면 `look.py sheet <id>` 는 고른 편만. 맞는 게 없을 때만 검색어를 바꿔 한 번 더.
    레퍼런스는 따라 할 틀이 아니라 **뻔함 지도**다 — 다들 하는 구조 · 제목 · 첫 장면을 먼저 적고, 그중 하나를 일부러 깨는 안을 낸다(plan 스킬 0턴). 형식 스킬에는 정해진 장면 순서가 없다.
-   안을 고른 뒤에는 **느낌(룩)** 을 시안과 선택지로 묻는다(plan 0.5턴 · `feel.py`). 화면은 실제 자료와 정교한 목업 · 도표로 짠다. 판단은 에이전트가 주도하고, 영상 생성 및 음성 모델은 설정에서 정한 모델을 쓴다.
+   안을 고른 뒤에는 **느낌(룩)** 을 시안과 선택지로 묻는다(plan 0.5턴 · `feel.py`). 화면은 실제 자료와 정교한 목업 · 도표로 짠다. 판단은 에이전트가 주도하고, 음성 모델은 설정에서 정한 모델을 쓴다.
 3. **지난 영상 성과를 반영**: YouTube 에 올린 영상은 `data/compositions/<id>/youtube.stats.json`(장면별 이탈 · 평균 시청 비율 · 유입 경로)이 있다. 새 기획 전에 이탈이 큰 장면 유형을 확인하고 같은 실수를 피한다.
 4. 수치 · 이름은 출처가 있는 것만 쓴다. 조사가 필요하면 WebSearch 로 찾고 `data/research/<주제>.json` 에 출처 URL 과 함께 남긴다. 출처 있는 사실이 5개 미만이면 만들지 말고 사용자에게 알린다. 엔진 단계(각본가 등)가 넣은 수치 · 이름을 "출처 없음"으로 지우거나 보고하기 전에 `data/research/<id>.json` 의 facts 에 있는지 먼저 Grep 으로 확인한다(있으면 출처 있는 사실이다). 각본가가 사람이 고친 칸을 되돌리면, 그 칸은 다음 실행부터 자동으로 잠긴다(콘티 `locked_text` 로 직접 잠글 수도 있다).
 5. **제작은 네가 실행한다** — 사용자에게 터미널 명령을 시키지 않는다. `python3 engine/produce.py data/storyboards/<id>.json` 한 번(납품 해상도, half 초안 아님) → `media` 로 보여 준다. 고칠 때는 `knob.py` 로 장면만 미리보기. 큰 문제만 다시 produce.

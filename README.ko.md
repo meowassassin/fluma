@@ -57,13 +57,13 @@ Fluma 는 이 틈새를 노립니다.
 | 음성 | 무료 엔진 기본(Edge TTS · 로컬 TTS 6종) — 유료 음성은 내 Typecast · ElevenLabs 키로(설정 → 미디어 → 음성) |
 | 실사 자료 | 퍼온 클립(출처 자동 표기) · Pexels · Pixabay 무료 키 · 자료 사진 |
 | 배경 곡 | 같은 분야 쇼츠가 실제로 붙이는 유행 곡을 찾아, 업로드 때 쇼츠 편집기 라이브러리에서 붙임(저작권 · 수익 문제 없음) |
-| 제작 앱 | 오픈소스 [Craft 앱](#craft-앱) 16개 — 무료 |
+| 제작 앱 | 오픈소스 [Craft 앱](#craft-앱) 13개 — 무료 |
 
 ## 하는 일
 
 1. **실제 쇼츠부터 봅니다** — 같은 주제 쇼츠를 찾아 분해하고(컷 · 카메라 움직임 · 색 · 말 · 화면 글자 · 화면 종류) 리듬과 말투만 가져옵니다. 내용은 가져오지 않습니다.
 2. **출처 있는 사실로 콘티를 씁니다** — 그 채널의 말투로.
-3. **장면마다 실제 제작 도구로 만듭니다** — Craft 앱 16개와 그 명령 · 효과 · 프리셋 9,000개 이상: 실제 화면 녹화, 주석 단 문서, 구조도, 앱 목업, 정보 카드, 3D 제품, 도면. 그다음 움직임 · 소리 · 컷 편집까지.
+3. **장면마다 실제 제작 도구로 만듭니다** — Craft 앱 13개와 그 명령 · 효과 · 프리셋 9,000개 이상: 실제 화면 녹화, 주석 단 문서, 구조도, 앱 목업, 정보 카드. 그다음 움직임 · 소리 · 컷 편집까지.
 4. **있는 영상을 다시 씁니다** — 퍼온 클립에서 가장 많이 다시 본 구간을 고르고, 주인공을 따라가는 9:16 으로 다시 잡고, 원음을 살립니다. 출처는 설명란에 자동으로.
 5. **영상마다 다르게** — 장면마다 앱 전체 기능에서 찾고, 최근 영상이 안 쓴 검증된 레시피를 고르고, 되풀이하면 알려 줍니다.
 6. **검수자처럼 확인합니다** — 첫 1초, 멈춤, 말 끊김, 컷 밀도. 형식(순위 모음 · 클립)마다 기준이 다릅니다.
@@ -97,10 +97,9 @@ flowchart LR
     P --> DOC[문서<br/>PDFCraft 형광펜<br/>WordCraft 문서 화면]
     P --> DAT[데이터 · 구조도<br/>GridCraft · DeckCraft]
     P --> DES[디자인<br/>VectorCraft · PhotoCraft<br/>FigCraft · DesignCraft · LightCraft]
-    P --> TD[3D · 도면<br/>SolidCraft · TextureCraft · CADCraft]
   end
   P --> CL[퍼온 클립<br/>다시 본 순간 · 세로 리프레이밍]
-  RS & DOC & DAT & DES & TD & CL --> E[EffectCraft<br/>움직임 · 프리셋 · 자막]
+  RS & DOC & DAT & DES & CL --> E[EffectCraft<br/>움직임 · 프리셋 · 자막]
   V --> SC[SoundCraft<br/>음성 체인 · 덕킹 · −14 LUFS]
   E & SC --> F[FilmCraft<br/>컷 · 마커 · 쇼츠 내보내기]
   F --> T[검사<br/>템포 · 편집 밀도 · 다양성]
@@ -133,7 +132,7 @@ VS Code 같은 작업 공간입니다. 왼쪽 **탐색기**는 영상이 무엇�
 
 ## Craft 앱
 
-Fluma 는 오픈소스 **Craft** 데스크톱 · 웹 앱([storytold](https://github.com/storytold), MIT / Apache-2.0)을 CLI 와 MCP 서버로 씁니다. **함께 들어 있지 않으니** 필요한 것을 설치하세요(16개 전부 약 1.7GB):
+Fluma 는 오픈소스 **Craft** 데스크톱 · 웹 앱([storytold](https://github.com/storytold), MIT / Apache-2.0)을 CLI 와 MCP 서버로 씁니다. **함께 들어 있지 않으니** 필요한 것을 설치하세요(13개 전부 설치하면 약 1GB):
 
 ```bash
 python3 engine/craft/crafts.py plan all        # 받을 것만 보여 줌
@@ -152,7 +151,6 @@ python3 engine/craft/crafts.py install all     # 또는 골라서: install effec
 | GridCraft · DeckCraft | 차트용 데이터, SmartArt 구조도 · 표 |
 | FigCraft · DesignCraft | 폰 · 브라우저 목업, 한글 조판 정보 카드 · 썸네일 |
 | LightCraft | 한 영상의 사진들을 같은 톤으로 |
-| SolidCraft · TextureCraft · CADCraft | 3D 제품 돌려 보기 · 분해, 평면도 · 도면 |
 
 앱마다 전체 명령 목록은 `.claude/skills/crafts/catalog/`(`python3 engine/craft/craft_catalog.py search "곡선 화살표"`), 시험해 본 사용법은 `.claude/skills/crafts/reference/` 에 있습니다. 릴리스는 SHA256SUMS 로 검증해 `tools/crafts/`(git 제외)에 풉니다.
 
@@ -171,7 +169,7 @@ python3 engine/craft/crafts.py install all     # 또는 골라서: install effec
 
 ```bash
 git clone https://github.com/meowassassin/fluma && cd fluma
-python3 engine/doctor.py --fix              # 전부: 파이썬 패키지 · Craft 앱 16개 · 모델 · npm
+python3 engine/doctor.py --fix              # 전부: 파이썬 패키지 · Craft 앱 13개 · 모델 · npm
 npm --prefix studio run dev                     # → http://localhost:4311
 ```
 
@@ -202,7 +200,7 @@ fluma/
 │  ├─ produce.py           한 줄 제작: 콘티 → 음성 → 검사 → 초안 → 정지 화면
 │  ├─ produce.py · render.py · doctor.py · fluma_agent.py · mcp_server.py
 │  ├─ craft/               Craft 파이프라인 — 재료 · 움직임 · 소리 · 편집 · design.py(영상마다 효과) · adapters/<앱>.py
-│  │  ├─ apps/             Craft 앱 16개 등록(앱마다 craft.json)
+│  │  ├─ apps/             Craft 앱 13개 등록(앱마다 craft.json)
 │  │  ├─ renderer/         렌더 엔진 등록(engine.json · adapter)
 │  │  └─ craft_catalog.py · craft_variety.py · crafts.py
 │  ├─ voice/               TTS · 음성 조립 · 목소리 맞추기 · engines/<음성> · sfx

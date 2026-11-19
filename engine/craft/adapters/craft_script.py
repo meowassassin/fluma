@@ -1,6 +1,6 @@
 """범용 Craft 재료(craft) — 콘티에 아무 앱의 아무 명령이나 순서대로 적으면 그대로 실행해 재료를 만든다.
 
-고정 어댑터(overlay · chart · model3d …)는 앱마다 기능 몇 개만 쓴다(편향). 이 재료는 catalog 의 명령 9천여 개를
+고정 어댑터(overlay · chart · diagram …)는 앱마다 기능 몇 개만 쓴다(편향). 이 재료는 catalog 의 명령 9천여 개를
 콘티에서 바로 부른다 — 명령은 engine/craft/craft_catalog.py search "<하고 싶은 일>" 로 찾고, 문법은
 .claude/skills/crafts/reference/<앱>.md 를 본다.
 
@@ -17,7 +17,7 @@
     (ROOT 에 없으면 work 기준 — 앞 단계가 만든 파일).
   - 쓰는 경로(export · save 계열 명령의 path, out · dir …)는 work 안만. 상대 경로는 work 기준.
   - "$WORK/이름" 은 work 안 이 재료 폴더(<id>.craft/이름), "$FRAMES" 는 프레임 폴더(<id>.craft/frames/ — 미리 만들어 둔다).
-    앞 단계가 $FRAMES 에 PNG 를 쓰면(SolidCraft motion.export_animation · VectorCraft action.batch 등) mp4 내보내기가 그 프레임을 잇는다.
+    앞 단계가 $FRAMES 에 PNG 를 쓰면(VectorCraft action.batch 등) mp4 내보내기가 그 프레임을 잇는다.
   - 명령 id 가 catalog 에 없으면 실행 전에 거부하고 비슷한 id 3개를 알려 준다.
   - 앱 하나당 시간 제한(기본 300초, CRAFT_SCRIPT_TIMEOUT 또는 재료 "timeout").
 
@@ -718,77 +718,6 @@ def r_pdfcraft(ctx: Ctx, steps):
     return ed, finish_still(png, ctx)
 
 
-def r_solidcraft(ctx: Ctx, steps):
-    ed = ctx.work / f"{ctx.id}.sc"
-    src = _opened(ctx)
-    f = ctx.dir / "script.json"
-    f.write_text(json.dumps({"commands": [{"command": s["id"], "params": s["params"]} for s in steps]}, ensure_ascii=False, indent=1), "utf-8")
-    ctx.frames.mkdir(parents=True, exist_ok=True)
-    ctx.run([ctx.cli, "run", f, *(["--in", src] if src else []), "--save", ed], "run")
-    size = ctx.ex.get("size") or [W0, H0]
-    png = ctx.dir / "export.png"
-    if ctx.ex.get("mode") == "render":
-        args = [ctx.cli, "render", ed, "--out", png, "--width", int(size[0]), "--height", int(size[1])]
-        if ctx.ex.get("setup"):
-            args += ["--setup", ctx.ex["setup"]]
-        if ctx.ex.get("samples"):
-            args += ["--progressive", "--samples", int(ctx.ex["samples"])]
-    else:
-        args = [ctx.cli, "snapshot", ed, "--out", png, "--width", int(size[0]), "--height", int(size[1]), "--no-grid", "--no-axes"]
-        if ctx.ex.get("camera"):
-            args += ["--camera", json.dumps(ctx.ex["camera"])]
-        elif ctx.ex.get("view"):
-            args += ["--view", ctx.ex["view"]]
-    ctx.run(args, "snapshot")
-    return ed, finish_still(png, ctx)
-
-
-def r_cadcraft(ctx: Ctx, steps):
-    ed = ctx.work / f"{ctx.id}.dxf"
-    src = _opened(ctx)
-    args = [ctx.cli, "run"] + ([src] if src else []) + ([] if src or ctx.ex.get("imperial") else ["--metric"])
-    for s in steps:
-        args += ["--cmd", f"{s['id']} {json.dumps(s['params'], ensure_ascii=False)}" if s["params"] else s["id"]]
-    png = ctx.dir / "export.png"
-    args += ["--save", ed, "--export", png]
-    if ctx.ex.get("window"):
-        args.append("--window=" + ",".join(str(v) for v in ctx.ex["window"]))
-    else:
-        args += ["--view", "extents"]
-    ctx.run(args, "run")
-    return ed, finish_still(png, ctx)
-
-
-def r_texturecraft(ctx: Ctx, steps):
-    ed = ctx.work / f"{ctx.id}.tcraft"
-    src = _opened(ctx)
-    base = str(src) if src else (ctx.m.get("new") or {}).get("mesh", "builtin:material_ball")
-    if not str(base).startswith("builtin:") and not src:
-        base = resolve_read(str(base), ctx)
-    f = ctx.dir / "batch.json"
-    f.write_text(json.dumps({"open": base, "steps": [{"id": s["id"], "params": s["params"]} for s in steps], "save": str(ed)},
-                            ensure_ascii=False, indent=1), "utf-8")
-    ctx.run([ctx.cli, "batch", f], "batch")
-    size = ctx.ex.get("size") or [540, 960]
-    png = ctx.dir / "export.png"
-    opt = []
-    for k in ("yaw", "pitch", "samples", "camera"):
-        if ctx.ex.get(k) is not None:
-            opt += [f"--{k}", ctx.ex[k]]
-    ctx.run([ctx.cli, "render", ed, png, "--size", f"{int(size[0])}x{int(size[1])}", *opt], "render")
-    if ctx.fmt == "mp4" and ctx.ex.get("turntable") and not frame_files(ctx):
-        ctx.frames.mkdir(parents=True, exist_ok=True)
-        n = int(ctx.ex.get("frames", 36))
-        y0 = float(ctx.ex.get("yaw", 0))
-        rest = [x for x in opt if x not in ("--yaw",)]
-        if "--yaw" in opt:
-            i = opt.index("--yaw")
-            rest = opt[:i] + opt[i + 2:]
-        for k in range(n):
-            ctx.run([ctx.cli, "render", ed, ctx.frames / f"f{k:04d}.png", "--size", f"{int(size[0])}x{int(size[1])}", "--yaw", y0 + 360.0 * k / n, *rest], "turntable")
-    return ed, finish_still(png, ctx)
-
-
 def r_gridcraft(ctx: Ctx, steps):
     ed = ctx.work / f"{ctx.id}.xlsx"
     src = _opened(ctx)
@@ -857,7 +786,7 @@ def r_soundcraft(ctx: Ctx, steps):
 RUNNERS = {
     "vectorcraft": r_vectorcraft, "effectcraft": r_effectcraft, "filmcraft": r_filmcraft, "photocraft": r_photocraft,
     "figcraft": r_figcraft, "designcraft": r_designcraft, "deckcraft": r_deckcraft, "lightcraft": r_lightcraft,
-    "pdfcraft": r_pdfcraft, "solidcraft": r_solidcraft, "cadcraft": r_cadcraft, "texturecraft": r_texturecraft,
+    "pdfcraft": r_pdfcraft,
     "gridcraft": r_gridcraft, "wordcraft": r_wordcraft, "soundcraft": r_soundcraft,
 }
 

@@ -660,35 +660,14 @@ app.get("/api/projects/:id/editor/status", ah(async (req, res) => {
   res.json(v);
 }));
 
-// 편집기 미디어 갤러리 — 파이프라인 에셋(키 프레임 · 모든 테이크 · 앵커 · 캐릭터 시트 · 나레이션 · 업로드 · Craft 층) 목록
+// 편집기 미디어 갤러리 — 파이프라인 에셋(앵커 · 나레이션 · 업로드 · Craft 층) 목록
 app.get("/api/projects/:id/editor/gallery", ah(async (req, res) => {
   const id = checkId(req.params.id);
   const compDir = path.join(ROOT, "data", "compositions", id);
   const items = [];
   const addItem = (idKey, name, kind, group, url) => items.push({ id: idKey, name, kind, group, url });
 
-  // 1) 키 프레임 (data/compositions/<id>/keyframes/*.png)
-  const kfDir = path.join(compDir, "keyframes");
-  for (const f of existsSync(kfDir) ? (await fs.readdir(kfDir)).sort() : []) {
-    if (!/\.(png|jpg|jpeg|webp)$/i.test(f)) continue;
-    addItem(`gallery:kf:${f}`, `키프레임 · ${f}`, "image", "키 프레임", `/api/pipefiles/${encodeURIComponent(id)}/keyframes/${encodeURIComponent(f)}`);
-  }
-
-  // 2) 샷 클립 & 테이크 (data/compositions/<id>/clips/*.mp4 및 clips/sNN/*.mp4)
-  const clipDir = path.join(compDir, "clips");
-  for (const e of existsSync(clipDir) ? (await fs.readdir(clipDir, { withFileTypes: true })) : []) {
-    if (e.isFile() && /\.(mp4|webm|mov)$/i.test(e.name)) {
-      addItem(`gallery:clip:${e.name}`, `클립 · ${e.name}`, "video", "샷 클립", `/api/pipefiles/${encodeURIComponent(id)}/clips/${encodeURIComponent(e.name)}`);
-    } else if (e.isDirectory() && /^s\d+$/i.test(e.name)) {
-      const sub = path.join(clipDir, e.name);
-      for (const tf of (await fs.readdir(sub)).sort()) {
-        if (!/\.(mp4|webm|mov)$/i.test(tf)) continue;
-        addItem(`gallery:take:${e.name}:${tf}`, `${e.name.toUpperCase()} · ${tf}`, "video", "샷 테이크", `/api/pipefiles/${encodeURIComponent(id)}/clips/${encodeURIComponent(e.name)}/${encodeURIComponent(tf)}`);
-      }
-    }
-  }
-
-  // 3) 앵커 프레임 (data/compositions/<id>/anchor/*)
+  // 1) 앵커 프레임 (data/compositions/<id>/anchor/*)
   const anchorDir = path.join(compDir, "anchor");
   for (const f of existsSync(anchorDir) ? (await fs.readdir(anchorDir)).sort() : []) {
     if (/\.(png|jpg|jpeg|webp)$/i.test(f)) {
@@ -698,22 +677,7 @@ app.get("/api/projects/:id/editor/gallery", ah(async (req, res) => {
     }
   }
 
-  // 4) 캐릭터 시트 (data/characters/<Char>/*.png)
-  const plan = await readJson(path.join(ROOT, "data", "shotplans", `${id}.json`), null);
-  const charDir = path.join(ROOT, "data", "characters");
-  const charNames = Array.isArray(plan?.characters)
-    ? plan.characters.map((c) => c?.name).filter(Boolean)
-    : existsSync(charDir) ? await fs.readdir(charDir) : [];
-  for (const cn of charNames) {
-    const cd = path.join(charDir, cn);
-    if (!existsSync(cd)) continue;
-    for (const f of (await fs.readdir(cd)).sort()) {
-      if (!/\.(png|jpg|jpeg|webp)$/i.test(f)) continue;
-      addItem(`gallery:char:${cn}:${f}`, `캐릭터(${cn}) · ${f}`, "image", "캐릭터 시트", `/api/charfiles/${encodeURIComponent(cn)}/${encodeURIComponent(f)}`);
-    }
-  }
-
-  // 5) Craft 효과 층 및 모션 결과 (data/compositions/<id>/editor/fx/*.webm)
+  // 2) Craft 효과 층 및 모션 결과 (data/compositions/<id>/editor/fx/*.webm)
   const fxDir = path.join(compDir, "editor", "fx");
   for (const f of existsSync(fxDir) ? (await fs.readdir(fxDir)).sort() : []) {
     if (!/\.(webm|mp4|png)$/i.test(f)) continue;
@@ -721,7 +685,7 @@ app.get("/api/projects/:id/editor/gallery", ah(async (req, res) => {
     addItem(`gallery:fx:${f}`, `Craft 효과 · ${f}`, k, "Craft 레이어", `/api/pipefiles/${encodeURIComponent(id)}/editor/fx/${encodeURIComponent(f)}`);
   }
 
-  // 6) 오디오 (나레이션 · 믹스 · 효과음)
+  // 3) 오디오 (나레이션 · 믹스 · 효과음)
   for (const [label, rel] of [
     ["나레이션 음성", `data/public/audio/${id}.voice.wav`],
     ["효과음 트랙", `data/public/audio/${id}.sfx.wav`],
@@ -732,7 +696,7 @@ app.get("/api/projects/:id/editor/gallery", ah(async (req, res) => {
     }
   }
 
-  // 7) 업로드된 파일 (data/public/uploads/<id>/*)
+  // 4) 업로드된 파일 (data/public/uploads/<id>/*)
   for (const u of await uploadList(id)) {
     addItem(`gallery:up:${u.name}`, `업로드 · ${u.name}`, u.kind, "업로드 파일", u.url);
   }
@@ -764,7 +728,7 @@ function pipeStamp(id) {
   const st = (p) => { try { return Math.round(statSync(p).mtimeMs); } catch { return 0; } };
   const sp = path.join(ROOT, "data", "shotplans", `${id}.json`);
   const comp = path.join(ROOT, "data", "compositions", id);
-  return `${st(sp)}:${st(comp)}:${st(path.join(comp, "craft"))}:${st(path.join(comp, "keyframes"))}:${st(path.join(comp, "clips"))}`;
+  return `${st(sp)}:${st(comp)}:${st(path.join(comp, "craft"))}:${st(path.join(comp, "editor"))}`;
 }
 let pipeListCache = { at: 0, stamp: "", data: [] };
 
@@ -807,7 +771,7 @@ app.get("/api/pipeline/:id/live", ah(async (req, res) => {
     at: Date.now(),
     jobs: jobs.list({ project: id }).map((j) => ({ id: j.id, type: j.type, label: j.label, status: j.status, progress: j.progress, stage: j.stage, started: j.started, ended: j.ended, error: j.error })),
     agent: { busy: !!act, waiting: act?.waiting ?? null, tool: act?.tool?.name ?? null, skill: act?.skill ?? null, runtime: rt?.runtime ?? null, model: rt?.model || null, label: rt?.label ?? null },
-    models: { voice: s.voice_engine || "edge", video: s.videogen?.model || "veo_3_1_lite", image: s.agent?.agyModel || "" },
+    models: { voice: s.voice_engine || "edge" },
     editor: { project: st(path.join(ed, "project.json")), exported: st(path.join(ed, "exported.mp4")) },
     produce: produceProgress(id),
   });
@@ -821,52 +785,19 @@ function produceProgress(id) {
   return { running: alive, stage: alive ? pr.stage || null : null, stageStarted: pr.stage_started ? Math.round(pr.stage_started * 1000) : null,
     done: pr.done || {}, error: pr.error || null, updated: Math.round((pr.updated || 0) * 1000) };
 }
-const PIPE_NUM = (x) => String(x || "").split(",").map((s) => s.trim()).filter((s) => /^\d{1,2}$/.test(s)).join(",");
-const PIPE_NAME = (x) => { const s = String(x || ""); if (!/^[A-Za-z][A-Za-z0-9]{0,31}$/.test(s)) throw bad("캐릭터 이름이 올바르지 않습니다"); return s; };
-const PIPE_VIEWS = (x) => { const s = String(x || "all"); if (!/^(all|(front|back|left|right)(,(front|back|left|right))*)$/.test(s)) throw bad("방향이 올바르지 않습니다"); return s; };
 app.post("/api/pipeline/:id/:step/:action", ah(async (req, res) => {
   const id = checkId(req.params.id); const { step, action } = req.params; const b = req.body || {};
   pipeCache.delete(id); pipeListCache.at = 0;
-  const shots = PIPE_NUM(b.shots);
-  const quick = {   // 바로 끝나는 것(승인 · 후보 선택)
-    "character/approve": () => ["engine/gen/character.py", "approve", id, PIPE_NAME(b.name)],
-    "keyframe/approve": () => ["engine/gen/keyframe.py", "approve", id, ...(shots ? ["--shots", shots] : [])],
-    "keyframe/auto-stage": () => ["engine/gen/keyframe.py", "auto-stage", id, ...(shots ? ["--shots", shots] : [])],
-    "keyframe/pick": () => {
-      if (!shots || !b.candidate) throw bad("샷 번호와 후보 번호가 필요합니다");
-      return ["engine/gen/keyframe.py", "pick", id, shots.split(",")[0], String(Number(b.candidate) || 1)];
-    },
-    "video/approve": () => { if (!shots) throw bad("샷 번호가 필요합니다"); return ["engine/gen/video.py", "approve", id, "--shots", shots]; },
-    // 말로 고치기 — 고칠 점(영어)을 그 샷 프롬프트 끝에 붙인다. 다음 '생성'에 반영
-    "video/revise": () => { if (!shots) throw bad("샷 번호가 필요합니다"); const say = String(b.say || "").trim().slice(0, 300); if (!say) throw bad("고칠 점을 적어 주세요"); return ["engine/gen/video.py", "revise", id, "--shots", shots, "--say", say]; },
-  };
-  const slow = {    // 생성 · 재생성 · 편집 — 작업 큐
-    "character/make": () => ["engine/gen/character.py", "make", id, PIPE_NAME(b.name), "--views", PIPE_VIEWS(b.views)],
-    "keyframe/make": () => [
-      "engine/gen/keyframe.py",
-      "make",
-      id,
-      ...(shots ? ["--shots", shots] : []),
-      ...(b.candidates && Number(b.candidates) > 1 ? ["--candidates", String(Math.min(4, Number(b.candidates)))] : []),
-    ],
-    "video/run": () => ["engine/gen/video.py", "run", id, ...(shots ? ["--shots", shots] : [])],
-    "edit/build": () => ["engine/gen/assemble.py", "build", id],
+  const slow = {    // 렌더 · 재편집 · 제작 — 작업 큐
     "publish/final": () => ["engine/gen/publish.py", "final", id],
     "dub/build": () => ["engine/gen/dub.py", "build", id],                       // 실제 에셋 경로 — 클립 재편집
     "material/produce": () => ["engine/produce.py", `data/storyboards/${id}.json`],   // 실제 자료 경로 — 기존 콘티 제작
   };
   const k = `${step}/${action}`;
-  if (quick[k]) {
-    const r = await py(quick[k](), { timeout: 60e3 });
-    const msg = (r.out + r.err).match(/^error=(.*)$/m)?.[1];
-    if (r.code !== 0) throw new HttpError(422, "pipeline", msg || tail(r.err || r.out));
-    logEffort(ROOT, id, "approve", k);
-    return res.json({ ok: true });
-  }
   if (!slow[k]) throw bad("알 수 없는 작업입니다");
   const args = slow[k]();
-  const label = { "character/make": "캐릭터 시트 만들기", "keyframe/make": "키 프레임 만들기", "video/run": "영상 생성", "edit/build": "편집 초안", "publish/final": "최종 렌더", "dub/build": "클립 재편집 초안", "material/produce": "실제 자료 초안" }[k];
-  const j = jobs.create({ type: k === "publish/final" ? "render" : "generate", project: id, key: `pipe:${id}:${k}:${shots}:${b.name || ""}`, label, timeout: 60 * 60e3, work: async (h) => {
+  const label = { "publish/final": "최종 렌더", "dub/build": "클립 재편집 초안", "material/produce": "실제 자료 초안" }[k];
+  const j = jobs.create({ type: k === "publish/final" ? "render" : "generate", project: id, key: `pipe:${id}:${k}`, label, timeout: 60 * 60e3, work: async (h) => {
     const r = await h.run(PY, args, { cwd: ROOT, env: await flumaProcessEnv() });
     if (r.timedOut || r.canceled) return r;
     const msg = (r.out + r.err).match(/^error=(.*)$/m)?.[1];
@@ -874,66 +805,6 @@ app.post("/api/pipeline/:id/:step/:action", ah(async (req, res) => {
     return { ok: true };
   } });
   res.status(202).json({ job: j.id });
-}));
-
-// ---------- 키 프레임 2D 캔버스 마스크/합성 & 3D 스테이지 프리비즈 가이드 ----------
-app.post("/api/pipeline/:id/keyframe/:shot/guide", express.json({ limit: "25mb" }), ah(async (req, res) => {
-  const id = checkId(req.params.id);
-  const shot = Number(req.params.shot);
-  if (!Number.isInteger(shot) || shot < 1 || shot > 99) throw bad("샷 번호가 올바르지 않습니다");
-  const { kind, dataUrl, spec, note } = req.body || {};
-  if (!["mask", "compose", "stage"].includes(kind)) throw bad("가이드 종류(mask · compose · stage)가 올바르지 않습니다");
-
-  const kfDir = path.join(ROOT, "data", "compositions", id, "keyframes");
-  await fs.mkdir(kfDir, { recursive: true });
-  const pad = String(shot).padStart(2, "0");
-
-  if (kind === "stage" && spec && !dataUrl) {
-    const tmp = path.join(ROOT, "data", "workspace", "tmp", `stage3d-${id}-${shot}-${Date.now()}.json`);
-    await fs.mkdir(path.dirname(tmp), { recursive: true });
-    await fs.writeFile(tmp, JSON.stringify(spec));
-    const r = await py(["engine/gen/keyframe.py", "stage3d", id, String(shot), "--spec", tmp], { timeout: 60e3 });
-    await fs.unlink(tmp).catch(() => {});
-    if (r.code !== 0) throw new HttpError(422, "stage3d", tail(r.err || r.out));
-  } else {
-    const m = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ""));
-    if (!m) throw bad("이미지 데이터(dataUrl)가 올바르지 않습니다");
-    const buf = Buffer.from(m[2], "base64");
-    await atomicWrite(path.join(kfDir, `s${pad}_${kind}.png`), buf);
-    if (spec && typeof spec === "object") {
-      await atomicWrite(path.join(kfDir, `s${pad}_${kind}.json`), JSON.stringify(spec, null, 1));
-    }
-  }
-
-  // 노트(keyframe_note)가 함께 오면 shotplan 의 해당 샷에 반영
-  if (typeof note === "string") {
-    const spFile = path.join(ROOT, "data", "shotplans", `${id}.json`);
-    const sb = await readJson(spFile, null);
-    if (sb && Array.isArray(sb.shots)) {
-      const targetShot = sb.shots.find((s) => s.n === shot);
-      if (targetShot) {
-        if (note.trim()) targetShot.keyframe_note = note.trim();
-        else delete targetShot.keyframe_note;
-        await atomicWrite(spFile, JSON.stringify(sb, null, 2));
-      }
-    }
-  }
-
-  logEffort(ROOT, id, "edit", `키프레임 가이드 (${kind} · 샷 ${shot})`);
-  res.json({
-    ok: true,
-    url: `/api/pipefiles/${encodeURIComponent(id)}/keyframes/s${pad}_${kind}.png?t=${Date.now()}`,
-  });
-}));
-
-app.delete("/api/pipeline/:id/keyframe/:shot/guide", ah(async (req, res) => {
-  const id = checkId(req.params.id);
-  const shot = Number(req.params.shot);
-  if (!Number.isInteger(shot) || shot < 1 || shot > 99) throw bad("샷 번호가 올바르지 않습니다");
-  const kind = ["mask", "compose", "stage", "all"].includes(String(req.query.kind)) ? String(req.query.kind) : "all";
-  const r = await py(["engine/gen/keyframe.py", "clear-guide", id, String(shot), "--kind", kind], { timeout: 30e3 });
-  if (r.code !== 0) throw new HttpError(422, "clear_guide", tail(r.err || r.out));
-  res.json({ ok: true });
 }));
 
 // ---------- Craft 앱 (ArtCraft 오픈소스 Photoshop · Illustrator · After Effects 류) ----------
@@ -1687,40 +1558,11 @@ app.get("/api/agents", ah(async (_req, res) => {
   res.json({ agents: detectAgents(), models: { claude: CLAUDE_MODELS, codex: codexModels(), antigravity: AGY_MODELS, cursor: cursorModels() }, active, problem });
 }));
 
-// ---------- gflow 자동 로그인 및 상태 ----------
-app.get("/api/gflow/status", ah(async (_req, res) => {
-  const r = await py(["engine/gen/video.py", "check"]);
-  const d = lastJson(r) || { available: false, msg: tail(r.err) };
-  res.json(d);
-}));
-app.post("/api/gflow/login", ah(async (_req, res) => {
-  const r = await py(["engine/gen/video.py", "login"], { timeout: 180e3 });
-  const ok = r.code === 0;
-  res.json({ ok, error: ok ? null : (tail(r.err) || tail(r.out) || "로그인에 실패했습니다") });
-}));
-
-// ---------- 영상 생성 설정(videogen) ----------
-function sanitizeVideogen(v = {}) {
-  const backend = ["gflow", "antigravity", "mock"].includes(v.backend) ? v.backend : "gflow";
-  const defModel = backend === "antigravity" ? "gemini" : backend === "mock" ? "mock" : "veo_3_1_lite";
-  const model = typeof v.model === "string" && v.model.trim() ? v.model.trim() : defModel;
-  const max_attempts = Number.isInteger(v.max_attempts) && v.max_attempts >= 1 && v.max_attempts <= 10 ? v.max_attempts : 3;
-  return { backend, model, max_attempts };
-}
-
-function sanitizeImagegen(v = {}) {
-  const backend = ["gflow", "agy", "mock"].includes(v.backend) ? v.backend : "agy";
-  const model = typeof v.model === "string" && v.model.trim() ? v.model.trim() : (backend === "gflow" ? "nano-pro" : "flash");
-  return { backend, model };
-}
-
 app.get("/api/settings", ah(async (_req, res) => {
   const s = (await readJson(SETTINGS, {})) || {};
   res.json({
     settings: {
       model: "", effort: "", language: "korean", voice_engine: "edge", voice_id: "", voice_auto: true, music_any_license: false,
-      videogen: { backend: "gflow", model: "veo_3_1_lite", max_attempts: 3 },
-      imagegen: { backend: "agy", model: "flash" },
       ...s,
     },
     models: MODELS,
@@ -1745,8 +1587,6 @@ app.put("/api/settings", ah(async (req, res) => {
     voice_auto: (b.voice_auto ?? prev.voice_auto ?? true) !== false,
     music_any_license: (b.music_any_license ?? prev.music_any_license ?? false) === true,
     agent: sanitizeAgent(b.agent ?? prev.agent ?? {}),
-    videogen: sanitizeVideogen(b.videogen ?? prev.videogen ?? {}),
-    imagegen: sanitizeImagegen(b.imagegen ?? prev.imagegen ?? {}),
   };
   markEcho(SETTINGS, clientOf(req));
   await atomicWrite(SETTINGS, JSON.stringify(s, null, 1));
@@ -1947,65 +1787,8 @@ app.delete("/api/memory/:id", ah(async (req, res) => {
 }));
 
 // ---------- 라이브러리 (Library) & 자동화 (Automation) API ----------
-const CHAR_DIR = path.join(ROOT, "data", "characters");
 const PRESETS_FILE = path.join(ROOT, "data", "workspace", "presets.json");
 const AUTO_HIST_FILE = path.join(ROOT, "data", "workspace", "automation-history.json");
-
-app.get("/api/library/characters", ah(async (_req, res) => {
-  const out = [];
-  if (existsSync(CHAR_DIR)) {
-    for (const d of await fs.readdir(CHAR_DIR)) {
-      const cdir = path.join(CHAR_DIR, d);
-      const st = await fs.stat(cdir).catch(() => null);
-      if (!st || !st.isDirectory()) continue;
-      const meta = (await readJson(path.join(cdir, "meta.json"), null)) || {};
-      const sheet = (await readJson(path.join(cdir, "sheet.json"), null)) || {};
-      const hasFront = existsSync(path.join(cdir, "front.png"));
-      out.push({
-        name: d,
-        identity: meta.identity || "",
-        wardrobe: meta.wardrobe || "",
-        props: meta.props || "",
-        style: meta.style || "",
-        created_at: meta.created_at || (st ? st.mtime.toISOString() : ""),
-        hasFront,
-        front: hasFront ? `/api/charfiles/${d}/front.png` : null,
-        back: existsSync(path.join(cdir, "back.png")) ? `/api/charfiles/${d}/back.png` : null,
-        left: existsSync(path.join(cdir, "left.png")) ? `/api/charfiles/${d}/left.png` : null,
-        right: existsSync(path.join(cdir, "right.png")) ? `/api/charfiles/${d}/right.png` : null,
-        sheet: existsSync(path.join(cdir, "sheet.png")) ? `/api/charfiles/${d}/sheet.png` : null,
-        approved: sheet.approval?.status === "approved" || true,
-      });
-    }
-  }
-  res.json(out);
-}));
-
-app.post("/api/library/characters/import", ah(async (req, res) => {
-  const { projectId, charName } = req.body || {};
-  if (!projectId || !charName) throw bad("projectId 와 charName 이 필요합니다");
-  const srcDir = path.join(ROOT, "data", "compositions", projectId, "characters", charName);
-  if (!existsSync(srcDir)) throw notFound("프로젝트에 해당 캐릭터 폴더가 없습니다");
-  const dstDir = path.join(CHAR_DIR, charName);
-  await fs.mkdir(dstDir, { recursive: true });
-  for (const f of await fs.readdir(srcDir)) {
-    await fs.copyFile(path.join(srcDir, f), path.join(dstDir, f));
-  }
-  const plan = (await readJson(path.join(ROOT, "data", "shotplans", `${projectId}.json`), null)) || {};
-  const cMeta = (plan.characters || []).find((c) => c.name === charName) || {};
-  const meta = {
-    name: charName,
-    identity: cMeta.identity || "",
-    wardrobe: cMeta.wardrobe || "",
-    props: cMeta.props || "",
-    style: plan.style || "",
-    created_at: new Date().toISOString(),
-    source_project: projectId,
-  };
-  await atomicWrite(path.join(dstDir, "meta.json"), JSON.stringify(meta, null, 2));
-  publish({ kind: "characters" });
-  res.json({ ok: true, character: meta });
-}));
 
 app.get("/api/library/presets", ah(async (_req, res) => {
   const presets = (await readJson(PRESETS_FILE, [])) || [];
@@ -2035,11 +1818,8 @@ app.delete("/api/library/presets/:id", ah(async (req, res) => {
 
 // ---------- 자동화 (Automation) API ----------
 app.post("/api/automation/verify", ah(async (req, res) => {
-  const { count = 1, route = "generate", presetId } = req.body || {};
+  const { count = 1 } = req.body || {};
   const n = Math.max(1, Math.min(20, Number(count) || 1));
-  const s = (await readJson(SETTINGS, {})) || {};
-  const veoPerVideo = 4;
-  const veoNeeded = n * veoPerVideo;
   const dailyUploadQuotaUnits = 10000;
   const costPerUpload = 1600;
   let todayUsedUnits = 0;
@@ -2064,11 +1844,6 @@ app.post("/api/automation/verify", ah(async (req, res) => {
     maxViable,
     feasible: n <= maxViable,
     breakdown: {
-      veoCredits: {
-        needed: veoNeeded,
-        available: 100,
-        ok: true,
-      },
       antigravityTokens: {
         needed: tokensNeeded,
         available: 1000000,

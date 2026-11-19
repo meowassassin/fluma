@@ -94,54 +94,33 @@ export const api = {
   editorGet: (id: string, s?: AbortSignal) => get<unknown>(`/api/projects/${id}/editor`, s),
   editorSave: (id: string, doc: unknown) => req<{ ok: boolean; file: string }>("PUT", `/api/projects/${id}/editor`, doc),
   editorStatus: (id: string, s?: AbortSignal) => get<{ id: string; has_editor_project: boolean; has_exported: boolean; has_final_out: boolean }>(`/api/projects/${id}/editor/status`, s),
-  // 숏폼 생성 파이프라인(engine/gen) — 승인 ① · ② · 샷 검토
+  // 제작 파이프라인 상태(engine/gen/status.py) — 초안 · 최종 렌더
   pipelines: (s?: AbortSignal) => get<{ id: string; topic: string; shots: number; updated: number; thumb?: string | null; style?: string; route?: string }[]>("/api/pipeline", s),
   pipeline: (id: string, s?: AbortSignal) => get<Pipeline>(`/api/pipeline/${id}`, s),
   pipelineLive: (id: string, s?: AbortSignal) => get<PipelineLive>(`/api/pipeline/${id}/live`, s),
-  pipelineAct: (id: string, step: string, action: string, body: { name?: string; views?: string; shots?: string; say?: string; candidates?: number; candidate?: number } = {}) =>
+  pipelineAct: (id: string, step: string, action: string, body: Record<string, unknown> = {}) =>
     req<{ ok?: boolean; job?: string }>("POST", `/api/pipeline/${id}/${step}/${action}`, body),
-  keyframeGuideSave: (id: string, shot: number, body: { kind: "mask" | "compose" | "stage"; dataUrl?: string; spec?: unknown; note?: string }) =>
-    req<{ ok: boolean; url: string }>("POST", `/api/pipeline/${id}/keyframe/${shot}/guide`, body),
-  keyframeGuideClear: (id: string, shot: number, kind: "mask" | "compose" | "stage" | "all" = "all") =>
-    req<{ ok: boolean }>("DELETE", `/api/pipeline/${id}/keyframe/${shot}/guide?kind=${kind}`),
 };
 
-export interface PipeShot { n: number; purpose: string; beat?: string; gen_sec: number; final_sec: number; shot_size: string; angle: string; camera_move: string;
-  subject_pos: string; start_state: string; action: string; end_state: string; background: string; ambient: string; characters?: string[]; end_frame?: boolean; keyframe_note?: string }
+export interface PipeShot { n: number; purpose: string; beat?: string; final_sec: number; shot_size?: string; camera_move?: string }
 /** 파이프라인 뷰 실시간 상태(/api/pipeline/:id/live) */
 export interface PipelineLive {
   at: number;
   jobs: { id: string; type: string; label?: string; status: string; progress: number | null; stage?: string; started?: number | null; ended?: number | null; error?: string | null }[];
   agent: { busy: boolean; waiting?: number | null; tool: string | null; skill: string | null; runtime: "claude" | "codex" | "antigravity" | "cursor" | null; model: string | null; label: string | null };
-  models: { voice: string; video: string; image: string };
+  models: { voice: string };
   editor: { project: number; exported: number };
   /** produce.py 진행 기록 — 프로세스가 살아 있을 때만 running · stage */
   produce?: { running: boolean; stage: string | null; stageStarted: number | null; done: Record<string, number>; error: string | null; updated: number } | null;
 }
 export interface Pipeline {
-  id: string; next: string; route?: "generate" | "clip" | "material";
-  plan: { topic: string; logline?: string; aspect?: string; style: string; route_why?: string; route_by?: "user" | "default"; handoff?: string; needs_character: boolean; narration?: string; shots: PipeShot[]; characters?: { name: string; identity: string; wardrobe: string }[] };
+  id: string; next: string; route?: "clip" | "material";
+  plan: { topic: string; logline?: string; aspect?: string; style: string; route_why?: string; route_by?: "user" | "default"; handoff?: string; narration?: string; shots?: PipeShot[] };
   check: { errors: string[]; warnings: string[] };
-  characters: { name: string; state: string; views: string[]; files: Record<string, string> }[];
-  keyframes: {
-    shot: number; purpose: string; state: string; first: string | null; end: string | null;
-    has_mask?: boolean; has_compose?: boolean; has_stage?: boolean;
-    mask_url?: string | null; compose_url?: string | null; stage_url?: string | null;
-    candidates?: string[];
-    candidates_files?: { name: string; num: number; url: string }[];
-  }[];
-  clips: {
-    shot: number; attempts: number; left: number; state: string; backend: string | null; clip_url: string | null; approved: boolean;
-    takes?: { name: string; url: string }[];
-  }[];
-  videogen?: { model: string | null; max_attempts: number };
   edit: { storyboard: boolean; draft: string | null; final: string | null };
   /** 단계마다 실제로 만든 기록(status.py provenance) — 지금 설정과 무관 */
   provenance?: {
     plan?: { runtime: string | null; model: string | null; at?: string };
-    character?: { model: string; via?: string | null }[];
-    keyframe?: { model: string; via?: string | null }[];
-    video?: { model: string | null; backend: string | null }[];
     voice?: { engine: string | null; voice?: string | null; at?: string };
     draft?: string[];
     materials?: string[];

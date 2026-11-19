@@ -46,7 +46,6 @@
    | 단계 · 구조 · 비교 | `diagram` — `kind` + `items` + `cues`(항목이 그 낱말에 하나씩) | DeckCraft |
    | 약관 · 공지 · 바뀐 문구 | `document` — `src` 또는 `text`, `highlight`[문장], `track`{from, to}, `comments` | WordCraft |
    | 요점 정리 · 반복 카드 | `info_card`(kicker · title · body · points · source) · `template_card`(틀 + csv · values) | DesignCraft · VectorCraft |
-   | 제품(실물 사진이 없을 때) | `model3d` — `shape`+`size` · `commands` · `src`(STEP) · `material` · `logo` · `turntable` · `exploded`. 치수는 `drawing`(`model`: 앞 model3d id) | SolidCraft · TextureCraft · CADCraft |
    | 감성 · 광고 사진 톤 | `photo_grade` — `look`(warm · film · clean · mono) · `crop` 9:16 · `credit` | LightCraft |
    | 썸네일 | `thumbnail`(마지막 장면, 비우면 콘티 제목 · 훅) — 결과 media 에 세로 · 가로 판 | DesignCraft |
    칸 · 예시 JSON 은 storyboard 스킬 '장면 재료' 절. 어느 앱의 무엇을 쓰는지 · 주의는 crafts 스킬. 렌더 전에 검사 L39 가 칸을 본다.
@@ -90,7 +89,7 @@
 - 아직 안 골랐으면 제작 전에 `feel.py preview` 시안을 보여 주고 고르게 한다(에이전트가 정하지 않는다).
 
 ## 초안 검토 — 렌더 검사가 못 보는 것
-- **사람 · 실제 물건**: 직접 그리거나 3D 로 빚지 않는다. 사람은 실제 자료(레퍼런스 클립 · 자료 사진 · 스톡), 물건은 실제 사진 · 자료 · `model3d`(SolidCraft 제품 형태).
+- **사람 · 실제 물건**: 직접 그리거나 3D 로 빚지 않는다. 사람은 실제 자료(레퍼런스 클립 · 자료 사진 · 스톡), 물건은 실제 사진 · 자료.
 - 초안이 나오면 먼저 **초안 · 레퍼런스 나란히**(`data/compositions/<id>/craft/review/sheet.png` — 12장씩, produce 결과 media 두 번째)를 직접 본다.
   기본은 이 그림을 에이전트가 직접 보고 레퍼런스와 리듬 · 피사체 크기 · 글자 크기를 견준다.
 - 초안을 본 뒤 고칠 때는 **director 스킬**의 감독 검사(같은 구도 연속 · 빈 화면 · 약속한 증거 · 반전의 멈춤 · 시선 한 곳)로 본다. 나레이션이 없으면 강조가 저절로 생기지 않는다(L41) — 장면마다 `beats [{"do": "확대", "t": 초}]` 나 재료 `zoom` 으로 짚는다.

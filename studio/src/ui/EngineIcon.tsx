@@ -6,13 +6,9 @@ import { ENG_COLOR } from "./engines";
 const ICONS: Record<string, string> = {
   chatterbox: "png", claude: "png", cosyvoice: "png", edge: "svg", elevenlabs: "png",
   melotts: "png", typecast: "png", xtts: "png", supertonic: "png",
-  flow: "svg", gflow: "svg", veo: "svg", nanobanana: "svg", antigravity: "svg", deepmind: "svg", gemini: "svg", cursor: "svg",
+  antigravity: "svg", gemini: "svg", cursor: "svg",
 };
 const FILE: Record<string, string> = {
-  flow: "flow.svg",
-  gflow: "flow.svg",
-  veo: "veo.svg",
-  nanobanana: "nanobanana.svg",
   antigravity: "antigravity.svg",
   cursor: "agent-cursor.svg",
 };
@@ -21,9 +17,6 @@ const TINT: Record<string, string> = {
   supertonic: "#7c5cff",
   espeak: "#8a8a8a",
   silent: "#555",
-  flow: "#4285F4",
-  gflow: "#4285F4",
-  veo: "#7B1FA2",
   antigravity: "#3186FF",
   cursor: "#D6D5D2",
 };
@@ -48,9 +41,6 @@ export function modelIconSrc(modelId: string | null | undefined): string | null 
   const slash = modelId.indexOf("/");
   const v = (slash > 0 ? modelId.slice(0, slash) : modelId.split("-")[0] ?? modelId).toLowerCase();
   const I = (f: string) => `/api/engine-icons/${f}`;
-  if (v.includes("veo")) return I("veo.svg");
-  if (v.includes("flow")) return I("flow.svg");
-  if (v.includes("nano") || v.includes("banana")) return I("nanobanana.svg");
   if (v.includes("antigravity") || v.includes("agy")) return I("antigravity.svg");
   if (v.includes("composer") || v.includes("cursor")) return I("agent-cursor.svg");
   if (v.includes("anthropic") || v.includes("claude") || ["opus", "sonnet", "haiku", "fable"].includes(v)) return I("agent-claude.svg");

@@ -14,7 +14,6 @@ interface VerifyResult {
   feasible: boolean;
   breakdown: {
     antigravityTokens?: { needed: number; available: number; ok: boolean };
-    veoCredits?: { needed: number; available: number; ok: boolean };
     youtubeDailyQuota?: {
       neededUnits: number;
       dailyLimit: number;
@@ -45,7 +44,7 @@ interface AutomationHistoryItem {
   status?: string;
 }
 
-type NodeType = "trigger" | "preset" | "ai" | "veo" | "timeline" | "youtube";
+type NodeType = "trigger" | "preset" | "ai" | "craft" | "timeline" | "youtube";
 
 interface WorkflowNodeDef {
   id: NodeType;
@@ -65,9 +64,9 @@ const NODE_H = 92;
 
 const NODES: WorkflowNodeDef[] = [
   { id: "trigger", step: "01", shortLabel: "트리거", title: "스케줄 & 주제", category: "Trigger", subtitle: "주기 · 주제 대기열 설정", icon: "clock", badgeColor: "#f59e0b", x: 24, y: 36 },
-  { id: "preset", step: "02", shortLabel: "프리셋", title: "시리즈 프리셋", category: "Assets", subtitle: "캐릭터 · 화풍 바인딩", icon: "library", badgeColor: "#8b5cf6", x: 264, y: 36 },
-  { id: "ai", step: "03", shortLabel: "샷 기획", title: "4박자 샷 기획", category: "Planning", subtitle: "Hook-Build-Turn-Payoff", icon: "sparkle", badgeColor: "#06b6d4", x: 504, y: 36 },
-  { id: "veo", step: "04", shortLabel: "영상 생성", title: "키프레임 & Veo 영상", category: "Generation", subtitle: "캐릭터 시트 · Veo 3.1 I2V", icon: "video", badgeColor: "#ec4899", x: 24, y: 184 },
+  { id: "preset", step: "02", shortLabel: "프리셋", title: "시리즈 프리셋", category: "Assets", subtitle: "톤 · 스타일 바인딩", icon: "library", badgeColor: "#8b5cf6", x: 264, y: 36 },
+  { id: "ai", step: "03", shortLabel: "기획", title: "4박자 기획", category: "Planning", subtitle: "Hook-Build-Turn-Payoff", icon: "sparkle", badgeColor: "#06b6d4", x: 504, y: 36 },
+  { id: "craft", step: "04", shortLabel: "재료 · 초안", title: "실제 자료 · Craft 초안", category: "Production", subtitle: "조사 · 콘티 · produce.py", icon: "video", badgeColor: "#ec4899", x: 24, y: 184 },
   { id: "timeline", step: "05", shortLabel: "타임라인", title: "타임라인 · 자막 합성", category: "Assembly", subtitle: "TTS · SFX 믹스 · 상단 타이틀", icon: "render", badgeColor: "#3b82f6", x: 264, y: 184 },
   { id: "youtube", step: "06", shortLabel: "예약 배포", title: "YouTube 예약 발행", category: "Publish", subtitle: "publishAt 순차 예약", icon: "upload", badgeColor: "#ef4444", x: 504, y: 184 },
 ];
@@ -211,7 +210,6 @@ export const AutomationPage: React.FC = () => {
         maxViable: Math.min(count, 6),
         feasible: count <= 6,
         breakdown: {
-          veoCredits: { needed: count * 4, available: 100, ok: true },
           antigravityTokens: { needed: count * 15000, available: 1000000, ok: true },
           youtubeDailyQuota: {
             neededUnits: count * 1600,
@@ -402,13 +400,12 @@ export const AutomationPage: React.FC = () => {
   }, [topicMode, listInput, videoCount]);
 
   const nodeSubtitles: Record<NodeType, string> = useMemo(() => {
-    const presetChar = (currentPreset as any)?.character || currentPreset?.characterId;
     return {
       trigger: `${getIntervalLabel(scheduleInterval)} · ${publishTime} (${finalCount}편)`,
-      preset: currentPreset ? `${currentPreset.name}${presetChar ? ` · ${presetChar}` : ""}` : t("프리셋 없음 (자유 생성)"),
+      preset: currentPreset ? currentPreset.name : t("프리셋 없음 (자유 기획)"),
       ai: `4박자 인과 구성 · 무음 검증 (${(finalCount * 15000).toLocaleString()} 토큰)`,
-      veo: `Veo 3.1 Lite 9:16 · ${finalCount}편 (${finalCount * 40} 크레딧)`,
-      timeline: `TTS · Veo SFX 믹스 · 상단 훅 & 하단 자막`,
+      craft: `실제 자료 + Craft · ${finalCount}편`,
+      timeline: `TTS · 효과음 믹스 · 상단 훅 & 하단 자막`,
       youtube: autoPublish ? t("완전 자동 publishAt 예약 등록") : t("초안 검토 후 수동 승인"),
     };
   }, [scheduleInterval, publishTime, finalCount, currentPreset, autoPublish]);
@@ -511,11 +508,6 @@ export const AutomationPage: React.FC = () => {
                 <Icon n="sparkle" s={12} />
                 <span className="chip-label">{t("AI 토큰")}</span>
                 <b className="mono">{(verifyData?.breakdown?.antigravityTokens?.needed ?? (finalCount * 15000)).toLocaleString()}</b>
-              </div>
-              <div className="n8n-chip" title={t("예상 Veo 비디오 생성 크레딧 (샷당 10 크레딧 × 4샷)")}>
-                <Icon n="video" s={12} />
-                <span className="chip-label">{t("Veo 크레딧")}</span>
-                <b className="mono">{finalCount * 40}</b>
               </div>
               <div className={cx("n8n-chip", "yt-chip", finalCount > 6 && "is-warn")} title={t("YouTube Data API v3 일일 업로드 쿼터")}>
                 <Icon n="upload" s={12} />
@@ -817,11 +809,10 @@ export const AutomationPage: React.FC = () => {
                         onClick={() => setSelectedPresetId("")}
                       >
                         <span className="opt-title">{t("프리셋 없음 (자유 기획)")}</span>
-                        <p className="opt-desc">{t("주제에 맞는 캐릭터와 스타일을 매 편 새로 기획합니다.")}</p>
+                        <p className="opt-desc">{t("주제에 맞는 스타일을 매 편 새로 기획합니다.")}</p>
                       </div>
 
                       {presets.map((pr) => {
-                        const charName = (pr as any).character || pr.characterId;
                         return (
                           <div
                             key={pr.id}
@@ -833,12 +824,6 @@ export const AutomationPage: React.FC = () => {
                               <span className="opt-tag mono">{pr.id}</span>
                             </div>
                             <p className="opt-desc">{pr.description || pr.style}</p>
-                            {charName && (
-                              <div className="opt-bound-pill">
-                                <Icon n="check" s={11} />
-                                <span>{t("고정 캐릭터: {c}", { c: charName })}</span>
-                              </div>
-                            )}
                           </div>
                         );
                       })}
@@ -847,7 +832,7 @@ export const AutomationPage: React.FC = () => {
 
                   {currentPreset?.style && (
                     <div className="param-group">
-                      <label className="param-label">{t("적용될 3D 화풍 프롬프트")}</label>
+                      <label className="param-label">{t("적용될 톤 · 스타일 메모")}</label>
                       <div className="param-box mono">{currentPreset.style}</div>
                     </div>
                   )}
@@ -860,12 +845,12 @@ export const AutomationPage: React.FC = () => {
                   <div className="param-group">
                     <label className="param-label">
                       <Icon n="sparkle" s={13} />
-                      <span>{t("샷 계획 & 검증 규칙 (engine/gen/plan.py)")}</span>
+                      <span>{t("기획 & 검증 규칙 (engine/gen/plan.py)")}</span>
                     </label>
                     <div className="param-box">
                       <b>4박자 인과 아크 (Hook → Build → Turn → Payoff)</b>
                       <p className="param-subtext">
-                        {t("무음 테스트(구체적 3D 소품 필수 · 추상 구체 금지), 인접 샷 구도 다양성, 대사 음절 길이(초당 5.8음절 이하)를 자동 검증합니다.")}
+                        {t("출처 있는 사실 · 장면 구도 다양성 · 대사 음절 길이(초당 5.8음절 이하)를 자동 검증합니다.")}
                       </p>
                     </div>
                   </div>
@@ -880,27 +865,19 @@ export const AutomationPage: React.FC = () => {
                 </div>
               )}
 
-              {/* 4. Veo 3D Video */}
-              {selectedNodeId === "veo" && (
+              {/* 4. Materials · Craft draft */}
+              {selectedNodeId === "craft" && (
                 <div className="param-section">
                   <div className="param-group">
                     <label className="param-label">
                       <Icon n="video" s={13} />
-                      <span>{t("캐릭터 시트 · 키프레임 · Veo I2V")}</span>
+                      <span>{t("실제 자료 · Craft 초안 (produce.py)")}</span>
                     </label>
                     <div className="param-box">
-                      <b>Veo 3.1 Lite (9:16 세로형 I2V)</b>
+                      <b>{t("실제 자료 + Craft 2D")}</b>
                       <p className="param-subtext">
-                        {t("4면 턴어라운드 캐릭터 시트(front/back/left/right) 참조로 키프레임을 생성한 뒤, 시작 프레임 기반으로 클립을 렌더링합니다.")}
+                        {t("조사한 출처 · 화면 녹화 · 스톡 · 목업과 Craft 앱으로 장면 재료를 만들고 produce.py 로 초안을 렌더링합니다.")}
                       </p>
-                    </div>
-                  </div>
-
-                  <div className="param-group">
-                    <label className="param-label">{t("크레딧 예산 현황")}</label>
-                    <div className="param-metric-box">
-                      <span>{t("예상 소비 크레딧 (샷당 10 × 4샷)")}</span>
-                      <b className="mono">{finalCount * 40} Credits</b>
                     </div>
                   </div>
                 </div>
@@ -912,12 +889,12 @@ export const AutomationPage: React.FC = () => {
                   <div className="param-group">
                     <label className="param-label">
                       <Icon n="render" s={13} />
-                      <span>{t("오디오 · 자막 · 타임라인 합성 (assemble.py)")}</span>
+                      <span>{t("오디오 · 자막 · 타임라인 합성 (produce.py)")}</span>
                     </label>
                     <div className="param-box">
-                      <b>TTS 내레이션 + Veo SFX 믹싱 + ASS 자막 번인</b>
+                      <b>TTS 내레이션 + 효과음 믹싱 + 자막</b>
                       <p className="param-subtext">
-                        {t("실제 음성 발화 길이에 맞춰 샷을 정렬하고, 클립 자체 효과음(28%)과 내레이션을 믹싱하며 상단 훅 타이틀과 하단 자막을 합성합니다.")}
+                        {t("실제 음성 발화 길이에 맞춰 장면을 정렬하고, 효과음과 내레이션을 믹싱하며 상단 훅 타이틀과 하단 자막을 합성합니다.")}
                       </p>
                     </div>
                   </div>

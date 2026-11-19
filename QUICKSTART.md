@@ -46,7 +46,7 @@ python3 engine/doctor.py --fix
 ```
 
 That one command installs **everything**: `.venv` with all Python packages (`requirements-full.txt`), Chromium,
-all 16 open-source [Craft apps](https://github.com/storytold) (MIT / Apache-2.0, about 1.4 GB, checked against their
+all 13 open-source [Craft apps](https://github.com/storytold) (MIT / Apache-2.0, about 1 GB installed, checked against their
 SHA256SUMS into `tools/crafts/`), the analysis and background-removal models, and the npm packages. It only *tells*
 you how to install Node / ffmpeg — it does not need admin rights.
 
@@ -127,7 +127,7 @@ Any CPU works: the image is published for both Intel/AMD (amd64) and Apple Silic
 GPU for 3D renders: on Linux the script attaches it automatically. Docker on macOS and Windows cannot pass the GPU into a container, so renders run on the CPU — if you need the GPU there, use the direct install below (it uses that computer's GPU as is).
 
 That's it. The agent uses your own Claude Code and Codex logins (`~/.claude`, `~/.codex`), work persists in Docker
-volumes, and the image already contains everything (all Python packages, all 16 Craft apps, the analysis models).
+volumes, and the image already contains everything (all Python packages, all 13 Craft apps, the analysis models).
 For a smaller image: `PROFILE=lite CRAFTS=core MODELS=0 docker compose build`.
 
 If Docker is not installed: [Docker Desktop](https://www.docker.com/products/docker-desktop/) (macOS · Windows), or Docker Engine on Linux.

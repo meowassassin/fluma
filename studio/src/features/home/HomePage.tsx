@@ -152,7 +152,7 @@ const HomeChat: React.FC<{ id: string }> = ({ id }) => {
     <>
       <div className="home-chat">
         <AgentDock layout="page" sessionId={id} defaultSkill={produced ? null : "plan"}
-          context={{ menu: produced ? "studio" : "plan", note: produced ? undefined : "홈 기획 대화 — plan 스킬(.claude/skills/plan/SKILL.md)을 따른다. 경로(generate · clip · material)와 추천 선택지를 보여 주고 사용자 확인을 받아 진행하며, 생성(generate) 경로에서는 1단계 샷 계획(plan.py) → 2단계 캐릭터 시트(character.py) → 3단계 키 프레임(keyframe.py) → 4단계 영상 생성(video.py) 순서와 프롬프트·캐릭터 일관성 규칙을 지킨다." }}
+          context={{ menu: produced ? "studio" : "plan", note: produced ? undefined : "홈 기획 대화 — plan 스킬(.claude/skills/plan/SKILL.md)을 따른다. 경로(material · clip)와 추천 선택지를 보여 주고 사용자 확인을 받아 진행한다." }}
           autoSend={autoSend} onAutoSent={() => { setAutoSend(null); nav(`/?c=${id}`, { replace: true, state: null }); }}
           placeholder={produced ? t("영상에 대해 더 말해 주세요 — 편집기에서 장면별로 고칠 수도 있어요") : t("답하거나 선택지를 누르세요. 예: 훅은 B안, 20초로")} />
       </div>

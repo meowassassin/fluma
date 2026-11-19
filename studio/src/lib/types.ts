@@ -17,7 +17,7 @@ export interface Storyboard {
   hook_number?: string | null; scenes: Scene[]; cta: string; caption?: string; hashtags?: string[]; sources?: string[];
   constraints?: string[]; reference?: string[]; voice?: { engine?: string; id?: string | null } | null;
   direction?: Record<string, string>;
-  /** 의도 카드 — 사용자가 원하는 것(이 영상의 규칙). 확인 전엔 최종 렌더 · 유료 생성이 막힌다(engine/checks/gate.py) */
+  /** 의도 카드 — 사용자가 원하는 것(이 영상의 규칙). 확인 전엔 최종 렌더가 막힌다(engine/checks/gate.py) */
   intent?: { summary?: string; reference_use?: string; must?: string[]; must_not?: string[]; locked?: string[]; confirmed?: boolean };
 }
 
@@ -40,12 +40,10 @@ export interface CharMeta { name: string; title: string; base: string; [k: strin
 export interface Settings {
   model: string; effort: string; language: string; voice_engine: string; voice_id: string; voice_auto?: boolean; music_any_license?: boolean;
   agent?: Record<string, unknown>;
-  videogen?: { backend?: string; model?: string; max_attempts?: number; timeout_sec?: number };
-  imagegen?: { backend?: string; model?: string };
 }
 
 // ---------- 에이전트 ----------
-export interface ChatContext { menu?: "trends" | "character" | "studio" | "plan"; selection?: string; note?: string }
+export interface ChatContext { menu?: "trends" | "studio" | "plan"; selection?: string; note?: string }
 export interface MemoryRef { id: string; title: string; scope: string; type: string }
 export interface ChatTool { name: string; input: string; error?: boolean; id?: string; out?: string[]; t0?: number }
 export interface Todo { content: string; status: "pending" | "in_progress" | "completed"; activeForm?: string }

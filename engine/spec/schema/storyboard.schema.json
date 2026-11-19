@@ -1182,7 +1182,7 @@
         },
         "materials": {
           "type": "array",
-          "description": "장면 재료(Craft 엔진) — 툴 이름 없이 무엇이 필요한가만. engine/craft/materials.py 가 engine/craft/apps/*/craft.json 능력 목록으로 앱을 고른다. 기술 설명: screen · web · overlay · doc_quote · ui_mock · diagram · document / 제품: model3d · drawing / 감성 · 광고: photo(frame card) · photo_grade / 반복 형식: template_card · info_card / 썸네일: thumbnail. 칸 설명 · 예시는 .claude/skills/storyboard/SKILL.md",
+          "description": "장면 재료(Craft 엔진) — 툴 이름 없이 무엇이 필요한가만. engine/craft/materials.py 가 engine/craft/apps/*/craft.json 능력 목록으로 앱을 고른다. 기술 설명: screen · web · overlay · doc_quote · ui_mock · diagram · document / 감성 · 광고: photo(frame card) · photo_grade / 반복 형식: template_card · info_card / 썸네일: thumbnail. 칸 설명 · 예시는 .claude/skills/storyboard/SKILL.md",
           "items": {
             "type": "object",
             "required": [
@@ -1216,8 +1216,6 @@
                   "info_card",
                   "thumbnail",
                   "template_card",
-                  "model3d",
-                  "drawing",
                   "craft",
                   "live",
                   "archive",
@@ -1312,7 +1310,7 @@
               },
               "app": {
                 "type": "string",
-                "description": "craft: 실행할 Craft 앱(vectorcraft · effectcraft · filmcraft · photocraft · figcraft · designcraft · deckcraft · lightcraft · pdfcraft · solidcraft · texturecraft · cadcraft · wordcraft · gridcraft · soundcraft)"
+                "description": "craft: 실행할 Craft 앱(vectorcraft · effectcraft · filmcraft · photocraft · figcraft · designcraft · deckcraft · lightcraft · pdfcraft · wordcraft · gridcraft · soundcraft)"
               },
               "steps": {
                 "type": "array",
@@ -1584,77 +1582,19 @@
                 "type": "string",
                 "description": "ui_mock · info_card · thumbnail 강조색"
               },
-              "shape": {
-                "type": "string",
-                "description": "model3d: case · phone · bottle · tumbler · puck(한국어 별칭 가능)"
-              },
               "size": {
                 "type": "array",
-                "description": "model3d: [폭,깊이,높이] 또는 [지름,높이] mm"
-              },
-              "commands": {
-                "type": "array",
-                "description": "model3d: SolidCraft 명령 목록 · drawing: CADCraft 명령"
-              },
-              "material": {
-                "description": "model3d: metal · plastic · wood · #rrggbb · {부품: 재질}"
+                "description": "크기"
               },
               "color": {
                 "type": "string",
-                "description": "model3d 색 · overlay 색 · document 형광펜 색"
-              },
-              "logo": {
-                "description": "model3d: 글자 · PNG 경로 · {text|image, color, size, side}"
-              },
-              "turntable": {
-                "type": "boolean",
-                "description": "model3d: 돌려 찍은 영상(mp4)"
-              },
-              "exploded": {
-                "type": "boolean",
-                "description": "model3d: 분해도 영상(부품 2개 이상)"
+                "description": "overlay 색 · document 형광펜 색"
               },
               "sec": {
                 "type": "number",
                 "minimum": 0.5,
                 "maximum": 20,
-                "description": "model3d 영상 길이(초)"
-              },
-              "model": {
-                "type": [
-                  "string",
-                  "object"
-                ],
-                "description": "drawing: 같은 장면의 앞선 model3d 재료 id 또는 model3d 칸(dict)"
-              },
-              "views": {
-                "type": "array",
-                "items": {
-                  "enum": [
-                    "front",
-                    "top",
-                    "right",
-                    "left",
-                    "back",
-                    "iso"
-                  ]
-                },
-                "description": "drawing: 보기(기본 iso · top · front · right)"
-              },
-              "paper": {
-                "enum": [
-                  "dark",
-                  "white"
-                ],
-                "description": "drawing: 어두운 CAD 화면(기본) · 흰 종이"
-              },
-              "cmd": {
-                "type": "array",
-                "description": "drawing: CADCraft 명령('id {json}' 또는 {id, params})"
-              },
-              "window": {
-                "type": "array",
-                "description": "drawing: 도면 좌표 [x0,y0,x1,y1] 확대"
+                "description": "재료 영상 길이(초)"
               },
               "zoom": {
                 "type": "array",

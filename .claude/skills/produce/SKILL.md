@@ -32,7 +32,7 @@ order: 2
 
 ## 재료 고르기(요약 — 칸 · 예시는 storyboard 스킬, 표 전체는 reference.md)
 재료는 장면의 말을 가장 잘 보여 주는 것으로 — 종류 수 · 개수를 맞추려고 섞지 않는다.
-숫자 하나 `stat`(바탕 재료 위 덧씌우기) · 비교 `chart` · 근거 문장 `doc_quote` · 실제 화면 `web` · `screen` · 짚기 `overlay` · 구조 `diagram` · 요점 `info_card` · 문서 `document` · 로고 `icon` · 짤 `meme` · 실사 `video`(clip.py) · `stock` · `photo` · 제품 `model3d`.
+숫자 하나 `stat`(바탕 재료 위 덧씌우기) · 비교 `chart` · 근거 문장 `doc_quote` · 실제 화면 `web` · `screen` · 짚기 `overlay` · 구조 `diagram` · 요점 `info_card` · 문서 `document` · 로고 `icon` · 짤 `meme` · 실사 `video`(clip.py) · `stock` · `photo`.
 **사람/장면**은 실제 자료(퍼온 클립 · 자료 사진 · 스톡 · 짤)로. 그림 · 영상 생성 모델은 쓰지 않고, 손이나 코드로 인물 · 장면을 그리지 않는다.
 설명형 영상은 실제 자료와 정교한 UI/데이터 목업 · 도표가 화면의 주인공이 된다. 실행 녹화(`engine/capture/demo.py run <id>` · `webrec.py`)는 증거가 필요할 때 쓰는 재료 중 하나.
 

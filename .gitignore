@@ -27,9 +27,6 @@ engine/*/renderer/.venv/
 tools/crafts/
 tools/toolchains/
 tools/python313/
-tools/flow_probe/
-tools/gflow/.venv/
-tools/gflow/**/.venv/
 
 tools/ui-scenes/.build/
 tools/ui-scenes/.build-*/

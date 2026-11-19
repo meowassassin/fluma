@@ -84,14 +84,14 @@ const SHOW_RULES = `## 결과는 채팅에 바로 보여 준다
 const TALK_RULES = `## 말로만 제작한다
 - 사용자에게 터미널 명령(python3 …, produce 돌려 주세요)을 시키지 않는다. 필요한 명령은 네가 Bash로 실행한다.
 - material: produce 전에 콘티 L=0 → \`production_ready\`(\`lint.py\` 통과 시 자동). ui_mock 은 \`data/compositions/<id>/ui/*.tsx\` 를 채팅에서 쓰고 produce 는 빌드만. 그다음 \`python3 engine/produce.py data/storyboards/<id>.json\` — 엔진은 스킬 중복 없이 음성·재료·render. produce 돌리는 동안 같은 프로젝트 plan 턴은 서버가 거부한다.
-- generate: 샷 검토 후 \`python3 engine/gen/assemble.py build <id>\` 까지 네가 이어서 실행한다(말로 멈추지 않는다 — 승인·선택지가 필요할 때만 잠깐 묻는다).
-- 최종 화질은 produce · assemble 이 한 번에 내보낸다(초안 half 를 사용자에게 '완성'으로 주지 않는다).`;
+- clip: 더빙 계획 뒤 \`python3 engine/gen/dub.py build <id>\` 까지 네가 이어서 실행한다(asset-edit 스킬).
+- 최종 화질은 produce · dub 이 한 번에 내보낸다(초안 half 를 사용자에게 '완성'으로 주지 않는다).`;
 
 const RUN_RULES = `## 명령 실행 · 결과 
-- 오래 걸리는 명령(렌더 · 레퍼런스 분석 · 녹화 · 버전 비교 · 재료 만들기 · 캐릭터/키프레임/영상 생성)은 **앞에서 한 번** 실행하고 Bash 의 timeout 을 600000(10분)으로. 백그라운드로 돌려 두고 턴을 끝내지 않는다
+- 오래 걸리는 명령(렌더 · 레퍼런스 분석 · 녹화 · 버전 비교 · 재료 만들기)은 **앞에서 한 번** 실행하고 Bash 의 timeout 을 600000(10분)으로. 백그라운드로 돌려 두고 턴을 끝내지 않는다
 - 콘티(\`data/storyboards/<id>.json\`)는 **한 번에 통째로 Write** — 같은 파일을 Edit 로 여러 번 나눠 고치지 않는다(호출마다 수십 초). 사용자가 '길어도 된다'고 하면 줄이지 말고 콘티에 \`"allow_long": true\`
 - \`produce.py\` 는 그대로 부른다 — \`timeout\` · \`&\` · \`nohup\` 으로 감싸지 않는다. 스스로 뒤에서 돌고 최대 8분 기다린 뒤 결과 블록을 넘긴다. 종료 11(\`FLUMA_RUNNING\`)이면 **같은 명령을 그대로 다시** 실행한다(이어서 기다릴 뿐 처음부터 다시 하지 않는다)
-- Antigravity(\`run_command\`) 환경에서 외부 프로세스·네트워크·브라우저를 쓰는 엔진 명령(\`character.py make\`, \`keyframe.py make\`, \`video.py\`, \`produce.py\`, \`trends.py\`, \`analyze_ref.py\`, \`ref_image.py\`, \`render.py\`)을 실행할 때는 처음부터 \`BypassSandbox: true\`와 \`WaitMsBeforeAsync: 10000\`으로 실행한다(표준 샌드박스로 먼저 실행해 실패한 뒤 재실행하지 않는다)
+- Antigravity(\`run_command\`) 환경에서 외부 프로세스·네트워크·브라우저를 쓰는 엔진 명령(\`produce.py\`, \`trends.py\`, \`analyze_ref.py\`, \`ref_image.py\`, \`render.py\`)을 실행할 때는 처음부터 \`BypassSandbox: true\`와 \`WaitMsBeforeAsync: 10000\`으로 실행한다(표준 샌드박스로 먼저 실행해 실패한 뒤 재실행하지 않는다)
 - 기다리는 동안 sleep · ls · tail · ps 로 되묻지(폴링) 않는다
 - 끝나면 출력 맨 끝 블록만 읽는다:
   - 종료 0 \`FLUMA_RESULT\` — file · media 등. media= 줄은 그대로 \`\`\`media 블록에 붙여 보여 준다. 성공한 뒤 로그 전체를 다시 읽지 않는다
@@ -184,29 +184,20 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const parts = [];
     parts.push(readIf(path.join(ROOT, "studio", "agent", "system.md")) ?? "");
     parts.push(STYLE_RULES, MEMORY_RULES, SETUP_RULES, SHOW_RULES, TALK_RULES, RUN_RULES);
-    // 붙어 있는 Craft 앱(MCP) — 5단계 초안 다듬기 및 실제 자료(material) 경로에서 활용
+    // 붙어 있는 Craft 앱(MCP) — 실제 자료(material) · 클립(clip) 경로에서 활용
     const cr = createCrafts(ROOT).list().filter((c) => c.agentOn && c.installed?.cli);
     if (cr.length) parts.push(`## 제작 도구 (Craft 앱, MCP: ${cr.map((c) => `mcp__${c.name}`).join(" · ")})\n` +
       cr.map((c) => `- ${c.title} — ${c.kind}: ${c.use}`).join("\n") +
-      "\n생성(generate) 경로에서는 1~4단계(plan · character · keyframe · video)로 캐릭터 시트 · 키 프레임 · 영상을 만들고 5단계(assemble.py)에서 Craft 초안을 조립한다. 실제 자료(material) 경로에서는 실제 자료와 Craft 도구로 장면을 구성한다. 결과는 data/compositions/<영상 id>/ 아래에만 쓴다.");
+      "\n실제 자료(material) 경로에서는 실제 자료와 Craft 도구로 장면을 구성한다. 결과는 data/compositions/<영상 id>/ 아래에만 쓴다.");
     if (skill) {
       const body = readIf(path.join(ROOT, ".claude", "skills", skill, "SKILL.md"));
       if (body) parts.push(`## 활성 스킬: ${skill} (.claude/skills/${skill}/SKILL.md)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
     }
     const shotplanPath = !project.startsWith("_") ? path.join(ROOT, "data", "shotplans", `${project}.json`) : null;
     const hasShotplan = shotplanPath ? existsSync(shotplanPath) : false;
-    let routeKind = hasShotplan ? "generate" : null;
+    let routeKind = null;
     if (hasShotplan) {
-      try { routeKind = JSON.parse(readFileSync(shotplanPath, "utf8")).route || "generate"; } catch { routeKind = "generate"; }
-    }
-    const isGenPipeline = routeKind === "generate" || ["plan", "character-sheet", "keyframes", "video-gen", "edit-shots", "publish"].includes(skill);
-    // 생성 파이프라인 스킬들(자료조사 · 프롬프트 조립 · 캐릭터 시트 일관성 · 키 프레임 참조 · i2v 생성 · 5단계 편집)을 함께 주입
-    if (!project.startsWith("_") && isGenPipeline) {
-      for (const n of ["research", "plan", "character-sheet", "keyframes", "video-gen", "edit-shots", "publish"]) {
-        if (n === skill) continue;
-        const body = readIf(path.join(ROOT, ".claude", "skills", n, "SKILL.md"));
-        if (body) parts.push(`## 함께 쓰는 파이프라인 스킬: ${n} (.claude/skills/${n}/SKILL.md)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
-      }
+      try { routeKind = JSON.parse(readFileSync(shotplanPath, "utf8")).route || null; } catch { routeKind = null; }
     }
     // 실제 자료(material) 경로이거나 storyboard/produce 스킬일 때는 produce · storyboard 스킬을 함께 주입
     const companion = "produce";
@@ -218,11 +209,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       const body = readIf(path.join(ROOT, ".claude", "skills", "storyboard", "SKILL.md"));
       if (body) parts.push(`## 함께 쓰는 스킬: storyboard (콘티 작성 규칙)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
     }
-    // 감독 · 작가 · 디자이너 스킬은 실제 자료(material) 경로의 기획 · 콘티 · 제작 · 장면 고치기 및 5단계(edit-shots)에 함께 주입
-    // (생성 경로 1~4단계에서는 director/designer 의 '그림·영상 생성 모델 금지 · 캐릭터 그리기 금지' 문구가 충돌하므로 writer 만 함께 주입)
-    if (!project.startsWith("_") && (["plan", "storyboard", "produce", "refine", "scene-edit", "edit-shots", undefined, null, ""].includes(skill) || (skill || "").startsWith("format-"))) {
-      const roles = (isGenPipeline && skill !== "edit-shots" && skill !== "refine" && skill !== "scene-edit") ? ["writer"] : ["director", "writer", "designer"];
-      for (const n of roles) {
+    // 감독 · 작가 · 디자이너 스킬은 기획 · 콘티 · 제작 · 장면 고치기에 함께 주입
+    if (!project.startsWith("_") && (["plan", "storyboard", "produce", "refine", "scene-edit", undefined, null, ""].includes(skill) || (skill || "").startsWith("format-"))) {
+      for (const n of ["director", "writer", "designer"]) {
         const body = readIf(path.join(ROOT, ".claude", "skills", n, "SKILL.md"));
         if (body) parts.push(`## 함께 쓰는 스킬: ${n} (.claude/skills/${n}/SKILL.md — 늘 적용)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
       }
@@ -238,7 +227,6 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         "## 현재 작업 (작업 공간 대화 — 특정 영상이 아님)",
         "- 사용자가 지금 보는 화면은 매 메시지의 <FLUMA_CONTEXT> 의 '화면' 줄. 그 화면에서 결과가 보이게 일한다:",
         "  · 트렌드 → `engine/research/trends.py search --queries '…'` (구체 주제는 검색어, 결과가 트렌드 화면에 바로 나타남)",
-        "  · 라이브러리 → 캐릭터(.claude/skills/character)",
         "- 사용자가 선택한 것(선택: …)이 있으면 그것에 대해 말하는 것으로 본다.",
       ].join("\n"));
       return parts.join("\n\n---\n\n");
@@ -248,9 +236,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     parts.push([
       "## 현재 작업",
       `- 프로젝트 id: ${project}`,
-      `- 샷 계획 파일(생성 파이프라인 1~4단계 정본): ${spRel} ${hasShotplan ? `(있음 · 경로: ${routeKind})` : "(아직 없음 — plan.py new 로 생성)"}`,
-      `- 콘티 파일(5단계 조립 / material 경로): ${sbRel} ${existsSync(path.join(ROOT, sbRel)) ? "(있음 — 읽고 고친다)" : "(아직 없음)"}`,
-      `- 파이프라인: 생성(generate) 경로는 plan.py → character.py(승인 ①) → keyframe.py(승인 ②) → video.py → assemble.py → editor_bridge.py 순서와 프롬프트·캐릭터 일관성 규칙을 따른다.`,
+      `- 기획 파일(경로 · 주제): ${spRel} ${hasShotplan ? `(있음 · 경로: ${routeKind || "미정"})` : "(아직 없음 — plan.py new 로 생성)"}`,
+      `- 콘티 파일(material 경로 정본): ${sbRel} ${existsSync(path.join(ROOT, sbRel)) ? "(있음 — 읽고 고친다)" : "(아직 없음)"}`,
+      `- 경로: material(실제 자료 + Craft → produce.py) · clip(퍼온 클립 재편집 → dub.py). Craft 초안 뒤 최종본은 편집기(editor_bridge.py)에서 내보낸다.`,
       scene != null ? `- 이번 요청은 **장면 ${scene}만** 고친다. 다른 장면과 sec 합계는 건드리지 않는다.` : "",
     ].filter(Boolean).join("\n"));
     return parts.join("\n\n---\n\n");
@@ -355,21 +343,20 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
   ].join("\n");
   const MEMORY_RULES = [
     "## Fluma 공유 기억",
-    "- 메뉴(홈 · 트렌드 · 캐릭터 · 스튜디오)는 기억을 함께 쓴다. 매 메시지 끝의 <FLUMA_CONTEXT> 에 지금 화면과 관련 기억이 붙는다. 기억은 참고용 — 지금 요청과 다르면 지금 요청을 따른다.",
+    "- 메뉴(홈 · 트렌드 · 스튜디오)는 기억을 함께 쓴다. 매 메시지 끝의 <FLUMA_CONTEXT> 에 지금 화면과 관련 기억이 붙는다. 기억은 참고용 — 지금 요청과 다르면 지금 요청을 따른다.",
     "- 사용자가 **오래 갈 취향 · 결정 · 지시 · 제약**을 말하면(예: \"앞으로 2D 위주\", \"우리 브랜드 색은 …\", \"IT 쪽 관심\") 한 번 기억한다:",
-    "  `python3 engine/core/memory.py remember --type <preference|decision|instruction|constraint|convention|fact|error> --scope <global|trends|character|studio|project:<id>> --menu <지금 메뉴> --title \"짧은 제목\" --body \"맥락이 담긴 두세 문장(왜 · 어디서 · 무엇)\"`",
+    "  `python3 engine/core/memory.py remember --type <preference|decision|instruction|constraint|convention|fact|error> --scope <global|trends|studio|project:<id>> --menu <지금 메뉴> --title \"짧은 제목\" --body \"맥락이 담긴 두세 문장(왜 · 어디서 · 무엇)\"`",
     "- 한 문장 조각이 아니라 나중에 혼자 읽어도 이해되는 짧은 문단으로. 같은 제목이면 새 기억이 옛 기억을 대체한다. 이번 대화에만 쓸 일 · 파일에 이미 있는 것 · 키 · 비밀번호는 기억하지 않는다.",
     "- 범위: 모든 메뉴에 해당하면 global, 특정 메뉴 이야기면 그 메뉴.",
     "- 더 찾아볼 때: `python3 engine/core/memory.py recall --query \"…\" --any-scope`",
     "- 중간 파일은 <FLUMA_CONTEXT> 의 임시 폴더에 쓴다(7일 뒤 지워짐).",
   ].join("\n");
-  const MENU_LABEL = { plan: "홈 · 기획 대화", trends: "트렌드", character: "캐릭터", look: "라이브러리", studio: "영상 편집", home: "홈", global: "홈" };
+  const MENU_LABEL = { plan: "홈 · 기획 대화", trends: "트렌드", look: "라이브러리", studio: "영상 편집", home: "홈", global: "홈" };
   function menuOf(project, context) {
     if (project === "_workspace" && context?.note === "홈 화면") return "global";
     if (context?.menu) return context.menu;
     if (project === "_trends") return "trends";
     if (project === "_brand") return "brand";
-    if (project === "_character") return "character";
     return "studio";
   }
   function memoryCall(args) {
@@ -678,12 +665,6 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         if (missing) {
           autoTimers.set(project, setTimeout(() => start(project,
             { message: `(자동 이어가기) 콘티 ${missing.id}.json 은 있는데 아직 제작이 없어. 네가 python3 engine/produce.py data/storyboards/${missing.id}.json 을 실행해서 완성 영상을 media 로 보여 줘. 사용자에게 명령을 시키지 마(produce 스킬).`, look, template, skill: "produce", scene: null, model, context, auto: true }).catch(() => {}), 1500));
-        } else {
-          const ga = missingAssembleBuild(project);
-          if (ga) {
-            autoTimers.set(project, setTimeout(() => start(project,
-              { message: `(자동 이어가기) 생성 파이프라인 ${ga.id} — 샷 검토까지 끝났는데 합성·편집 영상이 없어. 네가 python3 engine/gen/assemble.py build ${ga.id} 를 실행하고 media 로 보여 줘. 승인·선택이 필요할 때만 잠깐 묻고 멈추지 마(edit-shots · produce 스킬).`, look, template, skill: "edit-shots", scene: null, model, context, auto: true }).catch(() => {}), 1500));
-          }
         }
       }
     });
@@ -699,21 +680,6 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         if (!existsSync(path.join(ROOT, "data", "compositions", m[1], "craft", "craft.json"))) return { id: m[1] };
       } catch { /* 깨진 콘티는 무시 */ }
     }
-    return null;
-  }
-
-  /** 생성 경로: 샷 검토까지 끝났는데 5단계 합성 MP4 가 아직 없음 */
-  function missingAssembleBuild(pid) {
-    const sp = path.join(ROOT, "data", "shotplans", `${pid}.json`);
-    if (!existsSync(sp)) return null;
-    try {
-      const route = JSON.parse(readFileSync(sp, "utf8")).route || "generate";
-      if (route !== "generate") return null;
-    } catch { return null; }
-    try {
-      const st = JSON.parse(execFileSync(PY, ["engine/gen/status.py", pid], { cwd: ROOT, encoding: "utf8", maxBuffer: 2_000_000 }));
-      if (st.next === "5 편집 — 초안 만들기") return { id: pid };
-    } catch { /* status 실패 시 자동 이어가기 생략 */ }
     return null;
   }
 

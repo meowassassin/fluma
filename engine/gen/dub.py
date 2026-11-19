@@ -143,8 +143,8 @@ def main() -> int:
     if ra.returncode:
         fail("dub", stage="audio", error=(ra.stderr or ra.stdout).strip()[-400:])
     r = subprocess.run([sys.executable, "engine/render.py", str(sbp.relative_to(ROOT)), "--draft"], cwd=ROOT, capture_output=True, text=True, timeout=3600)
-    import assemble
-    b = assemble.block(r.stdout)
+    from result import parse_block
+    b = parse_block(r.stdout)
     if r.returncode or b.get("head") != "FLUMA_RESULT":
         fail("dub", stage="render", error=(b.get("error") or [(r.stderr or r.stdout).strip()[-400:]])[0])
     ok("dub", storyboard=str(sbp.relative_to(ROOT)), file=b["file"][0], next="초안을 보고 자막 위치 · 크기 · 시각을 dub.json 에서 고쳐 다시 build — 화면 세부는 Craft(refine · knob)")

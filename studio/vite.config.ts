@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import wasm from "vite-plugin-wasm";
 import { readFileSync } from "node:fs";
@@ -13,25 +13,12 @@ const artcraftAlias = Object.entries(tsPaths)
   .filter(([k]) => k.startsWith("@storyteller/"))
   .map(([k, [target]]) => ({ find: new RegExp(`^${k.replace(/[/.-]/g, "\\$&")}$`), replacement: path.resolve(here, target) }));
 
-// @sparkjsdev/spark(3D 스플랫) 은 wasm 을 data: URL 로 싣는다 — dev 서버에서 new URL(data:, import.meta.url) 이 깨지는 것을 고친다(ArtCraft vite.config 와 같은 처리)
-const SPARK_WASM = /module_or_path = new URL\("(data:application\/wasm;base64,[^"]+)", import\.meta\.url\);/;
-const sparkWasmDataUrlFix = (): Plugin => ({
-  name: "spark-wasm-data-url-fix",
-  enforce: "pre",
-  apply: "serve",
-  transform(code, id) {
-    if (!id.includes("/@sparkjsdev/spark/dist/spark.module.js")) return null;
-    const m = code.match(SPARK_WASM);
-    return m ? { code: code.replace(SPARK_WASM, `module_or_path = "${m[1]}";`), map: null } : null;
-  },
-});
-
 // 웹은 렌더 엔진과 분리돼 있다: 미리보기·썸네일·자산은 모두 /api (server.mjs) 를 거친다.
 // wasm · topLevelAwait: 영상 편집기(src/vendor/artcraft/video-editor)의 opencut-wasm 렌더러
 export default defineConfig({
-  plugins: [react(), wasm(), sparkWasmDataUrlFix()],
+  plugins: [react(), wasm()],
   resolve: { alias: artcraftAlias, dedupe: ["react", "react-dom", "@preact/signals-core", "@preact/signals-react"] },
-  optimizeDeps: { exclude: ["opencut-wasm", "@sparkjsdev/spark"] },
+  optimizeDeps: { exclude: ["opencut-wasm"] },
   server: {
     port: 4311,
     proxy: {

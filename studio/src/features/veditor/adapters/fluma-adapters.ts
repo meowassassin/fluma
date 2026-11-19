@@ -266,7 +266,7 @@ interface GalleryItem {
   url: string;
 }
 
-/** 프로젝트 에셋 갤러리 어댑터 — 파이프라인 키프레임, 샷 테이크, 캐릭터 시트, 앵커, 오디오를 편집기 미디어함으로 바로 가져온다 */
+/** 프로젝트 에셋 갤러리 어댑터 — 앵커, Craft 효과 층, 오디오, 업로드를 편집기 미디어함으로 바로 가져온다 */
 export function createFlumaAssetGallery(
   projectId: string,
   mediaMap: Map<string, { url: string; mime: string }>,
@@ -312,7 +312,7 @@ export function createFlumaAssetGallery(
           "display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #26262e;";
         const title = document.createElement("div");
         title.style.cssText = "font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px;";
-        title.textContent = "프로젝트 미디어 갤러리 (키프레임 · 테이크 · 캐릭터 · 오디오)";
+        title.textContent = "프로젝트 미디어 갤러리 (앵커 · Craft 층 · 오디오 · 업로드)";
         const closeBtn = document.createElement("button");
         closeBtn.type = "button";
         closeBtn.textContent = "✕";

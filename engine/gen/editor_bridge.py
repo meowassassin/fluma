@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Craft 초안 · 콘티 · 샷 클립 → 영상 편집기(VEditor / ArtCraft / OpenCut) 타임라인 프로젝트 변환기.
+"""Craft 초안 · 콘티 · 더빙 계획 → 영상 편집기(VEditor / ArtCraft / OpenCut) 타임라인 프로젝트 변환기.
 
 1. 저장 위치: data/compositions/<id>/editor/project.json
 2. 타임라인 대상:
@@ -570,38 +570,6 @@ def convert(pid: str, write: bool = True) -> dict:
                     },
                 })
             t_accum += sc_dur
-
-    # 4. 추가 에셋: 프로젝트에 생성된 키프레임 및 캐릭터 이미지 자동 등록 (에셋 패널에서 드래그 가능)
-    comp_dir = ROOT / "data" / "compositions" / pid
-    if comp_dir.is_dir():
-        for kf in sorted((comp_dir / "keyframes").glob("*.png")):
-            rel_kf = kf.resolve().relative_to(ROOT / "data" / "compositions")
-            media_manifest.append({
-                "id": f"media_kf_{kf.stem}",
-                "name": f"키프레임: {kf.name}",
-                "type": "image",
-                "size": kf.stat().st_size,
-                "lastModified": int(kf.stat().st_mtime * 1000),
-                "duration": 3.0,
-                "width": 1080,
-                "height": 1920,
-                "hasAudio": False,
-                "url": f"/api/pipefiles/{rel_kf}",
-            })
-        for ch in sorted(comp_dir.glob("characters/*/*.png")):
-            rel_ch = ch.resolve().relative_to(ROOT / "data" / "compositions")
-            media_manifest.append({
-                "id": f"media_char_{ch.parent.name}_{ch.stem}",
-                "name": f"캐릭터: {ch.parent.name} ({ch.stem})",
-                "type": "image",
-                "size": ch.stat().st_size,
-                "lastModified": int(ch.stat().st_mtime * 1000),
-                "duration": 3.0,
-                "width": 1080,
-                "height": 1920,
-                "hasAudio": False,
-                "url": f"/api/pipefiles/{rel_ch}",
-            })
 
     # Craft 경로(2D 장면을 EffectCraft 로 렌더) — 장면에 video 재료가 없어 영상 트랙이 비고 편집기가 검은 화면만 보였다(2026-11-17).
     # 렌더 결과(data/out/<id>-craft-*.mp4, 부분 · 초안 렌더 제외)를 장면마다 잘라 영상 트랙에 올린다.

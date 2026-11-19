@@ -65,9 +65,9 @@ python3 engine/craft/session.py try  <콘티> 6 --material card --recipe materia
 | composition 구도 | VectorCraft `object.align` · `object.distributeSpacing` · PhotoCraft 자르기 · EffectCraft `prop.set`(Position · Scale · Anchor) |
 | typo 타이포 | EffectCraft `text.animatorProperties`(글자마다 시차 · 투명도 · 위치) · `text.animatorFontAxes` · `layer.enablePerChar3D` · PhotoCraft `type.setStyle` · `type.characterStyle.apply` · VectorCraft `type.pathOptions` · `stroke.widthPoint.set` |
 | color 색 | EffectCraft `effect.apply` Curves · Lumetri Color · Tint · PhotoCraft `layer.newAdjustmentLayer.curves` · `…colorLookup`(warm · tealOrange · fadedFilm …) · `…selectiveColor` · FilmCraft `lumetri` |
-| light 빛 | EffectCraft CC Light Sweep · CC Light Rays · Glow · Lens Flare · `layer.style.add`(outerGlow · innerGlow) · PhotoCraft `filter.render.lightingEffects` · `filter.render.lensFlare` · SolidCraft `render.preset.resolve`(스튜디오 조명) |
-| texture 질감 | EffectCraft Add Grain · Fractal Noise · PhotoCraft `filter.gallery.filmGrain` · `filter.noise.addNoise` · `layer.layerStyle.patternOverlay` · TextureCraft 재질 |
-| motion 움직임 | EffectCraft `keys.velocity`(이징) · `anim.addKeyframe` · `camera.orbit` · Depth of Field · `layer.mask.motionBlur` · 레이어 3D 스위치로 2.5D 시차 · SolidCraft `motion.study`(관절 애니메이션) |
+| light 빛 | EffectCraft CC Light Sweep · CC Light Rays · Glow · Lens Flare · `layer.style.add`(outerGlow · innerGlow) · PhotoCraft `filter.render.lightingEffects` · `filter.render.lensFlare` |
+| texture 질감 | EffectCraft Add Grain · Fractal Noise · PhotoCraft `filter.gallery.filmGrain` · `filter.noise.addNoise` · `layer.layerStyle.patternOverlay` |
+| motion 움직임 | EffectCraft `keys.velocity`(이징) · `anim.addKeyframe` · `camera.orbit` · Depth of Field · `layer.mask.motionBlur` · 레이어 3D 스위치로 2.5D 시차 |
 | transition 전환 | FilmCraft `sequence.applyVideoTransition`(cross_dissolve …) · EffectCraft `layer.setTrackMatte`(매트 닦기) · 마스크 키프레임 |
 | sound 소리 | SoundCraft 리버브 · EQ · 팬 자동화(`edit.automation_glide_pan`) · 볼륨 자동화 · 효과음 클립 |
 

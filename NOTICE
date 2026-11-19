@@ -13,8 +13,6 @@ Bundled in this repository
   owners, shown only to identify the service.
 
 Installed by npm / pip (not bundled)
-- HyperFrames (render engine) — Apache-2.0 — https://github.com/heygen-com/hyperframes
-- GSAP — GreenSock Standard License — https://gsap.com/standard-license
 - RapidOCR + PaddleOCR PP-OCR models — Apache-2.0
 - faster-whisper — MIT; OpenAI Whisper model weights — MIT
 - CLIP ViT-B/32 (OpenAI, MIT) via Xenova ONNX export — downloaded on first use
@@ -51,7 +49,7 @@ Sound effects in engine/assets/sfx are CC0 (public domain): Kenney "Interface So
 and pyranostudios "Air Whoosh" (opengameart.org) — see engine/assets/sfx/CREDITS.txt. Background music is chosen per video
 from free-library uploads on YouTube; commercial songs are only suggested for attaching in the Shorts editor at upload.
 
-Model icons in studio/public/engine-icons: nanobanana.svg, antigravity.svg and deepmind.svg (shown for Veo · Omni · Imagen) are from LobeHub Icons
+Model icons in studio/public/engine-icons: antigravity.svg is from LobeHub Icons
 (@lobehub/icons-static-svg 1.102.0, MIT, https://github.com/lobehub/lobe-icons); craft-*.png are rendered from the
 Craft apps' own icons (storytold, MIT OR Apache-2.0).
 Product names and marks belong to their owners and are shown only to identify which model runs a step.

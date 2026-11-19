@@ -96,8 +96,6 @@ def is_evidence(m: dict) -> bool:
         return True
     if t == "ui_mock" and m.get("src") and not m.get("mock"):
         return True
-    if t == "model3d" and (m.get("src") or m.get("shape")):
-        return True
     return False
 
 

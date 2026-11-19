@@ -57,13 +57,13 @@ That is the niche Fluma is built for.
 | Voice | Free engines by default (Edge TTS, six local TTS engines); paid voices with your own Typecast or ElevenLabs key (Settings → Media → Voice) |
 | Footage | Sourced clips (credited automatically), free Pexels and Pixabay keys, reference photos |
 | Music | Finds the trending song Shorts in the same niche actually use, to attach from the Shorts editor's library at upload (licensed by YouTube) |
-| Creative apps | 16 open-source [Craft apps](#the-craft-apps) — free |
+| Creative apps | 13 open-source [Craft apps](#the-craft-apps) — free |
 
 ## What it does
 
 1. **Studies real Shorts first** — finds Shorts on the topic and breaks them down (cuts, camera motion, color, speech, on-screen text, screen types). It borrows rhythm and tone, never content.
 2. **Writes a storyboard from sourced facts** — in that channel's voice.
-3. **Builds every scene in real tools** — 16 Craft apps and their 9,000+ commands, effects and presets: real screen recordings, annotated documents, diagrams, app mockups, info cards, 3D products, drawings. Then motion, sound and the cut.
+3. **Builds every scene in real tools** — 13 Craft apps and their 9,000+ commands, effects and presets: real screen recordings, annotated documents, diagrams, app mockups, info cards. Then motion, sound and the cut.
 4. **Reuses existing footage** — picks the most-replayed section of a sourced clip, reframes it to 9:16 following the subject, and keeps the original audio. Credits go into the description automatically.
 5. **Makes each video different** — searches each app's full feature set per scene, prefers proven recipes recent videos haven't used, and flags repetition.
 6. **Checks like a reviewer** — first second, stalls, speech gaps, cut density, with format-specific rules (rankings and clips differ).
@@ -97,10 +97,9 @@ flowchart LR
     P --> DOC[Documents<br/>PDFCraft highlights<br/>WordCraft pages]
     P --> DAT[Data · diagrams<br/>GridCraft · DeckCraft]
     P --> DES[Design<br/>VectorCraft · PhotoCraft<br/>FigCraft · DesignCraft · LightCraft]
-    P --> TD[3D · drawings<br/>SolidCraft · TextureCraft · CADCraft]
   end
   P --> CL[Sourced clips<br/>most-replayed moment · vertical reframe]
-  RS & DOC & DAT & DES & TD & CL --> E[EffectCraft<br/>motion · presets · captions]
+  RS & DOC & DAT & DES & CL --> E[EffectCraft<br/>motion · presets · captions]
   V --> SC[SoundCraft<br/>voice chain · ducking · −14 LUFS]
   E & SC --> F[FilmCraft<br/>cut · markers · Shorts export]
   F --> T[Checks<br/>tempo · density · variety]
@@ -133,7 +132,7 @@ An IDE-style workspace: an **Explorer** tree of what the video is made of — *E
 
 ## The Craft apps
 
-Fluma drives the open-source **Craft** desktop/web apps (by [storytold](https://github.com/storytold), MIT / Apache-2.0) through their CLIs and MCP servers. They are **not bundled** — install the ones you want (about 1.7 GB download for all 16):
+Fluma drives the open-source **Craft** desktop/web apps (by [storytold](https://github.com/storytold), MIT / Apache-2.0) through their CLIs and MCP servers. They are **not bundled** — install the ones you want (all 13 take about 1 GB installed):
 
 ```bash
 python3 engine/craft/crafts.py plan all        # what would be downloaded, no download
@@ -152,7 +151,6 @@ python3 engine/craft/crafts.py install all     # or pick: install effectcraft so
 | GridCraft · DeckCraft | data for charts; SmartArt diagrams and tables |
 | FigCraft · DesignCraft | phone / browser mock-ups; info cards and thumbnails with Korean typesetting |
 | LightCraft | one look across all stills of a video |
-| SolidCraft · TextureCraft · CADCraft | 3D product turntables and exploded views; floor plans and drawings |
 
 Every app's full command list is in `.claude/skills/crafts/catalog/` (`python3 engine/craft/craft_catalog.py search "curved arrow"`), with tested notes in `.claude/skills/crafts/reference/`. Releases are verified against their SHA256SUMS and unpacked into `tools/crafts/` (git-ignored).
 
@@ -171,7 +169,7 @@ Requirements: Python 3.10+, Node.js 20+, ffmpeg. Details and troubleshooting: [Q
 
 ```bash
 git clone https://github.com/meowassassin/fluma && cd fluma
-python3 engine/doctor.py --fix              # everything: Python packages · all 16 Craft apps · models · npm
+python3 engine/doctor.py --fix              # everything: Python packages · all 13 Craft apps · models · npm
 npm --prefix studio run dev                     # → http://localhost:4311
 ```
 
@@ -202,7 +200,7 @@ fluma/
 │  ├─ produce.py           one command: storyboard → voice → lint → draft → stills
 │  ├─ produce.py · render.py · doctor.py · fluma_agent.py · mcp_server.py
 │  ├─ craft/               Craft pipeline — materials · motion · audio · edit · design.py (effects per video) · adapters/<app>.py
-│  │  ├─ apps/             the 16 Craft apps (craft.json each)
+│  │  ├─ apps/             the 13 Craft apps (craft.json each)
 │  │  ├─ renderer/         render-engine entry (engine.json · adapter)
 │  │  └─ craft_catalog.py · craft_variety.py · crafts.py
 │  ├─ voice/               TTS · audio assembly · voice matching · engines/<voice> · sfx
