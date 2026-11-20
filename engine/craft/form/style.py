@@ -275,12 +275,65 @@ def clay(c: Ctx, bg_top="#f6f1ea", bg_bot="#e8dfd3", bounce_col=None):
 # ------------------------------------------------------------------ LOOK (조절 값으로 그리는 화풍 — 2026-11-20)
 # 화풍 이름마다 규칙을 두지 않는다: 그림체를 이루는 축(명암 단계 · 선 · 해칭 · 스크린톤 · 망점 · 색 수 · 채도 · 흑백 · 종이 · 번짐 · 픽셀)을
 # 값으로 열고, 에이전트가 참고 그림을 보고 값을 정한다(engine/craft/form/README.md '화풍 값').
-LOOK_KEYS = ("bands", "solid", "shadow", "light", "highlight", "rim", "saturation", "tint", "mono", "ink", "line", "inner", "jitter", "weight",
+LOOK_KEYS = ("bands", "solid", "detail", "detail_scale", "detail_on", "fur", "fur_scale", "tufts", "hatch_follow", "brush", "seed", "shadow", "light", "highlight", "rim", "saturation", "tint", "mono", "ink", "line", "inner", "jitter", "weight",
              "hatch", "hatch_angle", "cross", "tone", "halftone", "paper", "wash", "ground", "pixel", "colors")
 
 
 def _lum(img):
     return img @ np.array([0.299, 0.587, 0.114], np.float32)
+
+
+def noise3(P, seed=1):
+    """3D 값 노이즈(0~1) — 표면 위치(world)로 털 결 · 근육 굴곡을 만든다(형태를 다시 계산하지 않는다)"""
+    fl = np.floor(P).astype(np.int64); f = P - fl
+    f = f * f * (3 - 2 * f)
+
+    def h(ix, iy, iz):
+        v = (ix * 73856093) ^ (iy * 19349663) ^ (iz * 83492791) ^ (seed * 2654435761)
+        v = (v ^ (v >> 13)) * 1274126177
+        return ((v ^ (v >> 16)) & 0xFFFF).astype(np.float32) / 65535.0
+    x, y, z = fl[..., 0], fl[..., 1], fl[..., 2]
+    fx, fy, fz = f[..., 0], f[..., 1], f[..., 2]
+    out = 0
+    for dx in (0, 1):
+        for dy in (0, 1):
+            for dz in (0, 1):
+                w = (fx if dx else 1 - fx) * (fy if dy else 1 - fy) * (fz if dz else 1 - fz)
+                out = out + w * h(x + dx, y + dy, z + dz)
+    return out.astype(np.float32)
+
+
+def _on_mats(c: Ctx, names):
+    mats = list(c.m["mats"])
+    if not names:
+        return c.hit
+    ids = [mats.index(n) for n in names if n in mats]
+    return c.hit & np.isin(c.mat, ids)
+
+
+def _brush(mask, lw, rng, shade=None, weight=0.0, wobble=1.0, taper=0.18):
+    """윤곽을 붓 획으로 — 획마다 시작 · 끝이 가늘고, 그림자 쪽은 굵고, 조금 어긋나 겹친다"""
+    out = np.zeros(mask.shape, np.float32)
+    cnts, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
+    H, W = mask.shape
+    for cn in cnts:
+        pts = cn[:, 0, :]
+        n = len(pts)
+        if n < 12:
+            continue
+        i = int(rng.integers(0, max(1, n // 8)))
+        while i < n:
+            L = int(rng.integers(max(20, n // 14), max(40, n // 5)))
+            seg = pts[i:i + L:2]
+            off = rng.normal(0, wobble, 2)
+            for j, (x, y) in enumerate(seg):
+                t = j / max(1, len(seg) - 1)
+                w = lw * (taper + (1 - taper) * np.sin(np.pi * t) ** 0.7)
+                if shade is not None and weight:
+                    w *= 1 + weight * float(shade[min(H - 1, max(0, int(y))), min(W - 1, max(0, int(x)))])
+                cv2.circle(out, (int(x + off[0]), int(y + off[1])), max(1, int(w)), 1.0, -1, lineType=cv2.LINE_AA)
+            i += L - int(L * 0.3)
+    return out
 
 
 def look(c: Ctx, p: dict, bg="#ffffff"):
@@ -293,6 +346,23 @@ def look(c: Ctx, p: dict, bg="#ffffff"):
         gm = (~c.hit) & (c.b["gshadow"] * c.b["gao"] < 0.55)
         img[gm] = bgc * 0.84
     s = np.clip(c.lv * (0.55 + 0.45 * c.b["ao"]), 0, 1)                 # 0 그림자 … 1 빛
+    det, fur = float(g("detail", 0.0)), float(g("fur", 0.0))              # 표면: 굴곡(근육 · 덩어리) · 털 결 — 표면 위치로 노이즈를 만들어 빛에 반영
+    if det or fur:
+        P = np.stack([c.b["px"], c.b["py"], c.b["pz"]], -1).astype(np.float32)
+        hgt = np.zeros((N, N), np.float32)
+        if det:
+            sc_ = float(g("detail_scale", 9.0))
+            hgt += det * (noise3(P * sc_, 3) + 0.5 * noise3(P * sc_ * 2.1, 4))
+        if fur:
+            fs_ = float(g("fur_scale", 70.0))
+            hgt += fur * 0.6 * noise3(P * np.array([fs_, fs_ * 0.12, fs_], np.float32), 7)   # 위아래로 긴 결(털이 아래로 흐른다)
+        hgt *= _on_mats(c, g("detail_on"))
+        gy_, gx_ = np.gradient(hgt)
+        L, r_, u_ = c.m["L"], c.m["r"], c.m["u"]
+        lx, ly = float(np.dot(L, r_)), -float(np.dot(L, u_))
+        bump = gx_ * lx + gy_ * ly
+        sd = float(bump[c.hit].std()) or 1.0
+        s = np.clip(s + 0.35 * bump / sd * c.hit, 0, 1)
     bands = int(g("bands", 3))
     if bands <= 0:
         t = smoothstep(0.0, 1.0, s)                                       # 부드러운 명암
@@ -328,11 +398,20 @@ def look(c: Ctx, p: dict, bg="#ffffff"):
     if hp:
         a = np.radians(float(g("hatch_angle", 35)))
         w = max(1, int(hp * 0.28))
-        l1 = ((xx * np.cos(a) + yy * np.sin(a)) % hp) < w
-        hm = l1 & (shade > 0.45)
-        if g("cross", True):
+        if g("hatch_follow"):                                             # 형태를 따라 휘는 해칭(표면 위치의 등고선) — 둥근 면을 감싸며 돈다
+            ext = float(np.max(c.m["hi"] - c.m["lo"])) or 1.0
+            k_ = N / ext / hp
+            P1 = c.b["py"] * np.cos(a) + (c.b["px"] * 0.8 + c.b["pz"] * 0.6) * np.sin(a)
+            P2 = c.b["py"] * np.cos(a + 1.3) + (c.b["px"] * 0.6 - c.b["pz"] * 0.8) * np.sin(a + 1.3)
+            wr = 0.28
+            l1 = ((P1 * k_) % 1.0) < wr
+            l2 = ((P2 * k_) % 1.0) < wr
+        else:
+            l1 = ((xx * np.cos(a) + yy * np.sin(a)) % hp) < w
             l2 = ((xx * np.cos(a + 1.4) + yy * np.sin(a + 1.4)) % hp) < w
-            hm |= l2 & (shade > 0.72)
+        hm = l1 & (shade > 0.45) & c.hit
+        if g("cross", True):
+            hm |= l2 & (shade > 0.72) & c.hit
         col[hm] = mix(col[hm], ink, 0.85)
     tp = int(g("tone", 0) * sc)                                           # 스크린톤: 그림자 쪽에 같은 크기 점
     if tp:
@@ -359,14 +438,36 @@ def look(c: Ctx, p: dict, bg="#ffffff"):
         col = col * (1 - 0.35 * wash * edge[..., None])
         col *= (0.92 + 0.16 * noise(N, 18, 5, 2))[..., None] ** wash
     img[c.hit] = col[c.hit]
-    lw = float(g("line", 2.5))                                            # 선: 바깥 굵기(px) · 안쪽 · 흔들림 · 그림자 쪽 굵게
+    obj = c.hit
+    tuft = float(g("tufts", fur))                                         # 털 뭉치: 털 재질 실루엣 밖으로 삐져나온 결
+    if tuft:
+        on = cv2.dilate(_on_mats(c, g("detail_on")).astype(np.uint8), disk(int(3 * sc))).astype(bool)
+        dist, lab = cv2.distanceTransformWithLabels((~c.hit).astype(np.uint8), cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_PIXEL)
+        ang = np.arctan2(*np.gradient(dist.astype(np.float32))[::-1])
+        strand = noise(N, 140, 31, 1)
+        strand = 0.5 + 0.5 * np.sin(ang * 26 + strand * 9)                # 실루엣을 따라 도는 가는 결
+        tm = (~c.hit) & on & (dist < tuft * 7 * sc * strand ** 3) & (dist > 0)
+        zy, zx = np.nonzero(c.hit)
+        idx = lab[tm] - 1
+        ok_ = (idx >= 0) & (idx < len(zy))
+        tys, txs = np.nonzero(tm)
+        img[tys[ok_], txs[ok_]] = col[zy[idx[ok_]], zx[idx[ok_]]]
+        obj = c.hit | tm
+    lw = float(g("line", 2.5))                                            # 선: 바깥 굵기(px) · 안쪽 · 흔들림 · 그림자 쪽 굵게 · 붓
     if lw > 0:
         sil, inner = c.edges()
-        lm = cv2.dilate(sil, disk(max(1, int(lw * sc)))).astype(np.float32)
+        if obj is not c.hit:
+            sil = (obj & ~cv2.erode(obj.astype(np.uint8), disk(1)).astype(bool)).astype(np.uint8)
+        br = float(g("brush", 0.0))
+        if br:                                                            # 붓 획: 바깥선은 획으로(시작 · 끝 가늘게, 그림자 쪽 굵게, 어긋나 겹침)
+            lm = _brush(obj, lw * sc, np.random.default_rng(int(g("seed", 3))), shade=cv2.dilate(shade.astype(np.float32), disk(int(5 * sc))),
+                        weight=float(g("weight", 0.6)), wobble=br * 1.5 * sc, taper=0.18 + 0.45 * (1 - min(1.0, br)))   # brush 1 = 획 끝이 가장 가늘다
+        else:
+            lm = cv2.dilate(sil, disk(max(1, int(lw * sc)))).astype(np.float32)
         iw = float(g("inner", lw * 0.45))
         if iw > 0:
             lm = np.maximum(lm, cv2.dilate(inner, disk(max(1, int(iw * sc)))).astype(np.float32))
-        wt = float(g("weight", 0.0))
+        wt = 0.0 if br else float(g("weight", 0.0))
         if wt:
             heavy = cv2.dilate(sil, disk(max(1, int(lw * (1 + wt) * sc)))).astype(np.float32)
             dark_side = cv2.dilate((shade > 0.5).astype(np.uint8), disk(int(4 * sc))).astype(np.float32)

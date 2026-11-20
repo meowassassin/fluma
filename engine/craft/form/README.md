@@ -55,3 +55,6 @@ y 가 위, 바닥은 y = 0, 정면은 +z. 단위는 대략 "물체 높이 ≈ 1"
 | `wash` 수채 번짐 · `paper` 종이 · 크레용 결 | 0~1 |
 | `pixel` 픽셀 크기(+`colors`) | px |
 | `ground` 바닥 그림자 | bool |
+| `detail` 표면 굴곡(근육 · 덩어리) · `detail_scale` · `fur` 털 결 · `fur_scale` · `tufts` 실루엣 털 뭉치 · `detail_on` 적용 재질 목록 | 0~1 · 숫자 · ["fur"] |
+| `hatch_follow` 해칭이 형태를 따라 휘기(판화 · 펜화) | bool |
+| `brush` 붓 획 바깥선(획 끝 가늘게 · 그림자 쪽 굵게 · 어긋나 겹침, 1 = 가장 손맛) · `seed` | 0~1 · 정수 |
