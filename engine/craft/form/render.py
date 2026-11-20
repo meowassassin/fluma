@@ -18,6 +18,9 @@ def _norm(v):
 
 def auto_camera(scene, codes, P, res):
     cam = scene.get("camera", {})
+    if cam.get("focus") is not None:                       # 초점 · 반지름이 화면 범위를 이미 정했다 — 형태 전체를 격자로 잴 필요 없음(따라가기 · 줌 프레임마다 약 1초 절약)
+        fc, rr = np.asarray(cam["focus"], float), float(cam.get("radius", 0.2))
+        return _fit(cam, fc - rr, fc + rr)
     g = np.linspace(-3, 3, 72)
     vol = sdf._grid(codes, P, g)
     idx = np.argwhere(vol < 0)
@@ -36,9 +39,10 @@ def auto_camera(scene, codes, P, res):
     except Exception:  # noqa: BLE001 - 다시 재기에 실패하면 첫 범위로
         pass
     lo[1] = max(lo[1], 0.0)
-    if cam.get("focus") is not None:                     # 클로즈업: 이 점을 가운데에, 반지름 radius 만큼만 화면에(얼굴 · 손)
-        fc, rr = np.asarray(cam["focus"], float), float(cam.get("radius", 0.2))
-        lo, hi = fc - rr, fc + rr
+    return _fit(cam, lo, hi)
+
+
+def _fit(cam, lo, hi):
     center = (lo + hi) / 2
     az, el = math.radians(cam.get("azimuth", 35)), math.radians(cam.get("elevation", 18))
     fov = math.radians(cam.get("fov", 30))
