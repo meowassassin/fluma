@@ -226,12 +226,12 @@ def expand(node: dict) -> dict:
     body, cloth = [], []
     pel, neck0 = J["pelvis"], J["neck"]
     # 몸통: 가슴(갈비) · 허리 · 골반 · 어깨 근육 · 승모근 — 한 덩어리가 아니라 세 마디가 녹아 이어진다
-    cloth.append(ell(pel + Rs @ [0, f("torso") * 0.7, f("chest_d") * 0.08], [f("chest_w") * 0.98, f("torso") * 0.27, f("chest_d")], Rs, M["top"]))
-    cloth.append(ell(pel + Rs @ [0, f("torso") * 0.38, 0], [f("waist_w"), f("torso") * 0.24, f("chest_d") * 0.85], Rs, M["top"]))
+    cloth.append(ell(pel + Rs @ [0, f("torso") * 0.68, 0], [f("chest_w") * 0.97, f("torso") * 0.3, f("chest_d")], Rs, M["top"]))
+    cloth.append(ell(pel + Rs @ [0, f("torso") * 0.38, 0], [f("waist_w") * 1.05, f("torso") * 0.28, f("chest_d") * 0.92], Rs, M["top"]))   # 가슴과 허리가 매끈히 이어지게(앞으로 튀어나온 가슴 · 잘록한 허리가 울퉁불퉁해 보였다)
     cloth.append(ell(pel + R0 @ [0, 0.015 * H, -0.005 * H], [f("pelvis_w"), 0.07 * H, f("chest_d") * 0.95], R0, M["bottom"]))
     for side in ("l", "r"):
         sh = J[f"{side}_shoulder"]
-        cloth.append(ell(sh + Rs @ [0, 0.004 * H, 0], [f("arm_r") * 1.45] * 3, Rs, M["top"]))                       # 어깨 근육
+        cloth.append(ell(sh + Rs @ [0, 0.004 * H, 0], [f("arm_r") * 1.22] * 3, Rs, M["top"]))                       # 어깨 근육(크면 부풀어 보였다)
         cloth.append(seg(neck0 + Rs @ [0, -0.01 * H, -0.01 * H], sh, f("neck_r") * 1.1, f("arm_r") * 1.2, M["top"]))  # 승모근
     hb = J["head"] - Rh @ [0, f("head") * 0.42, 0]
     body.append(seg(neck0 - Rs @ [0, 0.02 * H, 0], hb, f("neck_r"), f("neck_r") * 0.95, M["skin"]))
