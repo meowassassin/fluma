@@ -66,22 +66,44 @@ def brave(q: str, n: int) -> list[dict]:
             for i, r in enumerate(d.get("results") or []) if (r.get("thumbnail") or {}).get("src")][:n]
 
 
-def pages(urls: list[str]) -> list[dict]:
-    """에이전트가 일반 웹 검색(WebSearch)으로 찾은 페이지 → 그 페이지의 대표 이미지(og:image · twitter:image).
+SKIP = re.compile(r"logo|icon|avatar|sprite|badge|emoji|button|banner|pixel|tracking|spacer|ads?[/_-]|\.svg|\.gif|data:", re.I)
+
+
+def pages(urls: list[str], per_page: int = 3) -> list[dict]:
+    """에이전트가 일반 웹 검색(WebSearch)으로 찾은 페이지 → 그 페이지의 대표 그림(og:image) + 본문 그림 몇 장.
     공개 페이지를 그대로 여는 것뿐 — 검색 엔진 내부 주소를 긁지 않는다(2026-11-20: 비공식 이미지 검색은 권한 검사에서 막힘)"""
     out = []
     for i, u in enumerate(urls):
         try:
-            h = _get(u, timeout=15)[:400_000].decode("utf-8", "ignore")
+            h = _get(u, timeout=15)[:600_000].decode("utf-8", "ignore")
         except (OSError, ValueError) as e:
             print(f"[ref] 페이지 열기 실패 {u[:80]}: {str(e)[:80]}", file=sys.stderr)
             continue
-        m = re.search(r'<meta[^>]+(?:property|name)=["\'](?:og:image|twitter:image)(?::src)?["\'][^>]*content=["\']([^"\']+)', h, re.I) \
-            or re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]*(?:property|name)=["\'](?:og:image|twitter:image)', h, re.I)
         t = re.search(r"<title[^>]*>([^<]{0,120})", h, re.I)
-        if m:
-            out.append({"id": f"p{i}", "title": (t.group(1).strip() if t else u)[:80], "thumb": urllib.parse.urljoin(u, m.group(1).replace("&amp;", "&")), "page": u, "from": "web"})
+        title = re.sub(r"&[a-z#0-9]+;", "", (t.group(1).strip() if t else u))[:70]
+        cands = [m.group(1) for m in re.finditer(r'<meta[^>]+(?:property|name)=["\'](?:og:image|twitter:image)(?::src)?["\'][^>]*content=["\']([^"\']+)', h, re.I)]
+        cands += [m.group(1) for m in re.finditer(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]*(?:property|name)=["\'](?:og:image|twitter:image)', h, re.I)]
+        cands += [m.group(1) for m in re.finditer(r'<img[^>]+?(?:data-src|src)=["\']([^"\']+)', h, re.I)]
+        seen, k = set(), 0
+        for c in cands:
+            c = urllib.parse.urljoin(u, c.replace("&amp;", "&"))
+            if c in seen or SKIP.search(c) or not c.startswith("http"):
+                continue
+            seen.add(c)
+            out.append({"id": f"p{i}-{k}", "title": title, "thumb": c, "page": u, "from": "web", "_page": i})
+            k += 1
+            if k >= per_page * 3:          # 받아 보고 작은 것(아이콘)은 버리므로 넉넉히 후보
+                break
     return out
+
+
+def _fetch(h: dict):
+    from PIL import Image
+    try:
+        im = Image.open(io.BytesIO(_get(h["thumb"], timeout=15))).convert("RGB")
+    except Exception:  # noqa: BLE001 - 깨진 · 막힌 그림은 건너뛴다
+        return None
+    return im if min(im.size) >= 280 else None
 
 
 def main() -> int:
@@ -91,40 +113,56 @@ def main() -> int:
     if not pos and not urls:
         print(__doc__); return 2
     q = pos[0] if pos else "web pages"
-    n = int(a[a.index("--n") + 1]) if "--n" in a else 8
     sid = a[a.index("--id") + 1] if "--id" in a else "_any"
     from PIL import Image, ImageDraw
+    n = int(a[a.index("--n") + 1]) if "--n" in a else (24 if urls else 8)
     hits = pages(urls) if urls else (brave(q, n) + openverse(q, n))[:n]
     if not hits:
         fail("ref_images", stage="search", error=f"'{q}' 참고 그림을 못 찾음 — 영어로 대상 + 장르 + illustration/drawing 처럼 바꿔 보거나, 설정 → API 키에 Brave Search 키를 넣는다")
     d = ROOT / "data" / "workspace" / "look" / "ref" / sid / re.sub(r"[^A-Za-z0-9가-힣]+", "-", q).strip("-")[:60]
     d.mkdir(parents=True, exist_ok=True)
     tiles, rows = [], []
-    for i, h in enumerate(hits, 1):
-        try:
-            im = Image.open(io.BytesIO(_get(h["thumb"]))).convert("RGB")
-        except (OSError, ValueError, urllib.error.URLError):
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(8) as ex:
+        ims = list(ex.map(_fetch, hits))
+    per: dict = {}
+    marks: list = []
+    import numpy as np
+
+    def _mark(im):                                     # 같은 그림(크기만 다른 것)을 한 번만 — 8×8 밝기 지문
+        g = np.asarray(im.convert("L").resize((8, 8)), dtype=np.float32)
+        return g > g.mean()
+    for h, im in zip(hits, ims):
+        if im is None or len(rows) >= n:
             continue
+        mk = _mark(im)
+        if any(int((mk != o).sum()) <= 6 for o in marks):
+            continue
+        marks.append(mk)
+        if h.get("_page") is not None:                 # 한 페이지에서 너무 많이 가져오지 않게(다양하게)
+            if per.get(h["_page"], 0) >= 3:
+                continue
+            per[h["_page"]] = per.get(h["_page"], 0) + 1
+        i = len(rows) + 1
         f = d / f"{i:02d}.jpg"
         im.save(f, quality=88)
-        rows.append({**h, "n": i, "file": str(f.relative_to(ROOT))})
-        t = im.copy(); t.thumbnail((360, 360))
-        tile = Image.new("RGB", (360, 380), "#ffffff"); tile.paste(t, ((360 - t.width) // 2, 20 + (360 - t.height) // 2))
+        rows.append({k: v for k, v in h.items() if k != "_page"} | {"n": i, "file": str(f.relative_to(ROOT))})
+        t = im.copy(); t.thumbnail((300, 300))
+        tile = Image.new("RGB", (300, 320), "#ffffff"); tile.paste(t, ((300 - t.width) // 2, 20 + (300 - t.height) // 2))
         ImageDraw.Draw(tile).text((8, 2), str(i), fill="#d62828")
         tiles.append(tile)
-        time.sleep(0.2)
     if not tiles:
         fail("ref_images", stage="download", error="그림을 받지 못함")
-    cols = 4
-    sheet = Image.new("RGB", (360 * cols, 380 * ((len(tiles) + cols - 1) // cols)), "#ffffff")
+    cols = 6
+    sheet = Image.new("RGB", (300 * cols, 320 * ((len(tiles) + cols - 1) // cols)), "#ffffff")
     for k, t in enumerate(tiles):
-        sheet.paste(t, ((k % cols) * 360, (k // cols) * 380))
+        sheet.paste(t, ((k % cols) * 300, (k // cols) * 320))
     sh = d / "sheet.jpg"; sheet.save(sh, quality=85)
     (d / "refs.json").write_text(json.dumps({"query": q, "items": rows}, ensure_ascii=False, indent=1), "utf-8")
     for r in rows:
         print(f"{r['n']:>2} {r['from']:<22} {r['title'][:60]}")
     ok("ref_images", sheet=str(sh.relative_to(ROOT)), count=str(len(rows)), media=[f"{sh.relative_to(ROOT)} | 참고 그림({q})"],
-       next="시트를 Read 로 보고 맞는 2~3장을 골라(번호 → 같은 폴더 NN.jpg) 비례 · 실루엣 · 과장 정도 · 선 · 명암을 적은 뒤 형태를 빚는다. form_cli preview --ref 로 나란히 비교")
+       next="시트를 Read 로 보고 주제 · 톤에 어울리는 것만 골라(관계없는 사진 · 글 그림은 버린다) 가져올 특징(비례 · 실루엣 · 과장 정도 · 선 · 명암 · 색)을 적는다 — 따라 그리지 않는다. form_cli preview --ref <NN.jpg> 로 견준다")
     return 0
 
 
