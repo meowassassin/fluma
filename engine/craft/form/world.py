@@ -8,7 +8,7 @@
 뼈대 노드에 쓰는 칸:
   "move": {"path": [[x, z], …], "speed": 1.2, "gait": "walk"|"run", "stride": (키 비율), "bob", "arm_swing", "lean", "t0": 시작 초}
   "hold": {"r": {"prop": <형태 노드>, "grip": [x, y, z], "mode": "carry"|"drag", "ground": [x, y, z]}, "l": …}
-  "ik": {"l_hand": [x, y, z](세상 좌표), …}   "at": [x, z] · "face": 도(°) — 움직이지 않을 때 놓는 자리 · 바라보는 방향
+  "ik": {"l_hand": [x, y, z](세상 좌표), …}   "at": [x, z] · "facing": 도(°) — 움직이지 않을 때 놓는 자리 · 몸이 향하는 방향
 """
 from __future__ import annotations
 
@@ -146,8 +146,38 @@ def _rot2(a1, a2, b1, b2):
     return basis(np.asarray(b1, float), np.asarray(b2, float)) @ basis(np.asarray(a1, float), np.asarray(a2, float)).T
 
 
-def place(node: dict, t: float, ground: Ground) -> list[dict]:
-    """뼈대 노드 하나 → 세상에 놓인 도형 노드들(캐릭터 + 소품)"""
+def cam_dir(camera: dict) -> np.ndarray:
+    """카메라가 있는 쪽 방향(세상) — 방위각 · 고도에서"""
+    az, el = math.radians(float(camera.get("azimuth", 35))), math.radians(float(camera.get("elevation", 18)))
+    return np.array([math.sin(az) * math.cos(el), math.sin(el), math.cos(az) * math.cos(el)])
+
+
+def _look(node, pose, J, origin, W, target_w):
+    """시선: 목표 쪽으로 고개(최대 ±80 · 끄덕 ±45) → 남는 만큼 상체 비틀기(±40) → 눈동자. look_w 로 섞는다(0 원래 · 1 완전히)"""
+    w = float(node.get("look_w", 1.0))
+    if w <= 0:
+        return pose, None
+    hl = J["head"]
+    tl = W.T @ (np.asarray(target_w, float) - origin)
+    d = tl - hl
+    yaw = math.degrees(math.atan2(d[0], d[2]))
+    pitch = math.degrees(math.atan2(d[1], math.hypot(d[0], d[2])))
+    sp = list(pose.get("spine") or [0, 0, 0]) + [0, 0, 0]
+    hd = list(pose.get("head") or [0, 0, 0]) + [0, 0, 0]
+    head_yaw = max(-80, min(80, yaw * 0.75))
+    twist = max(-40, min(40, yaw - head_yaw))
+    nod = max(-45, min(45, -pitch))
+    new = dict(pose)
+    new["head"] = [hd[0] * (1 - w) + nod * w, hd[1] * (1 - w) + head_yaw * w, hd[2] * (1 - w)]
+    new["spine"] = [sp[0], sp[1], sp[2] * (1 - w) + twist * w]
+    rest = yaw - head_yaw - twist
+    eyes = [max(-1, min(1, rest / 30)) * w, max(-1, min(1, pitch / 40)) * w]
+    return new, eyes
+
+
+def place(node: dict, t: float, ground: Ground, targets: dict | None = None, camera: dict | None = None) -> tuple[list[dict], dict]:
+    """뼈대 노드 하나 → (세상에 놓인 도형 노드들(캐릭터 + 소품), 관절의 세상 위치)
+    look: "camera" | "이름.관절"(다른 캐릭터) | [x, y, z] — 고개 · 상체 · 눈이 그쪽으로(look_w 로 정도)"""
     S = {**DEFAULT, **(node.get("size") or {})}
     H = float(S["height"])
     pose = dict(node.get("pose") or {})
@@ -161,7 +191,7 @@ def place(node: dict, t: float, ground: Ground) -> list[dict]:
         pel_y = lo["pelvis_y"]
     else:
         at = node.get("at") or [0, 0]
-        origin, yaw = np.array([at[0], 0.0, at[1]]), float(node.get("face", 0.0))
+        origin, yaw = np.array([at[0], 0.0, at[1]]), float(node.get("facing", 0.0))
         pel_y = None
     W = Ry(yaw)
     fwd, left = W @ [0, 0, 1.0], W @ [1.0, 0, 0]
@@ -180,12 +210,29 @@ def place(node: dict, t: float, ground: Ground) -> list[dict]:
     Wi = W.T
     ik_local = {k: (Wi @ (np.asarray(v, float) - origin)).tolist() for k, v in ik_w.items()}
     ik_local["pelvis_y"] = pel_y
-    body = expand({**{k: v for k, v in node.items() if k not in ("move", "hold", "ik", "at", "face", "pos", "rot")}, "pose": pose, "_ik": ik_local})
+    face = dict(node.get("face") if isinstance(node.get("face"), dict) else {})
+    lk = node.get("look")
+    if lk is not None:
+        J0 = joints(node.get("size") or {}, pose, ik_local, ground=False)
+        tgt = None
+        if lk == "camera":
+            tgt = origin + W @ J0["head"] + cam_dir(camera or {}) * 50.0
+        elif isinstance(lk, str) and targets and lk in targets:
+            tgt = targets[lk]
+        elif isinstance(lk, (list, tuple)):
+            tgt = np.asarray(lk, float)
+        if tgt is not None:
+            pose, eyes = _look(node, pose, J0, origin, W, tgt)
+            if eyes:
+                face["look"] = eyes
+    body = expand({**{k: v for k, v in node.items() if k not in ("move", "hold", "ik", "at", "facing", "pos", "rot", "look", "look_w")},
+                   "pose": pose, "face": face, "_ik": ik_local})
     body["pos"] = origin.tolist()
     body["rotm"] = W.tolist()
     out = [body]
+    J = joints(node.get("size") or {}, pose, ik_local, ground=False)
+    world_j = {k: origin + W @ v for k, v in J.items() if isinstance(v, np.ndarray) and v.shape == (3,)}
     if holds:
-        J = joints(node.get("size") or {}, pose, ik_local, ground=False)
         for side, hd in holds.items():
             if not hd or "prop" not in hd:
                 continue
@@ -204,25 +251,63 @@ def place(node: dict, t: float, ground: Ground) -> list[dict]:
             else:
                 R = W @ J[f"{side}_Rf"]
             out.append({"op": "union", "children": [hd["prop"]], "pos": (hand - R @ g).tolist(), "rotm": R.tolist()})
-    return out
+    return out, world_j
 
 
 def prepare(scene: dict, t: float = 0.0) -> dict:
-    """시간 t 의 장면 — 뼈대 노드(move · hold · ik · at 이 있으면 세상 배치)를 도형으로 펼친 사본"""
+    """시간 t 의 장면 — 뼈대 노드를 세상에 놓고(이동 · 소품 · 시선) 도형으로 펼친 사본.
+    두 번 돈다: ① 이름 붙은 캐릭터의 관절 위치 ② 시선(look) · 카메라 초점("이름.관절")을 그 위치로 맞춘다"""
     ground = None
+    cam = scene.get("camera") or {}
+    world_keys = ("move", "hold", "ik", "at", "look")
+
+    def gr():
+        nonlocal ground
+        if ground is None:
+            ground = Ground(scene)
+        return ground
+
+    targets: dict = {}
+
+    def collect(n):
+        if isinstance(n, dict):
+            if "rig" in n and n.get("name") and n.get("rig") == "humanoid":
+                nl = {k: v for k, v in n.items() if k not in ("look",)}
+                _, wj = place(nl, t, gr(), None, cam) if any(k in n for k in world_keys) else place({**nl, "at": [0, 0]}, t, gr(), None, cam)
+                for k, v in wj.items():
+                    targets[f"{n['name']}.{k}"] = v
+            for v in n.values():
+                collect(v)
+        elif isinstance(n, list):
+            for v in n:
+                collect(v)
+    collect(scene["root"])
 
     def walk(n):
-        nonlocal ground
         if isinstance(n, dict):
             if "rig" in n:
-                if any(k in n for k in ("move", "hold", "ik", "at")):
-                    if ground is None:
-                        ground = Ground(scene)
-                    parts = place(n, t, ground)
+                if n.get("rig") == "humanoid" and any(k in n for k in world_keys):
+                    parts, _ = place(n, t, gr(), targets, cam)
                     return parts[0] if len(parts) == 1 else {"op": "union", "children": parts}
                 return expand(n)
             return {k: walk(v) for k, v in n.items()}
         if isinstance(n, list):
             return [walk(x) for x in n]
         return n
-    return {**scene, "root": walk(scene["root"])}
+    out = {**scene, "root": walk(scene["root"])}
+    def pt(v):
+        if isinstance(v, str):
+            return targets.get(v)
+        return None if v is None else np.asarray(v, float)
+    fc, ft = pt(cam.get("focus")), pt(cam.get("focus_to"))
+    if cam.get("focus") is not None or cam.get("focus_to") is not None:
+        # 카메라 초점 "이름.관절" → 그 관절의 지금 위치. focus_to 와 focus_mix(0~1)로 두 초점 사이를 옮긴다(몸 → 얼굴로 다가가기)
+        if fc is not None and ft is not None:
+            m = float(cam.get("focus_mix", 0.0))
+            fc = fc * (1 - m) + ft * m
+        fc = fc if fc is not None else ft
+        c2 = {k: v for k, v in cam.items() if k not in ("focus", "focus_to", "focus_mix")}
+        if fc is not None:
+            c2["focus"] = [float(x) for x in fc]
+        out["camera"] = c2
+    return out

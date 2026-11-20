@@ -92,6 +92,27 @@ def test_walk_on_stairs_feet_on_treads_and_drag_prop_on_ground():
         for side in ("l", "r"):
             f = lo["feet"][side]
             assert f[1] >= g(f[0], f[2]) + 0.06 - 1e-6            # 발은 늘 디딘 면 위(발 높이 이상)
-        parts = W.place(hero, t, g)
+        parts, _ = W.place(hero, t, g)
         assert len(parts) == 2
     assert F.parts_apart({**scene({"op": "union", "children": steps + [hero]}, 80), "t": 1.5}, res=200) <= 1
+
+
+def test_look_at_camera_turns_head_and_focus_resolves_joint():
+    from craft.form import world as W
+    hero = {"rig": "humanoid", "name": "hero", "at": [0, 0], "facing": 0, "look": "camera"}
+    cam = {"azimuth": 80, "elevation": 0, "focus": "hero.pelvis", "focus_to": "hero.head", "focus_mix": 0.5}
+    sc = {"materials": MATS, "camera": cam, "root": {"op": "union", "children": [hero]}}
+    out = W.prepare(sc, 0.0)
+    J = K.joints({}, {})
+    f = out["camera"]["focus"]
+    assert isinstance(f, list) and abs(f[1] - (J["pelvis"][1] + J["head"][1]) / 2) < 0.05
+    g = W.Ground(sc)
+    _, wj = W.place(hero, 0.0, g, {}, cam)
+    _, w0 = W.place({**hero, "look_w": 0}, 0.0, g, {}, cam)
+    d1, d0 = wj["head"] - wj["neck"], w0["head"] - w0["neck"]
+    assert d1[0] > d0[0] + 0.005                                   # 고개가 카메라(+x) 쪽으로 돌았다
+
+
+def test_track_values_can_be_strings():
+    assert F._track_at([[0, "a.pelvis"], [1, "a.head"]], 0.5, 2.0) == "a.pelvis"
+    assert F._track_at([[0, "a.pelvis"], [1, "a.head"]], 1.5, 2.0) == "a.head"

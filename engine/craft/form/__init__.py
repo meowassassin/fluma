@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-STYLES = ("flat", "cel", "sketch", "clay")
+STYLES = ("flat", "cel", "sketch", "clay", "vector")      # vector: VectorCraft 벡터 마감(engine/craft/form/vector.py)
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 CACHE = ROOT / "data" / "workspace" / "cache" / "form"
 RENDER_VERSION = 4          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
@@ -105,6 +105,8 @@ def _track_at(keys: list, t: float, dur: float):
     ks = sorted(keys, key=lambda k: k[0])
     if len(ks) == 1:
         return ks[0][1]
+    if any(isinstance(k[1], str) for k in ks):            # 글자 값(관절 이름 등)은 섞지 않고 그 시각의 값
+        return next((k[1] for k in reversed(ks) if k[0] <= t), ks[0][1])
     ks = ks + [[dur, ks[0][1]]] if ks[-1][0] < dur else ks
     for (t0, v0), (t1, v1) in zip(ks, ks[1:]):
         if t0 <= t <= t1:
@@ -213,6 +215,13 @@ def _find_mover(n):
 
 def _image(ctx, style: str, background: str | None, out):
     from PIL import Image
+    if style == "vector":                                 # 부위 영역 → 베지어 경로 → VectorCraft(투명 PNG 그대로)
+        import tempfile
+        from . import vector
+        dst = Path(out) if out else Path(tempfile.mkstemp(suffix=".png")[1])
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        vector.draw(ctx, dst, bg=background)
+        return Image.open(dst).convert("RGBA")
     if background:
         img = Image.fromarray(_style_on(ctx, style, background))
     else:
