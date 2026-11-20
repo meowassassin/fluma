@@ -70,15 +70,68 @@ def ell(c, radii, R, mat):
     return {"prim": "ellipsoid", "radii": [float(x) for x in radii], "pos": np.asarray(c, float).tolist(), "rotm": np.asarray(R).tolist(), "mat": mat}
 
 
-def joints(size: dict, pose: dict) -> dict:
-    """관절 위치 · 뼈 방향(순운동학). 키 단위(m)"""
+def ik2(A, T, L1, L2, pole):
+    """두 뼈 IK — 뿌리 A 에서 목표 T 로(길이 L1 · L2), 가운데 관절은 pole 쪽으로 굽는다. (가운데 관절, 끝) — 닿지 않으면 쭉 편다"""
+    A, T, pole = np.asarray(A, float), np.asarray(T, float), np.asarray(pole, float)
+    v = T - A
+    d = float(np.linalg.norm(v)) or 1e-6
+    u = v / d
+    dmin = math.sqrt(L1 * L1 + L2 * L2 - 2 * L1 * L2 * math.cos(math.radians(30)))   # 가장 많이 굽혀도 150°(관절 안쪽 30°)
+    d = min(max(d, dmin), L1 + L2 - 1e-4)
+    ca = (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d)
+    a = math.acos(max(-1.0, min(1.0, ca)))
+    n = np.cross(u, pole)
+    if np.linalg.norm(n) < 1e-6:
+        n = np.cross(u, [1.0, 0.0, 0.0])
+    b = np.cross(n / np.linalg.norm(n), u)
+    mid = A + u * L1 * math.cos(a) + b * L1 * math.sin(a)
+    return mid, A + u * d
+
+
+def frame_from(down, fwd_hint):
+    """뼈 방향(아래 = −y 가 down)과 앞 방향 힌트로 회전 행렬 — 손 · 발 같은 끝 부품의 방향"""
+    y = -np.asarray(down, float); y /= (np.linalg.norm(y) or 1.0)
+    z = np.asarray(fwd_hint, float) - y * float(np.dot(fwd_hint, y))
+    if np.linalg.norm(z) < 1e-6:
+        z = np.cross(y, [1.0, 0.0, 0.0])
+    z /= np.linalg.norm(z)
+    x = np.cross(y, z)
+    return np.stack([x, y, z], 1)
+
+
+# 관절 가동 범위(°) — 사람 몸이 실제로 움직이는 범위. 자세 값이 이 밖이면 끝에서 멈춘다(무릎이 앞으로 · 팔꿈치가 뒤로 꺾이는 일이 없게)
+LIMITS = {"lean": [(-30, 30), (-25, 25)], "spine": [(-25, 60), (-35, 35), (-45, 45)], "head": [(-45, 60), (-80, 80), (-40, 40)],
+          "arm": [(-60, 180), (-15, 180), (-60, 60)], "elbow": (0, 150), "leg": [(-30, 125), (-15, 70)], "knee": (0, 150),
+          "grip": (0, 1), "spread": (0, 30)}
+
+
+def _lim(v, rng):
+    if isinstance(rng, tuple):
+        return min(max(float(v), rng[0]), rng[1])
+    v = list(v) + [0] * (len(rng) - len(v))
+    return [min(max(float(x), a), b) for x, (a, b) in zip(v, rng)]
+
+
+def clamp_pose(P: dict) -> dict:
+    out = dict(P)
+    for k, v in P.items():
+        key = k.split("_", 1)[1] if k[:2] in ("l_", "r_") else k
+        if key in LIMITS:
+            out[k] = _lim(v, LIMITS[key])
+    return out
+
+
+def joints(size: dict, pose: dict, ik: dict | None = None, ground: bool = True) -> dict:
+    """관절 위치 · 뼈 방향(순운동학 + 손발 목표가 있으면 IK). 키 단위(m), 캐릭터 기준 좌표(얼굴 +z).
+    ik: {"l_foot" | "r_foot" | "l_hand" | "r_hand": [x, y, z]} — 발은 발목, 손은 손목 위치. pelvis_y 로 골반 높이를 정할 수 있다"""
     S = {**DEFAULT, **(size or {})}
-    P = {**POSE, **(pose or {})}
+    P = clamp_pose({**POSE, **(pose or {})})
     H = float(S["height"]); f = lambda k: float(S[k]) * H  # noqa: E731
     lean = P["lean"]; sp = P["spine"]; hd = P["head"]
     R0 = Rx(-lean[0]) @ Rz(lean[1])
     yhip = f("foot_h") + f("lower_leg") + f("upper_leg")
-    pel = np.array([0.0, yhip, 0.0])
+    ik = ik or {}
+    pel = np.array([0.0, float(ik["pelvis_y"]) if "pelvis_y" in ik else yhip, 0.0])
     Rs = R0 @ Rx(-sp[0]) @ Rz(sp[1]) @ Ry(sp[2])
     neck0 = pel + Rs @ [0, f("torso"), 0]
     Rh = Rs @ Ry(hd[1]) @ Rx(-hd[0]) @ Rz(hd[2])
@@ -91,6 +144,9 @@ def joints(size: dict, pose: dict) -> dict:
         el = sh + Ra @ [0, -f("upper_arm"), 0]
         Rf = Ra @ Rx(-elbow)
         wr = el + Rf @ [0, -f("lower_arm"), 0]
+        if f"{side}_hand" in ik:                       # 손 목표 — 팔꿈치는 뒤 · 바깥으로 굽는다
+            el, wr = ik2(sh, ik[f"{side}_hand"], f("upper_arm"), f("lower_arm"), Rs @ [sx * 0.4, 0, -1.0])
+            Rf = frame_from(wr - el, Rs @ [0, 0, 1.0])
         J[f"{side}_shoulder"], J[f"{side}_elbow"], J[f"{side}_wrist"], J[f"{side}_hand"], J[f"{side}_Rf"] = sh, el, wr, wr + Rf @ [0, -f("hand") * 0.55, 0], Rf
         leg, knee = P[f"{side}_leg"], P[f"{side}_knee"]
         hp = pel + R0 @ [sx * f("hip_w"), 0, 0]
@@ -98,10 +154,12 @@ def joints(size: dict, pose: dict) -> dict:
         kn = hp + Rt @ [0, -f("upper_leg"), 0]
         Rk = Rt @ Rx(knee)
         an = kn + Rk @ [0, -f("lower_leg"), 0]
+        if f"{side}_foot" in ik:                       # 발 목표(계단 · 바닥) — 무릎은 앞으로 굽는다
+            kn, an = ik2(hp, ik[f"{side}_foot"], f("upper_leg"), f("lower_leg"), R0 @ [0, 0, 1.0])
         J[f"{side}_hip"], J[f"{side}_knee"], J[f"{side}_ankle"] = hp, kn, an
     # 바닥에 닿기: 무릎을 굽히거나 다리를 들면 발이 뜬다 — 가장 낮은 발목이 곧게 선 높이(발 높이)에 오게 몸 전체를 내린다
     drop = min(J["l_ankle"][1], J["r_ankle"][1]) - f("foot_h")
-    if abs(drop) > 1e-6:
+    if ground and not ({"l_foot", "r_foot"} & set(ik)) and abs(drop) > 1e-6:   # 발 목표가 있으면(지형 위) 내리지 않는다
         for key, v in list(J.items()):
             if isinstance(v, np.ndarray) and v.shape == (3,) and not key.endswith("Rf"):
                 J[key] = v - np.array([0.0, drop, 0.0])
@@ -214,7 +272,7 @@ def expand(node: dict) -> dict:
         return expand_quad(node)
     if node.get("rig") == "bird":
         return expand_bird(node)
-    J = joints(node.get("size") or {}, node.get("pose") or {})
+    J = joints(node.get("size") or {}, node.get("pose") or {}, node.get("_ik"), ground=not node.get("_ik"))
     M = {**MATS, **(node.get("mats") or {})}
     W = {"sleeve": 0.3, "pants": 1.0, **(node.get("wear") or {})}
     Fc = {**FACE, **(node.get("face") or {})}
@@ -264,7 +322,7 @@ def expand(node: dict) -> dict:
     out = {"op": "union", "children": [
         {"op": "smooth_union", "k": 0.012 * H, "children": body + cloth},
         {"op": "smooth_union", "k": 0.006 * H, "children": hair}] + face}
-    for key in ("pos", "rot", "scale", "name"):
+    for key in ("pos", "rot", "rotm", "scale", "name"):
         if key in node:
             out[key] = node[key]
     return out

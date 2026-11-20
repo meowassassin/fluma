@@ -66,3 +66,32 @@ def test_anim_tracks_reach_inside_rig():
     p = F.pose(sc, 0.5)
     assert abs(p["root"]["pose"]["r_elbow"] - 90) < 1e-9 and abs(p["root"]["face"]["smile"] - 1) < 1e-9
     assert abs(F.pose(sc, 0.0)["root"]["pose"]["r_elbow"] - 10) < 1e-9
+
+
+def test_joint_limits_clamp_pose():
+    P = K.clamp_pose({"l_knee": -40, "r_elbow": 200, "head": [0, 120, 0], "l_arm": [0, -40, 0]})
+    assert P["l_knee"] == 0 and P["r_elbow"] == 150 and P["head"][1] == 80 and P["l_arm"][1] == -15
+
+
+def test_ik_reaches_target_and_bends_forward():
+    J = K.joints({}, {}, {"l_foot": [0.08, 0.35, 0.25], "pelvis_y": 0.93}, ground=False)
+    assert np.linalg.norm(J["l_ankle"] - np.array([0.08, 0.35, 0.25])) < 1e-6
+    assert J["l_knee"][2] > (J["l_hip"][2] + J["l_ankle"][2]) / 2          # 무릎은 앞으로
+
+
+def test_walk_on_stairs_feet_on_treads_and_drag_prop_on_ground():
+    from craft.form import world as W
+    steps = [{"prim": "roundbox", "size": [0.6, 0.09 * (i + 1), 0.15], "r": 0.01, "pos": [0, 0.09 * (i + 1), 1.2 + 0.3 * i], "mat": "body"} for i in range(4)]
+    case = {"prim": "roundbox", "size": [0.15, 0.25, 0.08], "r": 0.02, "pos": [0, 0.25, 0], "mat": "beak"}
+    hero = {"rig": "humanoid", "move": {"path": [[0, 0], [0, 2.6]], "speed": 1.0}, "hold": {"r": {"prop": case, "grip": [0, 0.5, 0], "mode": "drag", "ground": [0, 0, 0]}}}
+    sc = {"materials": MATS, "root": {"op": "union", "children": steps + [hero]}}
+    g = W.Ground(sc)
+    assert abs(g(0, 1.2) - 0.18) < 0.01 and abs(g(0, 0.5)) < 1e-6
+    for t in (0.2, 1.1, 1.7, 2.3):
+        lo = W.locomotion(hero, t, g)
+        for side in ("l", "r"):
+            f = lo["feet"][side]
+            assert f[1] >= g(f[0], f[2]) + 0.06 - 1e-6            # 발은 늘 디딘 면 위(발 높이 이상)
+        parts = W.place(hero, t, g)
+        assert len(parts) == 2
+    assert F.parts_apart({**scene({"op": "union", "children": steps + [hero]}, 80), "t": 1.5}, res=200) <= 1

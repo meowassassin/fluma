@@ -48,6 +48,10 @@ class Ctx:
         self.lv = np.clip(buf["ndl"], 0, 1) * buf["shadow"]  # key light visibility * cosine
         self.lv[~self.hit] = 0
 
+    def px(self, w: float) -> int:
+        """선 굵기(1080 출력 기준 px) → 이 버퍼의 px — 해상도가 낮아도 선이 형태를 덮지 않게(2026-11-20: 400px 움직임 프레임에서 캐릭터가 검은 덩어리)"""
+        return max(1, int(round(w * self.N / 1080)))
+
     def per_mat(self, table):
         return np.asarray(table, np.float32)[self.mi]
 
@@ -121,7 +125,7 @@ def flat(c: Ctx, bg="#f4efe6"):
     img[c.hit] = col[c.hit]
     # thin coloured outline = material shadow colour on the silhouette
     sil, _ = c.edges()
-    ring = cv2.dilate(sil, disk(int(1.5 * sc))).astype(bool) & c.hit
+    ring = cv2.dilate(sil, disk(c.px(1.5))).astype(bool) & c.hit
     img[ring] = c.shadow_t[c.mi][ring] * 0.9
     return img
 
@@ -147,10 +151,10 @@ def cel(c: Ctx, bg="#eaf2f7", ink="#2a1c14"):
     col[dot] = 1.0
     img[c.hit] = col[c.hit]
     sil, inner = c.edges()
-    thick = cv2.dilate(sil, disk(int(3.2 * sc)))
-    thin = cv2.dilate(inner, disk(int(1.2 * sc)))
+    thick = cv2.dilate(sil, disk(c.px(3.2)))
+    thin = cv2.dilate(inner, disk(c.px(1.2)))
     line = np.maximum(thick, thin).astype(np.float32)
-    line = cv2.GaussianBlur(line, (0, 0), 0.6 * sc)
+    line = cv2.GaussianBlur(line, (0, 0), max(0.5, 0.6 * c.N / 1080))
     img = mix(img, hexrgb(ink), line[..., None])
     return img
 
@@ -215,7 +219,7 @@ def sketch(c: Ctx, seed=7, paper=None, texture=True):
 
     # graphite outlines: a confident pass + two looser jittered passes
     sil, inner = c.edges(normal_thr=0.8)
-    ed_full = np.maximum(cv2.dilate(sil, disk(int(1.6 * sc))), cv2.dilate(inner, disk(int(0.8 * sc))))
+    ed_full = np.maximum(cv2.dilate(sil, disk(c.px(1.6))), cv2.dilate(inner, disk(c.px(0.8))))
     ed = np.clip(dn(ed_full) * 1.6, 0, 1)
     for k in range(3):
         amp = 1.2 if k == 0 else 2.8

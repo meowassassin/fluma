@@ -17,7 +17,7 @@ import numpy as np
 STYLES = ("flat", "cel", "sketch", "clay")
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 CACHE = ROOT / "data" / "workspace" / "cache" / "form"
-RENDER_VERSION = 2          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
+RENDER_VERSION = 4          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
 
 
 def _scene_with_view(scene: dict, view: dict | None) -> dict:
@@ -42,7 +42,8 @@ def expand_rigs(n):
 def passes(scene: dict, res: int = 1080, ss: int = 2):
     """렌더 정보(깊이 · 면 방향 · 부위 · 빛) — 형태 · 카메라 · 크기가 같으면 캐시에서"""
     from . import render
-    scene = {**scene, "root": expand_rigs(scene["root"])}
+    from .world import prepare
+    scene = prepare(scene, float(scene.get("t", 0.0)))        # 뼈대 → 도형(지형 · 이동 · 소품 배치 포함), 시간 t
     key = hashlib.sha1(json.dumps([scene, res, ss, RENDER_VERSION], sort_keys=True).encode()).hexdigest()[:16]
     f = CACHE / f"{key}.npz"
     if f.exists():
@@ -135,6 +136,8 @@ def pose(scene: dict, t: float) -> dict:
         for c in (n.get("children") or []) if isinstance(n, dict) else []:
             walk(c)
     walk(s["root"])
+    for k, keys in (tracks.get("camera") or {}).items():   # 카메라도 움직인다(focus · azimuth · radius …)
+        s.setdefault("camera", {})[k] = _track_at(keys, t % dur, dur)
     return s
 
 
@@ -158,19 +161,54 @@ def animate(scene: dict, style: str = "cel", out_dir: Path | str | None = None, 
     d.mkdir(parents=True, exist_ok=True)
     for old in d.glob("f*.png"):
         old.unlink()
-    rest = pose(sc, 0.0)
-    codes, P, _ = __import__("craft.form.sdf", fromlist=["x"]).compile_scene(rest)
-    cam = render.auto_camera(rest, codes, P, res)
-    eye, f, r, u, th, (lo, hi) = cam
-    pad = float(an.get("pad", 0.18))                # 움직이며 쉬는 자세 밖으로 나가는 만큼 여유(화면 맞춤을 넓힌다)
-    eye = (eye - (lo + hi) / 2) * (1 + pad) + (lo + hi) / 2
-    cam = (eye, f, r, u, th, (lo, hi))
+    from .world import prepare
+    from . import sdf as _sdf
+    frame = lambda t: prepare(pose(sc, t), t)  # noqa: E731 — 시간 t 의 자세 · 이동 · 소품을 세상에 놓은 장면
+    follow = "camera" in (an.get("tracks") or {}) or an.get("camera") == "follow"   # 카메라 칸을 움직이거나 follow 면 프레임마다 다시 맞춘다
+    if an.get("camera") == "follow":                       # 따라가기: 움직이는 뼈대(move)의 골반을 가운데에, 키의 0.75 배 반지름
+        from .world import Ground, locomotion
+        mover = _find_mover(sc["root"])
+        if mover is not None:
+            g0 = Ground(sc)
+            base = frame
+            def frame(t, _b=base, _m=mover, _g=g0):  # noqa: E731
+                f_ = _b(t)
+                lo = locomotion(_m, t, _g)
+                H = float((_m.get("size") or {}).get("height", 1.7))
+                f_["camera"] = {**(f_.get("camera") or {}), "focus": [float(lo["origin"][0]), float(lo["pelvis_y"]), float(lo["origin"][2])],
+                                "radius": float(an.get("radius", 0.75)) * H}
+                return f_
+    cam = None
+    if not follow:                                         # 고정 카메라: 처음 · 가운데 · 끝 자세를 모두 담게 맞춘다(걸어가도 화면 밖으로 안 나감)
+        fr = [frame(t) for t in (0.0, dur / 2, max(0.0, dur - 1 / fps))]
+        uni = {**fr[0], "root": {"op": "union", "children": [x["root"] for x in fr]}}
+        codes, P, _ = _sdf.compile_scene(uni)
+        eye, f, r, u, th, (lo, hi) = render.auto_camera(uni, codes, P, res)
+        pad = float(an.get("pad", 0.12))
+        eye = (eye - (lo + hi) / 2) * (1 + pad) + (lo + hi) / 2
+        cam = (eye, f, r, u, th, (lo, hi))
     for i in range(n):
-        buf, meta, _ = render.render(pose(sc, i / fps), res, 1, cam=cam)
+        buf, meta, _ = render.render(frame(i / fps), res, 1, cam=cam)
         _image(st.Ctx(buf, meta), style, background, d / f"f{i:03d}.png")
     info = {"key": key, "dir": str(d), "first": str(d / "f000.png"), "frames": n, "fps": fps, "dur": dur}
     stamp.write_text(json.dumps(info, ensure_ascii=False), "utf-8")
     return info
+
+
+def _find_mover(n):
+    if isinstance(n, dict):
+        if "rig" in n and n.get("move"):
+            return n
+        for v in n.values():
+            r = _find_mover(v)
+            if r is not None:
+                return r
+    elif isinstance(n, list):
+        for v in n:
+            r = _find_mover(v)
+            if r is not None:
+                return r
+    return None
 
 
 def _image(ctx, style: str, background: str | None, out):
