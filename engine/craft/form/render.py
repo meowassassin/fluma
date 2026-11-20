@@ -161,11 +161,12 @@ NAMES = ["hit", "depth", "px", "py", "pz", "nx", "ny", "nz", "mat", "ndl", "shad
          "ndh", "ndv", "ao", "gshadow", "gao", "gx", "gz"]
 
 
-def render(scene, res=1080, ss=2):
+def render(scene, res=1080, ss=2, cam=None):
+    """cam: 앞서 맞춘 카메라(eye, f, r, u, th, (lo, hi)) — 움직임 프레임마다 자세가 바뀌어도 화면이 흔들리지 않게 같은 카메라로"""
     t0 = time.time()
     codes, P, mats = sdf.compile_scene(scene)
     t_compile = time.time() - t0
-    eye, f, r, u, th, (lo, hi) = auto_camera(scene, codes, P, res)
+    eye, f, r, u, th, (lo, hi) = cam if cam is not None else auto_camera(scene, codes, P, res)
     # lights in camera-relative terms: key from top-left-front, fill from right
     L = _norm(-0.55 * r + 0.95 * np.array([0, 1, 0]) - 0.45 * f)
     Lf = _norm(0.8 * r + 0.2 * np.array([0, 1, 0]) - 0.6 * f)
