@@ -21,21 +21,27 @@ from pathlib import Path
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401 — HTTPS 인증서(독립 빌드 파이썬은 CA 경로가 없다, 2026-11-20 위키미디어 검색 실패)
 API = "https://commons.wikimedia.org/w/api.php"
-UA = {"User-Agent": "fluma-research/1.0"}
+UA = {"User-Agent": "FlumaStudio/1.0 (local desktop video tool; reuses freely licensed Commons media with attribution) python-urllib"}   # 위키미디어 UA 정책 — 이름만 있는 UA 는 더 세게 제한된다
+STEPS = (500, 960, 1280, 1920, 3840)   # 위키미디어 표준 썸네일 폭 — 그 밖의 폭(예: 2400)은 새로 그려야 해서 요청 제한(429)에 바로 걸린다(2026-11-20: 사진 4장에 6분)
+WAIT_BUDGET = 75.0                     # 429 로 기다리는 총 시간 상한 — 넘으면 바로 알린다(재료를 바꾸거나 나중에)
 OK = ("cc0", "public domain", "pd", "cc by", "cc-by")
 
 
 def _open(url: str, timeout: int = 60) -> bytes:
     """요청 제한을 지킨다 — 429 면 서버가 알려 준 만큼 기다렸다가 다시 묻고, 계속 막히면 멈춘다"""
+    waited = 0.0
     for k in range(5):
-        time.sleep(1.5)
+        time.sleep(1.0)
         try:
             with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
                 return r.read()
         except urllib.error.HTTPError as e:
-            if e.code != 429 or k == 4:
+            w = min(30.0, float(e.headers.get("Retry-After") or (8 * (k + 1))))
+            if e.code != 429 or k == 4 or waited + w > WAIT_BUDGET:
                 raise
-            time.sleep(min(90, float(e.headers.get("Retry-After") or (10 * (k + 1)))))
+            print(f"[commons] 요청 제한(429) — {w:.0f}초 기다림", file=sys.stderr)
+            time.sleep(w)
+            waited += w
     raise RuntimeError("자료를 받지 못했습니다")
 
 
@@ -62,12 +68,14 @@ def search(q: str, n: int = 10) -> list:
 
 
 def fetch(title: str, dst: Path, width: int = 1920) -> dict:
+    width = next((x for x in STEPS if x >= width), STEPS[-1])
     d = _get({"action": "query", "titles": title, "prop": "imageinfo", "iiprop": "size|url|extmetadata", "iiurlwidth": width, "iiextmetadatafilter": "LicenseShortName|Artist"})
     m = _meta(next(iter(d["query"]["pages"].values())))
     if not allowed(m["license"]):
         raise RuntimeError(f"재사용할 수 없는 라이선스입니다: {m['license']}")
     dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_bytes(_open(m["thumb"] or m["url"]))
+    small = (m.get("w") or 0) and m["w"] <= width        # 원본이 요청 폭보다 작으면 원본(썸네일을 새로 만들게 하지 않는다)
+    dst.write_bytes(_open(m["url"] if small or not m.get("thumb") else m["thumb"]))
     return m
 
 
