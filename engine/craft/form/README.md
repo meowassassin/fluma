@@ -11,8 +11,9 @@ y 가 위, 바닥은 y = 0, 정면은 +z. 단위는 대략 "물체 높이 ≈ 1"
  "camera": {"azimuth": 35, "elevation": 20, "fov": 30, "frame": 1.5},
  "root": {"op": "smooth_union", "k": 0.05, "children": [ … ]}}
 ```
-- 재질: `color` · `gloss`(0~1, 광택) · `spec_power`(하이라이트 날카로움) · `shadow`(그림자 색 — 카툰 · 플랫에서 쓰임, 없으면 자동)
+- 재질: `fur_dir`[x,y,z](털 결 방향 — 화풍 값 fur 와 함께, 없으면 아래로) · `color` · `gloss`(0~1, 광택) · `spec_power`(하이라이트 날카로움) · `shadow`(그림자 색 — 카툰 · 플랫에서 쓰임, 없으면 자동)
 - 도형(`prim`) — 모두 `pos` · `rot`(도) · `scale` · `mat` · `round`(부풀림) · `shell`(속 비움) · `mirror_x`(좌우 대칭 복사)
+  - **`tube` points[[x,y,z], …] · radii[…] (또는 r) · k** — 점을 이어 매끈한 관(척추 · 목 · 다리 · 꼬리 · 몸통). 유기적인 몸은 이것으로 — 기본 도형을 하나씩 놓는 것보다 정교하다. anim 으로 points 를 바꾸면 휘어진다
   - `sphere` r · `ellipsoid` radii[3] · `capsule` h(반 높이) r(세로) · `roundbox` size[3](반 크기) r · `roundcone` r1 r2 h · `torus` R r(xz 평면) · `cylinder` h r r_edge · `halfspace`(y<0 쪽)
 - 연산(`op`) — `union` · `smooth_union`(k = 녹여 붙이는 반경) · `subtract`(첫째에서 나머지를 뺌) · `smooth_subtract` · `intersect` · `smooth_intersect`. `cut_mat: true` 면 깎인 면이 깎은 도형의 재질. 연산에도 pos · rot · scale 을 줄 수 있다(묶음 전체).
 

@@ -135,3 +135,14 @@ def test_bundle_writes_files_inside_composition_and_checks(tmp_path, monkeypatch
         shutil.rmtree(ROOT / "data" / "compositions" / sid, ignore_errors=True)
         for x in (ROOT / "data" / "storyboards").glob(f"{sid}.json*"):
             x.unlink()
+
+
+def test_form_tube_compiles_into_round_cone_chain():
+    sys.path.insert(0, str(ROOT / "engine"))
+    from craft.form import sdf
+    sc = {"materials": {"m": {"color": "#888888"}}, "root": {"op": "union", "children": [
+        {"prim": "tube", "points": [[0, 0, 0], [0, 0.5, 0.2], [0.3, 0.8, 0.2]], "radii": [0.1, 0.08, 0.05], "mat": "m", "mirror_x": True}]}}
+    codes, P, mats = sdf.compile_scene(sc)
+    assert (codes == sdf.PRIM["roundcone"]).sum() == 4          # 조각 2개 × 좌우 대칭
+    g = sdf._grid(codes, P, __import__("numpy").linspace(-1, 1, 24))
+    assert (g < 0).any()

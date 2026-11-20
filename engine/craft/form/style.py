@@ -353,9 +353,18 @@ def look(c: Ctx, p: dict, bg="#ffffff"):
         if det:
             sc_ = float(g("detail_scale", 9.0))
             hgt += det * (noise3(P * sc_, 3) + 0.5 * noise3(P * sc_ * 2.1, 4))
-        if fur:
+        if fur:                                                           # 털 결: 재질마다 방향(materials.<이름>.fur_dir, 없으면 아래로) — 결을 따라 길게
             fs_ = float(g("fur_scale", 70.0))
-            hgt += fur * 0.6 * noise3(P * np.array([fs_, fs_ * 0.12, fs_], np.float32), 7)   # 위아래로 긴 결(털이 아래로 흐른다)
+            mats_sc = c.m["scene"]["materials"]
+            for mi_, name_ in enumerate(c.m["mats"]):
+                sel = c.hit & (c.mat == mi_)
+                if not sel.any():
+                    continue
+                d_ = np.asarray(mats_sc.get(name_, {}).get("fur_dir", [0, -1, 0]), np.float32); d_ /= (np.linalg.norm(d_) or 1.0)
+                e1 = np.cross(d_, [0.0, 0.0, 1.0] if abs(d_[2]) < 0.9 else [1.0, 0.0, 0.0]).astype(np.float32); e1 /= np.linalg.norm(e1)
+                e2 = np.cross(d_, e1).astype(np.float32)
+                Q = P[sel]
+                hgt[sel] += fur * 0.6 * noise3(np.stack([Q @ d_ * fs_ * 0.12, Q @ e1 * fs_, Q @ e2 * fs_], -1), 7 + mi_)
         hgt *= _on_mats(c, g("detail_on"))
         gy_, gx_ = np.gradient(hgt)
         L, r_, u_ = c.m["L"], c.m["r"], c.m["u"]

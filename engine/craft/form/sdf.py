@@ -6,7 +6,8 @@ A scene is data (JSON):
   "root": <node>
 }
 node = primitive | operation
-primitive = {"prim": "sphere|ellipsoid|capsule|roundbox|roundcone|torus|cylinder|halfspace",
+primitive = {"prim": "sphere|ellipsoid|capsule|roundbox|roundcone|torus|cylinder|halfspace|tube",
+             (tube: "points": [[x,y,z], …], "radii": [r, …] or "r", "k" — a smooth chain of round cones)
              <shape params>, "mat": "body",
              "pos": [x,y,z], "rot": [rx,ry,rz] (deg, XYZ), "scale": s,
              "round": r (optional inflate), "shell": t (optional hollow/onion),
@@ -42,7 +43,7 @@ def _rot(rx, ry, rz):
 
 
 def _xf(node):
-    R = _rot(*node.get("rot", [0, 0, 0]))
+    R = np.array(node["rotm"], float) if "rotm" in node else _rot(*node.get("rot", [0, 0, 0]))
     return np.eye(4) if False else (R, np.array(node.get("pos", [0, 0, 0]), float), float(node.get("scale", 1.0)))
 
 
@@ -66,6 +67,38 @@ def _shape_params(n):
     raise ValueError(p)
 
 
+def _align_y(d):
+    """+y 를 방향 d 로 돌리는 회전 행렬"""
+    d = np.asarray(d, float); d = d / (np.linalg.norm(d) or 1.0)
+    y = np.array([0.0, 1.0, 0.0])
+    v = np.cross(y, d); c = float(y @ d); sn = float(np.linalg.norm(v))
+    if sn < 1e-9:
+        return np.eye(3) if c > 0 else np.diag([1.0, -1.0, -1.0])
+    k = v / sn
+    K = np.array([[0, -k[2], k[1]], [k[2], 0, -k[0]], [-k[1], k[0], 0]])
+    return np.eye(3) + sn * K + (1 - c) * (K @ K)
+
+
+def _tube(n):
+    """관: 점 [[x,y,z], …] 과 반지름(하나 또는 점마다)을 이어 매끈한 몸 · 목 · 다리 · 꼬리를 빚는다(2026-11-20 — 기본 도형만으로는 유기적인 몸이 어려웠다).
+    점 사이는 둥근 원뿔 조각, 조각끼리는 녹여 붙인다(k). mirror_x · mat · round 는 조각마다 그대로"""
+    pts = [np.asarray(q, float) for q in n["points"]]
+    rs = n.get("radii") or [n.get("r", 0.05)] * len(pts)
+    rs = list(rs) + [rs[-1]] * (len(pts) - len(rs))
+    kids = []
+    for a, b, r1, r2 in zip(pts, pts[1:], rs, rs[1:]):
+        h = float(np.linalg.norm(b - a))
+        seg = {k: v for k, v in n.items() if k in ("mat", "round", "shell", "mirror_x")}
+        if h <= abs(r1 - r2) + 1e-4:
+            kids.append({**seg, "prim": "sphere", "r": float(max(r1, r2)), "pos": (a if r1 >= r2 else b).tolist()})
+            continue
+        kids.append({**seg, "prim": "roundcone", "r1": float(r1), "r2": float(r2), "h": h, "pos": a.tolist(), "rotm": _align_y(b - a).tolist()})
+    if len(kids) == 1:
+        return kids[0]
+    return {"op": "smooth_union", "k": float(n.get("k", 0.35 * min(rs))), "children": kids,
+            **{k: v for k, v in n.items() if k in ("pos", "rot", "scale", "name")}}
+
+
 def compile_scene(scene):
     mats = list(scene["materials"].keys())
     mid = {m: i for i, m in enumerate(mats)}
@@ -83,6 +116,8 @@ def compile_scene(scene):
         rows.append(row); codes.append(code)
 
     def visit(n, parent):
+        if n.get("prim") == "tube":
+            n = _tube(n)
         xf = _compose(parent, _xf(n))
         if "prim" in n:
             emit(PRIM[n["prim"]], xf, _shape_params(n), mid[n["mat"]], n.get("round", 0.0), n.get("shell", 0.0))
@@ -90,6 +125,8 @@ def compile_scene(scene):
                 m = dict(n); m.pop("mirror_x")
                 pos = list(m.get("pos", [0, 0, 0])); pos[0] = -pos[0]; m["pos"] = pos
                 rot = list(m.get("rot", [0, 0, 0])); m["rot"] = [rot[0], -rot[1], -rot[2]]
+                if "rotm" in m:
+                    M = np.diag([-1.0, 1.0, 1.0]); m["rotm"] = (M @ np.array(m["rotm"]) @ M).tolist()
                 emit(PRIM[m["prim"]], _compose(parent, _xf(m)), _shape_params(m), mid[m["mat"]], m.get("round", 0.0), m.get("shell", 0.0))
                 emit(OPS["union"])
         else:
