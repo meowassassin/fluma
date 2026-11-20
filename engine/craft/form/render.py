@@ -22,7 +22,23 @@ def auto_camera(scene, codes, P, res):
     vol = sdf._grid(codes, P, g)
     idx = np.argwhere(vol < 0)
     lo, hi = g[idx.min(0)] - 0.05, g[idx.max(0)] + 0.05
+    # 두 번째로 촘촘하게 — 첫 격자(칸 0.08)는 부리 · 손가락 · 꼬리 끝처럼 얇은 부분을 놓쳐 화면 밖으로 잘렸다
+    span = float(np.max(hi - lo)) + 0.3
+    g2 = np.linspace(-span / 2, span / 2, 96)
+    ctr = (lo + hi) / 2
+    try:
+        sh = P.copy()
+        sh[:, 9:12] -= np.where(np.asarray(codes)[:, None] < 100, ctr[None, :], 0.0)   # 도형 위치를 가운데로 옮겨 같은 정육면체 격자로 잰다
+        vol2 = sdf._grid(codes, sh, g2)
+        idx2 = np.argwhere(vol2 < 0)
+        if len(idx2):
+            lo, hi = g2[idx2.min(0)] + ctr - 0.03, g2[idx2.max(0)] + ctr + 0.03
+    except Exception:  # noqa: BLE001 - 다시 재기에 실패하면 첫 범위로
+        pass
     lo[1] = max(lo[1], 0.0)
+    if cam.get("focus") is not None:                     # 클로즈업: 이 점을 가운데에, 반지름 radius 만큼만 화면에(얼굴 · 손)
+        fc, rr = np.asarray(cam["focus"], float), float(cam.get("radius", 0.2))
+        lo, hi = fc - rr, fc + rr
     center = (lo + hi) / 2
     az, el = math.radians(cam.get("azimuth", 35)), math.radians(cam.get("elevation", 18))
     fov = math.radians(cam.get("fov", 30))

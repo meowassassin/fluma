@@ -17,6 +17,7 @@ import numpy as np
 STYLES = ("flat", "cel", "sketch", "clay")
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 CACHE = ROOT / "data" / "workspace" / "cache" / "form"
+RENDER_VERSION = 2          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
 
 
 def _scene_with_view(scene: dict, view: dict | None) -> dict:
@@ -42,7 +43,7 @@ def passes(scene: dict, res: int = 1080, ss: int = 2):
     """렌더 정보(깊이 · 면 방향 · 부위 · 빛) — 형태 · 카메라 · 크기가 같으면 캐시에서"""
     from . import render
     scene = {**scene, "root": expand_rigs(scene["root"])}
-    key = hashlib.sha1(json.dumps([scene, res, ss], sort_keys=True).encode()).hexdigest()[:16]
+    key = hashlib.sha1(json.dumps([scene, res, ss, RENDER_VERSION], sort_keys=True).encode()).hexdigest()[:16]
     f = CACHE / f"{key}.npz"
     if f.exists():
         try:
@@ -122,7 +123,15 @@ def pose(scene: dict, t: float) -> dict:
         tr = tracks.get(n.get("name")) if isinstance(n, dict) else None
         if tr:
             for k, keys in tr.items():
-                n[k] = _track_at(keys, t % dur, dur)
+                v = _track_at(keys, t % dur, dur)
+                if "." in k:                              # 뼈대 안쪽 값 — "pose.r_elbow" · "pose.head" · "face.smile"
+                    path = k.split(".")
+                    d = n
+                    for part in path[:-1]:
+                        d = d.setdefault(part, {})
+                    d[path[-1]] = v
+                else:
+                    n[k] = v
         for c in (n.get("children") or []) if isinstance(n, dict) else []:
             walk(c)
     walk(s["root"])

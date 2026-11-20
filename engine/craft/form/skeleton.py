@@ -114,36 +114,136 @@ def _on_head(J, x, y, inset=0.15):
     h = S["head"] * H
     rx, ry, rz = S["head_w"] * h / 2, h / 2, S["head_d"] * h / 2
     X, Y = x * h, y * h
-    z = rz * math.sqrt(max(0.0, 1 - (X / rx) ** 2 - (Y / ry) ** 2)) - inset * 0.05 * h
+    z = rz * math.sqrt(max(0.0, 1 - (X / rx) ** 2 - (Y / ry) ** 2))
+    # 턱(아래 앞으로 나온 타원)이 더 앞이면 그 표면에 — 입 · 볼이 턱에 묻히지 않게
+    jy, jz, jrx, jry, jrz = -h * 0.28, h * 0.12, rx * 0.72, h * 0.22, rz * 0.8
+    q = 1 - (X / jrx) ** 2 - ((Y - jy) / jry) ** 2
+    if q > 0:
+        z = max(z, jz + jrz * math.sqrt(q))
+    z -= inset * 0.05 * h
     return J["head"] + J["Rh"] @ [X, Y, z]
+
+
+FACE = {"smile": 0.3, "open": 0.0, "brow": 0.0, "brow_y": 0.0, "eyelid": 0.0, "blush": 0.0, "look": [0.0, 0.0]}
+HAIR = {"top": 0.6, "bangs": 0.5, "side": 0.3, "back": 0.35, "tail": 0.0, "bun": 0.0, "spikes": 0, "part": 0.0}
+
+
+def _hand(J, side, f, M, mode, grip, spread):
+    """손: 손바닥 + 엄지(기본, mitten) 또는 손가락 다섯(fingers). grip 0 펴기 … 1 주먹, spread 손가락 벌림(°)"""
+    Rf, wr = J[f"{side}_Rf"], J[f"{side}_wrist"]
+    sx = 1 if side == "l" else -1
+    hs = f("hand")
+    palm_c = wr + Rf @ [0, -hs * 0.45, 0]
+    parts = [ell(palm_c, [hs * 0.38, hs * 0.48, hs * 0.16], Rf, M["skin"])]
+    curl = 95 * float(grip)
+    if mode == "fingers":
+        for i, xo in enumerate((-0.27, -0.09, 0.09, 0.27)):
+            Rg = Rf @ Rz(sx * (xo * float(spread) * 2))
+            base = palm_c + Rf @ [xo * hs, -hs * 0.45, 0]
+            ln = hs * (0.42 if i in (1, 2) else 0.36)
+            mid = base + Rg @ [0, -ln * 0.55, 0]
+            Rg2 = Rg @ Rx(-curl)
+            tip = mid + Rg2 @ [0, -ln * 0.45, 0]
+            parts += [seg(base, mid, hs * 0.075, hs * 0.07, M["skin"]), seg(mid, tip, hs * 0.07, hs * 0.06, M["skin"])]
+    tb = palm_c + Rf @ [-sx * hs * 0.3, -hs * 0.05, hs * 0.08]
+    Rt = Rf @ Rz(-sx * (40 - 25 * float(grip))) @ Rx(-30 * float(grip))
+    parts.append(seg(tb, tb + Rt @ [0, -hs * 0.42, 0], hs * 0.09, hs * 0.07, M["skin"]))
+    return parts
+
+
+def _face(J, S, h, M, F):
+    """표정: 눈(눈꺼풀) · 눈썹(높이 · 기울기) · 입(웃음 −1 찡그림 … 1 웃음 · 벌림 0~1) · 볼"""
+    Rh = J["Rh"]
+    out = []
+    e = S["eye"] * h
+    lid = max(0.08, 1 - float(F["eyelid"]))
+    lx, ly = (F.get("look") or [0, 0])[:2]
+    for sx in (1, -1):
+        ex, ey = sx * S["eye_sep"] * S["head_w"] / 2, S["eye_y"]
+        out.append(ell(_on_head(J, ex + 0.02 * lx, ey + 0.02 * ly), [e * 0.42, e * 0.6 * lid, e * 0.3], Rh, M["eye"]))
+        # 눈썹: brow > 0 이면 안쪽이 내려가 화난 얼굴, < 0 이면 안쪽이 올라가 걱정
+        by = ey + 0.13 + 0.06 * float(F["brow_y"])
+        tilt = sx * 22 * float(F["brow"])
+        out.append(ell(_on_head(J, ex, by, 0.2), [e * 0.85, e * 0.2, e * 0.16], Rh @ Rz(tilt), M["hair"]))
+        if float(F["blush"]) > 0 and M.get("blush"):
+            out.append(ell(_on_head(J, ex * 1.15, ey - 0.13, 0.5), [e * 0.6, e * 0.3, e * 0.2], Rh, M["blush"]))
+    my, mw, sm, op = S["mouth_y"], S["mouth_w"], float(F["smile"]), float(F["open"])
+    if op > 0.12:                                     # 벌린 입: 어두운 타원(웃으면 아래가 넓게)
+        out.append(ell(_on_head(J, 0, my - 0.02 * op, 0.4), [mw * h / 2 * (0.8 + 0.3 * max(sm, 0)), h * (0.03 + 0.09 * op), 0.04 * h], Rh, M["mouth"]))
+    else:                                             # 다문 입: 곡선 하나(점 여섯을 이은 선) — 끝이 올라가면 웃음, 내려가면 찡그림
+        pts = [_on_head(J, u * mw / 2, my + 0.05 * sm * (u * u - 0.35), 0.3) for u in np.linspace(-1, 1, 6)]
+        out.append({"op": "union", "children": [seg(a, b, 0.016 * h, 0.016 * h, M["mouth"]) for a, b in zip(pts, pts[1:])]})
+    return out
+
+
+def _hair(J, S, h, M, Hs):
+    """머리 모양: 윗머리 볼륨 · 앞머리 · 옆머리 · 뒷머리 길이 · 포니테일 · 올림머리 · 뻗친 머리 · 가르마"""
+    Rh, c = J["Rh"], J["head"]
+    rx, ry, rz = S["head_w"] * h / 2, h / 2, S["head_d"] * h / 2
+    v, part = float(Hs["top"]), float(Hs["part"])
+    out = [ell(c + Rh @ [0, 0.1 * h + 0.04 * h * v, -0.07 * h], [rx * (1.03 + 0.08 * v), ry * (0.82 + 0.12 * v), rz * (1.0 + 0.06 * v)], Rh, M["hair"])]
+    if float(Hs["bangs"]) > 0:
+        bg = float(Hs["bangs"])
+        out.append(ell(c + Rh @ [part * 0.15 * h, 0.27 * h - 0.06 * h * bg, rz * 0.62], [rx * (0.55 + 0.35 * bg), 0.1 * h + 0.06 * h * bg, 0.14 * h], Rh @ Rz(-12 * part), M["hair"]))
+    if float(Hs["side"]) > 0:
+        sd = float(Hs["side"])
+        for sx in (1, -1):
+            out.append(ell(c + Rh @ [sx * rx * 0.92, -0.05 * h - 0.2 * h * sd, -0.02 * h], [0.1 * h, ry * (0.45 + 0.55 * sd), rz * 0.55], Rh, M["hair"]))
+    if float(Hs["back"]) > 0:
+        L = float(Hs["back"])
+        out.append(ell(c + Rh @ [0, -0.15 * h - L * 0.35 * h, -0.2 * h], [rx * 1.0, ry * (0.55 + 0.7 * L), rz * 0.62], Rh, M["hair"]))
+    if float(Hs["tail"]) > 0:                         # 포니테일: 뒤통수에서 아래로 늘어진 관
+        L = float(Hs["tail"]) * h * 1.6
+        a = c + Rh @ [0, 0.12 * h, -rz * 0.95]
+        b = a + Rh @ [0, -L * 0.45, -L * 0.25]
+        d = b + np.array([0.0, -L * 0.55, 0.0])
+        out += [seg(a, b, 0.11 * h, 0.1 * h, M["hair"]), seg(b, d, 0.1 * h, 0.04 * h, M["hair"])]
+    if float(Hs["bun"]) > 0:
+        out.append(ell(c + Rh @ [0, ry * 1.08, -rz * 0.7], [0.23 * h * float(Hs["bun"])] * 3, Rh, M["hair"]))
+    n = int(Hs["spikes"])
+    for i in range(n):                                # 뻗친 머리: 위로 퍼지는 뾰족한 다발
+        ang = (i / max(1, n - 1) - 0.5) * 110
+        Rk = Rh @ Rz(ang) @ Rx(-25)
+        base = c + Rh @ [0, ry * 0.55, -0.05 * h]
+        out.append({"prim": "roundcone", "r1": 0.13 * h, "r2": 0.015 * h, "h": 0.45 * h, "pos": base.tolist(), "rotm": Rk.tolist(), "mat": M["hair"]})
+    return out
 
 
 def expand(node: dict) -> dict:
     if node.get("rig") == "quadruped":
         return expand_quad(node)
+    if node.get("rig") == "bird":
+        return expand_bird(node)
     J = joints(node.get("size") or {}, node.get("pose") or {})
     M = {**MATS, **(node.get("mats") or {})}
-    W = {"sleeve": 0.3, "pants": 1.0, "hair": 0.35, **(node.get("wear") or {})}
+    W = {"sleeve": 0.3, "pants": 1.0, **(node.get("wear") or {})}
+    Fc = {**FACE, **(node.get("face") or {})}
+    Hs = {**HAIR, **({"back": W["hair"]} if "hair" in W else {}), **(node.get("hair") or {})}
+    P = {**POSE, **(node.get("pose") or {})}
     S, H = J["S"], J["H"]
     f = lambda k: float(S[k]) * H  # noqa: E731
     Rs, Rh, R0 = J["Rs"], J["Rh"], J["R0"]
-    body, cloth, face = [], [], []
+    body, cloth = [], []
     pel, neck0 = J["pelvis"], J["neck"]
-    # 몸통 · 골반 · 목 · 머리
-    cloth.append(ell(pel + Rs @ [0, f("torso") * 0.66, 0], [f("chest_w"), f("torso") * 0.34, f("chest_d")], Rs, M["top"]))
-    cloth.append(ell(pel + Rs @ [0, f("torso") * 0.3, 0], [f("waist_w"), f("torso") * 0.32, f("chest_d") * 0.9], Rs, M["top"]))
-    cloth.append(ell(pel + R0 @ [0, 0.01 * H, 0], [f("pelvis_w"), 0.075 * H, f("chest_d") * 0.95], R0, M["bottom"]))
+    # 몸통: 가슴(갈비) · 허리 · 골반 · 어깨 근육 · 승모근 — 한 덩어리가 아니라 세 마디가 녹아 이어진다
+    cloth.append(ell(pel + Rs @ [0, f("torso") * 0.7, f("chest_d") * 0.08], [f("chest_w") * 0.98, f("torso") * 0.27, f("chest_d")], Rs, M["top"]))
+    cloth.append(ell(pel + Rs @ [0, f("torso") * 0.38, 0], [f("waist_w"), f("torso") * 0.24, f("chest_d") * 0.85], Rs, M["top"]))
+    cloth.append(ell(pel + R0 @ [0, 0.015 * H, -0.005 * H], [f("pelvis_w"), 0.07 * H, f("chest_d") * 0.95], R0, M["bottom"]))
+    for side in ("l", "r"):
+        sh = J[f"{side}_shoulder"]
+        cloth.append(ell(sh + Rs @ [0, 0.004 * H, 0], [f("arm_r") * 1.45] * 3, Rs, M["top"]))                       # 어깨 근육
+        cloth.append(seg(neck0 + Rs @ [0, -0.01 * H, -0.01 * H], sh, f("neck_r") * 1.1, f("arm_r") * 1.2, M["top"]))  # 승모근
     hb = J["head"] - Rh @ [0, f("head") * 0.42, 0]
     body.append(seg(neck0 - Rs @ [0, 0.02 * H, 0], hb, f("neck_r"), f("neck_r") * 0.95, M["skin"]))
     h = f("head")
     body.append(ell(J["head"], [S["head_w"] * h / 2, h / 2, S["head_d"] * h / 2], Rh, M["skin"]))
-    body.append(ell(J["head"] + Rh @ [S["head_w"] * h / 2 * 0.98, -0.02 * h, -0.05 * h], [0.06 * h, 0.11 * h, 0.07 * h], Rh, M["skin"]))   # 귀
-    body.append(ell(J["head"] + Rh @ [-S["head_w"] * h / 2 * 0.98, -0.02 * h, -0.05 * h], [0.06 * h, 0.11 * h, 0.07 * h], Rh, M["skin"]))
-    # 팔 · 다리 — 피부 뼈 위에 옷이 덮는 비율만큼 조금 굵은 천
+    body.append(ell(J["head"] + Rh @ [0, -h * 0.28, h * 0.12], [S["head_w"] * h / 2 * 0.72, h * 0.22, S["head_d"] * h / 2 * 0.8], Rh, M["skin"]))   # 턱
+    for sx in (1, -1):
+        body.append(ell(J["head"] + Rh @ [sx * S["head_w"] * h / 2 * 0.98, -0.02 * h, -0.05 * h], [0.06 * h, 0.11 * h, 0.07 * h], Rh, M["skin"]))   # 귀
     for side in ("l", "r"):
-        sh, el, wr, hd_ = J[f"{side}_shoulder"], J[f"{side}_elbow"], J[f"{side}_wrist"], J[f"{side}_hand"]
-        body += [seg(sh, el, f("arm_r"), f("arm_r") * 0.85, M["skin"]), seg(el, wr, f("arm_r") * 0.85, f("wrist_r"), M["skin"]),
-                 ell(hd_, [f("hand") * 0.36, f("hand") * 0.55, f("hand") * 0.22], J[f"{side}_Rf"], M["skin"])]
+        sh, el, wr = J[f"{side}_shoulder"], J[f"{side}_elbow"], J[f"{side}_wrist"]
+        body += [seg(sh, el, f("arm_r"), f("arm_r") * 0.85, M["skin"]), seg(el, wr, f("arm_r") * 0.85, f("wrist_r"), M["skin"])]
+        body += _hand(J, side, f, M, node.get("hands", "mitten"), P.get(f"{side}_grip", 0.3), P.get(f"{side}_spread", 8))
         cov = float(W["sleeve"]) * (f("upper_arm") + f("lower_arm"))
         if cov > 0:
             cloth.append(seg(sh, sh + (el - sh) * min(1.0, cov / f("upper_arm")), f("arm_r") * 1.25, f("arm_r") * 1.12, M["top"]))
@@ -157,22 +257,12 @@ def expand(node: dict) -> dict:
             if cov > f("upper_leg"):
                 cloth.append(seg(kn, kn + (an - kn) * min(1.0, (cov - f("upper_leg")) / f("lower_leg")), f("leg_r") * 0.95, f("ankle_r") * 1.25, M["bottom"]))
         body.append(ell(an + R0 @ [0, -f("foot_h") * 0.35, f("foot") * 0.28], [f("ankle_r") * 1.35, f("foot_h") * 0.7, f("foot") * 0.55], R0, M["shoe"]))
-    # 얼굴(머리 뼈에 붙음 — 고개를 돌리면 같이 돈다)
-    e = S["eye"] * h
-    for sx in (1, -1):
-        face.append(ell(_on_head(J, sx * S["eye_sep"] * S["head_w"] / 2, S["eye_y"]), [e * 0.42, e * 0.6, e * 0.3], Rh, M["eye"]))
-    face.append(ell(_on_head(J, 0, S["mouth_y"], 0.3), [S["mouth_w"] * h / 2, 0.018 * h, 0.03 * h], Rh, M["mouth"]))
     if S["nose"] > 0:
         body.append(ell(_on_head(J, 0, -0.12, 0.6), [S["nose"] * h * 0.8, S["nose"] * h, S["nose"] * h], Rh, M["skin"]))
-    # 머리카락: 위 · 뒤를 덮는 덩어리 + 뒷머리 길이
-    rx, ry, rz = S["head_w"] * h / 2, h / 2, S["head_d"] * h / 2
-    hair = [ell(J["head"] + Rh @ [0, 0.13 * h, -0.07 * h], [rx * 1.07, ry * 0.86, rz * 1.02], Rh, M["hair"])]
-    if float(W["hair"]) > 0:
-        L = float(W["hair"])
-        hair.append(ell(J["head"] + Rh @ [0, -0.15 * h - L * 0.35 * h, -0.2 * h], [rx * 1.0, ry * (0.55 + 0.7 * L), rz * 0.62], Rh, M["hair"]))
-    k = 0.012 * H
+    face = _face(J, S, h, M, Fc)
+    hair = _hair(J, S, h, M, Hs)
     out = {"op": "union", "children": [
-        {"op": "smooth_union", "k": k, "children": body + cloth},
+        {"op": "smooth_union", "k": 0.012 * H, "children": body + cloth},
         {"op": "smooth_union", "k": 0.006 * H, "children": hair}] + face}
     for key in ("pos", "rot", "scale", "name"):
         if key in node:
@@ -247,6 +337,67 @@ def expand_quad(node: dict) -> dict:
     out = {"op": "union", "children": [{"op": "smooth_union", "k": 0.04 * H, "children": parts}] + face}
     drop = min(feet)
     out["pos"] = (np.asarray(node.get("pos", [0, 0, 0]), float) - [0, drop, 0]).tolist()
+    for key in ("rot", "scale", "name"):
+        if key in node:
+            out[key] = node[key]
+    return out
+
+
+# ---------------------------------------------------------------- 새(오리 · 닭 · 참새 …)
+BIRD = {"height": 0.3, "body": 1.15, "body_r": 0.42, "neck": 0.32, "neck_r": 0.15, "neck_up": 65, "head": 0.4,
+        "beak": 0.34, "beak_r": 0.1, "beak_down": 8, "eye": 0.13, "wing": 0.95, "wing_w": 0.42, "tail": 0.42, "tail_w": 0.32,
+        "leg": 0.42, "leg_r": 0.035, "toe": 0.2}
+BPOSE = {"tilt": 0, "neck": [0, 0], "head": [0, 0, 0], "wings": [0, 0], "tail": [10, 0.5], "l_leg": [0], "l_knee": 0, "r_leg": [0], "r_knee": 0}
+BMATS = {"body": "body", "belly": "body", "wing": "body", "tail": "body", "beak": "beak", "leg": "beak", "eye": "eye"}
+
+
+def expand_bird(node: dict) -> dict:
+    """새 — 몸통 · 목 · 머리 · 부리 · 눈, 날개 둘(날갯짓 wings[0] · 펼침 wings[1]), 꼬리(들기 · 부채), 다리 둘(무릎 · 발가락). 얼굴 +z"""
+    S = {**BIRD, **(node.get("size") or {})}
+    P = {**BPOSE, **(node.get("pose") or {})}
+    M = {**BMATS, **(node.get("mats") or {})}
+    H = float(S["height"]); f = lambda k: float(S[k]) * H  # noqa: E731
+    Rb = Rx(-P["tilt"])
+    c = np.array([0.0, f("leg") + f("body_r") * 0.55, 0.0])
+    parts, face = [], []
+    parts.append(ell(c, [f("body_r") * 0.82, f("body_r"), f("body") / 2], Rb, M["body"]))
+    parts.append(ell(c + Rb @ [0, -f("body_r") * 0.2, f("body") * 0.12], [f("body_r") * 0.78, f("body_r") * 0.85, f("body") * 0.36], Rb, M["belly"]))
+    n0 = c + Rb @ [0, f("body_r") * 0.5, f("body") / 2 * 0.62]
+    Rn = Rb @ Ry(P["neck"][1]) @ Rx(-(S["neck_up"] + P["neck"][0]))
+    n1 = n0 + Rn @ [0, 0, f("neck")]
+    parts.append(seg(n0, n1, f("neck_r") * 1.15, f("neck_r"), M["body"]))
+    hd = P["head"]
+    Rh = Rb @ Ry(P["neck"][1] + hd[1]) @ Rx(-hd[0]) @ Rz(hd[2])
+    hr = f("head") / 2
+    hc = n1 + Rh @ [0, hr * 0.35, hr * 0.15]
+    parts.append(ell(hc, [hr * 0.85, hr * 0.95, hr], Rh, M["body"]))
+    bb = hc + Rh @ [0, -hr * 0.12, hr * 0.8]
+    bd = Rh @ Rx(S["beak_down"]) @ np.array([0.0, 0.0, 1.0])
+    face.append(seg(bb, bb + bd * f("beak"), f("beak_r") * 1.0, f("beak_r") * 0.25, M["beak"]))
+    for sx in (1, -1):
+        e = S["eye"] * f("head")
+        face.append(ell(hc + Rh @ [sx * hr * 0.62, hr * 0.22, hr * 0.55], [e * 0.3, e * 0.55, e * 0.5], Rh, M["eye"]))
+        ws = c + Rb @ [sx * f("body_r") * 0.7, f("body_r") * 0.3, f("body") * 0.15]
+        Rw = Rb @ Rz(sx * float(P["wings"][0])) @ Ry(-sx * float(P["wings"][1]))
+        parts.append(ell(ws + Rw @ [sx * f("body_r") * 0.12, -f("wing_w") * 0.15, -f("wing") * 0.32], [f("body_r") * 0.16, f("wing_w") * 0.5, f("wing") * 0.5], Rw, M["wing"]))
+    tl = P["tail"]
+    Rt = Rb @ Rx(-float(tl[0]))
+    parts.append(ell(c + Rb @ [0, f("body_r") * 0.25, -f("body") / 2 * 0.8] + Rt @ [0, 0, -f("tail") * 0.35],
+                     [f("tail_w") * (0.4 + 0.6 * float(tl[1])), f("body_r") * 0.12, f("tail") * 0.5], Rt, M["tail"]))
+    feet = []
+    for side, sx in (("l", 1), ("r", -1)):
+        hp = c + Rb @ [sx * f("body_r") * 0.35, -f("body_r") * 0.55, 0]
+        Rl = Rx(-float(P[f"{side}_leg"][0]))
+        kn = hp + Rl @ [0, -f("leg") * 0.45, 0]
+        an = kn + Rl @ Rx(float(P[f"{side}_knee"])) @ [0, -f("leg") * 0.55, 0]
+        parts += [seg(hp, kn, f("leg_r") * 1.6, f("leg_r"), M["leg"]), seg(kn, an, f("leg_r"), f("leg_r") * 0.9, M["leg"])]
+        for ang in (-30, 0, 30):
+            d = Ry(ang) @ np.array([0.0, 0.0, 1.0])
+            parts.append(seg(an, an + d * f("toe") + [0, -f("leg_r") * 0.5, 0], f("leg_r") * 0.9, f("leg_r") * 0.6, M["leg"]))
+        parts.append(seg(an, an + np.array([0, -f("leg_r") * 0.5, -f("toe") * 0.45]), f("leg_r") * 0.9, f("leg_r") * 0.6, M["leg"]))
+        feet.append(an[1] - f("leg_r") * 1.1)
+    out = {"op": "union", "children": [{"op": "smooth_union", "k": 0.03 * H, "children": parts}] + face}
+    out["pos"] = (np.asarray(node.get("pos", [0, 0, 0]), float) - [0, min(feet), 0]).tolist()
     for key in ("rot", "scale", "name"):
         if key in node:
             out[key] = node[key]

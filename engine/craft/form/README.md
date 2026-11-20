@@ -38,6 +38,12 @@ y 가 위, 바닥은 y = 0, 정면은 +z. 단위는 대략 "물체 높이 ≈ 1"
 - 자세(`pose`)는 도(°): 사람 `lean` · `spine`[앞, 옆, 비틀기] · `head`[끄덕, 돌리기, 갸웃] · `l_arm`/`r_arm`[앞, 벌리기, 비틀기] · `l_elbow` · `l_leg`/`r_leg`[앞, 벌리기] · `l_knee`, 동물 `spine` · `neck` · `head` · `tail`[들기, 옆, 말기] · `fl` `fr` `bl` `br`[앞, 벌리기] · `*_knee`.
 - 발은 늘 바닥(y = 0)에 닿는다. 얼굴(눈 · 입 · 코 · 귀)과 머리카락은 머리 뼈에, 옷(소매 · 바지)은 팔다리 뼈에 붙는다.
 - `form_cli preview` 가 몸과 떨어진 덩어리를 세어 알린다(△ 떨어진 덩어리 N개).
+- 새: `{"rig": "bird", "pose": {"tilt", "neck": [굽힘, 돌리기], "head", "wings": [날갯짓, 펼침], "tail": [들기, 부채 0~1], "l_leg": [앞], "l_knee"}, "mats": {"body", "belly", "wing", "tail", "beak", "leg", "eye"}}`
+- 사람 표정 `face`: `smile`(−1 찡그림 … 1 웃음) · `open`(입 벌림 0~1) · `brow`(1 화남 · −1 걱정) · `brow_y`(눈썹 높이) · `eyelid`(0 뜸 … 1 감음) · `blush`(mats 에 `blush` 재질이 있을 때) · `look`[x, y](눈동자)
+- 머리 모양 `hair`: `top`(윗머리 볼륨) · `bangs`(앞머리) · `side`(옆머리) · `back`(뒷머리 길이) · `tail`(포니테일) · `bun`(올림머리) · `spikes`(뻗친 다발 수) · `part`(가르마 −1~1)
+- 손: `"hands": "mitten"`(손바닥 + 엄지, 기본) · `"fingers"`(다섯 손가락) — 자세 `l_grip`/`r_grip`(0 펴기 … 1 주먹) · `l_spread`/`r_spread`(벌림 °)
+- 클로즈업: 카메라 `"focus": [x, y, z], "radius": r` — 그 점을 가운데에 반지름만큼만(얼굴 · 손). 머리 위치는 `skeleton.joints(size, pose)["head"]`
+- 움직임: `anim.tracks` 에서 뼈대 안쪽 값을 점 경로로 — `{"hero": {"pose.r_elbow": [[0, 15], [0.5, 70]], "face.eyelid": [[0.7, 0], [0.8, 1], [0.9, 0]]}}`(노드 `"name": "hero"`)
 사람은 그리지 않는다(실제 자료만 — 사람 형태는 빚지 않는다).
 
 ## 캐릭터는 움직인다 (2026-11-20 — 정지 그림 한 장으로 쓰지 않는다)

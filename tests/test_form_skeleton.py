@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / "engine"))
 from craft import form as F  # noqa: E402
 from craft.form import skeleton as K  # noqa: E402
 
-MATS = {k: {"color": "#888888"} for k in ("skin", "hair", "top", "bottom", "shoe", "eye", "mouth", "fur", "nose")}
+MATS = {k: {"color": "#888888"} for k in ("skin", "hair", "top", "bottom", "shoe", "eye", "mouth", "fur", "nose", "body", "beak")}
 POSES = [{}, {"spine": [6, -5, 10], "head": [8, 25, -10], "l_arm": [30, 20, 0], "l_elbow": 100, "r_arm": [-10, 150, 0], "r_elbow": 30,
               "l_leg": [25, 5], "l_knee": 40, "r_leg": [-10, 3], "r_knee": 10, "lean": [3, 2]}]
 
@@ -45,3 +45,24 @@ def test_face_follows_head_turn():
     e0 = K._on_head(J0, 0.1, 0) - J0["head"]; e1 = K._on_head(J1, 0.1, 0) - J1["head"]
     ang = np.degrees(np.arctan2(e1[0], e1[2]) - np.arctan2(e0[0], e0[2]))
     assert abs(ang - 40) < 1e-6
+
+
+def test_bird_parts_connected_in_poses():
+    for pose in ({}, {"tilt": -10, "neck": [25, 20], "head": [-15, 10, 10], "wings": [70, 20], "tail": [30, 1], "l_leg": [20], "l_knee": 30}):
+        for az in (0, 70, 90):
+            assert F.parts_apart(scene({"rig": "bird", "pose": pose}, az), res=240) == 0
+
+
+def test_expressions_and_hair_stay_attached():
+    root = {"rig": "humanoid", "hands": "fingers", "face": {"smile": -1, "brow": 1, "eyelid": 0.5, "open": 0.6},
+            "hair": {"bangs": 1, "side": 1, "back": 0.8, "tail": 1, "bun": 1, "spikes": 5}, "pose": {"r_grip": 1, "l_spread": 20}}
+    for az in (0, 45, 150):
+        assert F.parts_apart(scene(root, az), res=240) == 0
+
+
+def test_anim_tracks_reach_inside_rig():
+    sc = scene({"rig": "humanoid", "name": "hero"})
+    sc["anim"] = {"dur": 1.0, "tracks": {"hero": {"pose.r_elbow": [[0, 10], [0.5, 90]], "face.smile": [[0, -1], [0.5, 1]]}}}
+    p = F.pose(sc, 0.5)
+    assert abs(p["root"]["pose"]["r_elbow"] - 90) < 1e-9 and abs(p["root"]["face"]["smile"] - 1) < 1e-9
+    assert abs(F.pose(sc, 0.0)["root"]["pose"]["r_elbow"] - 10) < 1e-9
