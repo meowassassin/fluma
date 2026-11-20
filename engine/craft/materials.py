@@ -239,7 +239,12 @@ def form(m: dict, out: Path, work: Path) -> dict:
     F.draw(sc, style, out, res=int(m.get("res") or 1080), view=m.get("view"), background=m.get("background"))
     keep = out.with_suffix(".scene.json")                  # 사람이 고칠 수 있게 형태 데이터를 남긴다
     keep.write_text(json.dumps(sc, ensure_ascii=False, indent=1), "utf-8")
-    return {"app": "form", "style": style, "as": "image", "editable": str(keep.relative_to(ROOT)) if keep.is_relative_to(ROOT) else str(keep)}
+    info = {"app": "form", "style": style, "as": "image", "editable": str(keep.relative_to(ROOT)) if keep.is_relative_to(ROOT) else str(keep)}
+    if sc.get("anim"):                                      # 움직임(anim.tracks) — 프레임 묶음을 그려 장면에서 반복 재생(motion: 'seq')
+        an = F.animate(sc, style, out.parent / f"{m['id']}.anim", res=int(m.get("anim_res") or 720), view=m.get("view"), background=m.get("background"))
+        info["seq"] = str(Path(an["first"]).resolve().relative_to(ROOT))
+        info["seq_frames"] = an["frames"]
+    return info
 
 
 def photo(m: dict, out: Path, work: Path) -> dict:
