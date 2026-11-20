@@ -50,10 +50,7 @@ var K = (function () {
     },
     /** 이미지 파일(png · jpg — 다른 재료의 결과는 "$USE:이름") */
     image: function (path, x, y, scale) {
-      var seq = /[\\\/]f000\.png$/.test(path);   // 움직이는 형태(form_cli anim → …/f000.png) — 프레임 묶음을 12fps 로 반복 재생
-      var io = new ImportOptions(new File(path)); if (seq) io.sequence = true;
-      var it = app.project.importFile(io); var L = C.layers.add(it);
-      if (seq) { try { it.mainSource.conformFrameRate = 12; } catch (e) {} L.timeRemapEnabled = true; L.property('Time Remap').expression = 'time % thisLayer.source.duration'; L.outPoint = C.duration; }
+      var it = app.project.importFile(new ImportOptions(new File(path))); var L = C.layers.add(it);
       K.P(L).setValue([x, y]); if (scale) K.S(L).setValue([scale, scale]); return L;
     },
     /** 붙여 넣은 SVG(edit.pasteSvg) 레이어의 획 · 도형 그룹들 — 그린 순서대로 */

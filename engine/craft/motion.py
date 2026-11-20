@@ -745,12 +745,7 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
     path = ROOT / f
     kind = mat_kind(rec)
     pre_in = enter_preset(rec, direction) if t0 > 0.05 else None    # 0초에 시작하는 재료는 첫 프레임부터 보여야 한다
-    if rec.get("seq"):     # 움직이는 형태(form anim) — 프레임 묶음을 12fps 로 들여와 장면 끝까지 반복
-        path = ROOT / rec["seq"]
-        J(f"var io = new ImportOptions(new File({js(str(path))})); io.sequence = true; var f = app.project.importFile(io); try {{ f.mainSource.conformFrameRate = 12; }} catch (e) {{}} var ml = c.layers.add(f); ml.name = {js('Mat ' + mid)};"
-          " ml.timeRemapEnabled = true; ml.property('Time Remap').expression = 'time % thisLayer.source.duration'; ml.outPoint = c.duration;")
-    else:
-        J(f"var f = app.project.importFile(new ImportOptions(new File({js(str(path))}))); var ml = c.layers.add(f); ml.name = {js('Mat ' + mid)};")
+    J(f"var f = app.project.importFile(new ImportOptions(new File({js(str(path))}))); var ml = c.layers.add(f); ml.name = {js('Mat ' + mid)};")
     if path.suffix.lower() in VIDEO_EXT:
         J(f"try {{ ml.startTime = {t0:.2f}; }} catch (e) {{}}")   # 녹화는 등장하는 순간부터 재생
     if typ == "doc_quote":

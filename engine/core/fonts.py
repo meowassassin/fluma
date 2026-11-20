@@ -15,8 +15,6 @@ from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "assets" / "fonts"
 ROOT = Path(__file__).resolve().parents[2]
-import sys as _sys  # noqa: E402
-_sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401 — HTTPS 인증서(독립 빌드 파이썬은 CA 경로가 없다, 2026-11-20 위키미디어 검색 실패)
 EXT = ROOT / "tools" / "fonts"
 CATALOG = SRC / "catalog.json"
 DST = Path.home() / ".local" / "share" / "fonts" / "fluma"

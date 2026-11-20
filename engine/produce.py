@@ -317,20 +317,6 @@ def main() -> int:
         fail("produce", stage="storyboard", error=f"콘티가 없습니다: {a.storyboard}")
     sb = json.loads(sp.read_text("utf-8"))
     sid = sb["id"]
-    # 자동 진행: 막음 0 으로 완성한 뒤의 전체 제작(다듬기)은 한 번만 — 2026-11-19 실측: 완성 뒤 스스로 렌더 6번 더 · 10분
-    if os.environ.get("FLUMA_AUTOPILOT") and not a.scenes and not a.prep and not os.environ.get("FLUMA_POLISH_OK"):
-        qf0 = ROOT / "data" / "workspace" / "tmp" / sid / "quality.json"
-        pf0 = qf0.with_name("polish.json")
-        try:
-            done0 = qf0.exists() and not (json.loads(qf0.read_text("utf-8")).get("block") or [])
-        except ValueError:
-            done0 = False
-        if done0:
-            n0 = (json.loads(pf0.read_text("utf-8")).get("n", 0) if pf0.exists() else 0)
-            if n0 >= 1:
-                fail("produce", stage="autopilot", error="자동 진행: 이미 완성(막음 0)했고 다듬기 제작도 한 번 했다 — 더 렌더하지 말고 완성 영상을 media 로 보여 주며 끝낸다",
-                     file=str(qf0.relative_to(ROOT)))
-            pf0.write_text(json.dumps({"n": n0 + 1}), "utf-8")
     lock_f0 = ROOT / "data" / "workspace" / "tmp" / sid / "produce.lock"
     prep_f = ROOT / "data" / "compositions" / sid / "prep.json"
     if a.prep_status:
@@ -564,33 +550,12 @@ def main() -> int:
         print("\n".join(ln for ln in (rh.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
         sb = json.loads(sp.read_text("utf-8"))
 
-    # 2.88) 렌더 전 화면 검사(engine/checks/preflight.py, 10초 · LLM 없음) — 빈 화면(D10) · 자막 · 제목 자리에 깔린 내용을 재서
-    #       막을 것이 있으면 검토(LLM 1분) · 렌더 전에 멈춘다(2026-11-19 실측: 이 막음들이 렌더 뒤에야 나와 고치고 다시 렌더하기가 여러 번)
-    if not a.scenes and not a.keep_going and os.environ.get("FLUMA_PREFLIGHT", "1") != "0":
-        pf = step("preflight", [PY, "engine/checks/preflight.py", sid], timeout=600)
-        pb = block(pf.stdout)
-        if pf.returncode == 0 and str((pb.get("hard") or ["0"])[0]) != "0":
-            save_times(sid)
-            fail("produce", stage="preflight", error=f"렌더 전 화면 검사 막음 {pb['hard'][0]}건 — 렌더 · 검토 전에 한 번에 고친다",
-                 block=[ln for ln in (pf.stdout or "").splitlines() if ln.startswith("✗")], advise=[ln for ln in (pf.stdout or "").splitlines() if ln.startswith("△")],
-                 media=pb.get("media") or [], next="시트(빨간 띠 = 자막 · 제목 자리)를 Read 로 한 번 보고 ✗ 를 모두 고친 뒤(장면 코드 · knob.py set) 다시 produce — python3 engine/checks/preflight.py <id> 로 렌더 없이 먼저 확인 가능")
-
     # 2.9) 디자이너 정지 화면 검토(skill_pass review) — 렌더 앞에서. 정지 화면은 영상이 아니라 프로젝트에서 바로 그린다(engine/core/still.py → snapshot)
     #      2026-11-18: 렌더 뒤에 검토하면 바뀐 값(글자 위치 등)이 화면 전체에 걸려 두 번째 렌더가 통째로 돌았다(90초)
     if deep and not a.scenes:
         rr = step("review", [PY, "engine/story/skill_pass.py", "review", rel], timeout=2400)
         print("\n".join(ln for ln in (rr.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
         sb = json.loads(sp.read_text("utf-8"))
-        # 검토가 이미 막을 것(겹침 · 잘림 · 안전 영역 — 품질 관문 D21)을 찾았으면 렌더하지 않는다 — 렌더해도 관문에서 막힌다
-        # (2026-11-20 실측: 막힐 영상을 매번 36~187초씩 렌더, 한 편에 렌더 6번 · 8.4분)
-        if not a.keep_going and os.environ.get("FLUMA_REVIEW_STOP", "1") != "0":
-            import quality_gate as qg
-            rv_block = [x for x in qg.from_review(sid) if x.get("block") and not qg.waived(sb, x)]
-            if rv_block:
-                save_times(sid)
-                fail("produce", stage="review", error=f"렌더 전 검토가 막을 것 {len(rv_block)}건을 찾음 — 렌더하지 않고 멈춘다(렌더해도 품질 관문에서 막힘). 모두 한 번에 고친 뒤 다시 produce",
-                     block=[qg.line(x) for x in rv_block],
-                     next="장면 코드 · knob.py set 으로 전부 고친다(고친 장면만 다시 검토된다) → produce 한 번")
 
     # 3) 재료 · 초안 렌더(재료는 렌더가 만든다 — engine/craft/materials.py)
     outfile_label = "완성" if not use_draft else "초안"

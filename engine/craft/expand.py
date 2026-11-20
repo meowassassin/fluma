@@ -27,13 +27,7 @@ def _archive(m: dict, sb: dict, w: int, h: int) -> list[dict]:
     mf = f.with_suffix(".json")
     if not f.exists() or not mf.exists():
         mf.parent.mkdir(parents=True, exist_ok=True)
-        same = next((x for x in sorted(f.parent.glob("*.json")) if x.name != "credits.json" and x.with_suffix(".jpg").exists()
-                     and json.loads(x.read_text("utf-8")).get("title") == m["title"]), None)
-        if same:                                       # 같은 사진을 다른 재료 id 로 또 쓰면 다시 받지 않는다(요청 제한)
-            import shutil
-            shutil.copyfile(same.with_suffix(".jpg"), f); shutil.copyfile(same, mf)
-        else:
-            mf.write_text(json.dumps(fetch(m["title"], f, int(m.get("width", 1920))), ensure_ascii=False), "utf-8")
+        mf.write_text(json.dumps(fetch(m["title"], f, int(m.get("width", 2400))), ensure_ascii=False), "utf-8")
     meta = json.loads(mf.read_text("utf-8"))
     src = sb.setdefault("sources", [])
     if meta.get("page") and meta["page"] not in src:

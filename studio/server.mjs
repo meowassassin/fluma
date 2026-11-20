@@ -287,9 +287,6 @@ const GEN_KEYS = [
     test: { url: "https://api.pexels.com/videos/search?query=city&per_page=1", auth: "Authorization" } },
   { id: "youtube", ready: true, env: "YOUTUBE_API_KEY", title: "YouTube Data API", what: "요즘 인기 · 최신 곡 찾기(음악 인기 차트 KR · 최근 1년 조회수 순). 곡 정보만 받는다 — 영상에는 무료 곡만 넣고 상업 유행곡은 업로드 때 붙일 곡으로 알려 준다. 없으면 웹 검색으로 찾는다", caps: ["음악"], keyHint: "AIza…", console: "https://console.cloud.google.com/apis/library/youtube.googleapis.com", docs: "https://developers.google.com/youtube/v3/docs",
     test: { url: "https://www.googleapis.com/youtube/v3/videos?part=id&chart=mostPopular&maxResults=1", auth: "query:key" } },
-  { id: "google_cse", ready: true, env: "GOOGLE_CSE_KEY", title: "Google 프로그래머블 검색 — API 키", what: "참고 그림 찾기(이미지 검색 · 구글 이미지와 같은 결과) — 하루 100번 무료. 아래 검색엔진 ID(cx)와 함께", caps: ["참고 그림"], keyHint: "AIza…", console: "https://console.cloud.google.com/apis/library/customsearch.googleapis.com", docs: "https://developers.google.com/custom-search/v1/overview" },
-  { id: "google_cse_cx", ready: true, env: "GOOGLE_CSE_CX", title: "Google 프로그래머블 검색 — 검색엔진 ID(cx)", what: "programmablesearchengine.google.com 에서 '전체 웹 검색' · '이미지 검색' 켠 검색엔진의 ID", caps: ["참고 그림"], keyHint: "0123…:abc…", console: "https://programmablesearchengine.google.com/controlpanel/create", docs: "https://developers.google.com/custom-search/v1/overview" },
-  { id: "brave", ready: true, env: "BRAVE_API_KEY", title: "Brave Search", what: "참고 그림 찾기(웹 이미지 검색) — 월 2,000번 무료", caps: ["참고 그림"], keyHint: "BSA…", console: "https://api-dashboard.search.brave.com/app/keys", docs: "https://api-dashboard.search.brave.com/app/documentation/image-search/get-started" },
   { id: "pixabay", ready: true, env: "PIXABAY_API_KEY", title: "Pixabay", what: "무료 스톡 영상 — Pexels 에 없을 때 두 번째로 찾는 곳", caps: ["스톡 영상"], keyHint: "Pixabay API 키", console: "https://pixabay.com/accounts/register/", docs: "https://pixabay.com/api/docs/",
     test: { url: "https://pixabay.com/api/videos/?q=city&per_page=3", auth: "query:key" } },
 ];
@@ -1622,7 +1619,6 @@ function sanitizeAgent(a = {}) {
     cli: AGENTS.some((x) => x.id === a.cli && x.runs) ? a.cli : "claude",
     claudeModel: str(a.claudeModel), codexModel: str(a.codexModel), agyModel: str(a.agyModel), cursorModel: str(a.cursorModel),
     effort: EFFORTS.includes(a.effort) ? a.effort : "",
-    ...(Number(a.maxConcurrent) >= 1 ? { maxConcurrent: Math.min(4, Math.floor(Number(a.maxConcurrent))) } : {}),   // 동시에 도는 영상 대화 수(agent.mjs maxPar) — 전엔 저장 때 버려졌다
   };
 }
 app.get("/api/agents", ah(async (_req, res) => {
@@ -2022,9 +2018,6 @@ refreshAgents().then(() => publish({ kind: "registry", name: "agents" }));
 // 에이전트가 파일을 쓰는 서버이므로 이 컴퓨터에서만 접속 가능하게 한다
 // 기본은 이 컴퓨터에서만(127.0.0.1). 컨테이너에서는 FLUMA_HOST=0.0.0.0 — 키 · 파일 접근이 있는 API 라 외부에 열지 않는다
 const HOST = process.env.FLUMA_HOST || "127.0.0.1";
-const server = app.listen(PORT, HOST, () => {
-  console.log(`[api] http://${HOST}:${PORT}  root=${ROOT}`);
-  setTimeout(() => agent.resumeInterrupted().then((r) => r.length && console.log("[agent] 끊긴 자동 진행:", JSON.stringify(r))).catch((e) => console.error("[agent] 이어가기 실패", e)), 5000);
-});
+const server = app.listen(PORT, HOST, () => console.log(`[api] http://${HOST}:${PORT}  root=${ROOT}`));
 const shutdown = () => { agent.shutdown(); for (const j of jobs.list()) if (!jobs.TERMINAL.has(j.status)) jobs.cancel(j.id); server.close(); setTimeout(() => process.exit(0), 1500).unref(); };
 process.on("SIGTERM", shutdown); process.on("SIGINT", shutdown);

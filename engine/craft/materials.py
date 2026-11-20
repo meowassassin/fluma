@@ -235,16 +235,11 @@ def form(m: dict, out: Path, work: Path) -> dict:
         sc = json.loads(_abs(m["src"]).read_text("utf-8"))
     if not isinstance(sc, dict):
         raise RuntimeError(f"{m.get('id')}: form 재료는 scene(형태 JSON) 또는 src 가 필요합니다")
-    style = m.get("look") if isinstance(m.get("look"), dict) else (m.get("style") or "cel")   # look: 화풍 값(축의 값 묶음) — 이름 화풍보다 우선
+    style = m.get("style") or "cel"
     F.draw(sc, style, out, res=int(m.get("res") or 1080), view=m.get("view"), background=m.get("background"))
     keep = out.with_suffix(".scene.json")                  # 사람이 고칠 수 있게 형태 데이터를 남긴다
     keep.write_text(json.dumps(sc, ensure_ascii=False, indent=1), "utf-8")
-    info = {"app": "form", "style": style if isinstance(style, str) else "look", "as": "image", "editable": str(keep.relative_to(ROOT)) if keep.is_relative_to(ROOT) else str(keep)}
-    if sc.get("anim"):                                      # 움직임(anim.tracks) — 프레임 묶음을 그려 장면에서 반복 재생(motion: 'seq')
-        an = F.animate(sc, style, out.parent / f"{m['id']}.anim", res=int(m.get("anim_res") or 720), view=m.get("view"), background=m.get("background"))
-        info["seq"] = str(Path(an["first"]).resolve().relative_to(ROOT))
-        info["seq_frames"] = an["frames"]
-    return info
+    return {"app": "form", "style": style, "as": "image", "editable": str(keep.relative_to(ROOT)) if keep.is_relative_to(ROOT) else str(keep)}
 
 
 def photo(m: dict, out: Path, work: Path) -> dict:
