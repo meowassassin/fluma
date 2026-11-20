@@ -23,7 +23,9 @@ from result import fail, ok  # noqa: E402
 
 # 자막 · 제목 자리 안 윤곽선 밀도(9px 로 굵힌 가장자리의 면적 비율) — 2026-11-19 실측: 제목에 걸친 문서 0.065 · 고친 뒤 0.0,
 # 통과한 영상들 0~0.06(자막 띠가 더 넓어 같은 물체도 값이 작다)
-UNDER = {"title": (0.04, 0.015), "subs": (0.08, 0.03)}     # (막음, 권고)
+UNDER = {"title": (0.055, 0.02), "subs": (0.08, 0.03)}     # (막음, 권고)
+SIDE = 0.03            # 오른쪽 12% 띠 윤곽 밀도(권고)
+EDGE = 0.06            # 화면 끝 1.5% 띠
 FULL_BLEED = 0.55      # 화면 전체의 이만큼 넘게 내용이면 사진 · 녹화를 가득 깐 장면(자막 밑 그림이 정상)
 
 
@@ -94,6 +96,17 @@ def measure(sid: str, at: float = 0.6) -> tuple[list[dict], Path]:
                 probs.append(("✗", f"{name} 자리에 윤곽 {v * 100:.1f}% — 그림 · 글자가 {name}에 가린다 → 재료를 {name} 자리 밖으로(adjust.dy · scale, 장면 코드 y)"))
             elif v > lo and not full:
                 probs.append(("△", f"{name} 자리에 윤곽 {v * 100:.1f}% — 끝부분이 걸치는지 시트에서 확인"))
+        # 좌우: 오른쪽 12% 는 좋아요 · 댓글 버튼 자리, 화면 끝 1.5% 에 닿으면 잘려 보인다(2026-11-19 검토 D21 '안전 영역' · '잘림' — 렌더 뒤에야 나와 다시 렌더)
+        Hh, Ww = content.shape
+        ya, yb = int(0.15 * Hh), int(0.80 * Hh)
+        right = float(content[ya:yb, int(0.88 * Ww):int(0.985 * Ww)].mean())
+        edge = max(float(content[ya:yb, :int(0.015 * Ww)].mean()), float(content[ya:yb, int(0.985 * Ww):].mean()))
+        r["right"], r["edge"] = round(right, 3), round(edge, 3)
+        if not full:
+            if right > SIDE:      # 권고만 — 상자 테두리 · 그림이 걸친 건 괜찮고, 글자 · 라벨이면 고친다(윤곽만으로는 구분이 안 됨, 2026-11-19 완성본 3장면이 상자 테두리로 걸림)
+                probs.append(("△", f"오른쪽 12%(좋아요 · 댓글 버튼 자리)에 윤곽 {right * 100:.1f}% — 글자 · 라벨이 걸치면 x 0.86 안으로(장면 코드 배치 폭 · adjust.dx)"))
+            if edge > EDGE:
+                probs.append(("✗", f"화면 끝에 닿은 내용(윤곽 {edge * 100:.1f}%) — 잘려 보인다 → 양옆 여백 0.06 이상"))
         r["problems"] = probs
         rows.append(r)
         t = img.copy()
