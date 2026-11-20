@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """형태(form) 도구 — 데이터로 빚은 형태를 화풍으로 그려 본다. 작성법: engine/craft/form/README.md
 
-  python3 engine/craft/form_cli.py preview <형태.json> [--style cel] [--azimuth 35 --elevation 20]   # 작게(540) 빠르게 → 경로 출력, Read 로 본다
+  python3 engine/craft/form_cli.py preview <형태.json> [--style cel] [--azimuth 35 --elevation 20] [--ref <참고 그림>]  # --ref: 참고 그림 | 내 형태 나란히   # 작게(540) 빠르게 → 경로 출력, Read 로 본다
   python3 engine/craft/form_cli.py render  <형태.json> --out <파일.png> [--style flat|cel|sketch|clay] [--bg "#hex"] [--res 1080]
   python3 engine/craft/form_cli.py anim    <형태.json> --out-dir data/compositions/<id>/forms/<이름>.anim [--style cel] [--res 720]   # 움직임(anim) 프레임 묶음 → …/f000.png
   python3 engine/craft/form_cli.py styles                                                              # 네 화풍 한 장 비교(같은 형태)
@@ -65,6 +65,14 @@ def main() -> int:
         out = Path(_arg(a, "--out") or TMP / f"{name}.{_arg(a, '--style', 'cel')}.png")
         out = out if out.is_absolute() else ROOT / out
         form.draw(sc, _arg(a, "--style", "cel"), out, res=res, view=view, background=_arg(a, "--bg"))
+        if _arg(a, "--ref"):     # 참고 그림(engine/research/ref_images.py 로 받은 NN.jpg)과 나란히 — 비례 · 실루엣 · 과장 정도를 견준다
+            from PIL import Image
+            rf = Path(_arg(a, "--ref")); rf = rf if rf.is_absolute() else ROOT / rf
+            ref = Image.open(rf).convert("RGB"); ref.thumbnail((540, 540))
+            mine = Image.open(out).convert("RGBA"); bg = Image.new("RGBA", mine.size, "#f3efe6"); bg.alpha_composite(mine)
+            side = Image.new("RGB", (540 * 2, 540), "#ffffff")
+            side.paste(ref, ((540 - ref.width) // 2, (540 - ref.height) // 2)); side.paste(bg.convert("RGB").resize((540, 540)), (540, 0))
+            out = out.with_name(out.stem + ".vsref.jpg"); side.save(out, quality=85)
     print(f"{out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}  ({time.time() - t:.1f}초)")
     return 0
 

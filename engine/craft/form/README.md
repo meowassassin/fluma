@@ -17,8 +17,9 @@ y 가 위, 바닥은 y = 0, 정면은 +z. 단위는 대략 "물체 높이 ≈ 1"
 - 연산(`op`) — `union` · `smooth_union`(k = 녹여 붙이는 반경) · `subtract`(첫째에서 나머지를 뺌) · `smooth_subtract` · `intersect` · `smooth_intersect`. `cut_mat: true` 면 깎인 면이 깎은 도형의 재질. 연산에도 pos · rot · scale 을 줄 수 있다(묶음 전체).
 
 ## 빚는 순서
+0. **참고 그림부터 본다(기억으로 빚지 않는다 — 2026-11-20)**: 대상 + 원하는 그림 장르(카툰 · 극화 · 데포르메 · 일본 만화 · 미국 만화 …)로 WebSearch(일반 웹 검색) → 그림이 있는 페이지 주소 4~8개를 `python3 engine/research/ref_images.py "<이름>" --id <영상 id> --pages <URL> …` 에 넘겨 시트 한 장을 Read → 2~3장을 골라 비례 · 실루엣 · 과장 정도 · 선 · 명암을 적는다. 영상에는 넣지 않는다(보기만).
 1. 큰 덩어리(몸통) → 붙는 덩어리(머리 · 손잡이)를 `smooth_union` 으로(이음매 없이) → 작은 부품(눈 · 부리)은 `union`.
-2. `python3 engine/craft/form_cli.py preview <형태.json>` — 540 크기로 약 1~2초. Read 로 보고 비례 · 위치를 고친다(2~3번).
+2. `python3 engine/craft/form_cli.py preview <형태.json> --ref <참고 NN.jpg>` — 참고 그림과 나란히(약 1~4초). Read 로 견주어 비례 · 실루엣을 고친다(2~3번).
 3. `python3 engine/craft/form_cli.py styles <형태.json>` — 네 화풍을 한 장으로 비교(필요할 때만).
 4. 콘티: `{"type": "form", "scene": "$FILE:data/compositions/<id>/forms/<이름>.json", "view": {"azimuth": 30}}` — 장면마다 각도만 바꿔 같은 형태를 다시 쓴다.
 
