@@ -2,6 +2,7 @@
 """형태(form) 도구 — 데이터로 빚은 형태를 화풍으로 그려 본다. 작성법: engine/craft/form/README.md
 
   python3 engine/craft/form_cli.py preview <형태.json> [--style cel] [--azimuth 35 --elevation 20] [--ref <참고 그림>]  # --ref: 참고 그림 | 내 형태 나란히   # 작게(540) 빠르게 → 경로 출력, Read 로 본다
+  (모든 명령: --style 이름 대신 --look '{화풍 값 JSON}' — engine/craft/form/README.md '화풍 값')
   python3 engine/craft/form_cli.py render  <형태.json> --out <파일.png> [--style flat|cel|sketch|clay] [--bg "#hex"] [--res 1080]
   python3 engine/craft/form_cli.py anim    <형태.json> --out-dir data/compositions/<id>/forms/<이름>.anim [--style cel] [--res 720]   # 움직임(anim) 프레임 묶음 → …/f000.png
   python3 engine/craft/form_cli.py styles                                                              # 네 화풍 한 장 비교(같은 형태)
@@ -36,11 +37,13 @@ def main() -> int:
     view = {k: float(_arg(a, f"--{k}")) for k in ("azimuth", "elevation") if _arg(a, f"--{k}") is not None} or None
     t = time.time()
     name = Path(src).stem
+    lk = _arg(a, "--look")                      # 화풍 값(JSON) — 예: --look '{"bands":2,"mono":true,"tone":7}'
+    style_arg = json.loads(lk) if lk else _arg(a, "--style", "cel")
     if cmd == "anim":       # 움직임: anim.tracks 대로 프레임 묶음(…/f000.png) + 확인용 시트 한 장(4칸)
         from PIL import Image
         d = Path(_arg(a, "--out-dir") or TMP / f"{name}.anim")
         d = d if d.is_absolute() else ROOT / d
-        an = form.animate(sc, _arg(a, "--style", "cel"), d, res=int(_arg(a, "--res", 720)), view=view, background=_arg(a, "--bg"))
+        an = form.animate(sc, style_arg, d, res=int(_arg(a, "--res", 720)), view=view, background=_arg(a, "--bg"))
         n = an["frames"]
         pick = sorted({0, n // 4, n // 2, (3 * n) // 4})
         ims = [Image.open(d / f"f{i:03d}.png").convert("RGBA") for i in pick]
@@ -62,9 +65,9 @@ def main() -> int:
         out = TMP / f"{name}.styles.png"; sheet.save(out)
     else:
         res = 540 if cmd == "preview" else int(_arg(a, "--res", 1080))
-        out = Path(_arg(a, "--out") or TMP / f"{name}.{_arg(a, '--style', 'cel')}.png")
+        out = Path(_arg(a, "--out") or TMP / f"{name}.{'look' if lk else _arg(a, '--style', 'cel')}.png")
         out = out if out.is_absolute() else ROOT / out
-        form.draw(sc, _arg(a, "--style", "cel"), out, res=res, view=view, background=_arg(a, "--bg"))
+        form.draw(sc, style_arg, out, res=res, view=view, background=_arg(a, "--bg"))
         if _arg(a, "--ref"):     # 참고 그림(engine/research/ref_images.py 로 받은 NN.jpg)과 나란히 — 비례 · 실루엣 · 과장 정도를 견준다
             from PIL import Image
             rf = Path(_arg(a, "--ref")); rf = rf if rf.is_absolute() else ROOT / rf

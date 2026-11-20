@@ -36,3 +36,21 @@ y 가 위, 바닥은 y = 0, 정면은 +z. 단위는 대략 "물체 높이 ≈ 1"
   키는 `[초, 값]` — 그 칸(pos · rot · scale · radii · r · h …)의 **값 그대로**, 사이는 부드럽게, 마지막 뒤는 처음으로 돌아가 반복. 눈 깜빡임은 radii 세로를 0.1초 줄였다 펴기.
 - 비율 · 표정 · 동작은 정해진 표가 없다 — 사용자 요청 · 레퍼런스 · 아트 디렉션의 느낌을 보고 영상마다 정한다.
 - 그리기: `python3 engine/craft/form_cli.py anim <형태.json> --out-dir data/compositions/<id>/forms/<이름>.anim` → `…/f000.png` 와 확인 시트. 장면 코드에서 `K.image('…/f000.png', x, y, 배율)` 이면 반복 재생된다. 콘티 재료(type form)에 anim 이 있으면 엔진이 알아서 묶음으로 그린다.
+
+## 화풍 값 (`look`) — 이름 화풍(flat · cel · sketch · clay) 대신 축의 값으로 (2026-11-20)
+그림체는 몇 개 축의 조합이다. 참고 그림을 보고 축마다 값을 정한다(화풍 이름별 정답표는 없다 — 영상마다 새로).
+재료: `{"type": "form", "scene": …, "look": {…}}` · 도구: `form_cli preview <형태> --look '{…}'`. 한 장 0.1~0.5초(형태 계산은 캐시).
+| 축 | 값 |
+|---|---|
+| `bands` 명암 단계 | 0 부드럽게 · 1 없음(평면) · 2~4 단계 |
+| `shadow` 그림자 깊이 · `light` 밝은 면 하양 · `rim` 테두리 빛 | 0~1 |
+| `highlight` | "dot" · "soft" · null |
+| `line` 바깥선 · `inner` 안쪽 선 굵기(px, 0 없음) · `weight` 그림자 쪽 굵게 · `jitter` 손떨림 | 숫자 |
+| `ink` 선 · 먹색 | "#hex" |
+| `solid` 먹칠(이만큼 넘게 어두운 곳을 먹색으로) | 0~1 |
+| `hatch` 해칭 간격(px) · `hatch_angle` · `cross` 교차 | 숫자 · 도 · bool |
+| `tone` 스크린톤 점 간격 · `halftone` 망점 간격(어두울수록 큰 점) | px |
+| `mono` 흑백 · `saturation` 채도 배율 · `tint` 색 기울기 · `colors` 색 수 제한 | bool · 숫자 · "#hex" · 정수 |
+| `wash` 수채 번짐 · `paper` 종이 · 크레용 결 | 0~1 |
+| `pixel` 픽셀 크기(+`colors`) | px |
+| `ground` 바닥 그림자 | bool |

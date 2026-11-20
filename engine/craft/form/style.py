@@ -272,4 +272,115 @@ def clay(c: Ctx, bg_top="#f6f1ea", bg_bot="#e8dfd3", bounce_col=None):
     return img
 
 
+# ------------------------------------------------------------------ LOOK (조절 값으로 그리는 화풍 — 2026-11-20)
+# 화풍 이름마다 규칙을 두지 않는다: 그림체를 이루는 축(명암 단계 · 선 · 해칭 · 스크린톤 · 망점 · 색 수 · 채도 · 흑백 · 종이 · 번짐 · 픽셀)을
+# 값으로 열고, 에이전트가 참고 그림을 보고 값을 정한다(engine/craft/form/README.md '화풍 값').
+LOOK_KEYS = ("bands", "solid", "shadow", "light", "highlight", "rim", "saturation", "tint", "mono", "ink", "line", "inner", "jitter", "weight",
+             "hatch", "hatch_angle", "cross", "tone", "halftone", "paper", "wash", "ground", "pixel", "colors")
+
+
+def _lum(img):
+    return img @ np.array([0.299, 0.587, 0.114], np.float32)
+
+
+def look(c: Ctx, p: dict, bg="#ffffff"):
+    N, sc = c.N, c.ss
+    g = lambda k, d=None: p.get(k, d)  # noqa: E731
+    bgc = hexrgb(bg)
+    img = np.broadcast_to(bgc, (N, N, 3)).copy()
+    ink = hexrgb(g("ink", "#1b1714"))
+    if g("ground", True):
+        gm = (~c.hit) & (c.b["gshadow"] * c.b["gao"] < 0.55)
+        img[gm] = bgc * 0.84
+    s = np.clip(c.lv * (0.55 + 0.45 * c.b["ao"]), 0, 1)                 # 0 그림자 … 1 빛
+    bands = int(g("bands", 3))
+    if bands <= 0:
+        t = smoothstep(0.0, 1.0, s)                                       # 부드러운 명암
+    elif bands == 1:
+        t = np.ones_like(s)                                               # 명암 없음(평면)
+    else:
+        t = np.floor(np.clip(s * 1.15, 0, 0.999) * bands) / (bands - 1)
+    base = c.base
+    dark = mix(base, c.shadow_t[c.mi], float(g("shadow", 0.85)))
+    col = mix(dark, base, t[..., None])
+    lt = float(g("light", 0.0))                                           # 밝은 면을 하양 쪽으로
+    if lt:
+        col = mix(col, np.ones(3, np.float32), (lt * (s > 0.8))[..., None])
+    hl = g("highlight", "dot")
+    if hl:
+        spec = np.clip(c.b["ndh"], 0, 1) ** c.per_mat(c.pow_t * 2.0) * c.per_mat(c.gloss_t)
+        m = (spec > (0.4 if hl == "dot" else 0.15)) & (c.b["shadow"] > 0.5)
+        col[m] = mix(col[m], np.ones(3, np.float32), 1.0 if hl == "dot" else 0.5)
+    rim = float(g("rim", 0.0))
+    if rim:
+        r = ((1 - c.b["ndv"]) > 0.7) & (c.b["fill"] > 0.3)
+        col[r] = mix(col[r], np.ones(3, np.float32), rim)
+    sat = float(g("saturation", 1.0))
+    if sat != 1.0:
+        L = _lum(col)[..., None]; col = np.clip(L + (col - L) * sat, 0, 1)
+    if g("tint"):
+        col = mix(col, hexrgb(g("tint")), 0.25)
+    if g("mono"):                                                         # 흑백(먹 · 연필): 밝기만 남기고 종이색 위에
+        col = np.repeat(_lum(col)[..., None], 3, -1)
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float32)
+    shade = (1 - s) * c.hit
+    hp = int(g("hatch", 0) * sc)                                          # 해칭: 그림자 쪽에 사선(간격 px), cross 면 더 어두운 곳에 교차
+    if hp:
+        a = np.radians(float(g("hatch_angle", 35)))
+        w = max(1, int(hp * 0.28))
+        l1 = ((xx * np.cos(a) + yy * np.sin(a)) % hp) < w
+        hm = l1 & (shade > 0.45)
+        if g("cross", True):
+            l2 = ((xx * np.cos(a + 1.4) + yy * np.sin(a + 1.4)) % hp) < w
+            hm |= l2 & (shade > 0.72)
+        col[hm] = mix(col[hm], ink, 0.85)
+    tp = int(g("tone", 0) * sc)                                           # 스크린톤: 그림자 쪽에 같은 크기 점
+    if tp:
+        dx, dy = (xx % tp) - tp / 2, (yy % tp) - tp / 2
+        tm = (dx * dx + dy * dy < (tp * 0.32) ** 2) & (shade > 0.4)
+        col[tm] = mix(col[tm], ink, 0.8)
+    hf = int(g("halftone", 0) * sc)                                       # 망점: 어두울수록 큰 점(밝은 면은 원래 색)
+    if hf:
+        dx, dy = (xx % hf) - hf / 2, (yy % hf) - hf / 2
+        rad = shade * hf * 0.62
+        hm = (dx * dx + dy * dy < rad * rad) & c.hit
+        col = np.where(c.hit[..., None], mix(base, np.ones(3, np.float32), 0.15) if not g("mono") else np.ones_like(col), col)
+        col[hm] = mix(c.shadow_t[c.mi][hm], ink, 0.5)
+    so = float(g("solid", 0.0))                                           # 먹칠(베타): 이만큼 넘게 어두운 곳을 먹색으로 꽉
+    if so:
+        sm = (shade > so) & c.hit
+        col[sm] = ink
+    wash = float(g("wash", 0.0))                                          # 수채: 칠이 번지고 가장자리에 물감이 고인다
+    if wash:
+        blur = cv2.GaussianBlur(col, (0, 0), 3 * sc * wash)
+        col = np.where(c.hit[..., None], blur, col)
+        dist = cv2.distanceTransform(c.hit.astype(np.uint8), cv2.DIST_L2, 3)
+        edge = np.exp(-dist / (6 * sc)) * c.hit
+        col = col * (1 - 0.35 * wash * edge[..., None])
+        col *= (0.92 + 0.16 * noise(N, 18, 5, 2))[..., None] ** wash
+    img[c.hit] = col[c.hit]
+    lw = float(g("line", 2.5))                                            # 선: 바깥 굵기(px) · 안쪽 · 흔들림 · 그림자 쪽 굵게
+    if lw > 0:
+        sil, inner = c.edges()
+        lm = cv2.dilate(sil, disk(max(1, int(lw * sc)))).astype(np.float32)
+        iw = float(g("inner", lw * 0.45))
+        if iw > 0:
+            lm = np.maximum(lm, cv2.dilate(inner, disk(max(1, int(iw * sc)))).astype(np.float32))
+        wt = float(g("weight", 0.0))
+        if wt:
+            heavy = cv2.dilate(sil, disk(max(1, int(lw * (1 + wt) * sc)))).astype(np.float32)
+            dark_side = cv2.dilate((shade > 0.5).astype(np.uint8), disk(int(4 * sc))).astype(np.float32)
+            lm = np.maximum(lm, heavy * dark_side)
+        jt = float(g("jitter", 0.0))
+        if jt:
+            nx_ = (noise(N, 24, 11, 2) - 0.5) * 2 * jt * sc; ny_ = (noise(N, 24, 12, 2) - 0.5) * 2 * jt * sc
+            lm = cv2.remap(lm, (xx + nx_).astype(np.float32), (yy + ny_).astype(np.float32), cv2.INTER_LINEAR)
+        lm = cv2.GaussianBlur(lm, (0, 0), 0.6 * sc)
+        img = mix(img, ink, np.clip(lm, 0, 1)[..., None])
+    pa = float(g("paper", 0.0))                                           # 종이 · 크레용 결
+    if pa:
+        img = img * (1 - pa * 0.25 * noise(N, 90, 21, 2))[..., None]
+    return img
+
+
 STYLES = dict(flat=flat, cel=cel, sketch=sketch, clay=clay)

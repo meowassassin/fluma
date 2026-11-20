@@ -42,8 +42,10 @@ def passes(scene: dict, res: int = 1080, ss: int = 2):
     return buf, meta
 
 
-def _style_on(ctx, style: str, bg: str):
+def _style_on(ctx, style, bg: str):
     from . import style as st
+    if isinstance(style, dict):                    # 화풍 값(look) — 이름 대신 축의 값으로
+        return ctx.finish(st.look(ctx, style, bg=bg))
     fn = st.STYLES[style]
     if style == "clay":
         return ctx.finish(fn(ctx, bg_top=bg, bg_bot=bg, bounce_col="#e8dfd3"))
@@ -56,8 +58,8 @@ def draw(scene: dict, style: str = "cel", out: Path | str | None = None, res: in
          background: str | None = None):
     """형태 → 화풍 → PNG. background 가 없으면 투명(흰 · 검은 바탕으로 두 번 그려 차이로 투명도를 구한다)"""
     from . import style as st
-    if style not in STYLES:
-        raise ValueError(f"화풍은 {', '.join(STYLES)} 중 하나: {style}")
+    if not isinstance(style, dict) and style not in STYLES:
+        raise ValueError(f"화풍은 {', '.join(STYLES)} 중 하나 또는 값 묶음(look): {style}")
     sc = _scene_with_view(scene, view)
     buf, meta = passes(sc, res)
     return _image(st.Ctx(buf, meta), style, background, out)
@@ -110,8 +112,8 @@ def animate(scene: dict, style: str = "cel", out_dir: Path | str | None = None, 
     한 장 약 2초(720 · 화풍 포함) — 12fps · 1~2초 반복이면 12~24장. 만화 · 애니메이션은 원래 12fps(2프레임 한 장)라 어색하지 않다"""
     from . import render
     from . import style as st
-    if style not in STYLES:
-        raise ValueError(f"화풍은 {', '.join(STYLES)} 중 하나: {style}")
+    if not isinstance(style, dict) and style not in STYLES:
+        raise ValueError(f"화풍은 {', '.join(STYLES)} 중 하나 또는 값 묶음(look): {style}")
     an = scene.get("anim") or {}
     fps, dur = 12, float(an.get("dur") or 1.0)          # 12fps 고정 — 장면(kit · motion)이 12fps 로 들여와 반복한다
     n = max(1, round(fps * dur))
@@ -158,6 +160,27 @@ def _image(ctx, style: str, background: str | None, out):
             a = np.maximum(a, m)
         a[a < 0.02] = 0
         img = Image.fromarray(np.dstack([(rgb * 255 + 0.5).astype(np.uint8), (a * 255 + 0.5).astype(np.uint8)]), "RGBA")
+    px = int(style.get("pixel", 0)) if isinstance(style, dict) else 0
+    if px > 1:                                     # 픽셀: 크게 깎아 줄이고(가장 가까운 색) 다시 키운다 · 색 수 제한 · 투명도는 켜짐/꺼짐
+        from PIL import Image as _I
+        w, h = img.size
+        small = img.convert("RGBA").resize((max(1, w // px), max(1, h // px)), _I.NEAREST)
+        al = small.getchannel("A").point(lambda v: 255 if v > 110 else 0)
+        rgb = small.convert("RGB").quantize(colors=int(style.get("colors", 16)), method=_I.Quantize.MEDIANCUT).convert("RGB")
+        if style.get("line", 2.5):                 # 픽셀 외곽선: 한 칸 두께(끊긴 선 대신) — 배경을 깔았을 때도 형태 윤곽 기준
+            import numpy as _np
+            import cv2 as _cv
+            a_ = _cv.resize(ctx.hit.astype(_np.uint8), small.size, interpolation=_cv.INTER_AREA) > 0
+            er = _np.zeros_like(a_); er[1:-1, 1:-1] = a_[1:-1, 1:-1] & a_[:-2, 1:-1] & a_[2:, 1:-1] & a_[1:-1, :-2] & a_[1:-1, 2:]
+            arr = _np.asarray(rgb).copy(); ink = style.get("ink", "#1b1714").lstrip("#")
+            arr[a_ & ~er] = [int(ink[i:i + 2], 16) for i in (0, 2, 4)]
+            rgb = _I.fromarray(arr)
+        small = rgb.convert("RGBA"); small.putalpha(al)
+        img = small.resize((w, h), _I.NEAREST)
+    elif isinstance(style, dict) and style.get("colors"):
+        from PIL import Image as _I
+        al = img.convert("RGBA").getchannel("A")
+        img = img.convert("RGB").quantize(colors=int(style["colors"]), method=_I.Quantize.MEDIANCUT).convert("RGBA"); img.putalpha(al)
     if out:
         Path(out).parent.mkdir(parents=True, exist_ok=True)
         img.save(out)
