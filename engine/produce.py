@@ -581,6 +581,16 @@ def main() -> int:
         rr = step("review", [PY, "engine/story/skill_pass.py", "review", rel], timeout=2400)
         print("\n".join(ln for ln in (rr.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
         sb = json.loads(sp.read_text("utf-8"))
+        # 검토가 이미 막을 것(겹침 · 잘림 · 안전 영역 — 품질 관문 D21)을 찾았으면 렌더하지 않는다 — 렌더해도 관문에서 막힌다
+        # (2026-11-20 실측: 막힐 영상을 매번 36~187초씩 렌더, 한 편에 렌더 6번 · 8.4분)
+        if not a.keep_going and os.environ.get("FLUMA_REVIEW_STOP", "1") != "0":
+            import quality_gate as qg
+            rv_block = [x for x in qg.from_review(sid) if x.get("block") and not qg.waived(sb, x)]
+            if rv_block:
+                save_times(sid)
+                fail("produce", stage="review", error=f"렌더 전 검토가 막을 것 {len(rv_block)}건을 찾음 — 렌더하지 않고 멈춘다(렌더해도 품질 관문에서 막힘). 모두 한 번에 고친 뒤 다시 produce",
+                     block=[qg.line(x) for x in rv_block],
+                     next="장면 코드 · knob.py set 으로 전부 고친다(고친 장면만 다시 검토된다) → produce 한 번")
 
     # 3) 재료 · 초안 렌더(재료는 렌더가 만든다 — engine/craft/materials.py)
     outfile_label = "완성" if not use_draft else "초안"
