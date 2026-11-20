@@ -16,6 +16,7 @@
 """
 import argparse
 import json
+import re
 import os
 import subprocess
 import sys
@@ -28,8 +29,21 @@ from finish import finish  # noqa: E402
 
 
 def parse_scenes(arg: str, n: int) -> list[int]:
-    a, _, b = arg.partition("-")
-    lo, hi = int(a), int(b or a)
+    """'3' · '2-4' · '3,5,6,7' · '2-3,6' — 떨어진 장면은 처음부터 끝까지 이어서(장면 캐시가 안 바뀐 장면은 다시 그리지 않는다).
+    2026-11-20: 에이전트가 쉼표 목록을 넘겨 int() 에서 죽었다(4 · 6편)"""
+    nums = []
+    for part in re.split(r"[,\s]+", str(arg).strip()):
+        if not part:
+            continue
+        a, _, b = part.partition("-")
+        try:
+            lo_, hi_ = int(a), int(b or a)
+        except ValueError:
+            raise SystemExit(f"--scenes 형식: 3 · 2-4 · 3,5,6 (받은 값: {arg})")
+        nums += [lo_, hi_]
+    if not nums:
+        raise SystemExit(f"--scenes 형식: 3 · 2-4 · 3,5,6 (받은 값: {arg})")
+    lo, hi = min(nums), max(nums)
     if not 1 <= lo <= hi <= n:
         raise SystemExit(f"--scenes 는 1~{n} 범위: {arg}")
     return list(range(lo - 1, hi))

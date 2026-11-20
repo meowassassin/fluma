@@ -753,6 +753,10 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             from craft import scenefile                 # "$FILE:…/scenes/s01.jsx" → 장면 코드 파일 내용(캐시 키 · $CUE 가 파일 내용으로 계산되게 맨 앞에서)
             m = scenefile.inline(m)
             from craft import cues                      # "$CUE:낱말" → 그 낱말을 말하는 순간(장면 기준 초) — 말과 맞춘 움직임
+            if cues._has(m) and not (ROOT / "data" / "audio" / f"{sid}.timing.json").exists():
+                # 음성 전(대본 준비 · 미리 만들기)에는 말 시각을 모른다 — 죽지 않고 이 재료만 미룬다(음성 뒤 제작이 만든다). 2026-11-20: 5 · 7편이 여기서 멈춤
+                print(f"[재료] {n}장면 {m.get('id')}: $CUE 는 음성 뒤에 — 지금은 건너뜀", flush=True)
+                continue
             m = cues.resolve(m, sb, n - 1)
             t = m.get("type")
             if t == "form" and not m.get("style"):          # 형태의 화풍 = 영상 아트 디렉션(direction.art.style)

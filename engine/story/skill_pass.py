@@ -115,6 +115,57 @@ SYS = ("너는 Fluma 쇼츠 제작 파이프라인의 '{role}' 단계다. 아래
 
 
 # ── 단계별: 프롬프트 · 적용 ──
+def brief(items: list, n: int = 4, w: int = 90) -> str:
+    """에이전트에게 돌려줄 짧은 목록 — 항목마다 w 자, n 개까지(전문은 파일). 2026-11-20: 시청자 지적 전문(수백 자)이 매번 대화에 쌓여 컨텍스트가 커졌다"""
+    out = [str(x)[:w] + ("…" if len(str(x)) > w else "") for x in items[:n]]
+    return " / ".join(out) + (f" 외 {len(items) - n}건" if len(items) > n else "")
+
+
+def _baseline_path(sid: str, name: str) -> Path:
+    return ROOT / "data" / "compositions" / sid / "skill_pass" / f"{name}_baseline.json"
+
+
+def baseline(sid: str, name: str) -> list:
+    """첫 판정이 막은 문제 목록(수렴 기준) — 다음 판정은 이것이 풀렸는지만 본다. 없으면 []"""
+    try:
+        return json.loads(_baseline_path(sid, name).read_text("utf-8")).get("items") or []
+    except (OSError, ValueError):
+        return []
+
+
+def _verify_block(items: list, key: str) -> str:
+    return ("\n\n# 확인 모드 — 앞선 판정이 짚은 문제 목록(이것만 판정한다)\n" + json.dumps(
+        [{"id": i + 1, "scene": x.get("scene"), "kind": x.get("kind"), "what": x.get("what")} for i, x in enumerate(items)], ensure_ascii=False) +
+        f"\n할 일을 바꾼다: 위 목록의 항목마다 지금 콘티에서 풀렸는지만 판정해 '{key}' 칸에 [{{\"id\": 번호, \"resolved\": true|false, \"why\": \"짧게\"}}] 로 낸다. "
+        "목록에 없는 새 문제는 'new' 칸에 권고로만 적는다(막지 않는다). 기준을 바꾸지 말 것 — 고쳐졌으면 resolved: true.")
+
+
+def converge(sid: str, name: str, patch: dict, list_key: str, is_blocking) -> dict:
+    """수렴(2026-11-20 실측: 시청자 · 검토 판정이 부를 때마다 새 문제를 찾아 7편 중 5편이 상한 4번까지 반복).
+    첫 판정: 막는 문제를 기준 목록으로 저장. 다음부터: 기준 중 아직 안 풀린 것만 막고, 새 지적은 advice(권고)로."""
+    base = baseline(sid, name)
+    items = [x for x in (patch.get(list_key) or []) if isinstance(x, dict)]
+    if not base:
+        blocking = [x for x in items if is_blocking(x)]
+        if blocking:
+            bp = _baseline_path(sid, name); bp.parent.mkdir(parents=True, exist_ok=True)
+            bp.write_text(json.dumps({"items": blocking, "at": time.strftime("%Y-%m-%dT%H:%M:%S")}, ensure_ascii=False, indent=1), "utf-8")
+        return patch
+    ver = {int(v.get("id", 0)): v for v in (patch.get("verify") or []) if isinstance(v, dict)}
+    left = [x for i, x in enumerate(base, 1) if not (ver.get(i) or {}).get("resolved")]
+    out = dict(patch)
+    out[list_key] = left
+    adv = []
+    for x in (patch.get("new") or []) + [y for y in items if y not in left]:
+        if isinstance(x, dict) and x not in adv:
+            adv.append(x)
+    out["advice"] = adv[:12]
+    out["converge"] = {"base": len(base), "left": len(left)}
+    if "score" in out:
+        out["score"] = 8 if not [x for x in left if is_blocking(x)] else min(int(out.get("score") or 6), 6)
+    return out
+
+
 def viewer_io(sb: dict, sbp: Path) -> tuple[str, str]:
     """시청자 시뮬레이션 — 콘티의 대상 시청자가 장면 순서대로 따라가며 이해가 끊기는 곳을 짚는다(2026-11-11: 개념을 설명 없이 던져 '이해가 안 된다')"""
     fmt = ('{"known_before": ["시청자가 이미 아는 것"], "issues": [{"scene": 번호, "kind": "처음 보는 말|설명 없는 숫자|흐름 끊김|왜?|넘김", "what": "걸린 말 · 화면", '
@@ -125,6 +176,9 @@ def viewer_io(sb: dict, sbp: Path) -> tuple[str, str]:
          f"# 장면 순서대로 보이는 것(소리 · 화면 글자 · 화면)\n{json.dumps(seq, ensure_ascii=False)}\n\n"
          "할 일: 한 장면씩 차례로 본다. 그 시점까지 나온 것만 안다고 치고, 처음 보는 낱말 · 무엇의 숫자인지 모르는 숫자 · 앞 장면과 이어지지 않는 점프 · '그래서 왜?'가 드는 곳 · 넘기고 싶은 곳을 모두 적는다. "
          "작가 편을 들지 말고 진짜 처음 보는 사람처럼 냉정하게. 다 보고 나서 내가 이해한 한 줄과 이해도 점수를 준다.")
+    base = baseline(sb["id"], "viewer")
+    if base:
+        p += _verify_block(base, "verify")
     return SYS.format(role="시청자", fmt=fmt), p
 
 
@@ -636,6 +690,9 @@ def review_io(sb: dict, sbp: Path) -> tuple[str, str]:
          "띠 안 주인공이 70% 미만, 안전 영역 침범. 문제 있는 장면만 값으로 고친다(문제가 없으면 materials 를 비운다). 본 문제는 problems 에 적는다. "
          "화면 전체 2D 장면(type craft · place full)은 장면 코드가 배치를 정해 adjust 가 쓰이지 않는다 — 그 안의 잘림 · 겹침은 값을 주지 말고 problems 에만 적는다. "
          "problems 는 품질 관문에 올라가 겹침 · 잘림 · 안전 영역은 완성을 막는다 — 지금 그림에서 실제로 보이는 것만 적고, 고친 뒤 사라졌으면 적지 않는다.")
+    base = baseline(sb["id"], "review")
+    if base:   # 수렴: 앞선 검토가 막은 것이 풀렸는지만(새 지적은 권고) — 값 고치기(materials · direction)는 그대로 해도 된다
+        p += _verify_block(base, "verify")
     return SYS.format(role="디자이너(정지 화면 검토)", fmt=fmt), p
 
 
@@ -908,6 +965,10 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
     else:
         patch, cost = claude(system, prompt)
     _log_skill_timing(sid, f"{name}_agent", time.perf_counter() - t_ag)
+    if name == "viewer" and isinstance(patch, dict):
+        patch = converge(sid, "viewer", patch, "issues", lambda x: x.get("kind") in BLOCKING or str(x.get("fix_by", "")).startswith("story"))
+    elif name == "review" and isinstance(patch, dict):
+        patch = converge(sid, "review", patch, "problems", lambda x: any(k in str(x.get("kind") or "") for k in ("겹침", "잘림", "안전 영역")))
     costs = [cost]
     before = _hard_lint(json.loads(sbp.read_text("utf-8"))) if name == "writer" else None
     text_in = _text_fields(sb)
@@ -1058,7 +1119,8 @@ def main() -> int:
     def _viewer_gate(sbn: dict) -> None:
         story = story_blocking(sbp)
         if story:
-            fail("skill_pass", stage="story", error="시청자 시뮬레이션: 콘티 구조를 다시 써야 함 — " + " / ".join(f"{i.get('scene')}장면 {i.get('kind')}: {i.get('what')} → {i.get('how')}" for i in story)[:900])
+            fail("skill_pass", stage="story", error=f"시청자 시뮬레이션: 콘티 구조를 다시 써야 함 {len(story)}건 — " + brief([f"{i.get('scene')}장면 {i.get('kind')}: {i.get('what')}" for i in story])
+                 + f" · 고칠 방법까지 전문: data/compositions/{sbn['id']}/skill_pass/viewer.json")
 
     try:
         which = a.which
@@ -1075,7 +1137,8 @@ def main() -> int:
                 print(f"[스킬 단계] {json.dumps(r, ensure_ascii=False)}", flush=True)
             _viewer_gate(json.loads(sbp.read_text("utf-8")))
             if out[-1].get("score", 10) < 7:
-                fail("skill_pass", stage="comprehension", error=f"처음 보는 시청자가 이해하지 못함(점수 {out[-1]['score']}) — " + " / ".join(out[-1]["open"])[:900])
+                fail("skill_pass", stage="comprehension", error=f"처음 보는 시청자가 이해하지 못함(점수 {out[-1]['score']}, {len(out[-1]['open'])}건) — " + brief(out[-1]["open"])
+                     + f" · 전문: data/compositions/{json.loads(sbp.read_text('utf-8'))['id']}/skill_pass/viewer.json")
             if not out[-1].get("skipped"):
                 mark_approved(sbp, by="comprehension", score=out[-1].get("score"))
             ok("skill_pass", passes=json.dumps(out, ensure_ascii=False))

@@ -557,6 +557,15 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         print(f"[제작] ui 병렬 빌드 생략: {e}", flush=True)
 
+    # 2.8) 장면 코드 빌드 검사 — 렌더 없이 프로젝트만 만든다(EffectCraft 스크립트 실행). 장면 코드 실행 오류(색 값 null · 키프레임 있는 속성에 setValue …)를
+    #      LLM 검토 · 렌더 전에 잡는다(2026-11-20: 1 · 2편이 렌더에서야 이 오류로 멈춤). 만든 프로젝트는 렌더가 그대로 쓴다(같은 입력이면 다시 만들지 않음)
+    if (sb.get("engine") or "craft") == "craft" and os.environ.get("FLUMA_BUILD_CHECK", "1") != "0":
+        bc = step("build", [PY, "engine/render.py", rel, "--build"] + (["--scenes", a.scenes] if a.scenes else []) + (["--aspect", a.aspect] if a.aspect else []), timeout=1200)
+        if bc.returncode != 0:
+            save_times(sid)
+            fail("produce", stage="build", error="장면 코드 실행 오류(렌더 전 빌드) — " + _why(bc)[:400],
+                 next="오류가 난 장면 코드만 고쳐 다시 produce(렌더 전에 잡았으니 LLM 검토 · 렌더는 아직 안 돌았다)")
+
     # 2.85) 훅 장면 하나만 앱 기능으로 다듬기(skill_pass refine_hook) — 영상당 한 번, 훅 장면이 그대로면 건너뜀. 끄려면 FLUMA_HOOK_REFINE=0
     #       2026-11-19: 전체 refine 은 219초라 꺼 두었고, 그 결과 에이전트가 Craft 기능을 0.9% 만 썼다
     if deep and not a.scenes and os.environ.get("FLUMA_HOOK_REFINE", "1") != "0":
@@ -578,7 +587,7 @@ def main() -> int:
             if rv_block:
                 save_times(sid)
                 fail("produce", stage="review", error=f"렌더 전 검토가 막을 것 {len(rv_block)}건을 찾음 — 렌더하지 않고 멈춘다(렌더해도 품질 관문에서 막힘). 모두 한 번에 고친 뒤 다시 produce",
-                     block=[qg.line(x) for x in rv_block],
+                     block=[qg.line(x)[:170] for x in rv_block[:8]], detail=f"data/compositions/{sid}/skill_pass/review.json",
                      next="장면 코드 · knob.py set 으로 전부 고친다(고친 장면만 다시 검토된다) → produce 한 번")
 
     # 3) 재료 · 초안 렌더(재료는 렌더가 만든다 — engine/craft/materials.py)
@@ -647,7 +656,8 @@ def main() -> int:
         qg.save(sid, b["file"][0], q_block, q_waived, q_adv)
     if q_block and not a.scenes:
         fail("produce", stage="quality", error=f"막음 {len(q_block)}건이 남아 완성본이 아니다 — 고친 뒤 다시(고칠 장면만: knob.py preview --scene N 으로 확인 → 마지막에 전체 produce 한 번)",
-             block=[qg.line(x) for x in q_block], advise=[qg.line(x) for x in q_adv], waived=[f"{qg.line(x)} — 면제: {x['waived']}" for x in q_waived],
+             block=[qg.line(x)[:170] for x in q_block[:8]], advise=[qg.line(x)[:110] for x in q_adv[:6]] + ([f"외 권고 {len(q_adv) - 6}건"] if len(q_adv) > 6 else []),
+             waived=[f"{qg.line(x)[:110]} — 면제: {x['waived']}" for x in q_waived], detail=f"data/workspace/tmp/{sid}/quality.json(전문)",
              file=b["file"][0], media=media, time=[f"{k}:{v}" for k, v in TIMES.items()],
              next="막음을 모두 고친다. 사용자가 그대로 두라고 한 항목만 콘티 waivers 에 {\"코드:장면\": {\"why\": ..., \"user_said\": 사용자 말 그대로}} 로 적는다(스스로 면제 금지)")
     upload_info = []

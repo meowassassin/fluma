@@ -162,6 +162,20 @@ LONG_MAX_SEC, LONG_MAX_SCENES = 90, 12   # allow_long: 사용자가 길어도 �
 
 
 SPEECH_CPS = 5.2   # 실측(2026-11-17 Edge): 공백 뺀 글자 / 초, 장면 사이 쉼 포함 · 목소리 speed 1.0 기준
+ENGINE_CPS = {"edge": 5.2, "supertonic": 5.6}   # 음성 엔진마다 말 빠르기(공백 뺀 글자/초, 엔진 보정 포함) — 2026-11-19 Supertonic ×1.18 실측 5.6
+
+
+def voice_cps(sb: dict) -> float:
+    """이 콘티가 쓸 음성 엔진의 초당 글자 — 음성을 만들기 전에 길이를 어림한다(2026-11-20: 엔진을 모르고 5.2 로 어림해 음성 뒤에야 44초로 막힘)"""
+    eng = None
+    try:
+        sys.path.insert(0, str(ROOT / "engine" / "voice"))
+        import tts
+        eng = tts.resolve(sb)[0]
+    except Exception:  # noqa: BLE001 - 음성 설정을 못 읽으면 기본 빠르기
+        pass
+    speed = float((sb.get("voice") or {}).get("speed") or 1.0) or 1.0
+    return ENGINE_CPS.get(eng or "", SPEECH_CPS) * speed
 
 
 def scope_problems(sb: dict, estimate: bool = False) -> list:
@@ -176,9 +190,8 @@ def scope_problems(sb: dict, estimate: bool = False) -> list:
     if sb.get("allow_long"):          # 사용자가 길어도 된다고 한 영상(2026-11-17: 상한을 풀 칸이 없어 59초 대본이 막히고, 다시 45초로 줄이는 턴이 한 번 더 생겼다)
         mx, max_scenes = LONG_MAX_SEC, LONG_MAX_SCENES
     if estimate and any(x.get("narration") for x in scenes):
-        speed = float((sb.get("voice") or {}).get("speed") or 1.0) or 1.0
-        total = round(sum(len(str(x.get("narration") or "").replace(" ", "")) for x in scenes) / (SPEECH_CPS * speed), 1)
-        limit = mx * 1.1
+        total = round(sum(len(str(x.get("narration") or "").replace(" ", "")) for x in scenes) / voice_cps(sb), 1)
+        limit = mx * 1.03                                 # 엔진별 빠르기로 어림하니 여유를 줄인다(전엔 10% — 음성 뒤에 막힘)
     else:
         total = round(sum(float(x.get("sec") or 0) for x in scenes), 1) or float(sb.get("duration_sec") or 0)
         limit = mx
@@ -338,7 +351,9 @@ def lint(sb: dict, recent_titles=None) -> list:
     if abs(total - sb.get("duration_sec", 0)) > 1:
         provisional = any((x.get("narration") or "").strip() for x in scenes) and len(measured_scenes(sb)) < sum(1 for x in scenes if (x.get("narration") or "").strip())
         fails.append(("T02" if provisional else "L02", None, f"장면 합계 {total}s != duration {sb.get('duration_sec')}s" + (" — 음성 단계가 실측으로 맞춘다(손대지 않는다)" if provisional else "")))
-    for code, msg in scope_problems(sb):
+    spoken = [k for k, x in enumerate(scenes) if (x.get("narration") or "").strip()]
+    voiced = measured_scenes(sb)
+    for code, msg in scope_problems(sb, estimate=bool(spoken) and not set(spoken) <= voiced):   # 음성 전이면 글자 수로 어림 — 음성을 만들기 전에 잡는다
         fails.append((code, None, msg))
 
     lo, hi = LIM["narration_chars_per_sec"]
@@ -369,6 +384,8 @@ def lint(sb: dict, recent_titles=None) -> list:
 
         # L05 훅 길이 — 레퍼런스 스타일 카드가 있으면 그 영상의 첫 컷 길이(+0.5초)까지 허용
         hook_max = max(LIM["hook_sec_max"], ref_first_shot(sb) + 0.5)
+        if s.get("role") == "hook" and nar.strip() and i not in measured:   # 음성 전: 대사 글자로 어림(+0.2초 쉼) — 음성을 만들기 전에 훅 길이를 잡는다
+            sec = round(len(nar.replace(" ", "")) / voice_cps(sb) + 0.2, 1)
         if s.get("role") == "hook" and sec > hook_max:
             # 시청자는 3초 안에 '화면 글자'로 무엇인지 안다 — 훅 제목이 뜨면 나레이션은 4.6초까지 권고로만
             # (2026-11-03: 3초를 맞추려 문장을 자르고 1.35배속 → '너무 빠르다')
@@ -594,7 +611,35 @@ def lint(sb: dict, recent_titles=None) -> list:
     fails += craft_depth(sb)
     fails += file_refs(sb)
     fails += [(c, i, m) for c, i, m in feature_plan(sb)]
+    fails += cue_check(sb)
     return fails
+
+
+def cue_check(sb: dict) -> list:
+    """L73 신호 낱말: 장면 코드 · 재료의 $CUE:낱말이 그 장면 대사에 있는가 — 렌더 중에야 '나레이션에 그 낱말이 없습니다'로 죽던 것을
+    대본을 쓰는 순간 잡는다(2026-11-20: 7편 중 3편이 렌더에서 이 오류). 음성 엔진과 같은 닮은꼴 맞춤(cues.find)을 쓴다"""
+    out = []
+    try:
+        from craft.cues import CUE, find
+    except Exception:  # noqa: BLE001
+        return out
+    for i, sc in enumerate(sb.get("scenes") or []):
+        nar = str(sc.get("narration") or "")
+        txt = json.dumps({k: v for k, v in sc.items() if k not in ("narration", "caption")}, ensure_ascii=False)
+        for ref in re.findall(r"\$FILE:([^\"\s]+)", txt):
+            try:
+                txt += (ROOT / ref).read_text("utf-8")
+            except OSError:
+                pass
+        words = [{"text": w, "start": 0.0, "end": 0.0} for w in nar.split()]
+        miss = []
+        for m in CUE.finditer(txt):
+            w = m.group(1).strip()
+            if w and w not in miss and (not words or find(words, w, strict=False) is None):
+                miss.append(w)
+        if miss:
+            out.append(("L73", i, f"신호 낱말 {', '.join(repr(w) for w in miss[:4])} 이(가) 대사에 없음 — 대사에 넣거나 장면 코드의 $CUE 를 대사에 있는 낱말로"))
+    return out
 
 
 FORMAL = ("습니다", "입니다", "합니다", "됩니다", "있습니다")

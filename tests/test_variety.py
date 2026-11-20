@@ -135,3 +135,34 @@ def test_bundle_writes_files_inside_composition_and_checks(tmp_path, monkeypatch
         shutil.rmtree(ROOT / "data" / "compositions" / sid, ignore_errors=True)
         for x in (ROOT / "data" / "storyboards").glob(f"{sid}.json*"):
             x.unlink()
+
+
+def test_converge_blocks_only_unresolved_baseline(tmp_path):
+    sys.path.insert(0, str(ROOT / "engine" / "story"))
+    import shutil
+    import skill_pass as sp
+    sid = "ztest-converge-unit"
+    blk = lambda x: x.get("kind") in sp.BLOCKING  # noqa: E731
+    try:
+        sp.converge(sid, "viewer", {"issues": [{"scene": 1, "kind": "흐름 끊김", "what": "A"}, {"scene": 4, "kind": "넘김", "what": "C"}], "score": 6}, "issues", blk)
+        r = sp.converge(sid, "viewer", {"verify": [{"id": 1, "resolved": True}], "new": [{"scene": 6, "kind": "흐름 끊김", "what": "NEW"}], "score": 5}, "issues", blk)
+        assert [x["what"] for x in r["issues"]] == ["C"] and [x["what"] for x in r["advice"]] == ["NEW"] and r["score"] < 7
+        r = sp.converge(sid, "viewer", {"verify": [{"id": 1, "resolved": True}, {"id": 2, "resolved": True}], "new": [{"scene": 2, "kind": "넘김", "what": "N2"}], "score": 6}, "issues", blk)
+        assert r["issues"] == [] and r["score"] == 8
+    finally:
+        shutil.rmtree(ROOT / "data" / "compositions" / sid, ignore_errors=True)
+
+
+def test_parse_scenes_accepts_lists_and_ranges():
+    sys.path.insert(0, str(ROOT / "engine"))
+    import render
+    assert render.parse_scenes("3,5,6,7", 8) == [2, 3, 4, 5, 6]
+    assert render.parse_scenes("2-3,6", 8) == [1, 2, 3, 4, 5]
+    assert render.parse_scenes("4", 8) == [3]
+
+
+def test_cue_word_must_be_in_narration():
+    sb = {"id": "x", "scenes": [{"narration": "고양이는 상자에 들어가요", "materials": [{"type": "craft", "id": "a", "steps": "K.pop(a, $CUE:상자)"}]},
+                                {"narration": "전혀 다른 말", "materials": [{"type": "craft", "id": "b", "steps": "K.pop(b, $CUE:우주선)"}]}]}
+    codes = [(c, i) for c, i, _ in lint.cue_check(sb)]
+    assert codes == [("L73", 1)]
