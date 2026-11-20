@@ -25,6 +25,12 @@ def _arg(a: list[str], k: str, d=None):
     return a[a.index(k) + 1] if k in a else d
 
 
+def _warn_cut(sides):
+    if sides:
+        print(f"△ 화면 {' · '.join(sides)} 가장자리에서 형태가 잘린다 — 바닥 받침판이면 \"floor\": true(그리지 않고 딛기 · 그림자만), "
+              f"소품이면 카메라 radius 를 키우거나 형태를 안으로")
+
+
 def main() -> int:
     a = sys.argv[1:]
     if not a or a[0] not in ("preview", "render", "styles", "anim"):
@@ -51,6 +57,8 @@ def main() -> int:
         sh = d / "sheet.jpg"; sheet.convert("RGB").resize((w * len(ims) // 2, h // 2)).save(sh)
         rel = lambda p: p.relative_to(ROOT) if p.is_relative_to(ROOT) else p  # noqa: E731
         print(f"{rel(Path(an['first']))}  ({n}장 · {an['fps']}fps · {time.time() - t:.1f}초) — 장면 코드: K.image('<이 경로>', x, y, 배율) 가 반복 재생 · 확인: {rel(sh)}")
+        if not _arg(a, "--bg"):
+            _warn_cut(sorted({s for im in ims for s in form.edge_cut(im)}))
         return 0
     if cmd == "styles":
         from PIL import Image
@@ -66,6 +74,9 @@ def main() -> int:
         out = out if out.is_absolute() else ROOT / out
         form.draw(sc, _arg(a, "--style", "cel"), out, res=res, view=view, background=_arg(a, "--bg"))
     print(f"{out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}  ({time.time() - t:.1f}초)")
+    if cmd != "styles" and not _arg(a, "--bg"):
+        from PIL import Image
+        _warn_cut(form.edge_cut(Image.open(out)))
     if cmd != "styles":
         apart = form.parts_apart(sc, view)
         if apart:

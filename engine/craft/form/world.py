@@ -342,6 +342,8 @@ def prepare(scene: dict, t: float = 0.0) -> dict:
 
     def walk(n):
         if isinstance(n, dict):
+            if n.get("floor"):                            # 바닥: 발이 딛는 높이 · 그림자에만 쓰고 그리지 않는다(잘린 받침판 · 원판 무대가 안 생긴다)
+                return None
             if "rig" in n:
                 if n.get("rig") == "humanoid" and any(k in n for k in world_keys):
                     parts, _ = place(n, t, gr(), targets, cam)
@@ -349,9 +351,9 @@ def prepare(scene: dict, t: float = 0.0) -> dict:
                 return expand(n)
             return {k: walk(v) for k, v in n.items()}
         if isinstance(n, list):
-            return [walk(x) for x in n]
+            return [w for w in (walk(x) for x in n) if w is not None]
         return n
-    out = {**scene, "root": walk(scene["root"])}
+    out = {**scene, "root": walk(scene["root"]) or {"op": "union", "children": []}}
     def pt(v):
         if isinstance(v, str):
             return targets.get(v)

@@ -17,7 +17,7 @@ import numpy as np
 STYLES = ("flat", "cel", "sketch", "clay", "vector")      # vector: VectorCraft 벡터 마감(engine/craft/form/vector.py)
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 CACHE = ROOT / "data" / "workspace" / "cache" / "form"
-RENDER_VERSION = 6          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
+RENDER_VERSION = 7          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
 
 
 def _scene_with_view(scene: dict, view: dict | None) -> dict:
@@ -254,6 +254,13 @@ def _find_mover(n):
             if r is not None:
                 return r
     return None
+
+
+def edge_cut(img, thr: float = 0.004) -> list[str]:
+    """그림이 화면 가장자리에서 잘린 쪽(투명 PNG 기준, 그림자처럼 옅은 것은 빼고) — 받침판 · 소품이 테두리에서 직선으로 끊기는 것"""
+    a = np.asarray(img.convert("RGBA"))[..., 3] > 200
+    sides = {"위": a[0], "아래": a[-1], "왼쪽": a[:, 0], "오른쪽": a[:, -1]}
+    return [k for k, v in sides.items() if v.mean() > thr]
 
 
 def _image(ctx, style: str, background: str | None, out):

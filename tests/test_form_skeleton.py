@@ -116,3 +116,23 @@ def test_look_at_camera_turns_head_and_focus_resolves_joint():
 def test_track_values_can_be_strings():
     assert F._track_at([[0, "a.pelvis"], [1, "a.head"]], 0.5, 2.0) == "a.pelvis"
     assert F._track_at([[0, "a.pelvis"], [1, "a.head"]], 1.5, 2.0) == "a.head"
+
+
+def test_floor_nodes_are_walkable_but_not_drawn():
+    from craft.form import world as W
+    floor = {"prim": "roundbox", "size": [1.0, 0.1, 1.0], "r": 0.01, "pos": [0, 0.1, 0], "mat": "body", "floor": True}
+    hero = {"rig": "humanoid", "name": "hero", "at": [0, 0]}
+    sc = {"materials": MATS, "root": {"op": "union", "children": [floor, hero]}}
+    out = W.prepare(sc, 0.0)
+    assert not any(isinstance(c, dict) and c.get("floor") for c in out["root"]["children"])
+    assert abs(W.Ground(sc)(0, 0) - 0.2) < 0.01                    # 딛는 높이에는 쓰인다
+
+
+def test_edge_cut_detects_cropped_shape():
+    from PIL import Image
+    im = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
+    assert F.edge_cut(im) == []
+    for x in range(60, 100):
+        for y in range(70, 80):
+            im.putpixel((x, y), (9, 9, 9, 255))
+    assert F.edge_cut(im) == ["오른쪽"]
