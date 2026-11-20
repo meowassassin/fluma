@@ -19,6 +19,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
+sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401 — HTTPS 인증서(독립 빌드 파이썬은 CA 경로가 없다, 2026-11-20 위키미디어 검색 실패)
 API = "https://commons.wikimedia.org/w/api.php"
 UA = {"User-Agent": "fluma-research/1.0"}
 OK = ("cc0", "public domain", "pd", "cc by", "cc-by")
