@@ -6,9 +6,10 @@
 장르별 규칙표 대신 매번 참고 그림을 보고 정한다.
 
   python3 engine/research/ref_images.py "<이름>" --id <영상 id> --pages <URL> <URL> …   # 기본: 네가 WebSearch(일반 웹 검색)로 찾은 그림 페이지 주소 → 대표 그림을 받아 시트로
-  python3 engine/research/ref_images.py "<영어 검색어>" [--id <영상 id>] [--n 8]       # 페이지 없이: Openverse(+ Brave 키가 있으면 웹 이미지) 검색
+  python3 engine/research/ref_images.py "<검색어>" [--id <영상 id>] [--n 24]          # 이미지 검색(Google 키가 있으면 구글 이미지와 같은 결과) — 기본은 이것
 출력: 번호 붙은 시트 한 장(이것만 Read) + 받은 파일 목록. 검색어는 영어가 결과가 많다(대상 + 장르 + illustration/drawing).
-검색원: Openverse(키 없음 · CC 이미지 · 그림 위주로 거름), 설정 → API 키에 Brave Search 키가 있으면 일반 웹 이미지도.
+검색원: 설정 → API 키에 Google 프로그래머블 검색(이미지, 하루 100번 무료 · 구글 이미지 검색과 같은 결과) 키가 있으면 그것이 먼저,
+Brave Search(월 2,000번 무료), 없으면 Openverse(키 없음 · CC 이미지). 검색어만 주면 이미지 검색, --pages 는 웹 페이지에서.
 """
 from __future__ import annotations
 
@@ -47,6 +48,29 @@ def openverse(q: str, n: int) -> list[dict]:
             if r.get("thumbnail") and r["id"] not in {x["id"] for x in out}:
                 out.append({"id": r["id"], "title": r.get("title") or "", "thumb": r["thumbnail"], "page": r.get("foreign_landing_url") or r.get("url"), "from": f"openverse/{r.get('source')}"})
         if len(out) >= n:
+            break
+    return out[:n]
+
+
+def google(q: str, n: int) -> list[dict]:
+    """Google 프로그래머블 검색(이미지) — 하루 100번 무료 · 구글 이미지 검색과 같은 결과. 키 2개(설정 → API 키): GOOGLE_CSE_KEY · GOOGLE_CSE_CX"""
+    import apikeys
+    key, cx = apikeys.get("GOOGLE_CSE_KEY"), apikeys.get("GOOGLE_CSE_CX")
+    if not key or not cx:
+        return []
+    out = []
+    for start in range(1, min(n, 30) + 1, 10):        # 한 번에 10장 — 필요한 만큼 몇 번
+        try:
+            d = json.loads(_get("https://www.googleapis.com/customsearch/v1?" + urllib.parse.urlencode(
+                {"key": key, "cx": cx, "q": q, "searchType": "image", "num": 10, "start": start, "safe": "active"})))
+        except (OSError, ValueError) as e:
+            print(f"[ref] Google 검색 실패: {str(e)[:120]}", file=sys.stderr)
+            break
+        for i, r in enumerate(d.get("items") or []):
+            im = r.get("image") or {}
+            out.append({"id": f"g{start + i}", "title": r.get("title") or "", "thumb": r.get("link") or im.get("thumbnailLink"),
+                        "thumb2": im.get("thumbnailLink"), "page": im.get("contextLink"), "from": "google"})
+        if len(d.get("items") or []) < 10:
             break
     return out[:n]
 
@@ -99,10 +123,19 @@ def pages(urls: list[str], per_page: int = 3) -> list[dict]:
 
 def _fetch(h: dict):
     from PIL import Image
-    try:
-        im = Image.open(io.BytesIO(_get(h["thumb"], timeout=15))).convert("RGB")
-    except Exception:  # noqa: BLE001 - 깨진 · 막힌 그림은 건너뛴다
+    im = None
+    for u in (h.get("thumb"), h.get("thumb2")):        # 원본이 막히면 검색 엔진의 작은 그림
+        if not u:
+            continue
+        try:
+            im = Image.open(io.BytesIO(_get(u, timeout=15))).convert("RGB")
+            break
+        except Exception:  # noqa: BLE001 - 깨진 · 막힌 그림은 건너뛴다
+            continue
+    if im is None:
         return None
+    if h.get("from") == "google" and min(im.size) >= 100:
+        return im
     return im if min(im.size) >= 280 else None
 
 
@@ -115,8 +148,8 @@ def main() -> int:
     q = pos[0] if pos else "web pages"
     sid = a[a.index("--id") + 1] if "--id" in a else "_any"
     from PIL import Image, ImageDraw
-    n = int(a[a.index("--n") + 1]) if "--n" in a else (24 if urls else 8)
-    hits = pages(urls) if urls else (brave(q, n) + openverse(q, n))[:n]
+    n = int(a[a.index("--n") + 1]) if "--n" in a else 24
+    hits = pages(urls) if urls else (google(q, n) + brave(q, n) + openverse(q, n))[:max(n, 1)]
     if not hits:
         fail("ref_images", stage="search", error=f"'{q}' 참고 그림을 못 찾음 — 영어로 대상 + 장르 + illustration/drawing 처럼 바꿔 보거나, 설정 → API 키에 Brave Search 키를 넣는다")
     d = ROOT / "data" / "workspace" / "look" / "ref" / sid / re.sub(r"[^A-Za-z0-9가-힣]+", "-", q).strip("-")[:60]
