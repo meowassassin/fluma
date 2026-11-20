@@ -46,9 +46,10 @@ def check_all(sb: dict) -> list:
             out.append(("R01", i, f"앞 장면과 같은 형식({a}) — 장면마다 형식을 바꾼다"))
     if len(S) >= 4 and len(set(forms)) < round(len(S) * .7):
         out.append(("R02", None, f"형식 {len(set(forms))}가지뿐(장면 {len(S)}개) — 레퍼런스는 장면마다 다르다"))
-    real = [m for s in S for m in s.get("materials") or [] if m.get("type") in ("relic", "video", "stock", "photo", "meme", "clip", "art")]
+    real = [m for s in S for m in s.get("materials") or [] if m.get("type") in ("relic", "video", "stock", "photo", "meme", "clip", "art")
+            or (m.get("type") == "form" and m.get("person"))]            # 2026-11-20: 형태로 빚은 사람도 사람
     if len(S) >= 5 and not real:
-        out.append(("R07", None, "사람이 없다 — 시청자는 사람의 반응을 따라간다(퍼온 클립 · 사진 · 스톡 · 짤)"))
+        out.append(("R07", None, "사람이 없다 — 시청자는 사람의 반응을 따라간다(퍼온 클립 · 사진 · 스톡 · 짤 · 형태로 빚은 인물)"))
     for i, s in enumerate(S, 1):
         n = len(s.get("refine") or [])
         if float(s.get("sec") or 0) > 8 and n < 2:
