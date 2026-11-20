@@ -24,3 +24,17 @@ y 가 위, 바닥은 y = 0, 정면은 +z. 단위는 대략 "물체 높이 ≈ 1"
 
 예: `examples/duck.json`(고무 오리) · `examples/mug.json`(머그). 그대로 복사하지 말고 비례 · 재질 쓰는 법만 본다.
 사람도 빚을 수 있다(2026-11-20 사용자 결정) — 재료에 `"person": true` 를 적는다. 실존 인물을 닮게 빚지 않는다(이름 · 얼굴 특징 · 상징물로 특정인을 떠올리게 하지 않는다).
+
+## 뼈대로 빚기 — 사람 · 네 발 동물 (2026-11-20)
+부품을 하나씩 좌표로 놓으면 발이 다리에서 떨어지고, 자세가 차렷으로 굳고, 얼굴이 머리를 따라 돌지 않는다. 사람 · 동물은 뼈대 노드로 빚는다 — 부품은 관절에 붙어 떨어질 수 없고, 자세는 관절 각도로 정한다.
+```json
+{"rig": "humanoid", "size": {"height": 1.7, "head": 0.14}, "pose": {"head": [8, 20, -6], "r_arm": [-10, 150, 0], "r_elbow": 30, "l_knee": 20},
+ "mats": {"skin": "skin", "hair": "hair", "top": "shirt", "bottom": "pants", "shoe": "shoe", "eye": "eye", "mouth": "mouth"},
+ "wear": {"sleeve": 0.3, "pants": 1.0, "hair": 0.4}}
+{"rig": "quadruped", "size": {"height": 0.3, "body": 1.45, "head": 0.52}, "pose": {"neck": [15, 25], "tail": [60, 15, 80], "fl": [35, 0], "fl_knee": 40},
+ "mats": {"fur": "fur", "nose": "nose", "eye": "eye"}}
+```
+- 비율(`size`)은 키에 대한 비 — 기본값은 engine/craft/form/skeleton.py 의 `DEFAULT` · `QUAD`. 그림체에 맞게 영상마다 정한다(정해진 표 없음).
+- 자세(`pose`)는 도(°): 사람 `lean` · `spine`[앞, 옆, 비틀기] · `head`[끄덕, 돌리기, 갸웃] · `l_arm`/`r_arm`[앞, 벌리기, 비틀기] · `l_elbow` · `l_leg`/`r_leg`[앞, 벌리기] · `l_knee`, 동물 `spine` · `neck` · `head` · `tail`[들기, 옆, 말기] · `fl` `fr` `bl` `br`[앞, 벌리기] · `*_knee`.
+- 발은 늘 바닥(y = 0)에 닿는다. 얼굴(눈 · 입 · 코 · 귀)과 머리카락은 머리 뼈에, 옷(소매 · 바지)은 팔다리 뼈에 붙는다.
+- `form_cli preview` 가 몸과 떨어진 덩어리를 세어 알린다(△ 떨어진 덩어리 N개).

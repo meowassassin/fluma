@@ -26,9 +26,22 @@ def _scene_with_view(scene: dict, view: dict | None) -> dict:
     return s
 
 
+def expand_rigs(n):
+    """뼈대 노드(rig)를 도형 트리로 펼친 사본 — 캐시 열쇠가 펼친 결과로 정해지게(뼈대 코드가 바뀌면 다시 그린다)"""
+    if isinstance(n, dict):
+        if "rig" in n:
+            from .skeleton import expand
+            return expand_rigs(expand(n))
+        return {k: expand_rigs(v) for k, v in n.items()}
+    if isinstance(n, list):
+        return [expand_rigs(x) for x in n]
+    return n
+
+
 def passes(scene: dict, res: int = 1080, ss: int = 2):
     """렌더 정보(깊이 · 면 방향 · 부위 · 빛) — 형태 · 카메라 · 크기가 같으면 캐시에서"""
     from . import render
+    scene = {**scene, "root": expand_rigs(scene["root"])}
     key = hashlib.sha1(json.dumps([scene, res, ss], sort_keys=True).encode()).hexdigest()[:16]
     f = CACHE / f"{key}.npz"
     if f.exists():
@@ -50,6 +63,18 @@ def _style_on(ctx, style: str, bg: str):
     if style == "sketch":
         return ctx.finish(fn(ctx, paper=bg, texture=False))
     return ctx.finish(fn(ctx, bg=bg))
+
+
+def parts_apart(scene: dict, view: dict | None = None, res: int = 360) -> int:
+    """화면에서 몸과 이어지지 않은 덩어리 수(0 이면 모두 이어짐) — 발이 다리에서 떨어지는 등. 아주 작은 조각(0.3% 미만)은 센다지 않는다"""
+    import cv2
+    buf, _ = passes(_scene_with_view(scene, view), res)
+    m = (buf["hit"] > 0.5).astype(np.uint8)
+    n, _, st, _ = cv2.connectedComponentsWithStats(m, 8)
+    areas = st[1:, cv2.CC_STAT_AREA]
+    if not len(areas):
+        return 0
+    return int((areas > 0.003 * areas.sum()).sum() - 1)
 
 
 def draw(scene: dict, style: str = "cel", out: Path | str | None = None, res: int = 1080, view: dict | None = None,

@@ -49,6 +49,10 @@ def main() -> int:
         out = out if out.is_absolute() else ROOT / out
         form.draw(sc, _arg(a, "--style", "cel"), out, res=res, view=view, background=_arg(a, "--bg"))
     print(f"{out.relative_to(ROOT) if out.is_relative_to(ROOT) else out}  ({time.time() - t:.1f}초)")
+    if cmd != "styles":
+        apart = form.parts_apart(sc, view)
+        if apart:
+            print(f"△ 떨어진 덩어리 {apart}개 — 몸과 이어지지 않은 부품이 있다(뼈대 rig 로 빚으면 관절에 붙는다)")
     return 0
 
 

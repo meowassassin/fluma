@@ -42,7 +42,7 @@ def _rot(rx, ry, rz):
 
 
 def _xf(node):
-    R = _rot(*node.get("rot", [0, 0, 0]))
+    R = np.array(node["rotm"], float) if "rotm" in node else _rot(*node.get("rot", [0, 0, 0]))   # rotm: 회전 행렬(뼈대가 계산해 넣는다)
     return np.eye(4) if False else (R, np.array(node.get("pos", [0, 0, 0]), float), float(node.get("scale", 1.0)))
 
 
@@ -83,6 +83,9 @@ def compile_scene(scene):
         rows.append(row); codes.append(code)
 
     def visit(n, parent):
+        if "rig" in n:                                  # 뼈대 캐릭터(engine/craft/form/skeleton.py) → 도형 트리로 펼친다
+            from .skeleton import expand
+            n = expand(n)
         xf = _compose(parent, _xf(n))
         if "prim" in n:
             emit(PRIM[n["prim"]], xf, _shape_params(n), mid[n["mat"]], n.get("round", 0.0), n.get("shell", 0.0))
@@ -90,6 +93,8 @@ def compile_scene(scene):
                 m = dict(n); m.pop("mirror_x")
                 pos = list(m.get("pos", [0, 0, 0])); pos[0] = -pos[0]; m["pos"] = pos
                 rot = list(m.get("rot", [0, 0, 0])); m["rot"] = [rot[0], -rot[1], -rot[2]]
+                if "rotm" in m:
+                    M = np.diag([-1.0, 1.0, 1.0]); m["rotm"] = (M @ np.array(m["rotm"]) @ M).tolist()
                 emit(PRIM[m["prim"]], _compose(parent, _xf(m)), _shape_params(m), mid[m["mat"]], m.get("round", 0.0), m.get("shell", 0.0))
                 emit(OPS["union"])
         else:
