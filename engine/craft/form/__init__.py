@@ -17,7 +17,7 @@ import numpy as np
 STYLES = ("flat", "cel", "sketch", "clay", "vector")      # vector: VectorCraft 벡터 마감(engine/craft/form/vector.py)
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 CACHE = ROOT / "data" / "workspace" / "cache" / "form"
-RENDER_VERSION = 5          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
+RENDER_VERSION = 6          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
 
 
 def _scene_with_view(scene: dict, view: dict | None) -> dict:
@@ -100,20 +100,48 @@ def _lerp(a, b, t):
     return a + (b - a) * t
 
 
+def _hermite(p0, p1, m0, m1, u):
+    if isinstance(p0, list):
+        return [_hermite(a, b, c, d, u) for a, b, c, d in zip(p0, p1, m0, m1)]
+    u2, u3 = u * u, u * u * u
+    return (2 * u3 - 3 * u2 + 1) * p0 + (u3 - 2 * u2 + u) * m0 + (-2 * u3 + 3 * u2) * p1 + (u3 - u2) * m1
+
+
+def _scale(v, k):
+    return [_scale(x, k) for x in v] if isinstance(v, list) else v * k
+
+
+def _sub(a, b):
+    return [_sub(x, y) for x, y in zip(a, b)] if isinstance(a, list) else a - b
+
+
 def _track_at(keys: list, t: float, dur: float):
-    """[[초, 값], …] — 사이는 부드럽게(cosine). 마지막 키 뒤는 첫 키로 돌아가며 반복"""
+    """[[초, 값], …] — 키를 지나며 멈추지 않고 이어 흐른다(Catmull-Rom, 속도가 이어짐). 마지막 키 뒤는 첫 키로 돌아가며 반복.
+    2026-11-20: 키마다 속도가 0 이 되는 cosine 보간이 모든 동작을 로봇처럼 멈칫거리게 했다. 멈춰야 할 곳은 같은 값의 키를 두 번 둔다(유지)"""
     ks = sorted(keys, key=lambda k: k[0])
     if len(ks) == 1:
         return ks[0][1]
     if any(isinstance(k[1], str) for k in ks):            # 글자 값(관절 이름 등)은 섞지 않고 그 시각의 값
         return next((k[1] for k in reversed(ks) if k[0] <= t), ks[0][1])
-    ks = ks + [[dur, ks[0][1]]] if ks[-1][0] < dur else ks
-    for (t0, v0), (t1, v1) in zip(ks, ks[1:]):
+    loop = ks[-1][0] < dur
+    pts = ks + [[dur, ks[0][1]]] if loop else ks
+    n = len(pts)
+    for i in range(n - 1):
+        (t0, v0), (t1, v1) = pts[i], pts[i + 1]
         if t0 <= t <= t1:
-            u = 0.0 if t1 == t0 else (t - t0) / (t1 - t0)
-            import math
-            return _lerp(v0, v1, (1 - math.cos(math.pi * u)) / 2)
-    return ks[-1][1]
+            h = (t1 - t0) or 1e-6
+            u = (t - t0) / h
+
+            def slope(j):                                 # 이웃 키로 기울기(같은 값 두 키 사이는 0 — 유지)
+                a = pts[j - 1] if j > 0 else ([pts[-2][0] - dur, pts[-2][1]] if loop and n > 2 else pts[j])
+                b = pts[j + 1] if j < n - 1 else ([pts[1][0] + dur, pts[1][1]] if loop and n > 2 else pts[j])
+                if b[0] == a[0]:
+                    return _scale(pts[j][1], 0.0)
+                if pts[j][1] == (pts[j - 1][1] if j > 0 else None) or pts[j][1] == (pts[j + 1][1] if j < n - 1 else None):
+                    return _scale(pts[j][1], 0.0)
+                return _scale(_sub(b[1], a[1]), h / (b[0] - a[0]))
+            return _hermite(v0, v1, slope(i), slope(i + 1), u)
+    return pts[-1][1]
 
 
 def pose(scene: dict, t: float) -> dict:
@@ -165,7 +193,8 @@ def animate(scene: dict, style: str = "cel", out_dir: Path | str | None = None, 
         old.unlink()
     from .world import prepare
     from . import sdf as _sdf
-    frame = lambda t: prepare(pose(sc, t), t)  # noqa: E731 — 시간 t 의 자세 · 이동 · 소품을 세상에 놓은 장면
+    lag = float(an.get("overlap", 0.07))
+    frame = lambda t: prepare(_overlap(pose(sc, t), pose(sc, t - lag)) if lag > 0 else pose(sc, t), t)  # noqa: E731 — 시간 t 의 장면
     follow = "camera" in (an.get("tracks") or {}) or an.get("camera") == "follow"   # 카메라 칸을 움직이거나 follow 면 프레임마다 다시 맞춘다
     if an.get("camera") == "follow":                       # 따라가기: 움직이는 뼈대(move)의 골반을 가운데에, 키의 0.75 배 반지름
         from .world import Ground, locomotion
@@ -195,6 +224,20 @@ def animate(scene: dict, style: str = "cel", out_dir: Path | str | None = None, 
     info = {"key": key, "dir": str(d), "first": str(d / "f000.png"), "frames": n, "fps": fps, "dur": dur}
     stamp.write_text(json.dumps(info, ensure_ascii=False), "utf-8")
     return info
+
+
+DISTAL = ("head", "l_elbow", "r_elbow", "l_grip", "r_grip", "l_spread", "r_spread")
+
+
+def _overlap(cur, lagged):
+    """겹침 · 따라오기 — 끝 관절(고개 · 팔꿈치 · 손)은 조금 늦은 시각의 값을 쓴다. 몸통이 먼저 움직이고 끝이 따라온다"""
+    if isinstance(cur, dict) and isinstance(lagged, dict):
+        if "rig" in cur and isinstance(cur.get("pose"), dict) and isinstance(lagged.get("pose"), dict):
+            cur = {**cur, "pose": {**cur["pose"], **{k: lagged["pose"][k] for k in DISTAL if k in lagged["pose"]}}}
+        return {k: (_overlap(v, lagged.get(k)) if k != "pose" else v) for k, v in cur.items()}
+    if isinstance(cur, list) and isinstance(lagged, list) and len(cur) == len(lagged):
+        return [_overlap(a, b) for a, b in zip(cur, lagged)]
+    return cur
 
 
 def _find_mover(n):

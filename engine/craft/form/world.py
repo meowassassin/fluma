@@ -19,8 +19,10 @@ import numpy as np
 from . import sdf
 from .skeleton import DEFAULT, Ry, expand, joints
 
-GAIT = {"walk": {"stride": 0.36, "bob": 0.012, "arm_swing": 22, "elbow": 14, "lean": 3, "swing_h": 0.07, "knee": 0.96},
-        "run": {"stride": 0.62, "bob": 0.03, "arm_swing": 48, "elbow": 85, "lean": 11, "swing_h": 0.16, "knee": 0.9}}
+GAIT = {"walk": {"stride": 0.36, "bob": 0.014, "arm_swing": 24, "elbow": 18, "elbow_swing": 22, "lean": 3, "swing_h": 0.09, "knee": 0.95,
+                 "duty": 0.6, "hip_yaw": 7, "hip_roll": 4, "sway": 0.012, "ramp": 0.45, "lag": 0.07},
+        "run": {"stride": 0.62, "bob": 0.03, "arm_swing": 46, "elbow": 80, "elbow_swing": 15, "lean": 11, "swing_h": 0.2, "knee": 0.9,
+                "duty": 0.38, "hip_yaw": 11, "hip_roll": 3, "sway": 0.008, "ramp": 0.35, "lag": 0.05}}
 
 
 # ---------------------------------------------------------------- 지형
@@ -91,28 +93,46 @@ def _smooth(w):
 
 
 # ---------------------------------------------------------------- 이동(걸음새)
+def _travel(tau: float, v: float, total: float, ramp: float) -> float:
+    """가속 · 감속이 있는 이동 거리 — 출발 ramp 초 동안 빨라지고, 끝에서 같은 만큼 느려져 멈춘다"""
+    if tau <= 0:
+        return 0.0
+    d = v * tau * tau / (2 * ramp) if tau < ramp else v * (tau - ramp / 2)
+    stop = total - v * ramp / 2                          # 이 거리부터 감속
+    if d > stop:
+        x = min(1.0, (d - stop) / (v * ramp))           # 0 → 1
+        d = stop + v * ramp / 2 * (1 - (1 - x) ** 2)
+    return min(d, total)
+
+
 def locomotion(node: dict, t: float, ground: Ground) -> dict:
-    """시간 t 의 (뿌리 위치 · 방향 · 발 목표(세상) · 골반 높이 · 자세 보정)"""
+    """시간 t 의 (뿌리 위치 · 방향 · 발 목표(세상) · 골반 높이 · 자세 보정).
+    사람 걸음의 2차 움직임을 함께: 가속 · 감속, 디딤 비율(걷기 두 발 닿음 · 뛰기 두 발 뜸), 뒤꿈치부터 떼는 발,
+    골반 회전 · 기울기 · 좌우 체중 이동, 반대로 도는 어깨, 시선 유지, 늦게 따라오는 팔 · 고개(겹침)"""
     S = {**DEFAULT, **(node.get("size") or {})}
     H = float(S["height"])
     mv = node["move"]
-    g = {**GAIT[mv.get("gait", "walk")], **{k: mv[k] for k in ("stride", "bob", "arm_swing", "elbow", "lean", "swing_h") if k in mv}}
+    gait = mv.get("gait", "walk")
+    g = {**GAIT[gait], **{k: mv[k] for k in GAIT["walk"] if k in mv}}
     path = Path(mv["path"])
     s = float(g["stride"]) * H
-    v = float(mv.get("speed", 1.2 if mv.get("gait", "walk") == "walk" else 3.0))
-    D = min(max(0.0, (t - float(mv.get("t0", 0.0))) * v), path.total)
-    moving = D < path.total - 1e-6 and t >= float(mv.get("t0", 0.0))
+    v = float(mv.get("speed", 1.2 if gait == "walk" else 3.0))
+    t0 = float(mv.get("t0", 0.0))
+    ramp = float(g["ramp"])
+    D = _travel(t - t0, v, path.total, ramp)
+    moving = 1e-6 < D < path.total - 1e-6
     xz, tng = path.at(D)
     yaw = math.degrees(math.atan2(tng[0], tng[1]))
     left = np.array([math.cos(math.radians(yaw)), 0.0, -math.sin(math.radians(yaw))])
     hw = float(S["hip_w"]) * H
     fh = float(S["foot_h"]) * H
-    feet = {}
+    duty = float(g["duty"])
+    feet, stance = {}, {}
     for side, q, sx in (("l", 0, 1), ("r", 1, -1)):
         if not moving:                                   # 멈춤: 두 발을 나란히
-            fp, _ = path.at(D + (0.04 * H if side == "l" else -0.04 * H) * 0)
-            w3 = np.array([fp[0], 0.0, fp[1]]) + left * sx * hw
+            w3 = np.array([xz[0], 0.0, xz[1]]) + left * sx * hw
             feet[side] = w3 + [0, ground(w3[0], w3[2]) + fh, 0]
+            stance[side] = 1.0
             continue
         u = (D / s - q) / 2
         j = math.floor(u); fr = u - j
@@ -121,21 +141,57 @@ def locomotion(node: dict, t: float, ground: Ground) -> dict:
         A = np.array([a2[0], 0.0, a2[1]]) + left * sx * hw
         B = np.array([b2[0], 0.0, b2[1]]) + left * sx * hw
         ya, yb = ground(A[0], A[2]) + fh, ground(B[0], B[2]) + fh
-        if fr < 0.5:                                     # 디딤(발이 붙어 있음)
+        if fr < duty:                                    # 디딤
             feet[side] = A + [0, ya, 0]
-        else:                                            # 들어 옮김 — 계단이면 단 높이보다 높이 든다
-            w = _smooth((fr - 0.5) / 0.5)
-            P_ = A + (B - A) * w
+            stance[side] = 1.0
+        else:                                            # 들어 옮김 — 뒤꿈치부터 들고(앞쪽 궤적이 늦게), 계단이면 단보다 높이
+            w = (fr - duty) / (1 - duty)
+            wf = _smooth(w) ** 1.15
             lift = max(float(g["swing_h"]) * H, abs(yb - ya) + 0.05 * H)
-            feet[side] = P_ + [0, ya + (yb - ya) * w + lift * math.sin(math.pi * w), 0]
+            arc = math.sin(math.pi * min(1.0, w * 1.08)) ** 0.85
+            feet[side] = A + (B - A) * wf + [0, ya + (yb - ya) * _smooth(w) + lift * arc, 0]
+            stance[side] = 0.0
     leg = (float(S["upper_leg"]) + float(S["lower_leg"])) * H
     base = (feet["l"][1] + feet["r"][1]) / 2 - fh
-    ph = math.pi * D / s
-    pelvis = base + fh + leg * float(g["knee"]) - (float(g["bob"]) * H * abs(math.cos(ph)) if moving else 0.0)
-    A_ = float(g["arm_swing"]) if moving else 4.0
-    pose = {"l_arm": [-A_ * math.cos(ph), 8, 0], "r_arm": [A_ * math.cos(ph), 8, 0],
-            "l_elbow": float(g["elbow"]), "r_elbow": float(g["elbow"]), "spine": [float(g["lean"]) if moving else 0, 0, 0]}
-    return {"origin": np.array([xz[0], 0.0, xz[1]]), "yaw": yaw, "feet": feet, "pelvis_y": pelvis, "pose": pose, "left": left}
+    ph = math.pi * D / s                                 # 한 걸음 = π
+    ramp_k = 1.0 if not moving else min(1.0, (t - t0) / ramp, max(0.0, (path.total - D) / (v * ramp + 1e-6)))
+    bob = float(g["bob"]) * H * (0.5 - 0.5 * math.cos(2 * ph)) * ramp_k   # 한 걸음에 두 번 오르내림(두 발이 닿을 때 가장 낮다)
+    pelvis = base + fh + leg * float(g["knee"]) - bob
+    lag = float(g["lag"]) * v / s * math.pi             # 겹침: 팔 · 고개는 몸보다 조금 늦게(위상 지연)
+    pa = ph - lag
+    A_ = float(g["arm_swing"]) * ramp_k
+    hy = float(g["hip_yaw"]) * math.sin(ph) * ramp_k    # 골반이 앞으로 나가는 다리 쪽으로 돈다
+    hr = float(g["hip_roll"]) * math.cos(2 * ph) * ramp_k * (1 if math.sin(ph) > 0 else -1)
+    sway = float(g["sway"]) * H * math.sin(ph) * ramp_k
+    el0, el1 = float(g["elbow"]), float(g["elbow_swing"])
+    lean = float(g["lean"]) * (ramp_k if moving else 0.0) + (4.0 * (1 - ramp_k) if moving and (t - t0) < ramp else 0.0)   # 출발할 때 더 숙인다(예비 동작)
+    pose = {"l_arm": [-A_ * math.cos(pa), 9 + 3 * abs(math.cos(pa)), 0], "r_arm": [A_ * math.cos(pa), 9 + 3 * abs(math.cos(pa)), 0],
+            "l_elbow": el0 + el1 * max(0.0, -math.cos(pa)) * ramp_k, "r_elbow": el0 + el1 * max(0.0, math.cos(pa)) * ramp_k,
+            "spine": [lean, 0, -hy * 1.5], "lean": [0, hr],
+            "head": [-lean * 0.4 + 1.5 * math.sin(2 * (ph - lag)) * ramp_k, hy * 0.5, 0]}
+    return {"origin": np.array([xz[0], 0.0, xz[1]]) + left * sway, "yaw": yaw + hy, "feet": feet, "pelvis_y": pelvis, "pose": pose, "left": left}
+
+
+def life(t: float, k: float = 1.0) -> dict:
+    """서 있을 때 살아 있는 미세 움직임(더해진다) — 숨쉬기 · 체중 옮기기 · 고개 흔들림. 장면 길이와 상관없이 부드럽게"""
+    if k <= 0:
+        return {}
+    b = math.sin(2 * math.pi * t / 3.4)
+    return {"spine": [1.2 * b * k, 1.2 * math.sin(2 * math.pi * t / 5.3) * k, 0], "lean": [0, 1.4 * math.sin(2 * math.pi * t / 5.3) * k],
+            "head": [1.5 * math.sin(2 * math.pi * t / 4.1 + 1) * k, 3.0 * math.sin(2 * math.pi * t / 6.7) * k, 1.5 * math.sin(2 * math.pi * t / 5.9 + 2) * k],
+            "l_arm": [1.5 * b * k, 0, 0], "r_arm": [1.5 * b * k, 0, 0]}
+
+
+def _add_pose(base: dict, extra: dict) -> dict:
+    out = dict(base)
+    for k, v in extra.items():
+        if k in out and isinstance(out[k], (list, tuple)):
+            out[k] = [float(a) + float(b) for a, b in zip(list(out[k]) + [0] * 3, list(v) + [0] * 3)][: max(len(out[k]), len(v))]
+        elif k in out:
+            out[k] = float(out[k]) + float(v if not isinstance(v, (list, tuple)) else v[0])
+        else:
+            out[k] = v
+    return out
 
 
 def _rot2(a1, a2, b1, b2):
@@ -185,8 +241,7 @@ def place(node: dict, t: float, ground: Ground, targets: dict | None = None, cam
     if node.get("move"):
         lo = locomotion(node, t, ground)
         origin, yaw = lo["origin"], lo["yaw"]
-        for k, v in lo["pose"].items():
-            pose.setdefault(k, v)
+        pose = _add_pose(lo["pose"], {k: v for k, v in pose.items() if k in lo["pose"]}) | {k: v for k, v in pose.items() if k not in lo["pose"]}
         ik_w.setdefault("l_foot", lo["feet"]["l"]); ik_w.setdefault("r_foot", lo["feet"]["r"])
         pel_y = lo["pelvis_y"]
     else:
@@ -195,6 +250,8 @@ def place(node: dict, t: float, ground: Ground, targets: dict | None = None, cam
         pel_y = None
     W = Ry(yaw)
     fwd, left = W @ [0, 0, 1.0], W @ [1.0, 0, 0]
+    if pel_y is None:                                     # 서 있다 — 살아 있는 미세 움직임을 더한다(life 0 이면 끔)
+        pose = _add_pose(pose, life(t, float(node.get("life", 1.0))))
     if pel_y is None:                                     # 서 있는 자리의 지형 높이만큼 올린다
         g0 = ground(origin[0], origin[2])
         pel_y = g0 + (float(S["foot_h"]) + float(S["upper_leg"]) + float(S["lower_leg"])) * H
