@@ -44,7 +44,7 @@ GUIDE = """너는 Fluma 쇼츠의 장면 코드 작성자다. EffectCraft(After 
 [부품]
 {api}
 - 형태(캐릭터 · 사물) 움직임 프레임: var me = K.image(F + '<이름>.anim/f000.png', x, y, 배율) — 반복 재생된다. F 는 아래 경로.
-- 자막(나레이션)은 엔진이 따로 그린다 — 나레이션 문장을 화면 글자로 다시 쓰지 않는다. 아래 22% · 위 8% · 오른쪽 12%(버튼)는 비워 둔다.
+- 자막(나레이션)은 엔진이 따로 그린다(화면 아래 약 y 1270~1420) — 나레이션 문장을 화면 글자로 다시 쓰지 않는다. 콘티 장면의 caption 은 엔진이 화면 위(y 약 60~240)에 그린다 — 그 두 자리 · 오른쪽 12%(버튼)에는 글자 · 주인공을 두지 않는다.
 [화면 — AI 티를 피한다(레퍼런스 13편 실측, 어기면 제작이 막힌다)]
 - 바탕: K.scene(초, 바탕) 의 바탕은 콘티 장면의 bg 를 그대로. 없으면 장면의 장소 · 물건 색에서 고르고, 이웃 장면과 다르게. 어두운 남색 · 검정 기본값 금지.
 - 빛번짐(glow) · 흔들기(shake) · 렌즈 빛 효과 금지. 강조는 크기 · 색 대비 · 그 물건에 붙인 라벨로.
@@ -89,6 +89,7 @@ def _forms(sid: str) -> str:
 def _scene_prompt(sb: dict, sid: str, n: int, note: str, err: str = "") -> str:
     sc = sb["scenes"][n - 1]
     keep = {k: v for k, v in sc.items() if k not in ("materials",)}
+    mats = [m for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("type") != "craft" and m.get("id")]
     if keep.get("features"):                             # 빛번짐 같은 AI 티 효과는 고른 기능이어도 쓰지 않는다
         keep["features"] = [f for f in keep["features"] if not any(b in str(f) for b in ("glow", "lightsweep", "lensflare", "shake"))]
     budget = max(1, round(float(sc.get("sec") or 3) * 0.4))
@@ -102,6 +103,9 @@ def _scene_prompt(sb: dict, sid: str, n: int, note: str, err: str = "") -> str:
              f"쓸 수 있는 형태 움직임(F = data/compositions/{sid}/forms/ 절대 경로는 아래 코드 예의 F):\n{_forms(sid)}",
              f"이웃 장면: {' · '.join(nb)}",
              f"이 장면({n}번) 콘티:\n{json.dumps(keep, ensure_ascii=False, indent=1)}"]
+    if mats:                                             # 장면의 다른 재료(사진 · 형태 · 자료)는 장면 코드가 직접 배치한다 — 따로 화면에 깔리지 않는다
+        rows = [f"- {m['id']} ({m.get('type')}): {str(m.get('what') or m.get('query') or m.get('desc') or m.get('file') or '')[:80]}" for m in mats]
+        parts.append("이 장면의 재료 — 코드에서 K.image('$USE:<id>', x, y, 배율) 로 꼭 배치한다(형태 재료는 움직임이면 그 anim 프레임):\n" + "\n".join(rows))
     if note:
         parts.append(f"고칠 점: {note}")
     if err:
@@ -114,6 +118,54 @@ def _scene_prompt(sb: dict, sid: str, n: int, note: str, err: str = "") -> str:
 def _code(txt: str) -> str:
     m = re.findall(r"```(?:jsx|js|javascript)?\s*\n(.*?)```", txt, re.S)
     return (max(m, key=len) if m else txt).strip() + "\n"
+
+
+_FX: dict | None = None
+
+
+def _fx_table() -> dict:
+    """EffectCraft 효과 id → (화면 이름, 속성 이름들) — .claude/skills/crafts/catalog/effectcraft.jsonl"""
+    global _FX
+    if _FX is None:
+        _FX = {}
+        f = ROOT / ".claude" / "skills" / "crafts" / "catalog" / "effectcraft.jsonl"
+        for ln in (f.read_text("utf-8").splitlines() if f.exists() else []):
+            try:
+                r = json.loads(ln)
+            except ValueError:
+                continue
+            if r.get("kind") == "effect":
+                try:
+                    ps = [x.get("name") for x in json.loads(r.get("params") or "[]") if isinstance(x, dict)]
+                except ValueError:
+                    ps = []
+                _FX[r["id"]] = (r.get("label") or "", [x for x in ps if x])
+    return _FX
+
+
+def _fx_check(code: str) -> tuple[str, str]:
+    """K.fx 의 효과 이름 · 속성 이름을 실제 목록과 대조 — 철자만 다르면 바로잡고, 없는 것은 오류로(그 장면만 다시 쓴다).
+    2026-11-21: 'ec.blur.directionalblur'(없는 효과) 로 빌드가 멈췄다. 장면 작성자는 목록을 검색할 수 없다"""
+    import difflib
+    fx = _fx_table()
+    if not fx:
+        return code, ""
+    errs = []
+    for m in re.finditer(r"K\.fx\(\s*[^,]+,\s*'([^']+)'\s*(,\s*\{[^;]*?\})?", code):
+        name, props = m.group(1), m.group(2) or ""
+        if not name.startswith("ec."):
+            continue
+        if name not in fx:
+            near = difflib.get_close_matches(name, list(fx), n=1, cutoff=0.8)
+            if near:
+                code = code.replace(f"'{name}'", f"'{near[0]}'"); name = near[0]
+            else:
+                errs.append(f"없는 효과 {name} — 비슷한 것: {', '.join(difflib.get_close_matches(name, list(fx), n=3, cutoff=0.5)) or '없음(빼라)'}")
+                continue
+        for pn in re.findall(r"'([^']+)'\s*:", props):
+            if fx[name][1] and pn not in fx[name][1]:
+                errs.append(f"{name} 에 속성 '{pn}' 없음 — 있는 것: {', '.join(fx[name][1][:8])}")
+    return code, "; ".join(errs)
 
 
 def _syntax(code: str) -> str:
@@ -143,7 +195,8 @@ def write(sid: str, only: list[int] | None, note: str, jobs: int) -> dict:
             txt, cc = run_agent(system, _scene_prompt(sb, sid, n, note, err), override_env="FLUMA_SKILL_RUNTIME", timeout=420)
             c += cc
             code = _code(txt).replace("var F = '{forms}';", f"var F = '{forms}';")
-            err = _syntax(code)
+            code, fx_err = _fx_check(code)
+            err = _syntax(code) or fx_err
             if not err:
                 break
         (sd / f"s{n:02d}.jsx").write_text(code, "utf-8")
@@ -154,11 +207,20 @@ def write(sid: str, only: list[int] | None, note: str, jobs: int) -> dict:
             times[n] = (sec, err)
             cost += c
     changed = False
-    for n in todo:                                      # 콘티의 장면 재료가 파일을 가리키게(없을 때만)
+    for n in todo:
+        for m in sb["scenes"][n - 1].get("materials") or []:     # 이미 이어진 장면 코드 재료에도 다른 재료 연결표(uses)를 채운다
+            if isinstance(m, dict) and m.get("type") == "craft" and m.get("id") == f"s{n:02d}":
+                others = {x["id"]: x["id"] for x in sb["scenes"][n - 1]["materials"] if isinstance(x, dict) and x.get("id") and x.get("type") != "craft"}
+                if others and m.get("uses") != {**others, **(m.get("uses") or {})}:
+                    m["uses"] = {**others, **(m.get("uses") or {})}; changed = True                                      # 콘티의 장면 재료가 파일을 가리키게(없을 때만)
         sc = sb["scenes"][n - 1]
         ref = f"$FILE:data/compositions/{sid}/scenes/s{n:02d}.jsx"
-        if not any(isinstance(m, dict) and m.get("type") == "craft" for m in sc.get("materials") or []):
+        if not any(isinstance(m, dict) and m.get("type") == "craft" and ref in json.dumps(m, ensure_ascii=False) for m in sc.get("materials") or []):
+            # 다른 재료(사진 · 형태)가 있어도 장면 코드를 잇는다 — 2026-11-21: 이어지지 않아 장면 코드가 안 쓰이고 연출 설명이 글자로 찍혔다
+            sc["materials"] = [m for m in sc.get("materials") or [] if not (isinstance(m, dict) and m.get("type") == "craft" and m.get("id") == f"s{n:02d}")]
+            others = {m["id"]: m["id"] for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("id") and m.get("type") != "craft"}
             sc.setdefault("materials", []).append({"id": f"s{n:02d}", "type": "craft", "app": "effectcraft", "new": {"duration": sc.get("sec")}, "place": "full",
+                                                   **({"uses": others} if others else {}),
                                                    "export": {"format": "mp4", "start": 0, "end": sc.get("sec")},
                                                    "steps": [{"id": "script.run", "params": {"name": f"s{n:02d}", "code": ref}}]})
             changed = True

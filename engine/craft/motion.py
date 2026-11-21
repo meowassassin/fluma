@@ -1388,7 +1388,10 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         J(f"\n// ---------- 장면 {n}: {sc.get('beat', '')[:60]}")
         J(f"var c = app.project.items.addComp({js(name)}, {W}, {H}, 1, {sec}, {fps});")
         J(f"var bgL = c.layers.addSolid({js(bg)}, 'BG', {W}, {H}, 1);")
-        if DZ["bg_motion"] or bgp:   # 배경 움직임 — 방향이 정했을 때만(기본은 단색)
+        # 장면 코드가 화면 전체를 자기 바탕으로 덮는 장면이면 바탕 장식(빛 · 질감 · 프리셋)은 그 아래에 가려 보이지 않는다 —
+        # 2026-11-21 측정: 가려진 질감 노이즈 130ms + 빛 블러 65ms 를 프레임마다 계산(30초 렌더 226초의 큰 몫). 그림은 같고 계산만 뺀다
+        _covered = any(owns_frame(m, W, H) for m in sc.get("materials") or [] if isinstance(m, dict))
+        if (DZ["bg_motion"] or bgp) and not _covered:   # 배경 움직임 — 방향이 정했을 때만(기본은 단색)
             dress = f"dressBg(c, bgL, {start:.3f}, {js(bg_top)}, {js(bg_bot)}, {js(glow_a)}, {js(glow_b)});"
             if bgp:   # 형식별 내장 배경 프리셋(색은 콘티 바탕 · 팔레트로) — 안 되면 예전 그라데이션 + 빛
                 tunes, ef, et = bg_tunes(bgp, bg, pal)
@@ -1519,7 +1522,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             key = str(v.get("primary") or "").strip() or (sc.get("caption") or "").split("\n")[0].strip()
             colors = palette_list(sid)
             if items:
-                if key:
+                if key and len(key) <= 20:
                     J(f"var kt = txt(c, 'Key', {js(key[:20])}, {js(font)}, 96, {js(colors[0])}, null, 0, [{W / 2}, {H * 0.3:.0f}]); popIn(kt, 0.1, 0.2); kt.parent = cam;")
                 for k2, it in enumerate(items):
                     tk = cue_time(it, words, start, end)
@@ -1527,7 +1530,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                     y = H * 0.42 + k2 * 150
                     J(f"var ib = card(c, {js(f'Item {k2 + 1}')}, {int(W * 0.72)}, 116, [1, 1, 1], 28); ib.property('Transform').property('Position').setValue([{W / 2}, {y:.0f}]); ib.property('Transform').property('Opacity').setValue(12); popIn(ib, {tk:.2f}, 0.18); ib.parent = cam;")
                     J(f"var it = txt(c, {js(f'Item text {k2 + 1}')}, {js(f'{k2 + 1}. {it}'[:24])}, {js(font)}, 60, [0.07, 0.09, 0.18], null, 0, [{W / 2}, {y + 20:.0f}]); popIn(it, {tk:.2f}, 0.18); it.parent = cam;")
-            elif key:
+            elif key and len(key) <= 14:                  # 짧은 핵심어(숫자 · 낱말)만 — 연출 설명 문장을 화면에 찍지 않는다(2026-11-21: '가운데 큰 티스푼 하…'가 그대로 나옴)
                 J(f"var kt = txt(c, 'Key', {js(key[:16])}, {js(font)}, 150, {js(colors[0])}, null, 0, [{W / 2}, {H * 0.45:.0f}]); popIn(kt, 0.1, 0.22); kt.parent = cam;")
         # 훅 제목 — 노란 상자에 한 줄씩 쌓임
         te = element(sc, "훅 제목", "제목")
@@ -1607,7 +1610,11 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         has_num_mat = any(m.get("type") in ("stat", "chart") for m in sc.get("materials") or [])
         _ban = " ".join(map(str, ((sb.get("intent") or {}).get("must_not") or []) + list(sb.get("constraints") or [])))
         _no_fx = "number_punch" in ((sb.get("intent") or {}).get("ban") or []) or bool(re.search(r"효과|배지|큰 숫자|숫자 펀치|덧씌우", _ban))      # 의도 · 제약이 효과를 막으면 엔진도 얹지 않는다(2026-11-11: 금지라고 적었는데 큰 숫자가 붙었다)
-        if d.get("number_punch", not _no_fx) and not has_num_mat:     # 숫자 재료가 있는 장면은 그 재료가 숫자를 보여 준다
+        # 장면 코드가 화면을 직접 짜는 장면(craft 전체 화면)은 기본으로 끈다 — 2026-11-21: 엔진이 얹은 큰 노란 숫자가 장면 코드의 주인공(벌 · 달력)을
+        # 가려 렌더 전 검토에서 막혔고(꿀벌 시험 4장면 · 공항 영상 '50' '1'), 레퍼런스 13편 비교의 AI 티(주인공을 가리는 큰 숫자 팝) 그대로였다.
+        # 그런 장면은 숫자를 그림 속 물건(라벨 · 칸 · 단지)으로 이미 보여 준다. 감독이 direction.number_punch: true 로 켜면 쓴다
+        _owns = any(owns_frame(m, W, H) for m in sc.get("materials") or [] if isinstance(m, dict))
+        if d.get("number_punch", (not _no_fx) and not _owns) and not has_num_mat:     # 숫자 재료가 있는 장면은 그 재료가 숫자를 보여 준다
             cands = []
             shown_nums = set()
             for m in sc.get("materials") or []:
