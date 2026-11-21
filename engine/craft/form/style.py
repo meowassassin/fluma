@@ -371,6 +371,14 @@ def project_strokes(c: Ctx):
     return out
 
 
+def _proj_pts(c: Ctx, pts):
+    m = c.m
+    eye, f, r, u = (np.asarray(m[k], np.float64) for k in ("eye", "f", "r", "u")); th = float(m["th"])
+    V = np.asarray(pts, np.float64) - eye
+    z = V @ f
+    return np.stack([((V @ r) / z / th + 1) / 2 * c.N - 0.5, (1 - (V @ u) / z / th) / 2 * c.N - 0.5], 1)
+
+
 def _mat_rgb(c: Ctx, name):
     mats = list(c.m["mats"])
     return c.base_t[mats.index(name)] if name in mats else np.array([0.1, 0.08, 0.07], np.float32)
@@ -388,6 +396,34 @@ def _taper_poly(xy, w, taper):
     return np.vstack([xy + nrm * hw, (xy - nrm * hw)[::-1]])
 
 
+def stroke_layers(c: Ctx):
+    """얼굴 획 → [(색 rgb, 마스크)] 층 — 벡터 마감(vector.py)이 영역을 베지어 경로로 다시 그린다(래스터와 같은 모양).
+    획(눈은 흰자 · 홍채 · 동공 · 반사점 · 눈꺼풀 층)마다 검은 판에 흰색으로만 그려 마스크를 얻는다"""
+    N = c.N
+    m0 = c.m
+    out = []
+    try:
+        for st in list(m0.get("strokes") or []):
+            parts = ("sclera", "iris", "pupil", "hi", "lid") if st["kind"] == "eye" else (None,)
+            for part in parts:
+                c.m = {**m0, "strokes": [{**st, "_only": part, "_white": True}]}
+                tmp = draw_strokes(c, np.zeros((N, N, 3), np.float32))
+                mk = tmp[..., 0] > 0.5
+                if not mk.any():
+                    continue
+                if st["kind"] == "eye":
+                    base = _mat_rgb(c, st["mat"])
+                    col = {"sclera": hexrgb(st["sclera"]), "iris": base, "pupil": base * 0.35, "hi": np.ones(3, np.float32), "lid": hexrgb(st["lidc"])}[part]
+                else:
+                    col = _mat_rgb(c, st["mat"])
+                    if st.get("light"):
+                        col = col * (1 - float(st["light"])) + float(st["light"])
+                out.append((np.asarray(col, np.float32), mk))
+    finally:
+        c.m = m0
+    return out
+
+
 def draw_strokes(c: Ctx, img):
     """얼굴 획을 그림 위에 — 매끈한 곡선(Catmull-Rom), 끝이 가늘어지는 선 · 채움 · 점. 가려진 곳은 그리지 않는다"""
     SH = 4
@@ -396,7 +432,37 @@ def draw_strokes(c: Ctx, img):
         if st.get("light"):
             rgb = rgb * (1 - float(st["light"])) + float(st["light"])
         col = tuple(float(x) for x in rgb)
+        only, white = st.get("_only"), st.get("_white")
+        if white:
+            col = (1.0, 1.0, 1.0)
         xy, vis = st["xy"], st["vis"]
+        if st["kind"] == "eye":                                   # 눈: 흰자 안에 잘려 들어간 홍채 · 동공 → 반사점 → 위 눈꺼풀
+            if vis.mean() < 0.6:
+                continue
+            N = img.shape[0]
+            shape = _catmull(xy, 4, closed=True)
+            mask = np.zeros((N, N), np.float32)
+            cv2.fillPoly(mask, [np.round(shape * (1 << SH)).astype(np.int32)], 1.0, cv2.LINE_AA, SH)
+            ys, xs = np.nonzero(mask > 0)
+            if not len(xs):
+                continue
+            y0, y1, x0, x1 = max(0, ys.min() - 2), min(N, ys.max() + 3), max(0, xs.min() - 2), min(N, xs.max() + 3)
+            W1, K0 = (1.0, 1.0, 1.0), (0.0, 0.0, 0.0)
+            pick = lambda part, colr: (W1 if only == part else K0) if white else tuple(float(v) for v in colr)  # noqa: E731
+            box = np.zeros((y1 - y0, x1 - x0, 3), np.float32) + np.asarray(pick("sclera", hexrgb(st["sclera"])), np.float32)
+            off = np.array([x0, y0], np.float64)
+            for key, colr in (("iris", rgb), ("pupil", rgb * 0.35)):
+                P2 = _proj_pts(c, st[key]) - off
+                cv2.fillPoly(box, [np.round(_catmull(P2, 3, closed=True) * (1 << SH)).astype(np.int32)], pick(key, colr), cv2.LINE_AA, SH)
+            hp = _proj_pts(c, [st["hi"]])[0] - off
+            V = np.asarray(st["hi"]) - np.asarray(c.m["eye"]); zz = float(V @ np.asarray(c.m["f"]))
+            cv2.circle(box, tuple(int(v) for v in np.round(hp * (1 << SH))), max(1, int(float(st["hi_r"]) * c.N / 2 / float(c.m["th"]) / zz * (1 << SH))), pick("hi", (1, 1, 1)), -1, cv2.LINE_AA, SH)
+            mk = mask[y0:y1, x0:x1, None]
+            img[y0:y1, x0:x1] = img[y0:y1, x0:x1] * (1 - mk) + box * mk
+            L2 = _proj_pts(c, st["lid"])
+            w = float(st["lid_w"]) * N / 2 / float(c.m["th"]) / zz
+            cv2.fillPoly(img, [np.round(_taper_poly(_catmull(L2, 5), max(w, 1.2), [0.3, 0.9]) * (1 << SH)).astype(np.int32)], pick("lid", hexrgb(st["lidc"])), cv2.LINE_AA, SH)
+            continue
         if st["kind"] == "fill":
             if vis.mean() < 0.6:
                 continue

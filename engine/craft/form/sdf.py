@@ -126,8 +126,12 @@ def collect_strokes(scene):
         R, t, s_ = xf
         for st in n.get("_strokes") or []:
             q = dict(st)
-            q["pts"] = [(R @ (s_ * np.asarray(p, float)) + t).tolist() for p in st["pts"]]
-            for k in ("w", "r"):
+            for key in ("pts", "iris", "pupil", "lid"):              # 점 목록 — 모두 같은 변환
+                if key in st:
+                    q[key] = [(R @ (s_ * np.asarray(p, float)) + t).tolist() for p in st[key]]
+            if "hi" in st:
+                q["hi"] = (R @ (s_ * np.asarray(st["hi"], float)) + t).tolist()
+            for k in ("w", "r", "hi_r", "lid_w"):
                 if k in q:
                     q[k] = float(q[k]) * s_
             out.append(q)

@@ -101,10 +101,11 @@ def draw(ctx, out: Path, bg: str | None = None, ink: str = "#2a1c14", line: floa
             ds = region_d(sh, sc, smooth_px * 1.5, min_area * 4)
             if ds:
                 add(ds, fill=_hex(ctx.shadow_t[m]))
-    db = region_d(ctx.band, sc, smooth_px, min_area)
-    if db:                                                   # 머리카락 하이라이트 띠
-        bc = ctx.base[ctx.band].mean(0) if ctx.band.any() else np.ones(3)
-        add(db, fill=_hex(bc * 0.6 + 0.4))
+    from .style import stroke_layers                       # 얼굴 이목구비(눈 · 눈썹 · 입) · 머리 하이라이트 띠 — 래스터와 같은 획을 경로로
+    for col, mk in stroke_layers(ctx):
+        d = region_d(mk, sc, smooth_px * 0.6, min_area * 0.05)
+        if d:
+            add(d, fill=_hex(col))
     dsil = region_d(hit, sc, smooth_px, min_area)
     if dsil:
         add(dsil, stroke=ink, weight=max(1.0, line * R / 1080))        # 실루엣 굵은 선(면 없음)

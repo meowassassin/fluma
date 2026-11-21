@@ -222,19 +222,23 @@ def _face(J, S, h, M, F):
     sm, op = float(F["smile"]), float(F["open"])
     for sx in (1, -1):
         ex, ey = sx * S["eye_sep"] * S["head_w"] / 2, S["eye_y"]
-        # 눈: 아몬드(위 호는 둥글고 높게, 아래 호는 낮고 평평), 눈꼬리는 바깥이 조금 올라감. 웃으면 아래 호가 올라와 눈이 휜다
-        W2, up_h, lo_h = e * 0.85, e * 0.85 * lid, e * (0.55 - 0.3 * max(sm, 0)) * lid
-        ring = []
-        for u in np.linspace(-1, 1, 9):                   # 위 호(안 → 바깥)
-            ring.append((ex + sx * u * W2, ey + up_h * (1 - u * u) ** 0.8 + sx * 0.0 + 0.05 * e * u * sx * sx))
-        for u in np.linspace(1, -1, 9)[1:-1]:            # 아래 호(바깥 → 안)
-            ring.append((ex + sx * u * W2, ey - lo_h * (1 - u * u) ** 1.2))
-        strokes.append({"kind": "fill", "pts": [_on_head(J, x, y, -0.2).tolist() for x, y in ring], "mat": M["eye"]})
-        lidl = [(ex + sx * u * W2 * 1.12, ey + up_h * (1 - u * u) ** 0.8 + 0.012) for u in np.linspace(-1, 1, 9)]
-        strokes.append({"kind": "line", "pts": [_on_head(J, x, y, -0.25).tolist() for x, y in lidl], "w": 0.026 * h, "taper": [0.4, 1.0], "mat": M["eye"]})
-        if lid > 0.3:                                     # 반사점: 눈동자 위 · 빛 쪽(시선을 따라 조금 움직임)
-            strokes.append({"kind": "dot", "pts": [_on_head(J, ex + 0.25 * W2 + 0.02 * lx, ey + 0.35 * up_h + 0.02 * ly, -0.3).tolist()],
-                            "r": 0.011 * h, "mat": M["eye_hi"]})
+        # 눈 = 층: 흰자(눈 모양) → 그 안에 잘려 들어간 홍채 · 동공(시선을 따라 움직이고 눈꺼풀에 가려진다) → 반사점 → 위 눈꺼풀 선.
+        # 2026-11-21: 검은 아몬드 하나 + 반사점이라 흰자 · 눈동자가 없는 벌레 눈 같았다
+        W2, up_h, lo_h = e * 0.95, e * 0.8 * lid, e * (0.5 - 0.3 * max(sm, 0)) * lid
+        ring = [(ex + sx * u * W2, ey + up_h * (1 - u * u) ** 0.7 + 0.12 * e * u) for u in np.linspace(-1, 1, 11)]          # 위(안 → 바깥, 눈꼬리 살짝 올라감)
+        ring += [(ex + sx * u * W2, ey - lo_h * (1 - u * u) ** 1.1 + 0.12 * e * u) for u in np.linspace(1, -1, 11)[1:-1]]  # 아래(바깥 → 안)
+        ix, iy = ex + 0.35 * e * lx * 0 + 0.55 * e * lx, ey + 0.05 * e + 0.4 * e * ly                                       # 홍채 가운데(시선)
+        ir = e * 0.62
+
+        def disk(cx, cy, rr, n=16):
+            return [_on_head(J, cx + rr * math.cos(t), cy + rr * math.sin(t), -0.22).tolist() for t in np.linspace(0, 2 * math.pi, n, endpoint=False)]
+        lidl = [(ex + sx * u * W2 * (1.0 + 0.08 * max(u, 0)), ey + up_h * (1 - u * u) ** 0.7 + 0.12 * e * u + 0.006 + 0.03 * e * max(u - 0.7, 0) / 0.3)
+                for u in np.linspace(-1, 1, 11)]
+        strokes.append({"kind": "eye", "pts": [_on_head(J, x, y, -0.2).tolist() for x, y in ring],
+                        "iris": disk(ix, iy, ir), "pupil": disk(ix, iy, ir * 0.45),
+                        "hi": _on_head(J, ix + sx * 0 + 0.3 * ir, iy + 0.35 * ir, -0.3).tolist(), "hi_r": ir * 0.28 * h,
+                        "lid": [_on_head(J, x, y, -0.25).tolist() for x, y in lidl], "lid_w": 0.028 * h,
+                        "mat": M["eye"], "sclera": "#fbf7f1", "lidc": "#2a1c14"})
         # 눈썹: 붓 획 하나(안쪽이 굵고 바깥이 가늘게). brow > 0 이면 안쪽이 내려가 화남, < 0 걱정
         by = ey + 0.13 + 0.06 * float(F["brow_y"])
         tilt = float(F["brow"]) * 0.045
