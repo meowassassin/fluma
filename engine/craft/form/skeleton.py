@@ -211,35 +211,50 @@ def _hand(J, side, f, M, mode, grip, spread):
 
 
 def _face(J, S, h, M, F):
-    """표정: 눈(눈꺼풀) · 눈썹(높이 · 기울기) · 입(웃음 −1 찡그림 … 1 웃음 · 벌림 0~1) · 볼"""
-    Rh = J["Rh"]
-    out = []
-    e = S["eye"] * h
-    lid = max(0.08, 1 - float(F["eyelid"]))
+    """표정: 눈(눈꺼풀 · 시선) · 눈썹(높이 · 기울기) · 입(웃음 −1 찡그림 … 1 웃음 · 벌림 0~1) · 볼.
+    2026-11-21 구조 변경: 이목구비를 3D 구슬 · 막대로 얼굴에 박지 않는다(입에 구슬 이음 자국, 눈이 구슬 모양) —
+    얼굴 표면 위 점들로 된 '획'(선 · 채움 · 점)으로 내고, 화풍이 렌더 뒤 화면에 투영해 매끈한 곡선으로 그린다(style.draw_strokes).
+    가려지면(머리카락 · 고개 돌림) 깊이로 지운다. 돌려주는 것: (형태 목록, 획 목록)"""
+    out, strokes = [], []
+    e = S["eye"]
+    lid = max(0.06, 1 - float(F["eyelid"]))
     lx, ly = (F.get("look") or [0, 0])[:2]
+    sm, op = float(F["smile"]), float(F["open"])
     for sx in (1, -1):
         ex, ey = sx * S["eye_sep"] * S["head_w"] / 2, S["eye_y"]
-        ec = _on_head(J, ex + 0.02 * lx, ey + 0.02 * ly)
-        out.append(ell(ec, [e * 0.42, e * 0.6 * lid, e * 0.3], Rh, M["eye"]))
-        if lid > 0.3:                                 # 눈 반사점(빛을 받는 위쪽) — 점 하나이던 눈에 생기
-            out.append(ell(ec + Rh @ [e * 0.13, e * 0.22 * lid, e * 0.33], [e * 0.13, e * 0.13, e * 0.05], Rh, M["eye_hi"]))
-        # 위 눈꺼풀 선: 눈보다 조금 넓은 호(눈을 감을수록 내려온다) — 그림에서 눈의 모양을 정하는 선
-        top = [_on_head(J, ex + 0.02 * lx + u * S["eye"] * 0.62, ey + 0.02 * ly + S["eye"] * (0.5 * lid) * (1 - 0.55 * u * u) - 0.004, 0.25)
-               for u in np.linspace(-1, 1, 5)]
-        out.append({"op": "union", "children": [seg(a, b, 0.012 * h, 0.012 * h, M["eye"]) for a, b in zip(top, top[1:])]})
-        # 눈썹: brow > 0 이면 안쪽이 내려가 화난 얼굴, < 0 이면 안쪽이 올라가 걱정
+        # 눈: 아몬드(위 호는 둥글고 높게, 아래 호는 낮고 평평), 눈꼬리는 바깥이 조금 올라감. 웃으면 아래 호가 올라와 눈이 휜다
+        W2, up_h, lo_h = e * 0.85, e * 0.85 * lid, e * (0.55 - 0.3 * max(sm, 0)) * lid
+        ring = []
+        for u in np.linspace(-1, 1, 9):                   # 위 호(안 → 바깥)
+            ring.append((ex + sx * u * W2, ey + up_h * (1 - u * u) ** 0.8 + sx * 0.0 + 0.05 * e * u * sx * sx))
+        for u in np.linspace(1, -1, 9)[1:-1]:            # 아래 호(바깥 → 안)
+            ring.append((ex + sx * u * W2, ey - lo_h * (1 - u * u) ** 1.2))
+        strokes.append({"kind": "fill", "pts": [_on_head(J, x, y, -0.2).tolist() for x, y in ring], "mat": M["eye"]})
+        lidl = [(ex + sx * u * W2 * 1.12, ey + up_h * (1 - u * u) ** 0.8 + 0.012) for u in np.linspace(-1, 1, 9)]
+        strokes.append({"kind": "line", "pts": [_on_head(J, x, y, -0.25).tolist() for x, y in lidl], "w": 0.026 * h, "taper": [0.4, 1.0], "mat": M["eye"]})
+        if lid > 0.3:                                     # 반사점: 눈동자 위 · 빛 쪽(시선을 따라 조금 움직임)
+            strokes.append({"kind": "dot", "pts": [_on_head(J, ex + 0.25 * W2 + 0.02 * lx, ey + 0.35 * up_h + 0.02 * ly, -0.3).tolist()],
+                            "r": 0.011 * h, "mat": M["eye_hi"]})
+        # 눈썹: 붓 획 하나(안쪽이 굵고 바깥이 가늘게). brow > 0 이면 안쪽이 내려가 화남, < 0 걱정
         by = ey + 0.13 + 0.06 * float(F["brow_y"])
-        tilt = sx * 22 * float(F["brow"])
-        out.append(ell(_on_head(J, ex, by, 0.2), [e * 0.85, e * 0.2, e * 0.16], Rh @ Rz(tilt), M["hair"]))
+        tilt = float(F["brow"]) * 0.045
+        bl = [(ex + sx * u * e * 0.85, by + 0.018 * (1 - u * u) - tilt * (-u) + 0.0) for u in np.linspace(-1, 1, 7)]
+        strokes.append({"kind": "line", "pts": [_on_head(J, x, y, -0.2).tolist() for x, y in bl], "w": 0.03 * h, "taper": [1.0, 0.3], "mat": M["hair"]})
         if float(F["blush"]) > 0 and M.get("blush"):
-            out.append(ell(_on_head(J, ex * 1.15, ey - 0.13, 0.5), [e * 0.6, e * 0.3, e * 0.2], Rh, M["blush"]))
-    my, mw, sm, op = S["mouth_y"], S["mouth_w"], float(F["smile"]), float(F["open"])
-    if op > 0.12:                                     # 벌린 입: 어두운 타원(웃으면 아래가 넓게)
-        out.append(ell(_on_head(J, 0, my - 0.02 * op, 0.4), [mw * h / 2 * (0.8 + 0.3 * max(sm, 0)), h * (0.03 + 0.09 * op), 0.04 * h], Rh, M["mouth"]))
-    else:                                             # 다문 입: 곡선 하나(점 여섯을 이은 선) — 끝이 올라가면 웃음, 내려가면 찡그림
-        pts = [_on_head(J, u * mw / 2, my + 0.05 * sm * (u * u - 0.35), 0.3) for u in np.linspace(-1, 1, 6)]
-        out.append({"op": "union", "children": [seg(a, b, 0.016 * h, 0.016 * h, M["mouth"]) for a, b in zip(pts, pts[1:])]})
-    return out
+            out.append(ell(_on_head(J, ex * 1.15, ey - 0.13, 0.5), [e * h * 0.6, e * h * 0.3, e * h * 0.2], J["Rh"], M["blush"]))
+    my, mw = S["mouth_y"], S["mouth_w"]
+    if op > 0.12:                                         # 벌린 입: 위 입술선 + 아래로 둥근 채움(웃으면 넓고 아래가 큼)
+        wq = mw / 2 * (0.8 + 0.3 * max(sm, 0))
+        ring = [(u * wq, my + 0.04 * sm * (u * u - 0.3)) for u in np.linspace(-1, 1, 9)]
+        ring += [(u * wq * 0.9, my - (0.03 + 0.09 * op) * (1 - u * u) ** 0.9) for u in np.linspace(1, -1, 9)[1:-1]]
+        strokes.append({"kind": "fill", "pts": [_on_head(J, x, y, -0.2).tolist() for x, y in ring], "mat": M["mouth"]})
+    else:                                                 # 다문 입: 끝이 가늘어지는 곡선 하나 — 끝이 올라가면 웃음, 내려가면 찡그림
+        ml = [(u * mw / 2, my + 0.05 * sm * (u * u - 0.35)) for u in np.linspace(-1, 1, 9)]
+        strokes.append({"kind": "line", "pts": [_on_head(J, x, y, -0.2).tolist() for x, y in ml], "w": 0.024 * h, "taper": [0.25, 0.25], "mat": M["mouth"]})
+    return out, strokes
+
+
+_HAIR_STROKES: list = []
 
 
 def _hair(J, S, h, M, Hs):
@@ -268,7 +283,7 @@ def _hair(J, S, h, M, Hs):
             u = i / (n - 1) * 2 - 1
             phi = u * 60 + part * 25
             tip_el = 32 - 24 * bg + 8 * u * u + (3 if i % 2 else -2)        # 가운데가 짧고 옆이 길게, 끝 높이를 조금씩 엇갈리게
-            out += lock(on(phi * 0.55, 64, 0.05), on(phi * 0.92, 47, 0.1), on(phi * 1.02, tip_el, 0.025), 0.14 * h, 0.035 * h)
+            out += lock(on(phi * 0.55, 64, 0.05), on(phi * 0.92, 47, 0.1), on(phi * 1.02, tip_el, 0.025), 0.14 * h, 0.014 * h)
     if float(Hs["side"]) > 0:
         sd = float(Hs["side"])
         for sx in (1, -1):
@@ -280,6 +295,9 @@ def _hair(J, S, h, M, Hs):
             ph = 110 + k * (140 / 6)
             tip = on(ph, -25, 0.08) + np.array([0.0, -L * 0.75 * h, 0.0]) + Rh @ np.array([0, 0, -0.04 * h])
             out += lock(on(ph, 45, 0.05), on(ph, -5, 0.14), tip, 0.13 * h, 0.02 * h)
+    # 하이라이트 띠: 머리 위를 가로지르는 넓은 획(앞머리 · 다발에 가려지면 끊긴다) — 반사 얼룩 대신(style.draw_strokes)
+    band = [on(ph, 58 - 6 * abs(ph) / 70, 0.16 + 0.05 * v).tolist() for ph in np.linspace(-70, 70, 9)]
+    _HAIR_STROKES.append({"kind": "line", "pts": band, "w": 0.05 * h, "taper": [0.0, 0.0], "mat": M["hair"], "light": 0.3})
     if float(Hs["tail"]) > 0:                         # 포니테일: 뒤통수에서 아래로 늘어진 관
         L = float(Hs["tail"]) * h * 1.6
         a = c + Rh @ [0, 0.12 * h, -rz * 0.95]
@@ -365,10 +383,12 @@ def expand(node: dict) -> dict:
     headg = SU(0.006 * H, [SU(0.012 * H, head), *ears])
     neck_g = JU(hb, f("neck_r") * 0.5, f("neck_r") * 3.0, [*neck, headg])              # 턱 밑은 좁게
     trunk = JU(neck0, f("neck_r") * 1.0, f("neck_r") * 3.5, [trunk, neck_g])           # 쇄골 쪽은 넓게
-    face = _face(J, S, h, M, Fc)
+    face, strokes = _face(J, S, h, M, Fc)
+    _HAIR_STROKES.clear()
     hair = _hair(J, S, h, M, Hs)
+    strokes = strokes + list(_HAIR_STROKES)
     out = {"op": "union", "children": [trunk, {"op": "smooth_union", "k": 0.006 * H, "children": hair}] + face,
-           "_roles": {"skin": [M["skin"]], "hair": [M["hair"]]}}      # 화풍이 피부 · 머리카락을 그림처럼 칠한다(style.Ctx._illustrate)
+           "_roles": {"skin": [M["skin"]], "hair": [M["hair"]]}, "_strokes": strokes}      # 화풍이 피부 · 머리카락을 그림처럼 칠한다(style.Ctx._illustrate)
     for key in ("pos", "rot", "rotm", "scale", "name"):
         if key in node:
             out[key] = node[key]

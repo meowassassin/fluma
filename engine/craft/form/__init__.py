@@ -17,7 +17,7 @@ import numpy as np
 STYLES = ("flat", "cel", "sketch", "clay", "vector")      # vector: VectorCraft 벡터 마감(engine/craft/form/vector.py)
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 CACHE = ROOT / "data" / "workspace" / "cache" / "form"
-RENDER_VERSION = 10          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
+RENDER_VERSION = 11          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
 
 
 def _scene_with_view(scene: dict, view: dict | None) -> dict:
@@ -61,10 +61,14 @@ def _style_on(ctx, style: str, bg: str):
     from . import style as st
     fn = st.STYLES[style]
     if style == "clay":
-        return ctx.finish(fn(ctx, bg_top=bg, bg_bot=bg, bounce_col="#e8dfd3"))
-    if style == "sketch":
-        return ctx.finish(fn(ctx, paper=bg, texture=False))
-    return ctx.finish(fn(ctx, bg=bg))
+        img = fn(ctx, bg_top=bg, bg_bot=bg, bounce_col="#e8dfd3")
+    elif style == "sketch":
+        img = fn(ctx, paper=bg, texture=False)
+    else:
+        img = fn(ctx, bg=bg)
+    if img.shape[0] == ctx.N:                              # 얼굴 획(이목구비)은 화풍 위에 매끈한 곡선으로
+        img = st.draw_strokes(ctx, np.ascontiguousarray(img, np.float32))
+    return ctx.finish(img)
 
 
 def parts_apart(scene: dict, view: dict | None = None, res: int = 360) -> int:

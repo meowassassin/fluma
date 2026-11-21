@@ -91,9 +91,7 @@ class Ctx:
                 self.lv[mask] = lv[mask]
             else:
                 self.gloss_t[ids] = 0.0
-                self.hair = mask
-                up = n_s @ u
-                self.band |= mask & (np.abs(up - 0.62) < 0.04) & (self.b["ndv"] > 0.25)
+                self.hair = mask                                  # 하이라이트는 뼈대가 낸 띠 획으로(draw_strokes)
 
     def px(self, w: float) -> int:
         """선 굵기(1080 출력 기준 px) → 이 버퍼의 px — 해상도가 낮아도 선이 형태를 덮지 않게(2026-11-20: 400px 움직임 프레임에서 캐릭터가 검은 덩어리)"""
@@ -327,3 +325,103 @@ def clay(c: Ctx, bg_top="#f6f1ea", bg_bot="#e8dfd3", bounce_col=None):
 
 
 STYLES = dict(flat=flat, cel=cel, sketch=sketch, clay=clay)
+
+
+# ------------------------------------------------------------------ 얼굴 획(이목구비)
+def _catmull(pts, n=6, closed=False):
+    P = np.asarray(pts, np.float64)
+    if len(P) < 3:
+        return P
+    out = []
+    m = len(P)
+    rng = range(m) if closed else range(m - 1)
+    for i in rng:
+        p0, p1 = P[(i - 1) % m] if (closed or i > 0) else P[i], P[i]
+        p2 = P[(i + 1) % m]
+        p3 = P[(i + 2) % m] if (closed or i + 2 < m) else p2
+        for t in np.linspace(0, 1, n, endpoint=False):
+            t2, t3 = t * t, t * t * t
+            out.append(0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3))
+    if not closed:
+        out.append(P[-1])
+    return np.array(out)
+
+
+def project_strokes(c: Ctx):
+    """획(세상 좌표) → 화면 픽셀 · 보이는지(깊이) · 굵기(px). 보이는 것만, 연속 구간으로 나눠 돌려준다"""
+    m = c.m
+    eye, f, r, u = (np.asarray(m[k], np.float64) for k in ("eye", "f", "r", "u")); th = float(m["th"])
+    N = c.N
+    depth = c.b["depth"]
+    out = []
+    for st in m.get("strokes") or []:
+        P = np.asarray(st["pts"], np.float64)
+        V = P - eye
+        z = V @ f
+        if np.any(z <= 1e-6):
+            continue
+        X = ((V @ r) / z / th + 1) / 2 * N - 0.5
+        Y = (1 - (V @ u) / z / th) / 2 * N - 0.5
+        dist = np.linalg.norm(V, axis=1)
+        scale = N / 2 / th / z                             # 세상 길이 → px
+        xi = np.clip(np.round(X).astype(int), 0, N - 1); yi = np.clip(np.round(Y).astype(int), 0, N - 1)
+        tol = 0.03 * float(np.mean(dist)) * th + 0.004 * float(np.mean(dist))
+        vis = (X >= 0) & (X < N) & (Y >= 0) & (Y < N) & c.hit[yi, xi] & (dist <= depth[yi, xi] + max(tol, float(st.get("w", st.get("r", 0.01))) * 2))
+        out.append({**st, "xy": np.stack([X, Y], 1), "vis": vis, "px": scale})
+    return out
+
+
+def _mat_rgb(c: Ctx, name):
+    mats = list(c.m["mats"])
+    return c.base_t[mats.index(name)] if name in mats else np.array([0.1, 0.08, 0.07], np.float32)
+
+
+def _taper_poly(xy, w, taper):
+    """중심선 · 굵기(px) → 끝이 가늘어지는 획 다각형"""
+    n = len(xy)
+    t = np.linspace(0, 1, n)
+    a, b = (taper or [1.0, 1.0])[:2]
+    prof = np.minimum(1.0, np.minimum(a + (1 - a) * np.clip(t / 0.35, 0, 1), b + (1 - b) * np.clip((1 - t) / 0.35, 0, 1)))
+    d = np.gradient(xy, axis=0)
+    nrm = np.stack([-d[:, 1], d[:, 0]], 1) / np.maximum(np.linalg.norm(d, axis=1, keepdims=True), 1e-6)
+    hw = (w * prof / 2)[:, None]
+    return np.vstack([xy + nrm * hw, (xy - nrm * hw)[::-1]])
+
+
+def draw_strokes(c: Ctx, img):
+    """얼굴 획을 그림 위에 — 매끈한 곡선(Catmull-Rom), 끝이 가늘어지는 선 · 채움 · 점. 가려진 곳은 그리지 않는다"""
+    SH = 4
+    for st in project_strokes(c):
+        rgb = _mat_rgb(c, st["mat"])
+        if st.get("light"):
+            rgb = rgb * (1 - float(st["light"])) + float(st["light"])
+        col = tuple(float(x) for x in rgb)
+        xy, vis = st["xy"], st["vis"]
+        if st["kind"] == "fill":
+            if vis.mean() < 0.6:
+                continue
+            pts = _catmull(xy, 5, closed=True)
+            cv2.fillPoly(img, [np.round(pts * (1 << SH)).astype(np.int32)], col, cv2.LINE_AA, SH)
+        elif st["kind"] == "dot":
+            if vis[0]:
+                rr = float(st["r"]) * float(st["px"][0])
+                cv2.circle(img, tuple(int(v) for v in np.round(xy[0] * (1 << SH))), max(1, int(rr * (1 << SH))), col, -1, cv2.LINE_AA, SH)
+        else:
+            if not vis.any():
+                continue
+            w = float(st["w"]) * float(np.mean(st["px"]))
+            dense = _catmull(xy, 6)                              # 곡선을 촘촘히 → 보이는 구간마다 따로(가려진 곳에서 끊긴다)
+            dv = np.interp(np.linspace(0, len(vis) - 1, len(dense)), np.arange(len(vis)), vis.astype(float)) > 0.5
+            runs, k = [], None
+            for i, ok in enumerate(list(dv) + [False]):
+                if ok and k is None:
+                    k = i
+                elif not ok and k is not None:
+                    runs.append((k, i)); k = None
+            full = len(runs) == 1 and runs[0] == (0, len(dense))
+            for a, b in runs:
+                if b - a < 3:
+                    continue
+                tp = st.get("taper") if full else [0.2, 0.2]
+                cv2.fillPoly(img, [np.round(_taper_poly(dense[a:b], max(w, 1.2), tp) * (1 << SH)).astype(np.int32)], col, cv2.LINE_AA, SH)
+    return img

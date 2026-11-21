@@ -112,6 +112,31 @@ def compile_scene(scene):
     return np.array(codes, np.int32), np.array(rows, np.float64), mats
 
 
+def collect_strokes(scene):
+    """뼈대가 낸 2D 획(_strokes: 얼굴 이목구비)을 세상 좌표로 — 도형과 같은 변환(위치 · 회전 · 크기)을 거친다"""
+    out = []
+
+    def visit(n, parent):
+        if not isinstance(n, dict):
+            return
+        if "rig" in n:
+            from .skeleton import expand
+            n = expand(n)
+        xf = _compose(parent, _xf(n))
+        R, t, s_ = xf
+        for st in n.get("_strokes") or []:
+            q = dict(st)
+            q["pts"] = [(R @ (s_ * np.asarray(p, float)) + t).tolist() for p in st["pts"]]
+            for k in ("w", "r"):
+                if k in q:
+                    q[k] = float(q[k]) * s_
+            out.append(q)
+        for c in n.get("children") or []:
+            visit(c, xf)
+    visit(scene["root"], (np.eye(3), np.zeros(3), 1.0))
+    return out
+
+
 def material_table(scene):
     """Per-material float table: rgb(0-1) + gloss, spec_power, plus style hints."""
     out = []

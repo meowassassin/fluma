@@ -203,12 +203,12 @@ def render(scene, res=1080, ss=2, cam=None):
                 res=res, ss=ss, lo=lo, hi=hi,
                 foot_center=np.array([(lo[0] + hi[0]) / 2, (lo[2] + hi[2]) / 2]),
                 foot_size=np.array([(hi[0] - lo[0]) / 2, (hi[2] - lo[2]) / 2]),
-                scene=scene)
+                scene=scene, strokes=sdf.collect_strokes(scene))
     return buf, meta, dict(compile=t_compile, camera=time.time() - t1 - t_march + 0, march=t_march, total=time.time() - t0)
 
 
 def save(buf, meta, path):
-    np.savez(path, **buf, **{"meta_" + k: (json.dumps(v) if k == "scene" else v) for k, v in meta.items()})
+    np.savez(path, **buf, **{"meta_" + k: (json.dumps(v) if k in ("scene", "strokes") else v) for k, v in meta.items()})
 
 
 def load(path):
@@ -216,4 +216,5 @@ def load(path):
     buf = {k: z[k] for k in z.files if not k.startswith("meta_")}
     meta = {k[5:]: z[k] for k in z.files if k.startswith("meta_")}
     meta["mats"] = list(meta["mats"]); meta["scene"] = json.loads(str(meta["scene"]))
+    meta["strokes"] = json.loads(str(meta["strokes"])) if "strokes" in meta else []
     return buf, meta
