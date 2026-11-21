@@ -566,6 +566,18 @@ def main() -> int:
             fail("produce", stage="build", error="장면 코드 실행 오류(렌더 전 빌드) — " + _why(bc)[:400],
                  next="오류가 난 장면 코드만 고쳐 다시 produce(렌더 전에 잡았으니 LLM 검토 · 렌더는 아직 안 돌았다)")
 
+    # 2.82) 화면 AI 티 검사(engine/checks/visual_tell.py) — 장면 코드만 읽어 몇 초. 어두운 바탕 반복 · 빛번짐 · 둥근 카드 · 고정 카메라 · 같은 구도를
+    #       LLM 검토 · 렌더 전에 한 번에 알려 준다(2026-11-21: 레퍼런스 13편 실측과 비교해 정함, 최근 영상 9편 모두 걸림)
+    if (sb.get("engine") or "craft") == "craft" and not a.scenes and not a.keep_going and os.environ.get("FLUMA_VISUAL_TELL", "1") != "0":
+        import quality_gate as qg
+        import visual_tell as vt
+        vt_block = [x for x in vt.find(sb, sid) if x["block"] and not qg.waived(sb, x)]
+        if vt_block:
+            save_times(sid)
+            fail("produce", stage="visual_tell", error=f"화면 AI 티 {len(vt_block)}건 — 렌더 · 검토 전에 멈춘다. 모두 한 번에 고친 뒤 다시 produce",
+                 block=[f"{x['code']} {x['msg']}"[:300] for x in vt_block],
+                 next="장면 코드(data/compositions/<id>/scenes/*.jsx)를 고친다 → python3 engine/checks/visual_tell.py <콘티> 로 0 확인 → produce 한 번")
+
     # 2.85) 훅 장면 하나만 앱 기능으로 다듬기(skill_pass refine_hook) — 영상당 한 번, 훅 장면이 그대로면 건너뜀. 끄려면 FLUMA_HOOK_REFINE=0
     #       2026-11-19: 전체 refine 은 219초라 꺼 두었고, 그 결과 에이전트가 Craft 기능을 0.9% 만 썼다
     if deep and not a.scenes and os.environ.get("FLUMA_HOOK_REFINE", "1") != "0":
@@ -621,6 +633,9 @@ def main() -> int:
     issues = [qg.issue(x["code"], x["scene"], x["msg"], x.get("block")) for x in (_df(video, sb) if not a.scenes else [])] + issues
     if deep and not a.scenes:
         issues += qg.from_review(sid)                                     # 디자이너 정지 화면 검토가 본 문제(겹침 · 잘림 · 안전 영역은 막음)
+    if (sb.get("engine") or "craft") == "craft" and not a.scenes:
+        import visual_tell as vt
+        issues += [qg.issue(x["code"], x["scene"], x["msg"], x["block"]) for x in vt.find(sb, sid)]
     issues += [qg.issue(c, None, m, block=False) for c, m in soft]      # 말투 · 구성 · 절차(lint T · D01 · D02 · D04 · D05 · R) — 권고
     q_block, q_waived, q_adv = qg.split(sb, qg.relevant(sb, issues))
     warns = [qg.line(x) for x in q_block + q_adv]

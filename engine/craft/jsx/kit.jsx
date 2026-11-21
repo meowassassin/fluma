@@ -18,7 +18,7 @@ var K = (function () {
       C.duration = sec;
       var s = C.layers.addSolid([0, 0, 0], 'BG', C.width, C.height, 1); s.moveToEnd();
       if (bg instanceof Array) { var g = s.property('Effects').addProperty('ADBE Ramp'); g.property('Start Color').setValue(hx(bg[0])); g.property('End Color').setValue(hx(bg[1])); g.property('Start of Ramp').setValue([C.width / 2, 0]); g.property('End of Ramp').setValue([C.width / 2, C.height]); }
-      else s.property('Effects').addProperty('ADBE Fill').property('Color').setValue(hx(bg || '#101218'));
+      else { if (!bg) throw new Error('K.scene: 바탕색을 고른다(두 번째 인자) — 기본값 어두운 남색이 모든 영상을 같은 AI 티로 만들었다(2026-11-21). 장면의 장소 · 물건 색에서'); s.property('Effects').addProperty('ADBE Fill').property('Color').setValue(hx(bg)); }
       return s;
     },
     /** 글자 — o: {font, style, align: 'left'|'center'|'right', stroke, strokeW, tracking, box:[w,h]} */

@@ -1586,6 +1586,9 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                         print(f"[움직임] {m['id']}: 화면 전체 2D 장면 — 배치 조정 {dropped} 무시(장면 코드가 배치를 정한다)", file=sys.stderr)
                     adj = {k: v for k, v in adj.items() if k not in FRAME_KEYS}
                 J(adjust_jsx(str(m["id"]), adj, W, H))
+        # 장면의 맨 위 레이어를 모두 카메라 Null 에 단다 — 2026-11-21: 샷 기능(충격 · 디테일 · 확대) 카메라 키가 Null 에만 들어가고
+        # 재료 · 장면 코드 레이어는 아무도 달려 있지 않아 화면이 한 번도 움직이지 않았다(레퍼런스 대비 실측: 우리 영상 100% 고정)
+        J("(function () { for (var i = 1; i <= c.numLayers; i++) { var L = c.layer(i); if (L === cam || L.parent) continue; try { L.parent = cam; } catch (e) {} } })();")
         J(f"var sl = main.layers.add(c); sl.startTime = {start:.3f};")
         # 끝 장면이 영상 없이 그림 · 로고 · 글자만이면 멈춘 화면이 된다(2026-11-09: 로고 4초 정지) → 천천히 다가오며 나타남
         # 2026-11-11: 93→100 으로 키우니 화면이 줄어 네 가장자리에 검은 테두리가 생겼고, 감독이 '끝'(고정)으로 정한 것도 무시했다 → 고정 기능이면 그대로, 아니면 100→106 으로 다가감
