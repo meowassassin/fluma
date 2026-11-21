@@ -26,8 +26,9 @@ DEFAULT = {
     "eye": 0.07, "eye_sep": 0.36, "eye_y": 0.0, "mouth_w": 0.16, "mouth_y": -0.27, "nose": 0.035,
 }
 POSE = {"lean": [0, 0], "spine": [0, 0, 0], "head": [0, 0, 0],
-        "l_arm": [0, 8, 0], "l_elbow": 8, "r_arm": [0, 8, 0], "r_elbow": 8,
-        "l_leg": [0, 2], "l_knee": 0, "r_leg": [0, 2], "r_knee": 0}
+        "l_arm": [4, 9, 0], "l_elbow": 14, "r_arm": [4, 9, 0], "r_elbow": 14,
+        "l_leg": [0, 2], "l_knee": 0, "r_leg": [0, 2], "r_knee": 0, "weight": 0.45}
+# weight: 서 있을 때 체중을 싣는 쪽(+ 왼다리 · − 오른다리 · 0 두 다리 똑같이 — 마네킹처럼 보인다). 걷기 · 발 목표가 있으면 쓰지 않는다
 MATS = {"skin": "skin", "hair": "hair", "top": "top", "bottom": "bottom", "shoe": "shoe", "eye": "eye", "mouth": "mouth", "eye_hi": "eye_hi"}
 AUTO_MATS = {"eye_hi": {"color": "#ffffff", "gloss": 0.0}}   # 장면에 없으면 world.prepare 가 넣는다(눈 반사점)
 
@@ -103,7 +104,7 @@ def frame_from(down, fwd_hint):
 # 관절 가동 범위(°) — 사람 몸이 실제로 움직이는 범위. 자세 값이 이 밖이면 끝에서 멈춘다(무릎이 앞으로 · 팔꿈치가 뒤로 꺾이는 일이 없게)
 LIMITS = {"lean": [(-30, 30), (-25, 25)], "spine": [(-25, 60), (-35, 35), (-45, 45)], "head": [(-45, 60), (-80, 80), (-40, 40)],
           "arm": [(-60, 180), (-15, 180), (-60, 60)], "elbow": (0, 150), "leg": [(-30, 125), (-15, 70)], "knee": (0, 150),
-          "grip": (0, 1), "spread": (0, 30)}
+          "grip": (0, 1), "spread": (0, 30), "weight": (-1, 1)}
 
 
 def _lim(v, rng):
@@ -128,16 +129,34 @@ def joints(size: dict, pose: dict, ik: dict | None = None, ground: bool = True) 
     S = {**DEFAULT, **(size or {})}
     P = clamp_pose({**POSE, **(pose or {})})
     H = float(S["height"]); f = lambda k: float(S[k]) * H  # noqa: E731
-    lean = P["lean"]; sp = P["spine"]; hd = P["head"]
-    R0 = Rx(-lean[0]) @ Rz(lean[1])
-    yhip = f("foot_h") + f("lower_leg") + f("upper_leg")
     ik = ik or {}
-    pel = np.array([0.0, float(ik["pelvis_y"]) if "pelvis_y" in ik else yhip, 0.0])
-    Rs = R0 @ Rx(-sp[0]) @ Rz(sp[1]) @ Ry(sp[2])
-    neck0 = pel + Rs @ [0, f("torso"), 0]
-    Rh = Rs @ Ry(hd[1]) @ Rx(-hd[0]) @ Rz(hd[2])
+    lean = list(P["lean"]); sp = list(P["spine"]) + [0, 0, 0]; hd = list(P["head"]) + [0, 0, 0]
+    # 체중 싣기(콘트라포스토) — 2026-11-21: 두 다리에 반씩 실려 마네킹처럼 섰다. 받치는 다리 쪽으로 골반이 옮겨 가며 그쪽 엉덩이가 올라가고,
+    # 어깨는 반대로 기울고, 쉬는 다리는 무릎이 굽는다. 걷기 · 발 목표(IK)가 있으면 그쪽 계산이 다리를 정하므로 끈다
+    w = float(P.get("weight", 0.0))                       # 걷는 중이면 world.locomotion 이 weight 0 으로 준다(발 목표가 있어도 서 있으면 골반만 옮기고 무릎은 IK 가 굽힘)
+    shift = 0.0
+    if w:
+        lean[1] = lean[1] + 7 * w
+        sp[1] = sp[1] - 11 * w
+        hd[2] = hd[2] + 4 * w
+        shift = 0.04 * H * w
+        fs = "r" if w > 0 else "l"; ss = "l" if w > 0 else "r"       # 쉬는 다리 · 받치는 다리
+        a = abs(w)
+        P = {**P, f"{fs}_knee": max(P[f"{fs}_knee"], 24 * a), f"{fs}_leg": [P[f"{fs}_leg"][0] + 10 * a, P[f"{fs}_leg"][1] + 6 * a],
+             f"{ss}_leg": [P[f"{ss}_leg"][0], P[f"{ss}_leg"][1] - 3 * a]}
+    # 2026-11-21: 등뼈 · 고개 · 몸 기울기의 앞뒤 부호가 팔다리와 반대였다(+ 가 뒤로 젖힘) — '앞으로 숙여'가 젖혀지고 달리기가 뒤로 기울었다.
+    # 모든 관절에서 + 가 앞(숙이기 · 고개 숙이기 · 팔 앞으로 · 다리 앞으로)
+    R0 = Rx(lean[0]) @ Rz(lean[1])
+    yhip = f("foot_h") + f("lower_leg") + f("upper_leg")
+    pel = np.array([shift, float(ik["pelvis_y"]) if "pelvis_y" in ik else yhip, 0.0])
+    # 등뼈 두 마디 — 숙이기 · 옆으로 굽히기 · 비틀기를 허리(40%)와 가슴(60%)이 나눠 가져 곡선으로 휜다(한 마디면 골반에서 경첩처럼 꺾였다)
+    Rw = R0 @ Rx(sp[0] * 0.4) @ Rz(sp[1] * 0.4) @ Ry(sp[2] * 0.35)
+    mid = pel + Rw @ [0, f("torso") * 0.42, 0]
+    Rs = Rw @ Rx(sp[0] * 0.6) @ Rz(sp[1] * 0.6) @ Ry(sp[2] * 0.65)
+    neck0 = mid + Rs @ [0, f("torso") * 0.58, 0]
+    Rh = Rs @ Ry(hd[1]) @ Rx(hd[0]) @ Rz(hd[2])
     head = neck0 + Rh @ [0, f("neck") + f("head") * 0.5, f("head") * 0.06]
-    J = {"S": S, "H": H, "R0": R0, "Rs": Rs, "Rh": Rh, "pelvis": pel, "neck": neck0, "head": head}
+    J = {"S": S, "H": H, "R0": R0, "Rs": Rs, "Rw": Rw, "Rh": Rh, "pelvis": pel, "mid": mid, "neck": neck0, "head": head}
     for side, sx in (("l", 1), ("r", -1)):
         arm, elbow = P[f"{side}_arm"], P[f"{side}_elbow"]
         sh = neck0 + Rs @ [sx * f("chest_w") * 0.93, -f("torso") * 0.07, 0]
@@ -339,8 +358,9 @@ def expand(node: dict) -> dict:
     # 2026-11-21 구조 변경: 몸 전체를 한 반경(키의 1.2%)으로 녹여 붙이던 것을 부위 묶음 → 관절마다 그 굵기에 맞는 반경으로 차례로 붙인다.
     # 한 반경이면 어깨 · 엉덩이처럼 굵은 이음매는 울퉁불퉁 끊겨 보이고, 키우면 손가락 · 귀 같은 작은 부위가 녹았다.
     # 묶음 안의 부품끼리만 매끈하게 섞이고(그 묶음의 반경), 묶음과 묶음은 관절 반경으로 이어진다.
-    torso = [ell(pel + Rs @ [0, f("torso") * 0.68, 0], [f("chest_w") * 0.97, f("torso") * 0.3, f("chest_d")], Rs, M["top"]),
-             ell(pel + Rs @ [0, f("torso") * 0.38, 0], [f("waist_w") * 1.05, f("torso") * 0.28, f("chest_d") * 0.92], Rs, M["top"])]
+    Rw, mid = J["Rw"], J["mid"]
+    torso = [ell(mid + Rs @ [0, f("torso") * 0.26, 0], [f("chest_w") * 0.97, f("torso") * 0.3, f("chest_d")], Rs, M["top"]),      # 가슴: 가슴 마디
+             ell(pel + Rw @ [0, f("torso") * 0.38, 0], [f("waist_w") * 1.05, f("torso") * 0.28, f("chest_d") * 0.92], Rw, M["top"])]  # 허리: 허리 마디
     for side in ("l", "r"):
         sh = J[f"{side}_shoulder"]
         torso.append(ell(sh + Rs @ [0, 0.004 * H, 0], [f("arm_r") * 1.15] * 3, Rs, M["top"]))                       # 어깨 근육
@@ -381,7 +401,7 @@ def expand(node: dict) -> dict:
     trunk = SU(0.03 * H, torso)
     for sh, arm in arms:                                                               # 어깨: 어깨 관절 둘레에서만 팔 굵기만큼(옆구리에 붙은 팔은 녹지 않는다)
         trunk = JU(sh, f("arm_r") * 0.9, f("arm_r") * 2.6, [trunk, arm])
-    trunk = JU(pel + Rs @ [0, f("torso") * 0.2, 0], 0.04 * H, f("torso") * 0.6, [trunk, *hips])   # 허리 → 골반
+    trunk = JU(pel + Rw @ [0, f("torso") * 0.2, 0], 0.04 * H, f("torso") * 0.6, [trunk, *hips])   # 허리 → 골반
     for hp, leg in legs:                                                               # 엉덩이: 고관절 둘레에서만(두 허벅지는 서로 녹지 않는다)
         trunk = JU(hp, f("leg_r") * 0.8, f("leg_r") * 2.0, [trunk, leg])
     headg = SU(0.006 * H, [SU(0.012 * H, head), *ears])

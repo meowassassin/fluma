@@ -33,15 +33,15 @@ def test_quadruped_parts_connected_in_poses():
 
 
 def test_feet_stay_on_ground_when_knees_bend():
-    J0 = K.joints({}, {})
-    J1 = K.joints({}, {"l_knee": 50, "r_knee": 50, "l_leg": [30, 0], "r_leg": [30, 0]})
+    J0 = K.joints({}, {"weight": 0})
+    J1 = K.joints({}, {"weight": 0, "l_knee": 50, "r_knee": 50, "l_leg": [30, 0], "r_leg": [30, 0]})
     foot = J0["S"]["foot_h"] * J0["H"]
     assert abs(min(J1["l_ankle"][1], J1["r_ankle"][1]) - foot) < 1e-9 and abs(J0["l_ankle"][1] - foot) < 1e-9
     assert J1["head"][1] < J0["head"][1]                          # 무릎을 굽히면 몸이 내려온다
 
 
 def test_face_follows_head_turn():
-    J0 = K.joints({}, {}); J1 = K.joints({}, {"head": [0, 40, 0]})
+    J0 = K.joints({}, {"weight": 0}); J1 = K.joints({}, {"weight": 0, "head": [0, 40, 0]})
     e0 = K._on_head(J0, 0.1, 0) - J0["head"]; e1 = K._on_head(J1, 0.1, 0) - J1["head"]
     ang = np.degrees(np.arctan2(e1[0], e1[2]) - np.arctan2(e0[0], e0[2]))
     assert abs(ang - 40) < 1e-6
@@ -136,3 +136,16 @@ def test_edge_cut_detects_cropped_shape():
         for y in range(70, 80):
             im.putpixel((x, y), (9, 9, 9, 255))
     assert F.edge_cut(im) == ["오른쪽"]
+
+
+def test_weight_shift_and_two_segment_spine():
+    J = K.joints({}, {"weight": 1})
+    assert J["pelvis"][0] > 0.02                                   # 골반이 받치는 왼다리 쪽으로
+    assert J["l_hip"][1] > J["r_hip"][1]                           # 받치는 쪽 엉덩이가 올라간다
+    assert J["r_knee"][2] > J["l_knee"][2]                         # 쉬는 다리 무릎이 앞으로 굽는다
+    B = K.joints({}, {"weight": 0, "spine": [40, 0, 0]})
+    d1, d2 = B["mid"] - B["pelvis"], B["neck"] - B["mid"]           # 숙이면 허리 · 가슴 마디가 다른 각도로(곡선)
+    a1, a2 = np.degrees(np.arctan2(d1[2], d1[1])), np.degrees(np.arctan2(d2[2], d2[1]))
+    assert 10 < abs(a1) < abs(a2) < 45 and a1 * a2 > 0
+    W = K.joints({}, {"weight": 1}, ik={"l_foot": [0.08, 0.068, 0], "r_foot": [-0.08, 0.068, 0]})
+    assert W["pelvis"][0] > 0.02 and W["r_knee"][2] > W["l_knee"][2] + 0.01   # 발을 딛고 서 있어도: 골반이 옮겨 가고 쉬는 무릎이 굽는다

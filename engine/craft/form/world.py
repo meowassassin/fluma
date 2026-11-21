@@ -243,6 +243,7 @@ def place(node: dict, t: float, ground: Ground, targets: dict | None = None, cam
         lo = locomotion(node, t, ground)
         origin, yaw = lo["origin"], lo["yaw"]
         pose = _add_pose(lo["pose"], {k: v for k, v in pose.items() if k in lo["pose"]}) | {k: v for k, v in pose.items() if k not in lo["pose"]}
+        pose["weight"] = 0.0                              # 걷는 중에는 걸음 계산이 체중 이동을 맡는다
         ik_w.setdefault("l_foot", lo["feet"]["l"]); ik_w.setdefault("r_foot", lo["feet"]["r"])
         pel_y = lo["pelvis_y"]
     else:
