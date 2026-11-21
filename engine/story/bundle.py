@@ -47,7 +47,39 @@ def check(sid: str) -> tuple[list[str], list[str]]:
     fails = lint.lint(sb, [t for t in lint.recent_titles() if t != sb.get("title")])
     hard = [f"{c} {'' if i is None else f'장면{i + 1} '}{m}" for c, i, m in fails if not c.startswith("T")]
     soft = [f"{c} {'' if i is None else f'장면{i + 1} '}{m}" for c, i, m in fails if c.startswith("T")]
-    return hard + _form_problems(sid), soft
+    # 2026-11-21 속도(품질 그대로): 빌드 뒤 · LLM 검토에서 막던 것을 쓰는 자리에서 — 화면 AI 티(visual_tell)와 형태 프레임 잘림.
+    # 같은 검사를 앞당길 뿐이다(제작 단계도 그대로 다시 잰다). 지난 영상: 렌더 전 검토에서 4번 막혀 9분
+    try:
+        import quality_gate as qg
+        import visual_tell as vt
+        for x in vt.find(sb, sid):
+            if qg.waived(sb, x):
+                continue
+            (hard if x["block"] else soft).append(f"{x['code']} {x['msg']}")
+    except Exception as e:  # noqa: BLE001
+        soft.append(f"V00 화면 AI 티 검사 못 함: {e}")
+    return hard + _form_problems(sid) + _form_cuts(sid), soft
+
+
+def _form_cuts(sid: str) -> list[str]:
+    """형태 움직임 프레임이 화면 가장자리에서 잘리는지(받침판 · 소품) — 클로즈업(카메라 focus)은 일부러 자른 것이라 뺀다"""
+    from PIL import Image
+    sys.path.insert(0, str(ROOT / "engine"))
+    from craft import form
+    out = []
+    for d in sorted((ROOT / "data" / "compositions" / sid / "forms").glob("*.anim")):
+        try:
+            src = json.loads((d.parent / f"{d.stem}.json").read_text("utf-8"))
+        except (OSError, ValueError):
+            continue
+        cam = src.get("camera") or {}
+        if cam.get("focus") is not None or (src.get("anim") or {}).get("tracks", {}).get("camera"):
+            continue
+        fr = sorted(d.glob("f*.png"))
+        sides = sorted({x for f in fr[:: max(1, len(fr) // 3)][:4] for x in form.edge_cut(Image.open(f))})
+        if sides:
+            out.append(f"L40 형태 {d.stem}: 프레임 {' · '.join(sides)} 가장자리에서 형태가 잘린다 — 바닥 받침판이면 \"floor\": true, 소품이면 카메라 radius 를 키우거나 형태를 안으로")
+    return out
 
 
 def apply(path: Path) -> str:
