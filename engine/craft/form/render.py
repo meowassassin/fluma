@@ -31,7 +31,7 @@ def auto_camera(scene, codes, P, res):
     ctr = (lo + hi) / 2
     try:
         sh = P.copy()
-        sh[:, 9:12] -= np.where(np.asarray(codes)[:, None] < 100, ctr[None, :], 0.0)   # 도형 위치를 가운데로 옮겨 같은 정육면체 격자로 잰다
+        sh[:, 9:12] -= np.where((np.asarray(codes)[:, None] < 100) | (np.asarray(codes)[:, None] == 106), ctr[None, :], 0.0)   # 도형 위치를 가운데로 옮겨 같은 정육면체 격자로 잰다
         vol2 = sdf._grid(codes, sh, g2)
         idx2 = np.argwhere(vol2 < 0)
         if len(idx2):

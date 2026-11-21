@@ -25,7 +25,7 @@ from numba import njit
 
 PRIM = {"sphere": 0, "ellipsoid": 1, "capsule": 2, "roundbox": 3, "roundcone": 4,
         "torus": 5, "cylinder": 6, "halfspace": 7}
-OPS = {"union": 100, "smooth_union": 101, "subtract": 102, "smooth_subtract": 103,
+OPS = {"union": 100, "smooth_union": 101, "subtract": 102, "smooth_subtract": 103, "joint_union": 106,
        "intersect": 104, "smooth_intersect": 105}
 NP = 24  # floats per instruction
 # layout: 0-8 inverse rotation (row major), 9-11 translation, 12 scale,
@@ -102,7 +102,11 @@ def compile_scene(scene):
             visit(kids[0], xf)
             for c in kids[1:]:
                 visit(c, xf)
-                emit(OPS[n["op"]], k=n.get("k", 0.0), mat=1 if n.get("cut_mat") else 0)
+                if n["op"] == "joint_union":              # 관절 이음: 관절(at) 둘레 reach 안에서만 k 만큼 녹아 붙는다 — 멀리 있는 부위(두 허벅지 · 팔과 옆구리)는 그대로
+                    _, cw, scw = _compose(xf, (np.eye(3), np.array(n["at"], float), 1.0))
+                    emit(OPS["joint_union"], (np.eye(3), cw, 1.0), params=[float(n["reach"]) * scw], k=float(n.get("k", 0.0)) * scw)
+                else:
+                    emit(OPS[n["op"]], k=n.get("k", 0.0), mat=1 if n.get("cut_mat") else 0)
 
     visit(scene["root"], (np.eye(3), np.zeros(3), 1.0))
     return np.array(codes, np.int32), np.array(rows, np.float64), mats
@@ -210,6 +214,19 @@ def sdf_eval(px, py, pz, codes, P, sd, sm):
                 a = -d1; b = d2  # smooth max(d1, -d2) = -smin(-d1, d2)
                 h = min(max(0.5 + 0.5 * (b - a) / k, 0.0), 1.0)
                 d1 = -(b * (1.0 - h) + a * h - k * h * (1.0 - h))
+            elif c == 106:
+                ddx = px - P[i, 9]; ddy = py - P[i, 10]; ddz = pz - P[i, 11]
+                w = 1.0 - math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz) / P[i, 13]
+                if w > 0.0:
+                    w = w * w * (3.0 - 2.0 * w)
+                    kk = k * w
+                    h = min(max(0.5 + 0.5 * (d2 - d1) / kk, 0.0), 1.0)
+                    nd = d2 * (1.0 - h) + d1 * h - kk * h * (1.0 - h)
+                    if d2 < d1:
+                        m1 = m2
+                    d1 = nd
+                elif d2 < d1:
+                    d1 = d2; m1 = m2
             elif c == 104:
                 if d2 > d1:
                     d1 = d2; m1 = m2

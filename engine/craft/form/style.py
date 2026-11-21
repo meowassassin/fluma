@@ -47,6 +47,53 @@ class Ctx:
         self.base = self.base_t[mi]
         self.lv = np.clip(buf["ndl"], 0, 1) * buf["shadow"]  # key light visibility * cosine
         self.lv[~self.hit] = 0
+        self.band = np.zeros_like(self.hit)
+        self.hair = np.zeros_like(self.hit)
+        self._illustrate(meta, mats)
+
+    def _illustrate(self, meta, mats):
+        """그림의 명암 — 2026-11-21: 피부를 실제 입체 그림자(머리카락 그림자 · 굴곡)로 칠해 얼굴에 얼룩진 덩어리가 생겼고,
+        머리카락은 반사광 얼룩 하나라 헬멧처럼 보였다. 일러스트처럼:
+        · 피부(뼈대의 skin 재료): 부위 크기만큼 뭉갠 법선(단순화한 둥근 면)으로 명암, 남이 드리운 그림자는 받지 않는다
+        · 머리카락(hair 재료): 반사 얼룩을 끄고, 머리 모양을 따라 도는 하이라이트 띠(천사 고리)"""
+        roles = {"skin": set(), "hair": set()}
+
+        def walk(n):
+            if isinstance(n, dict):
+                for k, v in (n.get("_roles") or {}).items():
+                    roles.setdefault(k, set()).update(v)
+                for v in n.values():
+                    walk(v)
+            elif isinstance(n, list):
+                for v in n:
+                    walk(v)
+        walk(meta["scene"].get("root"))
+        L = np.asarray(meta["L"], np.float32); u = np.asarray(meta["u"], np.float32)
+        nrm = np.stack([self.b["nx"], self.b["ny"], self.b["nz"]], -1)
+        for role in ("skin", "hair"):
+            ids = [i for i, m in enumerate(mats) if m in roles[role]]
+            if not ids:
+                continue
+            mask = self.hit & np.isin(self.mat, ids)
+            if mask.sum() < 16:
+                continue
+            n_s = np.zeros_like(nrm)
+            cnt, lab = cv2.connectedComponents(mask.astype(np.uint8))
+            for k in range(1, cnt):                               # 부위마다 그 크기만큼 뭉갠다(얼굴은 크게 · 손가락은 작게)
+                mk = lab == k
+                sig = max(1.0, (0.18 if role == "skin" else 0.04) * float(np.sqrt(mk.sum())))   # 머리카락은 다발 굴곡이 남게 조금만
+                w = cv2.GaussianBlur(mk.astype(np.float32), (0, 0), sig)
+                for a in range(3):
+                    n_s[..., a] += np.where(mk, cv2.GaussianBlur(nrm[..., a] * mk, (0, 0), sig) / np.maximum(w, 1e-4), 0)
+            n_s /= np.maximum(np.linalg.norm(n_s, axis=-1, keepdims=True), 1e-4)
+            if role == "skin":
+                lv = np.clip((n_s @ L) * 0.85 + 0.2, 0, 1)
+                self.lv[mask] = lv[mask]
+            else:
+                self.gloss_t[ids] = 0.0
+                self.hair = mask
+                up = n_s @ u
+                self.band |= mask & (np.abs(up - 0.62) < 0.04) & (self.b["ndv"] > 0.25)
 
     def px(self, w: float) -> int:
         """선 굵기(1080 출력 기준 px) → 이 버퍼의 px — 해상도가 낮아도 선이 형태를 덮지 않게(2026-11-20: 400px 움직임 프레임에서 캐릭터가 검은 덩어리)"""
@@ -113,7 +160,8 @@ def flat(c: Ctx, bg="#f4efe6"):
     N = c.N; sc = c.ss
     bgc = hexrgb(bg)
     img = np.broadcast_to(bgc, (N, N, 3)).copy()
-    img[c.ground_ellipse()] = bgc * np.array([0.90, 0.88, 0.88], np.float32)
+    g = c.b["gshadow"] * c.b["gao"]                    # 발밑 그림자만(타원 바닥판을 칠하던 것은 원판 무대처럼 보였다)
+    img[(~c.hit) & (g < 0.55)] = bgc * np.array([0.84, 0.83, 0.86], np.float32)
     base = c.base
     sh = mix(base, c.shadow_t[c.mi], 0.55)
     t = smoothstep(0.20, 0.23, c.lv * (0.6 + 0.4 * c.b["ao"]))
@@ -122,6 +170,7 @@ def flat(c: Ctx, bg="#f4efe6"):
     spec = np.clip(c.b["ndh"], 0, 1) ** c.per_mat(c.pow_t * 1.5)
     hl = (spec * c.per_mat(c.gloss_t) > 0.55) & (c.b["shadow"] > 0.5)
     col[hl] = mix(col[hl], np.float32(1.0), 0.85)
+    col[c.band] = mix(col[c.band], np.float32(1.0), 0.35)
     img[c.hit] = col[c.hit]
     # thin coloured outline = material shadow colour on the silhouette
     sil, _ = c.edges()
@@ -142,13 +191,14 @@ def cel(c: Ctx, bg="#eaf2f7", ink="#2a1c14"):
     hi = mix(base, np.array([1.0, 0.98, 0.9], np.float32), 0.45)
     lv = c.lv * (0.55 + 0.45 * c.b["ao"])
     col = np.where((lv < 0.16)[..., None], shc, base)
-    col = np.where((lv > 0.80)[..., None], hi, col)
+    col = np.where(((lv > 0.80) & ~c.hair)[..., None], hi, col)     # 머리카락은 밝은 면 얼룩 대신 띠(c.band)
     # rim band on the fill side, only where the key does not already light it
     rim = ((1 - c.b["ndv"]) > 0.72) & (c.b["fill"] > 0.35) & (lv < 0.3) & (c.b["ny"] > -0.2)
     col[rim] = mix(col[rim], np.array([1.0, 0.97, 0.85], np.float32), 0.55)
     spec = np.clip(c.b["ndh"], 0, 1) ** c.per_mat(c.pow_t * 2.0)
     dot = (spec * c.per_mat(c.gloss_t) > 0.4) & (c.b["shadow"] > 0.5)
     col[dot] = 1.0
+    col[c.band] = mix(col[c.band], np.float32(1.0), 0.4)
     img[c.hit] = col[c.hit]
     sil, inner = c.edges()
     thick = cv2.dilate(sil, disk(c.px(3.2)))

@@ -17,7 +17,7 @@ import numpy as np
 STYLES = ("flat", "cel", "sketch", "clay", "vector")      # vector: VectorCraft 벡터 마감(engine/craft/form/vector.py)
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 CACHE = ROOT / "data" / "workspace" / "cache" / "form"
-RENDER_VERSION = 7          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
+RENDER_VERSION = 10          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
 
 
 def _scene_with_view(scene: dict, view: dict | None) -> dict:
@@ -174,16 +174,20 @@ def pose(scene: dict, t: float) -> dict:
 def animate(scene: dict, style: str = "cel", out_dir: Path | str | None = None, res: int = 720, view: dict | None = None,
             background: str | None = None) -> dict:
     """움직임 프레임 묶음 → out_dir/f000.png … (투명 PNG). 같은 입력이면 다시 그리지 않는다.
-    한 장 약 2초(720 · 화풍 포함) — 12fps · 1~2초 반복이면 12~24장. 만화 · 애니메이션은 원래 12fps(2프레임 한 장)라 어색하지 않다"""
+    한 장 약 0.5~2초 — 이동 · 카메라가 있으면 24fps, 제자리 동작은 12fps"""
     from . import render
     from . import style as st
     if style not in STYLES:
         raise ValueError(f"화풍은 {', '.join(STYLES)} 중 하나: {style}")
     an = scene.get("anim") or {}
-    fps, dur = 12, float(an.get("dur") or 1.0)          # 12fps 고정 — 장면(kit · motion)이 12fps 로 들여와 반복한다
+    dur = float(an.get("dur") or 1.0)
+    # 2026-11-21: 12fps 고정이었다 — 손그림은 2프레임 한 장이어도 그림이 이어지지만 입체 렌더를 12장으로 끊으면 걷기 · 카메라가 뚝뚝 끊겼다.
+    # 이동(move) · 카메라 트랙 · 따라가기가 있으면 24fps, 제자리 동작(숨쉬기 · 표정)은 12fps. anim.fps 로 직접 정할 수 있다
+    moving = '"move"' in json.dumps(scene.get("root")) or bool((an.get("tracks") or {}).get("camera")) or an.get("camera") == "follow"
+    fps = int(an.get("fps") or (24 if moving else 12))
     n = max(1, round(fps * dur))
     sc = _scene_with_view(scene, view)
-    key = hashlib.sha1(json.dumps([sc, style, res, background], sort_keys=True).encode()).hexdigest()[:12]
+    key = hashlib.sha1(json.dumps([sc, style, res, background, fps, RENDER_VERSION], sort_keys=True).encode()).hexdigest()[:12]
     d = Path(out_dir) if out_dir else CACHE / f"anim-{key}"
     stamp = d / "anim.json"
     if stamp.exists() and json.loads(stamp.read_text("utf-8")).get("key") == key and (d / f"f{n - 1:03d}.png").exists():

@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import json
 import math
 
 import numpy as np
@@ -354,6 +355,9 @@ def prepare(scene: dict, t: float = 0.0) -> dict:
             return [w for w in (walk(x) for x in n) if w is not None]
         return n
     out = {**scene, "root": walk(scene["root"]) or {"op": "union", "children": []}}
+    from .skeleton import AUTO_MATS                       # 뼈대가 쓰는 보조 재료(눈 반사점)가 장면에 없으면 넣는다
+    if any(k not in (scene.get("materials") or {}) for k in AUTO_MATS) and "rig" in json.dumps(scene["root"]):
+        out["materials"] = {**AUTO_MATS, **(scene.get("materials") or {})}
     def pt(v):
         if isinstance(v, str):
             return targets.get(v)
