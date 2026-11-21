@@ -25,7 +25,7 @@ from numba import njit
 
 PRIM = {"sphere": 0, "ellipsoid": 1, "capsule": 2, "roundbox": 3, "roundcone": 4,
         "torus": 5, "cylinder": 6, "halfspace": 7}
-OPS = {"union": 100, "smooth_union": 101, "subtract": 102, "smooth_subtract": 103, "joint_union": 106,
+OPS = {"union": 100, "smooth_union": 101, "subtract": 102, "smooth_subtract": 103, "joint_union": 106, "bound": 200,
        "intersect": 104, "smooth_intersect": 105}
 NP = 24  # floats per instruction
 # layout: 0-8 inverse rotation (row major), 9-11 translation, 12 scale,
@@ -69,7 +69,7 @@ def _shape_params(n):
 def compile_scene(scene):
     mats = list(scene["materials"].keys())
     mid = {m: i for i, m in enumerate(mats)}
-    rows, codes = [], []
+    rows, codes, bnd, kmax = [], [], [], [0.0]
 
     def emit(code, xf=None, params=(), mat=0, rnd=0.0, shell=0.0, k=0.0):
         row = np.zeros(NP)
@@ -81,6 +81,33 @@ def compile_scene(scene):
         row[13:13 + len(params)] = params
         row[19], row[20], row[21], row[22] = mat, rnd, shell, k
         rows.append(row); codes.append(code)
+        b = None
+        if code < 100 and xf is not None:                # 도형을 감싸는 공(세상 좌표) — 묶음 건너뛰기(BOUND)에 쓴다
+            R, t, s = xf
+            pr = [float(x) for x in params]
+            c = np.asarray(t, float)
+            if code == 0: rad = pr[0]
+            elif code == 1: rad = max(pr[:3])
+            elif code == 2: rad = pr[0] + pr[1]
+            elif code == 3: rad = float(np.linalg.norm(pr[:3])) + pr[3]
+            elif code == 4:
+                c = c + R @ np.array([0.0, pr[2] / 2, 0.0]) * s; rad = pr[2] / 2 + max(pr[0], pr[1])
+            elif code == 5: rad = pr[0] + pr[1]
+            elif code == 6: rad = math.hypot(pr[0], pr[1]) + pr[2]
+            else: rad = None
+            b = None if rad is None else (c, rad * s + rnd + shell)
+        bnd.append(b)
+        if code >= 100:
+            kmax[0] = max(kmax[0], float(k))
+
+    def nprims(n):
+        if not isinstance(n, dict):
+            return 0
+        if "prim" in n:
+            return 2 if n.get("mirror_x") else 1
+        if "rig" in n:
+            return 40
+        return sum(nprims(c) for c in n.get("children") or [])
 
     def visit(n, parent):
         if "rig" in n:                                  # 뼈대 캐릭터(engine/craft/form/skeleton.py) → 도형 트리로 펼친다
@@ -99,6 +126,12 @@ def compile_scene(scene):
                 emit(OPS["union"])
         else:
             kids = n["children"]
+            # 묶음 건너뛰기(2026-11-21 속도): 도형이 많은 묶음 앞에 감싸는 공을 둔다 — 점이 공에서 멀면 묶음을 통째로 건너뛰고
+            # 공까지 거리(실제보다 짧은 값 — 광선 추적에 안전)를 쓴다. 그림은 같고, 인물 한 장 광선 추적이 줄어든다
+            bi = None
+            if nprims(n) >= 4:
+                bi = len(rows); k0 = kmax[0]; kmax[0] = 0.0
+                emit(OPS["bound"])
             visit(kids[0], xf)
             for c in kids[1:]:
                 visit(c, xf)
@@ -107,6 +140,20 @@ def compile_scene(scene):
                     emit(OPS["joint_union"], (np.eye(3), cw, 1.0), params=[float(n["reach"]) * scw], k=float(n.get("k", 0.0)) * scw)
                 else:
                     emit(OPS[n["op"]], k=n.get("k", 0.0), mat=1 if n.get("cut_mat") else 0)
+            if bi is not None:
+                bs = [b for b in bnd[bi + 1:] if b is not None]
+                prim_rows = sum(1 for cd in codes[bi + 1:] if cd < 100)
+                row = rows[bi]
+                if bs and len(bs) == prim_rows:
+                    lo = np.min([b[0] - b[1] for b in bs], 0); hi = np.max([b[0] + b[1] for b in bs], 0)
+                    cc = (lo + hi) / 2
+                    row[9:12] = cc
+                    row[13] = max(float(np.linalg.norm(b[0] - cc)) + b[1] for b in bs)
+                else:
+                    row[13] = 1e9                         # 끝없는 도형(halfspace)이 있으면 건너뛰지 않는다
+                row[14] = len(rows) - bi - 1               # 건너뛸 줄 수
+                row[15] = 0.02 + 2.0 * kmax[0]             # 이만큼 넘게 떨어졌을 때만(부드러운 이음의 영향 밖)
+                kmax[0] = max(kmax[0], k0)
 
     visit(scene["root"], (np.eye(3), np.zeros(3), 1.0))
     return np.array(codes, np.int32), np.array(rows, np.float64), mats
@@ -206,8 +253,18 @@ def _prim(code, x, y, z, P, i):
 @njit(cache=True, fastmath=True)
 def sdf_eval(px, py, pz, codes, P, sd, sm):
     sp = 0
-    for i in range(codes.shape[0]):
+    i = -1
+    n = codes.shape[0]
+    while i + 1 < n:
+        i += 1
         c = codes[i]
+        if c == 200:                                      # 묶음 감싸는 공: 멀면 묶음을 건너뛰고 공까지 거리
+            bx = px - P[i, 9]; by = py - P[i, 10]; bz = pz - P[i, 11]
+            db = math.sqrt(bx * bx + by * by + bz * bz) - P[i, 13]
+            if db > P[i, 15]:
+                sd[sp] = db; sm[sp] = 0; sp += 1
+                i += int(P[i, 14])
+            continue
         if c < 100:
             dx = px - P[i, 9]; dy = py - P[i, 10]; dz = pz - P[i, 11]
             s = P[i, 12]
