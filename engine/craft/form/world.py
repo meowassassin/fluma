@@ -20,10 +20,12 @@ import numpy as np
 from . import sdf
 from .skeleton import DEFAULT, Ry, expand, joints
 
-GAIT = {"walk": {"stride": 0.36, "bob": 0.014, "arm_swing": 24, "elbow": 18, "elbow_swing": 22, "lean": 3, "swing_h": 0.09, "knee": 0.95,
-                 "duty": 0.6, "hip_yaw": 7, "hip_roll": 4, "sway": 0.012, "ramp": 0.45, "lag": 0.07},
-        "run": {"stride": 0.62, "bob": 0.03, "arm_swing": 46, "elbow": 80, "elbow_swing": 15, "lean": 11, "swing_h": 0.2, "knee": 0.9,
-                "duty": 0.38, "hip_yaw": 11, "hip_roll": 3, "sway": 0.008, "ramp": 0.35, "lag": 0.05}}
+GAIT = {"walk": {"stride": 0.36, "bob": 0.014, "arm_swing": 22, "elbow": 16, "elbow_swing": 18, "lean": 4, "swing_h": 0.055, "knee": 0.96,
+                 "duty": 0.6, "hip_yaw": 6, "hip_roll": 4, "sway": 0.012, "ramp": 0.45, "lag": 0.07, "kick": 0.25},
+        "run": {"stride": 0.48, "bob": 0.028, "arm_swing": 40, "elbow": 85, "elbow_swing": 12, "lean": 10, "swing_h": 0.17, "knee": 0.92,
+                "duty": 0.38, "hip_yaw": 9, "hip_roll": 3, "sway": 0.008, "ramp": 0.35, "lag": 0.05, "kick": 0.6}}
+# 2026-11-21: 발을 몸보다 반 보폭 앞에 디뎌(과보폭) 상체가 뒤로 젖혀져 보였고, 뛰기는 무릎을 앞으로 높이 드는 행진 같았다(swing_h 0.2).
+# 이제 디딤 구간 가운데에 발이 골반 아래, 흔드는 발은 차고 나간 직후 뒤에서 가장 높고(kick: 뒤꿈치 차올림) 앞으로는 낮게 뻗는다
 
 
 # ---------------------------------------------------------------- 지형
@@ -137,7 +139,7 @@ def locomotion(node: dict, t: float, ground: Ground) -> dict:
             continue
         u = (D / s - q) / 2
         j = math.floor(u); fr = u - j
-        plant = (2 * j + q + 0.5) * s
+        plant = (2 * j + q + duty) * s                    # 디딤 구간 가운데에 발이 골반 바로 아래
         a2, _ = path.at(plant); b2, _ = path.at(plant + 2 * s)
         A = np.array([a2[0], 0.0, a2[1]]) + left * sx * hw
         B = np.array([b2[0], 0.0, b2[1]]) + left * sx * hw
@@ -145,12 +147,14 @@ def locomotion(node: dict, t: float, ground: Ground) -> dict:
         if fr < duty:                                    # 디딤
             feet[side] = A + [0, ya, 0]
             stance[side] = 1.0
-        else:                                            # 들어 옮김 — 뒤꿈치부터 들고(앞쪽 궤적이 늦게), 계단이면 단보다 높이
+        else:                                            # 들어 옮김 — 차고 나간 직후 뒤에서 가장 높이(뒤꿈치 차올림), 앞으로는 낮게 뻗어 디딘다
             w = (fr - duty) / (1 - duty)
-            wf = _smooth(w) ** 1.15
+            kick = float(g["kick"])
+            wf = _smooth(w ** (1.0 + 0.8 * kick))        # 처음엔 뒤에 머물다가 앞으로
             lift = max(float(g["swing_h"]) * H, abs(yb - ya) + 0.05 * H)
-            arc = math.sin(math.pi * min(1.0, w * 1.08)) ** 0.85
-            feet[side] = A + (B - A) * wf + [0, ya + (yb - ya) * _smooth(w) + lift * arc, 0]
+            pk = 0.5 - 0.22 * kick                        # 가장 높은 때(뛰기는 일찍 — 발이 아직 몸 뒤)
+            arc = math.sin(math.pi * (w / pk * 0.5 if w < pk else 0.5 + (w - pk) / (1 - pk) * 0.5))
+            feet[side] = A + (B - A) * wf + [0, ya + (yb - ya) * _smooth(w) + lift * max(0.0, arc), 0]
             stance[side] = 0.0
     leg = (float(S["upper_leg"]) + float(S["lower_leg"])) * H
     base = (feet["l"][1] + feet["r"][1]) / 2 - fh
@@ -168,7 +172,7 @@ def locomotion(node: dict, t: float, ground: Ground) -> dict:
     lean = float(g["lean"]) * (ramp_k if moving else 0.0) + (4.0 * (1 - ramp_k) if moving and (t - t0) < ramp else 0.0)   # 출발할 때 더 숙인다(예비 동작)
     pose = {"l_arm": [-A_ * math.cos(pa), 9 + 3 * abs(math.cos(pa)), 0], "r_arm": [A_ * math.cos(pa), 9 + 3 * abs(math.cos(pa)), 0],
             "l_elbow": el0 + el1 * max(0.0, -math.cos(pa)) * ramp_k, "r_elbow": el0 + el1 * max(0.0, math.cos(pa)) * ramp_k,
-            "spine": [lean, 0, -hy * 1.5], "lean": [0, hr],
+            "spine": [lean * 0.55, 0, -hy * 1.5], "lean": [lean * 0.45, hr],          # 발목부터 몸 전체가 기울고(골반) 등은 조금 더
             "head": [-lean * 0.4 + 1.5 * math.sin(2 * (ph - lag)) * ramp_k, hy * 0.5, 0]}
     return {"origin": np.array([xz[0], 0.0, xz[1]]) + left * sway, "yaw": yaw + hy, "feet": feet, "pelvis_y": pelvis, "pose": pose, "left": left}
 
