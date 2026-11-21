@@ -102,6 +102,27 @@ def vet(options: list[str]) -> dict:
     return {"ok": not bad, "rows": rows, "past_count": len(past)}
 
 
+STOP = {"얼마나", "어떻게", "정말", "진짜", "이유", "방법", "사람", "사람들", "공통점", "하는", "하면", "있는", "없는", "모든", "가장", "만들", "만들기",
+        "쇼츠", "영상", "애니메이션", "느낌", "하나", "the", "and", "how", "why", "what", "for", "you", "your", "with"}
+JOSA = ("으로부터", "에게서", "으로", "에서", "에게", "까지", "부터", "처럼", "보다", "려면", "는지", "인지", "이란", "이라", "하는", "이는",
+        "이", "가", "을", "를", "은", "는", "의", "에", "로", "와", "과", "도", "만")
+
+
+def topic_words(q: str) -> list[str]:
+    """주제 문장 → 찾을 낱말(조사를 떼고 흔한 말은 뺀다) — 2026-11-21: '꿀벌이 … 얼마나 …' 가 '얼마나' 로 곰 영상과 맞다고 나왔다"""
+    out = []
+    for w in re.split(r"[\s,·/!?\"'()]+", q.lower()):
+        if re.search(r"(려면|는지|하는|하면|한다|했다|해요|합니다|까요|을까|ㄹ까|는데|어서|아서|하게|하기)$", w):
+            continue                                       # 동사(일하는지 · 만들려면) — 주제 낱말이 아니다
+        for j in JOSA:
+            if len(w) > len(j) + 1 and w.endswith(j):
+                w = w[: -len(j)]
+                break
+        if len(w) >= 2 and w not in STOP and not re.fullmatch(r"\d+", w):
+            out.append(w)
+    return out
+
+
 def trend_brief(request: str | None, label: str | None, top: int, query: str | None = None) -> dict:
     """기존 트렌드 분석(trends.py index · X-ray recipe)을 그대로 읽어 요약 — 새 분석은 하지 않는다"""
     idx = json.loads((TRENDS / "index.json").read_text("utf-8")) if (TRENDS / "index.json").exists() else {"items": []}
@@ -112,13 +133,25 @@ def trend_brief(request: str | None, label: str | None, top: int, query: str | N
         items = [x for x in items if label in str(x.get("label") or "")]
     matched = True
     if query:                                    # 사용자 주제와 맞는 쇼츠만(전체 목록 조회수 순이면 매번 같은 영상이 맨 위에 온다)
-        words = [w.lower() for w in re.split(r"[\s,·/]+", query) if len(w) >= 2]
-        hit = [x for x in items if any(w in f"{x.get('title') or ''} {x.get('label') or ''}".lower() for w in words)]
+        words = topic_words(query)
+        score = lambda x: sum(w in f"{x.get('title') or ''} {x.get('label') or ''}".lower() for w in words)  # noqa: E731
+        hit = sorted([x for x in items if score(x)], key=lambda x: (-score(x), -(x.get("views") or 0)))
         matched = len(hit) >= 3
         items = hit if matched else items
     if not items and not list((TRENDS / "own").glob("*.json")):
         return {"error": "트렌드 결과 없음 — 먼저 trends 스킬(engine/research/trends.py search)로 찾는다", "requests": [r.get("id") for r in (idx.get("requests") or [])[-5:]]}
-    items = sorted(items, key=lambda x: -(x.get("views") or 0))
+    analyzed = lambda x: (TRENDS / "xray" / x["id"] / "xray.json").exists()  # noqa: E731
+    if not (query and matched):                  # 주제로 고른 게 아니면 조회수 순
+        items = sorted(items, key=lambda x: -(x.get("views") or 0))
+    else:                                        # 맞은 낱말 수가 같으면 이미 분석된 것 먼저(기다림 없이) → 조회수
+        sc = {x["id"]: sum(w in f"{x.get('title') or ''} {x.get('label') or ''}".lower() for w in words) for x in items}
+        items = sorted(items, key=lambda x: (-sc[x["id"]], not analyzed(x), -(x.get("views") or 0)))
+    seen, uniq = set(), []
+    for x in items:                              # 같은 제목(재업로드)은 하나만
+        k = (x.get("title") or x["id"])[:40]
+        if k not in seen:
+            seen.add(k); uniq.append(x)
+    items = uniq
     refs = []
     for x in items[:top]:
         xp = TRENDS / "xray" / x["id"] / "xray.json"
