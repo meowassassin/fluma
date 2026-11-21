@@ -49,10 +49,12 @@ def test_accent_not_fixed_red():
 def test_feature_plan_requires_and_uses():
     sc = _craft("K.shape()")
     assert lint.feature_plan({"scenes": [sc]})                      # 고른 기능 없음
-    sc2 = {**_craft("var t=K.text('a',1,1,9,'#fff'); K.fx(t,'ec.stylize.glow',{})"), "features": ["ec.stylize.glow"]}
+    sc2 = {**_craft("var t=K.text('a',1,1,9,'#fff'); K.fx(t,'ec.blur.gaussian',{})"), "features": ["ec.blur.gaussian"]}
     assert not lint.feature_plan({"scenes": [sc2]})
-    sc3 = {**_craft("K.shape()"), "features": ["ec.stylize.glow"]}
+    sc3 = {**_craft("K.shape()"), "features": ["ec.blur.gaussian"]}
     assert "안 씀" in lint.feature_plan({"scenes": [sc3]})[0][2]
+    sc4 = {**_craft("K.shape()"), "features": ["ec.stylize.glow"]}      # AI 티 효과만 고른 경우는 쓰라고 하지 않는다(V03 과 충돌)
+    assert not lint.feature_plan({"scenes": [sc4]})
 
 
 def test_release_report_counts_chosen_features():

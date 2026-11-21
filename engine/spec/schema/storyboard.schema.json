@@ -1873,6 +1873,55 @@
             "type": "string"
           },
           "maxItems": 6
+        },
+        "bg": {
+          "description": "장면 바탕 — '#hex' 또는 [위색, 아래색]. 장면 코드 K.scene 의 바탕(engine/story/scenes.py 가 그대로 쓴다). 장소 · 물건 색에서, 이웃 장면과 다르게(화면 AI 티 V01 · V02)",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          ]
+        },
+        "carry": {
+          "type": "object",
+          "description": "전환 운반자 — 이 장면 → 다음 장면을 영상 모티프가 가로질러 날아가며 바꾼다(engine/craft/motion.py carry_jsx)",
+          "properties": {
+            "by": {
+              "type": "string"
+            },
+            "path": {
+              "type": "array"
+            },
+            "dur": {
+              "type": "number"
+            },
+            "size": {
+              "type": "number"
+            },
+            "reveal": {
+              "enum": [
+                "trail",
+                "none"
+              ]
+            },
+            "bob": {
+              "type": "number"
+            },
+            "bank": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "by"
+          ]
         }
       }
     },

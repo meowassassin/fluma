@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import time
 import sys
 from pathlib import Path
 
@@ -116,6 +117,16 @@ def main() -> int:
     if len(a) < 2 or a[0] not in ("apply", "check"):
         print(__doc__); return 2
     sid = apply(Path(a[1]) if Path(a[1]).is_absolute() else ROOT / a[1]) if a[0] == "apply" else a[1]
+    if "--write-scenes" in a:                          # 장면 코드가 없는 장면을 장면마다 동시에 쓴다(engine/story/scenes.py) — 콘티 · 형태를 먼저 저장한 뒤
+        sbx = json.loads((ROOT / "data" / "storyboards" / f"{sid}.json").read_text("utf-8"))
+        sd = ROOT / "data" / "compositions" / sid / "scenes"
+        need = [i for i in range(1, len(sbx.get("scenes") or []) + 1) if not (sd / f"s{i:02d}.jsx").exists()]
+        if need:
+            sys.path.insert(0, str(ROOT / "engine" / "story"))
+            import scenes as _sc
+            t0 = time.time()
+            r = _sc.write(sid, need, "", 8)
+            print(f"- 장면 코드 {len(need)}개를 동시에 씀: {round(time.time() - t0, 1)}초" + "".join(f" · 장면 {n} 문법 오류: {e}" for n, (_, e) in r["times"].items() if e))
     hard, soft = check(sid)
     for x in hard:
         print(f"✗ {x}")

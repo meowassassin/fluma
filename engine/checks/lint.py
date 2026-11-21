@@ -921,8 +921,10 @@ def kit_only_scenes(sb: dict) -> list[int]:
     return out
 
 
+
+AI_TELL_FX = ("glow", "lightsweep", "lensflare", "lens_flare", "shake")   # 화면 AI 티(engine/checks/visual_tell.py V03 · V04)
 def feature_plan(sb: dict) -> list:
-    """T69 — 장면마다 고른 앱 기능(scenes[].features)이 없거나, 고른 기능을 장면 코드에서 안 씀(권고)"""
+    """T69 — 장면마다 고른 앱 기능(scenes[].features)이 없거나, 고른 기능을 장면 코드에서 안 씀(권고). 빛번짐 같은 AI 티 효과는 빼고 센다"""
     out = []
     if sb.get("variant_of") or sb.get("format") in ("clip", "daily"):
         return out
@@ -930,7 +932,9 @@ def feature_plan(sb: dict) -> list:
         crafts = [m for m in _mats(sc) if m.get("type") == "craft"]
         if not crafts:
             continue
-        feats = [str(f) for f in sc.get("features") or [] if f]
+        feats = [str(f) for f in sc.get("features") or [] if f and not any(b in str(f) for b in AI_TELL_FX)]
+        if not feats and sc.get("features"):
+            continue                                       # 고른 기능이 모두 AI 티 효과(빛번짐 등) — 화면 AI 티 검사(V03)가 빼라고 한다
         if not feats:
             out.append(("T69", i, "이 장면에 쓸 앱 기능을 고르지 않음 — craft_catalog.py search \"<하고 싶은 일>\" 로 2~3개 골라 scenes[].features 에 id 를 적고 장면 코드에서 쓴다"))
             continue

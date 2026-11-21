@@ -35,7 +35,7 @@
 ## 작업 규칙
 
 1. 콘티를 만들거나 고친 뒤에는 반드시 `python3 engine/checks/lint.py data/storyboards/<id>.json` 을 실행하고, 실패가 없을 때까지 고친다.
-1-2. **도구 왕복을 줄인다(2026-11-19, 한 편 15분 목표)**: 기획 준비는 `python3 engine/story/prepare.py <id> "<주제>"` 한 번(경로 기록 · 레퍼런스 찾기 · 분석 · 이미 보여 준 선택지 → prepare.json) — trends · ref_pick · analyze_ref · route 를 하나씩 부르지 않는다. 콘티 · 장면 코드 · 형태 · 조사 사실은 묶음 JSON 하나로 써서 `python3 engine/story/bundle.py apply <묶음>` (저장 + 모든 검사를 음성 전에 한 번에) → 막힘을 한꺼번에 고쳐 다시 apply. 검사 → 한 칸 고침 → 검사를 반복하지 않는다.
+1-2. **도구 왕복을 줄인다(2026-11-19, 한 편 15분 목표)**: 기획 준비는 `python3 engine/story/prepare.py <id> "<주제>"` 한 번(경로 기록 · 레퍼런스 찾기 · 분석 · 이미 보여 준 선택지 → prepare.json) — trends · ref_pick · analyze_ref · route 를 하나씩 부르지 않는다. 콘티 · 형태 · 조사 사실은 묶음 JSON 하나로 써서 `python3 engine/story/bundle.py apply <묶음> --write-scenes` — 저장 → 장면 코드를 장면마다 동시에 작성(engine/story/scenes.py, 장면마다 `bg` · `visual.primary` · `shot_fn` · 필요하면 `carry` 를 콘티에 적어 둔다 — 장면 코드는 직접 쓰지 않는다) → 모든 검사(형식 · 화면 AI 티 · 형태 잘림)를 음성 전에 한 번에. 막힌 장면만 `python3 engine/story/scenes.py write <id> --scenes N --note "고칠 점"` (2026-11-21: 혼자 8장면 4.5분 → 동시 약 45초). 검사 → 한 칸 고침 → 검사를 반복하지 않는다.
 2. **만들기 전에 레퍼런스부터**: 같은 주제 · 형식의 실제 쇼츠 2~3편을 골라(trends 스킬) X-ray · 채널 카드로 분해하고, 대사 말투 · 컷 리듬 · 화면 종류를 거기서 가져온다(검사 L30 · L31). 조사 없이 바로 쓰지 않는다. 브랜드 · 회사 영상이면 그 회사의 공식 채널을 직접 판단해 고른다(`trends.py channels`).
    **레퍼런스 고르기 · 분석은 이 순서로 한 번씩**(2026-11-17: 출력을 grep 으로 여러 번 보고 썸네일을 한 장씩 열어 고르기에만 5~12분): `trends.py search` → `python3 engine/research/ref_pick.py --request <r… id>`(표 + 썸네일 시트 한 장 — 이 한 장만 Read) → 2~3편을 골라 `analyze_ref.py <id1> <id2> <id3>` 한 명령(동시에 돈다) → 시트가 필요하면 `look.py sheet <id>` 는 고른 편만. 맞는 게 없을 때만 검색어를 바꿔 한 번 더.
    레퍼런스는 따라 할 틀이 아니라 **뻔함 지도**다 — 다들 하는 구조 · 제목 · 첫 장면을 먼저 적고, 그중 하나를 일부러 깨는 안을 낸다(plan 스킬 0턴). 형식 스킬에는 정해진 장면 순서가 없다.
