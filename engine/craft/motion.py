@@ -30,6 +30,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -1239,6 +1240,98 @@ def ref_layout(sb: dict) -> str:
     return "full" if votes.count("full") >= votes.count("card") else "card"
 
 
+def _carry_src(sid: str, by: str) -> tuple[Path, int, int, int]:
+    """운반자 그림: "anim:<형태 이름>"(forms/<이름>.anim 프레임 묶음) · 저장소 기준 경로 → (파일, 폭, 높이, fps 또는 0)"""
+    from PIL import Image
+    if by.startswith("anim:"):
+        d = ROOT / "data" / "compositions" / sid / "forms" / f"{by[5:]}.anim"
+        f = d / "f000.png"
+        try:
+            fps = int(json.loads((d / "anim.json").read_text("utf-8")).get("fps") or 12)
+        except Exception:  # noqa: BLE001
+            fps = 12
+    else:
+        f, fps = (ROOT / by if not Path(by).is_absolute() else Path(by)), 0
+        if f.name == "f000.png" and (f.parent / "anim.json").exists():     # 프레임 묶음 경로를 직접 준 경우
+            fps = int(json.loads((f.parent / "anim.json").read_text("utf-8")).get("fps") or 12)
+    w, h = Image.open(f).size
+    return f, w, h, fps
+
+
+def carry_jsx(sid: str, cv: dict, n: int, t_cut: float, W: int, H: int) -> str:
+    """장면 n → n+1 전환을 운반자가 맡는다(2026-11-21: 모티프를 정해도 전환은 컷뿐이었다 — 벌 영상이면 벌이 날아 지나가며 화면이 바뀌게).
+    cv = {"by": "anim:bee" | 경로, "path": [[x, y], …](화면 비율, 화면 밖에서 밖으로), "dur": 초, "size": 화면 폭 비율,
+          "reveal": "trail"(지나간 자리로 다음 장면이 드러남) | "none"(가로지르기만, 컷은 그대로), "bob": 흔들림(화면 높이 비율), "bank": 기울기 배수}
+    운반 · 경로 · 드러내는 방식은 영상마다 감독이 정한다(정해 둔 효과 목록이 아니다)."""
+    f, fw, fh, fps = _carry_src(sid, str(cv["by"]))
+    pts = [(float(x) * W, float(y) * H) for x, y in cv.get("path") or [[-0.15, 0.7], [0.5, 0.45], [1.15, 0.25]]]
+    dur = float(cv.get("dur", 0.9)); size = float(cv.get("size", 0.22)); bob = float(cv.get("bob", 0.012)) * H
+    bank = float(cv.get("bank", 0.35)); reveal = str(cv.get("reveal", "trail"))
+    t0, t1 = t_cut - 0.15 * dur, t_cut + 0.85 * dur
+
+    def cat(u):                                        # Catmull-Rom 위의 점
+        m = len(pts) - 1
+        x = min(m - 1e-6, max(0.0, u * m)); i = int(x); t = x - i
+        p0, p1, p2, p3 = pts[max(0, i - 1)], pts[i], pts[min(m, i + 1)], pts[min(m, i + 2)]
+        return tuple(0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t * t + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t ** 3) for k in (0, 1))
+    N = 16
+    keys = []
+    for i in range(N + 1):
+        u = i / N
+        e = u * u * (3 - 2 * u) * 0.35 + u * 0.65         # 들어올 때 · 나갈 때 조금 느리게
+        x, y = cat(e)
+        y += bob * math.sin(u * math.pi * 6)
+        keys.append((t0 + (t1 - t0) * u, x, y))
+    sc_pct = size * W / max(1, fw) * 100
+    out = [f"(function () {{ var io = new ImportOptions(new File({js(str(f))})); {'io.sequence = true;' if fps else ''} var it = app.project.importFile(io);"]
+    if fps:
+        out.append(f"try {{ it.mainSource.conformFrameRate = {fps}; }} catch (e) {{}}")
+    out.append(f"var cr = main.layers.add(it); cr.name = 'Carry {n:02d}'; cr.startTime = {t0:.3f}; cr.inPoint = {t0:.3f}; cr.outPoint = {t1 + 0.05:.3f};")
+    if fps:
+        out.append("cr.timeRemapEnabled = true; cr.property('Time Remap').expression = '(time - thisLayer.startTime) % thisLayer.source.duration';")
+    out.append(f"cr.property('Transform').property('Scale').setValue([{sc_pct:.2f}, {sc_pct:.2f}]); var cp = cr.property('Transform').property('Position');")
+    out.append("".join(f"cp.setValueAtTime({t:.3f}, [{x:.1f}, {y:.1f}]);" for t, x, y in keys))
+    out.append(f"cr.property('Transform').property('Rotation').expression = 'var v = transform.position.velocityAtTime(time); var a = Math.atan2(v[1], Math.abs(v[0]) + 1e-3) * 180 / Math.PI; (v[0] < 0 ? -a : a) * {bank};';")
+    if pts[-1][0] < pts[0][0]:                          # 왼쪽으로 나는 운반자는 좌우를 뒤집는다(그림은 오른쪽을 본다고 가정)
+        out.append(f"cr.property('Transform').property('Scale').setValue([{-sc_pct:.2f}, {sc_pct:.2f}]);")
+    if reveal == "trail":                              # 지나간 자리로 다음 장면 — 경계선이 운반자를 지나며(진행 방향에 수직) 뒤쪽을 드러낸다
+        import cv2
+        import numpy as np
+        q = 4                                           # 1/4 크기 격자에서 면을 합친다
+        gw, gh = W // q + 2, H // q + 2
+        acc = np.zeros((gh, gw), np.uint8)
+        yy, xx = np.mgrid[0:gh, 0:gw].astype(np.float32) * q
+        polys = {}
+        for i in range(len(keys)):                      # 지금까지 지나간 '앞 경계선 뒤쪽'을 계속 합친다 — 한 번 드러난 곳은 다시 가려지지 않는다
+            x, y = keys[i][1], keys[i][2]
+            a0, b0 = keys[max(0, i - 1)], keys[min(len(keys) - 1, i + 1)]
+            tx, ty = b0[1] - a0[1], b0[2] - a0[2]
+            acc |= (((xx - x) * tx + (yy - y) * ty) <= 0).astype(np.uint8)
+            cs, _ = cv2.findContours(acc.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if cs:
+                c = max(cs, key=cv2.contourArea)[:, 0, :].astype(float) * q
+                c[:, 0] = np.where(c[:, 0] <= 0, -60, np.where(c[:, 0] >= (gw - 2) * q, W + 60, c[:, 0]))   # 화면 가장자리는 밖으로 밀어 틈이 없게
+                c[:, 1] = np.where(c[:, 1] <= 0, -60, np.where(c[:, 1] >= (gh - 2) * q, H + 60, c[:, 1]))
+                polys[i] = "[" + ", ".join(f"[{px:.0f}, {py:.0f}]" for px, py in c) + "]"
+
+        def wake(i):
+            return polys.get(i, "[[-10, -10], [-9, -10], [-9, -9]]")
+        ki = [i for i, (t, _, _) in enumerate(keys) if t >= t_cut - 1e-6]
+        out += [f"var pv = null, nx = null; for (var q = 1; q <= main.numLayers; q++) {{ if (main.layer(q).name === {js(f'SceneL {n:02d}')}) pv = main.layer(q); if (main.layer(q).name === {js(f'SceneL {n + 1:02d}')}) nx = main.layer(q); }}",
+                "if (pv && nx) {",
+                f"pv.timeRemapEnabled = true; pv.property('Time Remap').expression = 'Math.min(time - thisLayer.startTime, thisLayer.source.duration - thisLayer.source.frameDuration)'; pv.outPoint = {t1 + 0.05:.3f};",
+                f"var tl = main.layers.addShape(); tl.name = 'Trail {n:02d}'; tl.startTime = 0; tl.inPoint = {t_cut - 0.01:.3f}; tl.outPoint = nx.outPoint; tl.property('Transform').property('Position').setValue([0, 0]); tl.property('Transform').property('Anchor Point').setValue([0, 0]);",   # 매트는 다음 장면 끝까지 · 화면 좌표 그대로
+                "var tg = tl.property('Contents').addProperty('ADBE Vector Group'); var tp = tg.property('Contents').addProperty('ADBE Vector Shape - Group').property('Path');",
+                "tg.property('Contents').addProperty('ADBE Vector Graphic - Fill').property('Color').setValue([1, 1, 1]);",
+                "function shp(v) { var s = new Shape(); s.vertices = v; s.closed = true; return s; }"]
+        out.append(f"tp.setValueAtTime({t_cut - 0.01:.3f}, shp({wake(max(0, ki[0] - 1) if ki else 0)}));")
+        out += [f"tp.setValueAtTime({keys[i][0]:.3f}, shp({wake(i)}));" for i in ki]
+        out.append(f"tp.setValueAtTime({t1 + 0.04:.3f}, shp([[-60, -60], [{W + 60}, -60], [{W + 60}, {H + 60}], [-60, {H + 60}]]));")   # 끝나면 화면 전체
+        out.append("nx.setTrackMatte(tl, TrackMatteType.ALPHA); cr.moveToBeginning(); }")
+    out.append("})();")
+    return "\n".join(out)
+
+
 def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: Path, *, width: int = 1080, height: int = 1920, fps: int = 30,
               font: str = "Pretendard-Black") -> str:
     """콘티 → JSX(EffectCraft 스크립트). 실행하면 out_project 에 .ecproj 가 저장된다"""
@@ -1285,6 +1378,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
     title_preset = DZ["title_preset"]
     sub_preset = DZ["sub_preset"]
     allsc = sb.get("_all_scenes") or sb["scenes"]          # 원래 영상의 장면 전체(장면 일부만 렌더할 때도 이웃 장면을 알게)
+    placed: dict = {}
     for k, (sc, tm) in enumerate(zip(sb["scenes"], scenes)):
         oi = int(tm.get("index", k))          # 원래 장면 번호(장면 일부만 렌더해도 재료 · 자막이 맞게)
         n = oi + 1
@@ -1593,7 +1687,8 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         # 장면의 맨 위 레이어를 모두 카메라 Null 에 단다 — 2026-11-21: 샷 기능(충격 · 디테일 · 확대) 카메라 키가 Null 에만 들어가고
         # 재료 · 장면 코드 레이어는 아무도 달려 있지 않아 화면이 한 번도 움직이지 않았다(레퍼런스 대비 실측: 우리 영상 100% 고정)
         J("(function () { for (var i = 1; i <= c.numLayers; i++) { var L = c.layer(i); if (L === cam || L.parent) continue; try { L.parent = cam; } catch (e) {} } })();")
-        J(f"var sl = main.layers.add(c); sl.startTime = {start:.3f};")
+        J(f"var sl = main.layers.add(c); sl.startTime = {start:.3f}; sl.name = {js(f'SceneL {n:02d}')};")
+        placed[n] = (start, sec, sc)
         # 끝 장면이 영상 없이 그림 · 로고 · 글자만이면 멈춘 화면이 된다(2026-11-09: 로고 4초 정지) → 천천히 다가오며 나타남
         # 2026-11-11: 93→100 으로 키우니 화면이 줄어 네 가장자리에 검은 테두리가 생겼고, 감독이 '끝'(고정)으로 정한 것도 무시했다 → 고정 기능이면 그대로, 아니면 100→106 으로 다가감
         if oi == len(allsc) - 1 and str(sc.get("shot_fn") or "") not in ("끝", "여운", "자리 잡기") and not any((m or {}).get("type") in ("video", "web", "screen", "stock") for m in sc.get("materials") or [] if isinstance(m, dict)):
@@ -1609,6 +1704,9 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         prev = allsc[oi - 1] if 0 < oi <= len(allsc) else None
         if prev is not None and "zoom" in str(prev.get("transition") or d.get("transition") or "") and sec > 0.8:
             J(f"var zI = sl.property('Transform').property('Scale'); zI.setValueAtTime({start:.3f}, [135, 135]); zI.setValueAtTime({start + 0.4:.3f}, [100, 100]); ease(zI, 70);")
+    for n, (start, sec, sc) in placed.items():            # 전환 운반자(carry) — 영상의 모티프가 장면 사이를 가로지르며 화면을 바꾼다
+        if isinstance(sc.get("carry"), dict) and (n + 1) in placed:
+            J(carry_jsx(sid, sc["carry"], n, start + sec, W, H))
     # 위쪽 고정 주제 제목(레퍼런스: '컴퓨터 버그의 유래'처럼 영상 내내 위에 떠 있음) — 콘티 direction.pin_title > pin_title > 짧은 제목
     if pin:
         J("\n// ---------- 위쪽 고정 주제 제목(영상 전체)")

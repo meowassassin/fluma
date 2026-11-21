@@ -122,6 +122,15 @@ def _sub(a, b):
 def _track_at(keys: list, t: float, dur: float):
     """[[초, 값], …] — 키를 지나며 멈추지 않고 이어 흐른다(Catmull-Rom, 속도가 이어짐). 마지막 키 뒤는 첫 키로 돌아가며 반복.
     2026-11-20: 키마다 속도가 0 이 되는 cosine 보간이 모든 동작을 로봇처럼 멈칫거리게 했다. 멈춰야 할 곳은 같은 값의 키를 두 번 둔다(유지)"""
+    if isinstance(keys, dict) and "osc" in keys:          # 주기 움직임: {"osc": [기준, 진폭, 횟수/초, 위상(0~1)]} — 날갯짓 · 꼬리 · 숨쉬기(값이 목록이면 각 칸에)
+        import math
+        base, amp, hz = keys["osc"][:3]
+        ph = keys["osc"][3] if len(keys["osc"]) > 3 else 0.0
+        wv = math.sin(2 * math.pi * (float(hz) * t + float(ph)))
+        if isinstance(base, list):
+            amps = amp if isinstance(amp, list) else [amp] * len(base)
+            return [float(b) + float(a) * wv for b, a in zip(base, amps)]
+        return float(base) + float(amp) * wv
     ks = sorted(keys, key=lambda k: k[0])
     if len(ks) == 1:
         return ks[0][1]

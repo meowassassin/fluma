@@ -166,3 +166,21 @@ def test_cue_word_must_be_in_narration():
                                 {"narration": "전혀 다른 말", "materials": [{"type": "craft", "id": "b", "steps": "K.pop(b, $CUE:우주선)"}]}]}
     codes = [(c, i) for c, i, _ in lint.cue_check(sb)]
     assert codes == [("L73", 1)]
+
+
+def test_carry_transition_jsx_has_carrier_and_monotonic_wake(tmp_path):
+    import json as _j
+    from PIL import Image
+    from craft import motion
+    d = tmp_path / "bee.anim"; d.mkdir()
+    Image.new("RGBA", (64, 64), (250, 200, 60, 255)).save(d / "f000.png")
+    (d / "anim.json").write_text(_j.dumps({"fps": 24}))
+    js = motion.carry_jsx("x", {"by": str(d / "f000.png"), "path": [[-0.2, 0.7], [0.5, 0.5], [1.2, 0.3]], "dur": 1.0}, 1, 2.0, 540, 960)
+    assert "conformFrameRate = 24" in js and "Carry 01" in js and "setTrackMatte" in js
+    assert js.count("tp.setValueAtTime") >= 8                         # 지나간 자리가 시간에 따라 자란다
+
+
+def test_osc_track():
+    from craft import form as F
+    assert abs(F._track_at({"osc": [10, 5, 2]}, 0.125, 1.0) - 15) < 1e-6
+    assert F._track_at({"osc": [[0, 1], [2, 0], 1]}, 0.25, 1.0) == [2.0, 1.0]

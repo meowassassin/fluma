@@ -47,6 +47,8 @@ class Ctx:
         self.base = self.base_t[mi]
         self.lv = np.clip(buf["ndl"], 0, 1) * buf["shadow"]  # key light visibility * cosine
         self.lv[~self.hit] = 0
+        if meta["scene"].get("ground") is False:         # 공중에 뜬 것(날아다니는 운반자 · 떠 있는 물건) — 땅 그림자 없음
+            self.b = {**buf, "gshadow": np.ones_like(buf["gshadow"]), "gao": np.ones_like(buf["gao"])}
         self.band = np.zeros_like(self.hit)
         self.hair = np.zeros_like(self.hit)
         self._illustrate(meta, mats)
