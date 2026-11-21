@@ -83,6 +83,38 @@ def _form_cuts(sid: str) -> list[str]:
     return out
 
 
+def normalize(sb: dict) -> list[str]:
+    """뜻이 바뀌지 않는 형식 오타만 바로잡는다 — 정수 칸의 소수(반올림) · 허용 목록 값의 철자 차이(가장 가까운 값).
+    2026-11-21: 콘티 검사 왕복 5번 중 3번이 이런 것(duration_sec 30.6 · screen '실제 사진')이었다. 문구 길이 같은 내용 오류는 그대로 둔다"""
+    import difflib
+    try:
+        import jsonschema
+        schema = json.loads((ROOT / "engine" / "spec" / "schema" / "storyboard.schema.json").read_text("utf-8"))
+    except Exception:  # noqa: BLE001
+        return []
+    notes = []
+    for _ in range(3):
+        changed = False
+        for e in jsonschema.Draft202012Validator(schema).iter_errors(sb):
+            path = list(e.absolute_path)
+            if not path:
+                continue
+            parent = sb
+            for k in path[:-1]:
+                parent = parent[k]
+            key, val = path[-1], e.instance
+            if e.validator == "type" and e.validator_value == "integer" and isinstance(val, float):
+                parent[key] = int(round(val)); notes.append(f"{'/'.join(map(str, path))}: {val} → {parent[key]}"); changed = True
+            elif e.validator == "enum" and isinstance(val, str):
+                opts = [o for o in e.validator_value if isinstance(o, str)]
+                near = difflib.get_close_matches(val, opts, n=1, cutoff=0.8)   # 철자 · 띄어쓰기 차이만(뜻이 다른 값으로 바꾸지 않는다)
+                if near:
+                    parent[key] = near[0]; notes.append(f"{'/'.join(map(str, path))}: '{val}' → '{near[0]}'"); changed = True
+        if not changed:
+            break
+    return notes
+
+
 def apply(path: Path) -> str:
     b = json.loads(path.read_text("utf-8"))
     sb = b.get("storyboard")
@@ -108,6 +140,14 @@ def apply(path: Path) -> str:
     sp.parent.mkdir(parents=True, exist_ok=True)
     if sp.exists():
         shutil.copyfile(sp, sp.with_suffix(".json.prev"))
+        try:                                            # 엔진이 이미 채운 칸(미리 고른 음악)은 묶음에 없으면 그대로 둔다
+            prev = json.loads(sp.read_text("utf-8"))
+            if "music" not in sb and (prev.get("music") or {}).get("source") == "auto":
+                sb["music"] = prev["music"]
+        except ValueError:
+            pass
+    for note in normalize(sb):
+        print(f"- 형식 바로잡음: {note}")
     sp.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", "utf-8")
     return sid
 
@@ -135,6 +175,8 @@ def main() -> int:
     rel = f"data/storyboards/{sid}.json"
     if hard:
         fail("bundle", stage="check", error=f"막힘 {len(hard)}건 — 전부 한 번에 고친다(묶음을 Write 로 통째로 다시 쓰거나 Edit 를 한 응답에 나란히) → 다시 apply 한 번", file=rel, hard=str(len(hard)), soft=str(len(soft)))
+    # 검사 통과 — 음악 고르기(곡 검색 · 박자 측정, 2~3분)를 미리 백그라운드로. 제작 단계는 이미 고른 곡을 그대로 쓴다(music_pick auto 가 건너뜀)
+    subprocess.Popen([sys.executable, "engine/craft/music_pick.py", "auto", rel], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     ok("bundle", file=rel, soft=str(len(soft)), next=f"python3 engine/produce.py {rel} --prep --bg → 재료 · 장면 확인 → python3 engine/produce.py {rel}")
     return 0
 
