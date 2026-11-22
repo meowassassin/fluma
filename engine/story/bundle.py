@@ -89,6 +89,49 @@ def _form_cuts(sid: str) -> list[str]:
     return out
 
 
+def normalize(sb: dict) -> list[str]:
+    """뜻이 바뀌지 않는 형식 오타만 바로잡는다 — 정수 칸의 소수(반올림) · 허용 목록 값의 철자 차이(가장 가까운 값).
+    2026-11-21: 콘티 검사 왕복 5번 중 3번이 이런 것(duration_sec 30.6 · screen '실제 사진')이었다. 문구 길이 같은 내용 오류는 그대로 둔다"""
+    import difflib
+    try:
+        import jsonschema
+        schema = json.loads((ROOT / "engine" / "spec" / "schema" / "storyboard.schema.json").read_text("utf-8"))
+    except Exception:  # noqa: BLE001
+        return []
+    notes = []
+    for _ in range(3):
+        changed = False
+        def flat(errs):                                   # anyOf · oneOf 안쪽 오류까지(효과음 sfx 는 anyOf 로 정의돼 겉에는 anyOf 하나만 보인다)
+            for x in errs:
+                yield x
+                if x.context:
+                    yield from flat(x.context)
+        for e in flat(jsonschema.Draft202012Validator(schema).iter_errors(sb)):
+            path = list(e.absolute_path)
+            if not path:
+                continue
+            parent = sb
+            for k in path[:-1]:
+                parent = parent[k]
+            key, val = path[-1], e.instance
+            if e.validator == "type" and e.validator_value == "integer" and isinstance(val, float):
+                parent[key] = int(round(val)); notes.append(f"{'/'.join(map(str, path))}: {val} → {parent[key]}"); changed = True
+            elif e.validator == "enum" and isinstance(val, str):
+                opts = [o for o in e.validator_value if isinstance(o, str)]
+                near = difflib.get_close_matches(val, opts, n=1, cutoff=0.8)   # 철자 · 띄어쓰기 차이만(뜻이 다른 값으로 바꾸지 않는다)
+                if near:
+                    parent[key] = near[0]; notes.append(f"{'/'.join(map(str, path))}: '{val}' → '{near[0]}'"); changed = True
+                elif "sfx" in map(str, path) and key == "name" and len(path) >= 3:   # 없는 효과음(감독 단계가 지어낸 이름) — 그 효과음만 뺀다
+                    holder = sb
+                    for k in path[:-2]:
+                        holder = holder[k]
+                    holder.pop(path[-2]); notes.append(f"{'/'.join(map(str, path[:-1]))}: 없는 효과음 '{val}' 뺌"); changed = True
+                    break
+        if not changed:
+            break
+    return notes
+
+
 def apply(path: Path) -> str:
     b = json.loads(path.read_text("utf-8"))
     sb = b.get("storyboard")
@@ -112,6 +155,8 @@ def apply(path: Path) -> str:
         fail("bundle", stage="script", error=str(e))
     except Exception:  # noqa: BLE001
         pass
+    for note in normalize(sb):                          # 뜻이 같은 형식 오타만(정수 칸 소수 · 허용 값 철자 · 없는 효과음) — 검사 왕복 한 번을 아낀다
+        print(f"- 형식 바로잡음: {note}")
     sp = ROOT / "data" / "storyboards" / f"{sid}.json"
     sp.parent.mkdir(parents=True, exist_ok=True)
     if sp.exists():
@@ -156,6 +201,27 @@ def script_problems(sb: dict) -> list[str]:
         if not hk & lint._keywords(f"{outro.get('caption', '')} {outro.get('narration', '')}"):
             out.append("L08 마지막 장면이 훅의 핵심어를 다시 말하지 않음")
     return out
+
+
+def screen_rules() -> str:
+    """화면(콘티 · 장면 코드)을 쓰기 전에 알아야 할 막힘 — 2026-11-22 시험 9: 쓴 뒤 apply 3번 + 제작 1번을 이것들로 되돌아갔다
+    (format · role 허용 값, 정수 칸, 지어낸 효과음, 어두운 바탕 · 같은 바탕 · 빛번짐 · 둥근 카드, 자막 자리와 겹침). 규칙은 검사(lint · visual_tell)와 같다"""
+    try:
+        sch = json.loads((ROOT / "engine" / "spec" / "schema" / "storyboard.schema.json").read_text("utf-8"))
+        fmt = sch["properties"]["format"].get("enum") or []
+        role = sch["$defs"]["scene"]["properties"]["role"].get("enum") or []
+    except (OSError, ValueError, KeyError):
+        fmt, role = [], []
+    sys.path.insert(0, str(ROOT / "engine" / "story"))
+    import skill_pass as sp
+    return "\n".join([
+        "화면을 쓰기 전에(어기면 apply · 제작이 막힌다):",
+        f"- format: {' | '.join(fmt)} · 장면 role: {' | '.join(role)} · duration_sec 은 정수 · 효과음 sfx name: {' | '.join(sp.sfx_names())}",
+        "- 바탕(K.scene 두 번째 인자): 장면의 장소 · 물건 색에서. 어두운 바탕은 장면의 절반 이하, 이야기의 장이 바뀌면 바탕 색을 바꾼다(7장면이면 4가지 이상)",
+        "- 빛번짐(glow) · 흔들기(shake) · 렌즈 빛 금지. 둥근 카드 · 알약 상자는 장면에 하나까지 — 정보는 장면 속 물건(표지판 · 라벨 · 손글씨)에",
+        "- 본문 장면마다 숫자 · 고유명사 · 화면 재료 중 하나(L11)",
+        "- 자막(나레이션)은 엔진이 화면 아래(y 약 1270~1420)에, 장면 caption 은 위(y 약 60~240)에 그린다 — 그 두 띠와 오른쪽 12%(버튼)에는 글자 · 주인공을 두지 않는다",
+    ])
 
 
 def script(path: Path) -> int:
@@ -205,7 +271,8 @@ def script(path: Path) -> int:
     print(f"- 제목: {done.get('title')}")
     for i, x in enumerate(done["scenes"], 1):
         print(f"- 장면{i} [{x.get('role')}] 말: {x.get('narration')} | 화면 글자: {x.get('caption')}")
-    ok("bundle", stage="script", file=str(sbp.relative_to(ROOT)), next="이 대본 그대로 콘티 · 형태 · 장면 코드를 묶음으로 써서 bundle.py apply 한 번")
+    print(screen_rules())
+    ok("bundle", stage="script", file=str(sbp.relative_to(ROOT)), next="이 대본 그대로, 위 '화면을 쓰기 전에' 를 지켜 콘티 · 형태 · 장면 코드를 묶음으로 써서 bundle.py apply 한 번")
     return 0
 
 

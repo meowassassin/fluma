@@ -499,6 +499,19 @@ def main() -> int:
         return 0
 
     # 2) 검사 — 실패(L)면 렌더하지 않는다. 사용자만 줄 수 있는 것(L36 녹화 · L38 키)은 입력 요청으로
+    try:                                                 # 앞 단계(감독 · 디자이너)가 넣은 값의 형식 오타 · 없는 효과음을 형식 검사 전에 바로잡는다(뜻은 그대로)
+        sys.path.insert(0, str(ROOT / "engine" / "story"))
+        import copy as _cp
+        import bundle as _bd
+        import sbio as _sbio
+        _base = json.loads(sp.read_text("utf-8")); _mine = _cp.deepcopy(_base)
+        _notes = _bd.normalize(_mine)
+        if _notes:
+            _sbio.save(sp, _base, _mine)
+            print("[제작] 형식 바로잡음: " + " · ".join(_notes[:6]), flush=True)
+            sb = json.loads(sp.read_text("utf-8"))
+    except Exception as e:  # noqa: BLE001
+        print(f"[제작] 형식 바로잡기 생략: {str(e)[:120]}", flush=True)
     r = step("lint", [PY, "engine/checks/lint.py", rel])
     # 음성을 만든 뒤에야 드러나는 대사 문제(실측 길이 L05 · L14, 대사 길이)는 각본가 단계로 한 번 되돌려 고치고 음성을 다시 만든다
     if r.returncode != 0 and not a.no_skills and not a.no_audio and re.search(r"^(L05|L14|L04) |/narration", r.stdout or "", re.M):

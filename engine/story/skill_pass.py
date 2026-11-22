@@ -54,9 +54,17 @@ def skill_text(name: str) -> str:
 
 
 def sfx_names() -> list[str]:
+    """고를 수 있는 효과음 — 파일이 있고 콘티 형식(스키마)이 허용하는 이름만.
+    2026-11-22 시험 9: assets/sfx/bleep.wav 가 있어 감독 단계에 'bleep' 을 보여 줬지만 형식이 막아 제작이 한 번 멈췄다"""
     names = set()
     for d in (ROOT / "assets" / "sfx", ROOT / "engine" / "assets" / "sfx"):
         names.update(p.stem for p in d.glob("*.wav")) if d.exists() else None
+    try:
+        sch = json.loads((ROOT / "engine" / "spec" / "schema" / "storyboard.schema.json").read_text("utf-8"))
+        allowed = set(sch["$defs"]["scene"]["properties"]["sfx"]["anyOf"][1]["items"]["properties"]["name"]["enum"])
+        names &= allowed
+    except (OSError, ValueError, KeyError, IndexError):
+        pass
     return sorted(names)
 
 
