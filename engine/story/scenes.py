@@ -168,6 +168,30 @@ def _fx_check(code: str) -> tuple[str, str]:
     return code, "; ".join(errs)
 
 
+def _cue_check(code: str, narration: str) -> tuple[str, str]:
+    """$CUE:낱말이 그 장면 대사에 있는지(음성 엔진과 같은 맞춤 — craft.cues.find). 어절과 조금 다르면 그 어절로 바로잡고,
+    없으면 오류로(그 장면만 다시). 2026-11-21: 대사에 없는 신호 낱말(L73)로 콘티 검사가 한 번 더 돌았다"""
+    import difflib
+    try:
+        from craft.cues import CUE, find
+    except Exception:  # noqa: BLE001
+        return code, ""
+    toks = narration.split()
+    words = [{"text": w, "start": 0.0, "end": 0.0} for w in toks]
+    errs = []
+    for m in list(CUE.finditer(code)):
+        w = m.group(1).strip()
+        if not w or (words and find(words, w, strict=False) is not None):
+            continue
+        clean = [re.sub(r"[^\w%]", "", t) for t in toks]
+        near = difflib.get_close_matches(w, clean, n=1, cutoff=0.6)
+        if near and near[0]:
+            code = code.replace(f"$CUE:{w}", f"$CUE:{near[0]}")
+        else:
+            errs.append(f"신호 낱말 '{w}' 이 대사에 없음 — 대사의 어절 중에서: {' '.join(clean[:20])}")
+    return code, "; ".join(errs)
+
+
 def _syntax(code: str) -> str:
     probe = re.sub(r"\$CUE:[^\s,;)\]}+\-*/]+", "0", code).replace("$USE:", "")
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as fh:
@@ -196,7 +220,8 @@ def write(sid: str, only: list[int] | None, note: str, jobs: int) -> dict:
             c += cc
             code = _code(txt).replace("var F = '{forms}';", f"var F = '{forms}';")
             code, fx_err = _fx_check(code)
-            err = _syntax(code) or fx_err
+            code, cue_err = _cue_check(code, str(sb["scenes"][n - 1].get("narration") or ""))
+            err = _syntax(code) or fx_err or cue_err
             if not err:
                 break
         (sd / f"s{n:02d}.jsx").write_text(code, "utf-8")

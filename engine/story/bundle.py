@@ -157,17 +157,30 @@ def main() -> int:
     if len(a) < 2 or a[0] not in ("apply", "check"):
         print(__doc__); return 2
     sid = apply(Path(a[1]) if Path(a[1]).is_absolute() else ROOT / a[1]) if a[0] == "apply" else a[1]
+    viewer_block = ""
     if "--write-scenes" in a:                          # 장면 코드가 없는 장면을 장면마다 동시에 쓴다(engine/story/scenes.py) — 콘티 · 형태를 먼저 저장한 뒤
+        # 시청자 이해 검토를 장면 코드보다 먼저 — 대본이 여기서 바뀔 수 있고(각본가), 바뀌면 장면 코드의 $CUE 가 어긋난다.
+        # 2026-11-21: 제작 단계에서야 돌아 '구조를 다시 써라'(108초 + 고치는 왕복)로 10분을 넘겼다. 제작은 대본이 그대로면 건너뛴다(해시)
+        hard0, _ = check(sid)
+        if not hard0:
+            t0 = time.time()
+            vr = subprocess.run([sys.executable, "engine/story/skill_pass.py", "comprehension", f"data/storyboards/{sid}.json"], cwd=ROOT,
+                                capture_output=True, text=True, timeout=900)
+            print(f"- 시청자 이해 검토: {round(time.time() - t0, 1)}초" + (" · 통과" if vr.returncode == 0 else ""))
+            if vr.returncode != 0:
+                viewer_block = next((ln[6:] for ln in vr.stdout.splitlines() if ln.startswith("error=")), "시청자 이해 검토 막힘")
         sbx = json.loads((ROOT / "data" / "storyboards" / f"{sid}.json").read_text("utf-8"))
         sd = ROOT / "data" / "compositions" / sid / "scenes"
         need = [i for i in range(1, len(sbx.get("scenes") or []) + 1) if not (sd / f"s{i:02d}.jsx").exists()]
-        if need:
+        if need and not viewer_block and not hard0:
             sys.path.insert(0, str(ROOT / "engine" / "story"))
             import scenes as _sc
             t0 = time.time()
             r = _sc.write(sid, need, "", 8)
             print(f"- 장면 코드 {len(need)}개를 동시에 씀: {round(time.time() - t0, 1)}초" + "".join(f" · 장면 {n} 문법 오류: {e}" for n, (_, e) in r["times"].items() if e))
     hard, soft = check(sid)
+    if viewer_block:
+        hard.insert(0, f"V10 시청자 이해 검토: {viewer_block} — 대본 · 장면 구조를 고친 뒤 다시 apply(장면 코드는 통과한 뒤에 쓴다)")
     for x in hard:
         print(f"✗ {x}")
     for x in soft[:12]:
