@@ -867,7 +867,12 @@ def viewer_open(sbp: Path) -> tuple[int, list]:
     if r.get("stale"):           # 상한에 닿아 고친 대본을 다시 못 봤다 — 옛 판정으로 막지 않는다
         return STORY_BLOCK_BELOW, []
     score = int((r.get("patch") or {}).get("score") or r.get("score") or 0)
-    return score, [i for i in viewer_issues(sb, "writer") if i.get("kind") in BLOCKING]
+    issues = [i for i in viewer_issues(sb, "writer") if i.get("kind") in BLOCKING]
+    ver = (r.get("patch") or {}).get("verify") or []
+    if not score and ver and all(v.get("resolved") for v in ver if isinstance(v, dict)) and not issues and not r.get("problems"):
+        # 수렴 검토(지난 지적만 확인)는 점수를 내지 않는다 — 모두 해결이면 통과(2026-11-22: '점수 0, 0건'으로 막아 왕복 한 번)
+        score = 8
+    return score, issues
 
 
 STORY_BLOCK_BELOW = 7
