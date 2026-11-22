@@ -192,6 +192,32 @@ def _cue_check(code: str, narration: str) -> tuple[str, str]:
     return code, "; ".join(errs)
 
 
+def _dry_run(code: str, sec: float) -> str:
+    """장면 코드를 EffectCraft 에서 실제로 한 번 실행(빈 프로젝트 · 장면 길이 컴프 · kit 포함) — 실행 오류를 쓰는 자리에서 잡는다.
+    2026-11-22 시험 6: 색 값 null · 배열이 아닌 값 같은 실행 오류가 빌드에서야 드러나 빌드 왕복 3번(약 3분). $CUE 는 장면 안 시각으로, $USE 는 자리 그림으로"""
+    import itertools
+    from PIL import Image
+    kit = (ROOT / "engine" / "craft" / "jsx" / "kit.jsx").read_text("utf-8")
+    cli = next((ROOT / "tools" / "crafts" / "effectcraft" / "app").glob("effectcraft-*/bin/effectcraft-cli"), None)
+    if not cli:
+        return ""
+    with tempfile.TemporaryDirectory() as td:
+        ph = Path(td) / "use.png"
+        Image.new("RGBA", (64, 64), (200, 200, 200, 255)).save(ph)
+        n = itertools.count()
+        body = re.sub(r"\$CUE:[^\s,;)\]}+\-*/]+", lambda m: f"{min(max(0.1, sec - 0.2), 0.3 + 0.45 * next(n)):.2f}", code)
+        body = re.sub(r"\$USE:[\w-]+(/[^'\"\s]*)?", str(ph), body)
+        js = (f"var __c = app.project.items.addComp('Main', 1080, 1920, 1, {max(0.5, sec):.2f}, 30);\n" + kit + "\n" + body
+              + "\n;if (!K.NOFIT) { try { K.fit(); } catch (x) {} }\n")
+        f = Path(td) / "scene.jsx"
+        f.write_text(js, "utf-8")
+        r = subprocess.run([str(cli), "script", str(f)], capture_output=True, text=True, timeout=120, cwd=td)
+        if r.returncode == 0:
+            return ""
+        msg = (r.stderr or r.stdout or "").strip().splitlines()
+        return ("실행 오류: " + (msg[-1] if msg else "알 수 없음"))[:240]
+
+
 def _syntax(code: str) -> str:
     probe = re.sub(r"\$CUE:[^\s,;)\]}+\-*/]+", "0", code).replace("$USE:", "")
     with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False, encoding="utf-8") as fh:
@@ -225,13 +251,15 @@ def write(sid: str, only: list[int] | None, note: str, jobs: int) -> dict:
     def one(n: int):
         t0 = time.time()
         err, c = "", 0.0
-        for attempt in range(2):
+        for attempt in range(3):
             txt, cc = run_agent(system, _scene_prompt(sb, sid, n, note, err), override_env="FLUMA_SKILL_RUNTIME", timeout=420)
             c += cc
             code = _code(txt).replace("var F = '{forms}';", f"var F = '{forms}';")
             code, fx_err = _fx_check(code)
             code, cue_err = _cue_check(code, str(sb["scenes"][n - 1].get("narration") or ""))
             err = _syntax(code) or fx_err or cue_err
+            if not err:
+                err = _dry_run(code, float(sb["scenes"][n - 1].get("sec") or 3))
             if not err:
                 break
         (sd / f"s{n:02d}.jsx").write_text(code, "utf-8")

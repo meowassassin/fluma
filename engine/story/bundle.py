@@ -97,7 +97,12 @@ def normalize(sb: dict) -> list[str]:
     notes = []
     for _ in range(3):
         changed = False
-        for e in jsonschema.Draft202012Validator(schema).iter_errors(sb):
+        def flat(errs):                                   # anyOf · oneOf 안쪽 오류까지(효과음 sfx 는 anyOf 로 정의돼 겉에는 anyOf 하나만 보인다)
+            for x in errs:
+                yield x
+                if x.context:
+                    yield from flat(x.context)
+        for e in flat(jsonschema.Draft202012Validator(schema).iter_errors(sb)):
             path = list(e.absolute_path)
             if not path:
                 continue
@@ -112,6 +117,12 @@ def normalize(sb: dict) -> list[str]:
                 near = difflib.get_close_matches(val, opts, n=1, cutoff=0.8)   # 철자 · 띄어쓰기 차이만(뜻이 다른 값으로 바꾸지 않는다)
                 if near:
                     parent[key] = near[0]; notes.append(f"{'/'.join(map(str, path))}: '{val}' → '{near[0]}'"); changed = True
+                elif "sfx" in map(str, path) and key == "name" and len(path) >= 3:   # 없는 효과음(감독 단계가 지어낸 이름) — 그 효과음만 뺀다
+                    holder = sb
+                    for k in path[:-2]:
+                        holder = holder[k]
+                    holder.pop(path[-2]); notes.append(f"{'/'.join(map(str, path[:-1]))}: 없는 효과음 '{val}' 뺌"); changed = True
+                    break
         if not changed:
             break
     return notes
