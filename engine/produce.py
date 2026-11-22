@@ -499,19 +499,6 @@ def main() -> int:
         return 0
 
     # 2) 검사 — 실패(L)면 렌더하지 않는다. 사용자만 줄 수 있는 것(L36 녹화 · L38 키)은 입력 요청으로
-    try:                                                 # 앞 단계(감독 · 디자이너)가 넣은 값의 형식 오타 · 없는 효과음을 형식 검사 전에 바로잡는다(뜻은 그대로)
-        sys.path.insert(0, str(ROOT / "engine" / "story"))
-        import copy as _cp
-        import bundle as _bd
-        import sbio as _sbio
-        _base = json.loads(sp.read_text("utf-8")); _mine = _cp.deepcopy(_base)
-        _notes = _bd.normalize(_mine)
-        if _notes:
-            _sbio.save(sp, _base, _mine)
-            print("[제작] 형식 바로잡음: " + " · ".join(_notes[:6]), flush=True)
-            sb = json.loads(sp.read_text("utf-8"))
-    except Exception as e:  # noqa: BLE001
-        print(f"[제작] 형식 바로잡기 생략: {str(e)[:120]}", flush=True)
     r = step("lint", [PY, "engine/checks/lint.py", rel])
     # 음성을 만든 뒤에야 드러나는 대사 문제(실측 길이 L05 · L14, 대사 길이)는 각본가 단계로 한 번 되돌려 고치고 음성을 다시 만든다
     if r.returncode != 0 and not a.no_skills and not a.no_audio and re.search(r"^(L05|L14|L04) |/narration", r.stdout or "", re.M):
@@ -569,20 +556,6 @@ def main() -> int:
         TIMES["ui_warm"] = round(time.time() - t_ui, 1)
     except Exception as e:  # noqa: BLE001
         print(f"[제작] ui 병렬 빌드 생략: {e}", flush=True)
-
-    # 2.7) 뒤에서 받는 실제 자료(위키미디어 사진 · commons.py fetch)가 끝나기를 기다린다 — 빌드가 그 파일을 쓴다(최대 4분)
-    pend_dir = ROOT / "data" / "public" / "archive" / sid
-    t_w = time.time()
-    while list(pend_dir.glob("*.pending")) and time.time() - t_w < 240:
-        if all("error" in (pp.read_text("utf-8") or "") for pp in pend_dir.glob("*.pending")):
-            break
-        time.sleep(2)
-    bad_dl = [pp for pp in pend_dir.glob("*.pending")]
-    if bad_dl:
-        save_times(sid)
-        fail("produce", stage="assets", error="실제 자료를 받지 못함(위키미디어 요청 제한일 수 있음): " + ", ".join(pp.stem for pp in bad_dl[:4]),
-             next="다른 자료로 바꾸거나 commons.py fetch … --wait 로 다시 받는다")
-    TIMES["assets_wait"] = round(time.time() - t_w, 1)
 
     # 2.8) 장면 코드 빌드 검사 — 렌더 없이 프로젝트만 만든다(EffectCraft 스크립트 실행). 장면 코드 실행 오류(색 값 null · 키프레임 있는 속성에 setValue …)를
     #      LLM 검토 · 렌더 전에 잡는다(2026-11-20: 1 · 2편이 렌더에서야 이 오류로 멈춤). 만든 프로젝트는 렌더가 그대로 쓴다(같은 입력이면 다시 만들지 않음)
@@ -704,9 +677,10 @@ def main() -> int:
              next="막음을 모두 고친다. 사용자가 그대로 두라고 한 항목만 콘티 waivers 에 {\"코드:장면\": {\"why\": ..., \"user_said\": 사용자 말 그대로}} 로 적는다(스스로 면제 금지)")
     upload_info = []
     if not a.scenes:                                    # 완성 — 유튜브 제목 · 설명 · 해시태그 · 태그를 마지막에 만든다(engine/publish/metadata.py, 내용이 같으면 건너뜀)
-        # 유튜브 제목 · 설명은 업로드 때만 쓰인다 — 완성을 기다리게 하지 않고 뒤에서 만든다(2026-11-22 속도, 20초). 업로드 단계가 없으면 다시 만든다
-        subprocess.Popen([PY, "engine/publish/metadata.py", rel], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-        upload_info = ["유튜브 제목 · 설명 · 해시태그는 뒤에서 만드는 중(업로드 때 쓰임)"]
+        um = step("metadata", [PY, "engine/publish/metadata.py", rel], timeout=400)
+        bm = block(um.stdout)
+        if um.returncode == 0 and bm.get("title"):
+            upload_info = [f"유튜브 제목: {bm['title'][0]}", f"해시태그: {(bm.get('hashtags') or [''])[0]}"]
     ok("produce", file=b["file"][0], media=media, warn=warns, advise=len(q_adv), upload=upload_info, waived=[f"{qg.line(x)} — 면제: {x['waived']}" for x in q_waived], lint_soft=len(soft), depth=depth, sound=sound,
        time=[f"{k}:{v}" for k, v in TIMES.items()], next="먼저 '초안 · 레퍼런스 나란히'(sheet.png)를 Read 로 보고 director 검사(화면이 바뀌는 리듬 · 피사체 크기 · 글자 크기 · 시선 한 곳)로 레퍼런스와 견준다. "
             "고칠 장면만 있을 때는 전체 produce 를 반복하지 말고 knob.py set + knob.py preview --scene N(또는 produce.py --scenes N --no-audio) 로 확인한 뒤, 마지막에 한 번만 전체 produce")

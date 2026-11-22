@@ -57,22 +57,8 @@ def _understanding(vid: str) -> dict:
             "do_not_copy": cut(u.get("do_not_copy"), 120), "cliches": cut(u.get("cliches"), 160), "recipe": (x.get("recipe") or [])[:5]}
 
 
-def fill(pid: str) -> int:
-    """분석이 끝난 뒤 prepare.json 의 레퍼런스 요약을 채운다(백그라운드에서 불림)"""
-    f = ROOT / "data" / "compositions" / pid / "prepare.json"
-    if not f.exists():
-        return 1
-    d = json.loads(f.read_text("utf-8"))
-    d["references"] = [{**r, **_understanding(r["id"])} for r in d.get("references") or []]
-    d["analysis"] = "done" if all(r.get("summary") for r in d["references"]) else "partial"
-    f.write_text(json.dumps(d, ensure_ascii=False, indent=1), "utf-8")
-    return 0
-
-
 def main() -> int:
     a = sys.argv[1:]
-    if len(a) == 2 and a[1] == "--fill":
-        return fill(a[0])
     pos = [x for i, x in enumerate(a) if not x.startswith("--") and (i == 0 or not a[i - 1].startswith("--"))]
     if len(pos) < 2:
         print(__doc__); return 2
@@ -87,29 +73,18 @@ def main() -> int:
     if not refs:
         refs, how = _refs_from_trends(topic, _arg(a, "--queries"))
     ids = [r["id"] for r in refs]
-    todo = [i for i in ids if not (XRAY / i / "xray.json").exists() or not _understanding(i).get("summary")]
-    if todo:
-        # 2026-11-21 속도: 분석(편당 1~3분, 서버 작업)을 기다리지 않는다 — 서버에 맡기고 바로 돌아온다. 끝나면 이 파일을 다시 채운다(--fill).
-        # 레퍼런스 화풍 카드는 제작 단계(direct.style_card)가 읽으므로 그때는 끝나 있다. 기다려야 하면 --wait
-        if "--wait" in a:
-            _run(["engine/research/analyze_ref.py", *todo, "--wait", "420"], timeout=480)
-        else:
-            subprocess.Popen([PY, "engine/research/analyze_ref.py", *todo, "--wait", "480"], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-            subprocess.Popen(["sh", "-c", f"sleep 20; '{PY}' engine/research/analyze_ref.py {' '.join(todo)} --wait 470 >/dev/null 2>&1; '{PY}' engine/story/prepare.py {pid} --fill"],
-                             cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    if ids:
+        _run(["engine/research/analyze_ref.py", *ids, "--wait", "420"], timeout=480)
     sys.path.insert(0, str(ROOT / "engine" / "gen"))
     import plan
     out = {"id": pid, "topic": topic, "route": route,
            "references": [{"id": r["id"], "title": r.get("title"), "views": r.get("views"), **_understanding(r["id"])} for r in refs],
            "references_from": how, "angles": list(plan.ANGLES), "already_offered": plan.offered()[:15],
            "research_file": f"data/research/{pid}.json", "research_exists": (ROOT / "data" / "research" / f"{pid}.json").exists(),
-           "analysis": "running" if todo and "--wait" not in a else "done",
            "sec": round(time.time() - t0, 1)}
     f = ROOT / "data" / "compositions" / pid / "prepare.json"
     f.parent.mkdir(parents=True, exist_ok=True)
     f.write_text(json.dumps(out, ensure_ascii=False, indent=1), "utf-8")
-    if out["analysis"] == "running":
-        print(f"- 레퍼런스 분석 {len(todo)}편은 서버에서 도는 중(기다리지 않음) — 끝나면 prepare.json 요약이 채워진다. 이미 분석된 것만 아래에 요약")
     for r in out["references"]:
         print(f"- 레퍼런스 {r['id']} · 조회 {r.get('views')} · {r.get('title') or ''}\n  요약: {r.get('summary')}\n  빌릴 것: {r.get('borrow')}\n  베끼지 말 것: {r.get('do_not_copy')}")
     print(f"- 각도: {' · '.join(out['angles'])}\n- 이미 보여 준 선택지(겹치지 않게): {' / '.join(out['already_offered'][:8])}")

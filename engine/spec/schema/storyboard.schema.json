@@ -1875,7 +1875,7 @@
           "maxItems": 6
         },
         "bg": {
-          "description": "장면 바탕 — '#hex' 또는 [위색, 아래색]. 장면 코드 K.scene 의 바탕(engine/story/scenes.py 가 그대로 쓴다). 장소 · 물건 색에서, 이웃 장면과 다르게(화면 AI 티 V01 · V02)",
+          "description": "장면 바탕 — '#hex' 또는 [위색, 아래색]. 장면 코드 K.scene 의 바탕. 장소 · 물건 색에서, 이웃 장면과 다르게(화면 AI 티 V01 · V02)",
           "oneOf": [
             {
               "type": "string"

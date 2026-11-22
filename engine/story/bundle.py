@@ -4,8 +4,7 @@
 2026-11-19 속도(한 편 15분): 콘티 · 장면 파일 · 형태를 따로 쓰고, 검사 → 고침 → 검사를 여러 번 돌아 도구 왕복이 수십 번이었다.
 음성을 만들기 전에 검사를 끝내면 음성 뒤 다시 고칠 일도 준다.
 
-  python3 engine/story/bundle.py apply <묶음.json>      # 저장 → 시청자 검토 → (없는) 장면 코드 동시 작성 → 검사. 막힘만 고쳐 다시 apply
-  (2026-11-22: 순서를 도구가 지킨다 — 장면 코드는 대본이 시청자 검토를 통과한 뒤에만, 대사가 바뀌어 신호 낱말이 어긋난 장면은 자동으로 다시 쓴다)
+  python3 engine/story/bundle.py apply <묶음.json>      # 저장 + 검사 → 막힘(L)만 고쳐 다시 apply
   python3 engine/story/bundle.py check <id>             # 저장된 콘티를 다시 검사만
 묶음 형식:
   {"storyboard": {…콘티 전체…},
@@ -16,10 +15,8 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import subprocess
-import time
 import sys
 from pathlib import Path
 
@@ -85,49 +82,6 @@ def _form_cuts(sid: str) -> list[str]:
     return out
 
 
-def normalize(sb: dict) -> list[str]:
-    """뜻이 바뀌지 않는 형식 오타만 바로잡는다 — 정수 칸의 소수(반올림) · 허용 목록 값의 철자 차이(가장 가까운 값).
-    2026-11-21: 콘티 검사 왕복 5번 중 3번이 이런 것(duration_sec 30.6 · screen '실제 사진')이었다. 문구 길이 같은 내용 오류는 그대로 둔다"""
-    import difflib
-    try:
-        import jsonschema
-        schema = json.loads((ROOT / "engine" / "spec" / "schema" / "storyboard.schema.json").read_text("utf-8"))
-    except Exception:  # noqa: BLE001
-        return []
-    notes = []
-    for _ in range(3):
-        changed = False
-        def flat(errs):                                   # anyOf · oneOf 안쪽 오류까지(효과음 sfx 는 anyOf 로 정의돼 겉에는 anyOf 하나만 보인다)
-            for x in errs:
-                yield x
-                if x.context:
-                    yield from flat(x.context)
-        for e in flat(jsonschema.Draft202012Validator(schema).iter_errors(sb)):
-            path = list(e.absolute_path)
-            if not path:
-                continue
-            parent = sb
-            for k in path[:-1]:
-                parent = parent[k]
-            key, val = path[-1], e.instance
-            if e.validator == "type" and e.validator_value == "integer" and isinstance(val, float):
-                parent[key] = int(round(val)); notes.append(f"{'/'.join(map(str, path))}: {val} → {parent[key]}"); changed = True
-            elif e.validator == "enum" and isinstance(val, str):
-                opts = [o for o in e.validator_value if isinstance(o, str)]
-                near = difflib.get_close_matches(val, opts, n=1, cutoff=0.8)   # 철자 · 띄어쓰기 차이만(뜻이 다른 값으로 바꾸지 않는다)
-                if near:
-                    parent[key] = near[0]; notes.append(f"{'/'.join(map(str, path))}: '{val}' → '{near[0]}'"); changed = True
-                elif "sfx" in map(str, path) and key == "name" and len(path) >= 3:   # 없는 효과음(감독 단계가 지어낸 이름) — 그 효과음만 뺀다
-                    holder = sb
-                    for k in path[:-2]:
-                        holder = holder[k]
-                    holder.pop(path[-2]); notes.append(f"{'/'.join(map(str, path[:-1]))}: 없는 효과음 '{val}' 뺌"); changed = True
-                    break
-        if not changed:
-            break
-    return notes
-
-
 def apply(path: Path) -> str:
     b = json.loads(path.read_text("utf-8"))
     sb = b.get("storyboard")
@@ -153,34 +107,7 @@ def apply(path: Path) -> str:
     sp.parent.mkdir(parents=True, exist_ok=True)
     if sp.exists():
         shutil.copyfile(sp, sp.with_suffix(".json.prev"))
-        try:                                            # 엔진이 이미 채운 칸(미리 고른 음악)은 묶음에 없으면 그대로 둔다
-            prev = json.loads(sp.read_text("utf-8"))
-            if "music" not in sb and (prev.get("music") or {}).get("source") == "auto":
-                sb["music"] = prev["music"]
-            if "voice" not in sb and prev.get("voice"):
-                sb["voice"] = prev["voice"]
-            ps = prev.get("scenes") or []                   # 음성이 정한 장면 길이(sec) — 대사가 그대로인 장면은 유지(뒤에서 돈 대본 준비를 되돌리지 않게)
-            if len(ps) == len(sb.get("scenes") or []):
-                for a_, b_ in zip(ps, sb["scenes"]):
-                    if a_.get("narration") == b_.get("narration") and a_.get("sec") is not None:
-                        b_["sec"] = a_["sec"]
-        except ValueError:
-            pass
-    for note in normalize(sb):
-        print(f"- 형식 바로잡음: {note}")
     sp.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", "utf-8")
-    # 실제 자료(위키미디어 사진)는 지금부터 뒤에서 받는다 — 렌더 때 받으면 요청 제한(429)으로 한 장 65초(2026-11-22 펭귄 시험).
-    # 같은 제목은 한 번만. 제작(produce 2.7)이 빌드 전에 끝나기를 기다린다
-    adir = ROOT / "data" / "public" / "archive" / sid
-    seen = set()
-    for sc in sb.get("scenes") or []:
-        for m in sc.get("materials") or []:
-            if isinstance(m, dict) and m.get("type") == "archive" and m.get("title") and m.get("id"):
-                if (adir / f"{m['id']}.jpg").exists() or (adir / f"{m['id']}.pending").exists() or m["title"] in seen:
-                    continue
-                seen.add(m["title"])
-                subprocess.Popen([sys.executable, "engine/capture/commons.py", "fetch", sid, m["id"], m["title"], "--width", str(int(m.get("width", 1920)))],
-                                 cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     return sid
 
 
@@ -189,42 +116,7 @@ def main() -> int:
     if len(a) < 2 or a[0] not in ("apply", "check"):
         print(__doc__); return 2
     sid = apply(Path(a[1]) if Path(a[1]).is_absolute() else ROOT / a[1]) if a[0] == "apply" else a[1]
-    viewer_block = ""
-    if a[0] == "apply" and "--no-scenes" not in a:     # 기본: 검토 → 장면 코드(예전 --write-scenes 와 같음)                          # 장면 코드가 없는 장면을 장면마다 동시에 쓴다(engine/story/scenes.py) — 콘티 · 형태를 먼저 저장한 뒤
-        # 시청자 이해 검토를 장면 코드보다 먼저 — 대본이 여기서 바뀔 수 있고(각본가), 바뀌면 장면 코드의 $CUE 가 어긋난다.
-        # 2026-11-21: 제작 단계에서야 돌아 '구조를 다시 써라'(108초 + 고치는 왕복)로 10분을 넘겼다. 제작은 대본이 그대로면 건너뛴다(해시)
-        hard0, _ = check(sid)
-        if not hard0:
-            t0 = time.time()
-            vr = subprocess.run([sys.executable, "engine/story/skill_pass.py", "comprehension", f"data/storyboards/{sid}.json"], cwd=ROOT,
-                                capture_output=True, text=True, timeout=900)
-            print(f"- 시청자 이해 검토: {round(time.time() - t0, 1)}초" + (" · 통과" if vr.returncode == 0 else ""))
-            if vr.returncode != 0:
-                viewer_block = next((ln[6:] for ln in vr.stdout.splitlines() if ln.startswith("error=")), "시청자 이해 검토 막힘")
-            else:                                       # 대본 확정 — 음악 · 목소리 · 음성(--prep)을 장면 코드 작성과 동시에 뒤에서(제작은 이걸 기다려 이어 간다)
-                subprocess.run([sys.executable, "engine/produce.py", f"data/storyboards/{sid}.json", "--prep", "--bg"], cwd=ROOT,
-                               capture_output=True, text=True, timeout=60)
-                print("- 대본 준비(음악 · 목소리 · 음성)를 뒤에서 시작 — 장면 코드와 동시에")
-        sbx = json.loads((ROOT / "data" / "storyboards" / f"{sid}.json").read_text("utf-8"))
-        sd = ROOT / "data" / "compositions" / sid / "scenes"
-        need = [i for i in range(1, len(sbx.get("scenes") or []) + 1) if not (sd / f"s{i:02d}.jsx").exists()]
-        if need and not viewer_block and not hard0:
-            sys.path.insert(0, str(ROOT / "engine" / "story"))
-            import scenes as _sc
-            t0 = time.time()
-            r = _sc.write(sid, need, "", 8)
-            print(f"- 장면 코드 {len(need)}개를 동시에 씀: {round(time.time() - t0, 1)}초" + "".join(f" · 장면 {n} 문법 오류: {e}" for n, (_, e) in r["times"].items() if e))
     hard, soft = check(sid)
-    cue_bad = sorted({int(m) for x in hard if x.startswith("L73") for m in re.findall(r"장면(\d+)", x)})
-    if cue_bad and not viewer_block:                   # 대사가 바뀌어 장면 코드의 신호 낱말이 어긋났다 — 그 장면만 자동으로 다시 쓴다(왕복 없이)
-        sys.path.insert(0, str(ROOT / "engine" / "story"))
-        import scenes as _sc
-        t0 = time.time()
-        _sc.write(sid, cue_bad, "대사가 바뀌었다 — $CUE 는 지금 대사의 어절로", 8)
-        print(f"- 대사가 바뀐 장면 {', '.join(map(str, cue_bad))} 의 장면 코드를 다시 씀: {round(time.time() - t0, 1)}초")
-        hard, soft = check(sid)
-    if viewer_block:
-        hard.insert(0, f"V10 시청자 이해 검토: {viewer_block} — 대본 · 장면 구조를 고친 뒤 다시 apply(장면 코드는 통과한 뒤에 쓴다)")
     for x in hard:
         print(f"✗ {x}")
     for x in soft[:12]:
@@ -232,8 +124,6 @@ def main() -> int:
     rel = f"data/storyboards/{sid}.json"
     if hard:
         fail("bundle", stage="check", error=f"막힘 {len(hard)}건 — 전부 한 번에 고친다(묶음을 Write 로 통째로 다시 쓰거나 Edit 를 한 응답에 나란히) → 다시 apply 한 번", file=rel, hard=str(len(hard)), soft=str(len(soft)))
-    # 검사 통과 — 음악 고르기(곡 검색 · 박자 측정, 2~3분)를 미리 백그라운드로. 제작 단계는 이미 고른 곡을 그대로 쓴다(music_pick auto 가 건너뜀)
-    subprocess.Popen([sys.executable, "engine/craft/music_pick.py", "auto", rel], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     ok("bundle", file=rel, soft=str(len(soft)), next=f"python3 engine/produce.py {rel} --prep --bg → 재료 · 장면 확인 → python3 engine/produce.py {rel}")
     return 0
 
