@@ -149,6 +149,18 @@ def apply(path: Path) -> str:
     for note in normalize(sb):
         print(f"- 형식 바로잡음: {note}")
     sp.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    # 실제 자료(위키미디어 사진)는 지금부터 뒤에서 받는다 — 렌더 때 받으면 요청 제한(429)으로 한 장 65초(2026-11-22 펭귄 시험).
+    # 같은 제목은 한 번만. 제작(produce 2.7)이 빌드 전에 끝나기를 기다린다
+    adir = ROOT / "data" / "public" / "archive" / sid
+    seen = set()
+    for sc in sb.get("scenes") or []:
+        for m in sc.get("materials") or []:
+            if isinstance(m, dict) and m.get("type") == "archive" and m.get("title") and m.get("id"):
+                if (adir / f"{m['id']}.jpg").exists() or (adir / f"{m['id']}.pending").exists() or m["title"] in seen:
+                    continue
+                seen.add(m["title"])
+                subprocess.Popen([sys.executable, "engine/capture/commons.py", "fetch", sid, m["id"], m["title"], "--width", str(int(m.get("width", 1920)))],
+                                 cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     return sid
 
 

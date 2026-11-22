@@ -557,6 +557,20 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         print(f"[제작] ui 병렬 빌드 생략: {e}", flush=True)
 
+    # 2.7) 뒤에서 받는 실제 자료(위키미디어 사진 · commons.py fetch)가 끝나기를 기다린다 — 빌드가 그 파일을 쓴다(최대 4분)
+    pend_dir = ROOT / "data" / "public" / "archive" / sid
+    t_w = time.time()
+    while list(pend_dir.glob("*.pending")) and time.time() - t_w < 240:
+        if all("error" in (pp.read_text("utf-8") or "") for pp in pend_dir.glob("*.pending")):
+            break
+        time.sleep(2)
+    bad_dl = [pp for pp in pend_dir.glob("*.pending")]
+    if bad_dl:
+        save_times(sid)
+        fail("produce", stage="assets", error="실제 자료를 받지 못함(위키미디어 요청 제한일 수 있음): " + ", ".join(pp.stem for pp in bad_dl[:4]),
+             next="다른 자료로 바꾸거나 commons.py fetch … --wait 로 다시 받는다")
+    TIMES["assets_wait"] = round(time.time() - t_w, 1)
+
     # 2.8) 장면 코드 빌드 검사 — 렌더 없이 프로젝트만 만든다(EffectCraft 스크립트 실행). 장면 코드 실행 오류(색 값 null · 키프레임 있는 속성에 setValue …)를
     #      LLM 검토 · 렌더 전에 잡는다(2026-11-20: 1 · 2편이 렌더에서야 이 오류로 멈춤). 만든 프로젝트는 렌더가 그대로 쓴다(같은 입력이면 다시 만들지 않음)
     if (sb.get("engine") or "craft") == "craft" and os.environ.get("FLUMA_BUILD_CHECK", "1") != "0":

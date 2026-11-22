@@ -84,13 +84,35 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     a = sub.add_parser("search"); a.add_argument("query"); a.add_argument("--n", type=int, default=10)
     b = sub.add_parser("fetch"); b.add_argument("sid"); b.add_argument("name"); b.add_argument("title"); b.add_argument("--width", type=int, default=1920)
+    b.add_argument("--wait", action="store_true", help="받을 때까지 기다린다(기본은 뒤에서 받고 바로 돌아옴)"); b.add_argument("--done")
     x = ap.parse_args()
+    if x.cmd == "fetch" and x.done:                     # 뒤에서 받는 쪽: 끝나면(성공 · 실패) .pending 을 지우거나 오류를 남긴다
+        f = ROOT / "data" / "public" / "archive" / x.sid / f"{x.name}.jpg"
+        try:
+            m = fetch(x.title, f, x.width)
+            f.with_suffix(".json").write_text(json.dumps(m, ensure_ascii=False), "utf-8")
+            Path(x.done).unlink(missing_ok=True)
+        except Exception as e:  # noqa: BLE001
+            Path(x.done).write_text(json.dumps({"title": x.title, "error": str(e)[:300]}, ensure_ascii=False), "utf-8")
+        return 0
     if x.cmd == "search":
         for r in search(x.query, x.n):
             print(json.dumps(r, ensure_ascii=False))
         return 0
     f = ROOT / "data" / "public" / "archive" / x.sid / f"{x.name}.jpg"
-    print(json.dumps({**fetch(x.title, f, x.width), "file": str(f.relative_to(ROOT))}, ensure_ascii=False))
+    if x.wait or f.exists():
+        print(json.dumps({**fetch(x.title, f, x.width), "file": str(f.relative_to(ROOT))}, ensure_ascii=False))
+        return 0
+    # 2026-11-22 속도: 위키미디어 요청 제한(429)으로 한 장에 65초씩 에이전트가 기다렸다(펭귄 시험 3장 3.3분). 받기는 뒤에서 —
+    # 파일 경로를 바로 돌려주고, 제작(produce)이 빌드 직전에 끝나기를 기다린다(.pending 표시)
+    f.parent.mkdir(parents=True, exist_ok=True)
+    pend = f.with_suffix(".pending")
+    pend.write_text(json.dumps({"title": x.title, "width": x.width, "at": time.time()}), "utf-8")
+    import subprocess
+    subprocess.Popen([sys.executable, __file__, "fetch", x.sid, x.name, x.title, "--width", str(x.width), "--wait", "--done", str(pend)], cwd=ROOT,
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    print(json.dumps({"title": x.title, "file": str(f.relative_to(ROOT)), "status": "downloading",
+                      "note": "뒤에서 받는 중 — 콘티에는 이 file 경로를 바로 쓴다. 제작이 빌드 전에 기다린다. 그림 확인은 search 결과의 thumb"}, ensure_ascii=False))
     return 0
 
 
