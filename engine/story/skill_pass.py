@@ -1101,6 +1101,7 @@ def main() -> int:
     ap.add_argument("which", choices=["all", "pipeline", "comprehension", "visual", "viewer", "writer", "director", "designer", "review", "refine", "refine_hook", "status"])
     ap.add_argument("storyboard")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--write", action="store_true", help="comprehension: 시청자 → 각본가 → 시청자(produce 의 처음 쓰기와 같은 순서) — bundle.py script 가 쓴다")
     a = ap.parse_args()
     sbp = Path(a.storyboard); sbp = sbp if sbp.is_absolute() else ROOT / sbp
     sid = json.loads(sbp.read_text("utf-8"))["id"]
@@ -1137,7 +1138,7 @@ def main() -> int:
             ok("skill_pass", passes=json.dumps(out, ensure_ascii=False))
             return 0
         if a.which == "comprehension":
-            out = comprehension_loop(sbp, a.force, rounds=1)
+            out = comprehension_loop(sbp, a.force, rounds=1, always_write=a.write)
             for r in out:
                 print(f"[스킬 단계] {json.dumps(r, ensure_ascii=False)}", flush=True)
             _viewer_gate(json.loads(sbp.read_text("utf-8")))

@@ -4,8 +4,15 @@
 2026-11-19 속도(한 편 15분): 콘티 · 장면 파일 · 형태를 따로 쓰고, 검사 → 고침 → 검사를 여러 번 돌아 도구 왕복이 수십 번이었다.
 음성을 만들기 전에 검사를 끝내면 음성 뒤 다시 고칠 일도 준다.
 
-  python3 engine/story/bundle.py apply <묶음.json>      # 저장 + 검사 → 막힘(L)만 고쳐 다시 apply
+  python3 engine/story/bundle.py script <대본.json>     # ① 대본만(제목 · 장면별 역할 · 대사 · 화면 글자 · 화면 한 줄) — 길이 검사 + 시청자 · 각본가 검토
+  python3 engine/story/bundle.py apply <묶음.json>      # ② 통과한 대본 그대로 콘티 · 장면 코드 · 형태 → 저장 + 검사 → 막힘(L)만 고쳐 다시 apply
   python3 engine/story/bundle.py check <id>             # 저장된 콘티를 다시 검사만
+2026-11-22 대본 먼저: 시청자 검토가 대본을 돌려보내면 콘티 · 장면 코드 · 형태까지 다시 썼다(한 번 80초~수 분). 대본을 먼저 통과시키면
+되돌아갈 때 대사만 고친다. 검토 기준 · 횟수는 produce 와 같다(통과 기록 approved.json 을 produce 가 그대로 쓴다).
+대본 형식:
+  {"id", "title", "format"?, "audience"?, "allow_long"?, "voice"?, "concepts_order"?,
+   "scenes": [{"role": "hook|…|outro", "narration": "말", "caption": "화면 글자", "screen": "화면에 보일 것 한 줄"}],
+   "research": {"facts": [{"claim", "value", "source"}]}}                        # 선택 — 사실은 여기서 저장(각본가가 이것만 쓴다)
 묶음 형식:
   {"storyboard": {…콘티 전체…},
    "files": {"scenes/s01.jsx": "장면 코드", "forms/duck.json": {…형태…}},       # data/compositions/<id>/ 아래
@@ -96,13 +103,15 @@ def apply(path: Path) -> str:
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(body if isinstance(body, str) else json.dumps(body, ensure_ascii=False, indent=1), "utf-8")
     if isinstance(b.get("research"), dict):
-        rf = ROOT / "data" / "research" / f"{sid}.json"
-        rf.parent.mkdir(parents=True, exist_ok=True)
-        rf.write_text(json.dumps(b["research"], ensure_ascii=False, indent=1), "utf-8")
-        if (ROOT / "data" / "shotplans" / f"{sid}.json").exists():
-            subprocess.run([sys.executable, "engine/gen/plan.py", "research", sid], cwd=ROOT, capture_output=True, text=True, timeout=60)
-        srcs = [f.get("source") for f in b["research"].get("facts") or [] if str(f.get("source") or "").startswith("http")]
-        sb.setdefault("sources", list(dict.fromkeys((sb.get("sources") or []) + srcs)))
+        _save_research(sid, b["research"], sb)
+    try:                                                # 맨 위 script(' / ' 로 장면 경계)를 장면 나레이션에 나눠 넣는다 — 대본 확정 대조(S01)가 장면 칸을 본다
+        sys.path.insert(0, str(ROOT / "engine" / "story"))
+        import script as _script
+        _script.apply(sb)
+    except ValueError as e:
+        fail("bundle", stage="script", error=str(e))
+    except Exception:  # noqa: BLE001
+        pass
     sp = ROOT / "data" / "storyboards" / f"{sid}.json"
     sp.parent.mkdir(parents=True, exist_ok=True)
     if sp.exists():
@@ -111,12 +120,109 @@ def apply(path: Path) -> str:
     return sid
 
 
+def _save_research(sid: str, research: dict, sb: dict) -> None:
+    rf = ROOT / "data" / "research" / f"{sid}.json"
+    rf.parent.mkdir(parents=True, exist_ok=True)
+    rf.write_text(json.dumps(research, ensure_ascii=False, indent=1), "utf-8")
+    if (ROOT / "data" / "shotplans" / f"{sid}.json").exists():
+        subprocess.run([sys.executable, "engine/gen/plan.py", "research", sid], cwd=ROOT, capture_output=True, text=True, timeout=60)
+    srcs = [f.get("source") for f in research.get("facts") or [] if str(f.get("source") or "").startswith("http")]
+    sb["sources"] = list(dict.fromkeys((sb.get("sources") or []) + srcs))
+
+
+def script_problems(sb: dict) -> list[str]:
+    """대사만으로 볼 수 있는 막힘 — 장면 대사 길이 · 전체 길이(글자 수 어림) · 장면 수 · 훅 길이 · 끝이 훅으로 돌아오는지(L08)"""
+    import lint
+    sys.path.insert(0, str(ROOT / "engine" / "story"))
+    import skill_pass as sp
+    out = []
+    scenes = sb.get("scenes") or []
+    for i, x in enumerate(scenes, 1):
+        n = len(str(x.get("narration") or ""))
+        if n > sp.NARRATION_MAX:
+            out.append(f"L01 장면{i} 대사 {n}자 > {sp.NARRATION_MAX}자")
+        if len(str(x.get("caption") or "").replace("\n", "")) > 28:
+            out.append(f"L01 장면{i} 화면 글자 28자 넘음")
+    out += [f"{c} {m}" for c, m in lint.scope_problems(sb, estimate=True)]
+    cps = lint.voice_cps(sb)
+    hook = next((i for i, x in enumerate(scenes) if x.get("role") == "hook"), None)
+    if hook is not None:
+        hsec = len(str(scenes[hook].get("narration") or "").replace(" ", "")) / cps
+        if hsec > lint.LIM["hook_sec_max"] + 0.5:
+            out.append(f"L05 장면{hook + 1} 훅 대사 약 {hsec:.1f}초 > {lint.LIM['hook_sec_max']}초")
+    outro = next((x for x in scenes if x.get("role") in ("outro", "cta")), None)
+    if hook is not None and outro is not None:
+        hk = lint._keywords(f"{scenes[hook].get('caption', '')} {scenes[hook].get('narration', '')}")
+        if not hk & lint._keywords(f"{outro.get('caption', '')} {outro.get('narration', '')}"):
+            out.append("L08 마지막 장면이 훅의 핵심어를 다시 말하지 않음")
+    return out
+
+
+def script(path: Path) -> int:
+    """① 대본 단계 — 길이 검사(LLM 없음) → 시청자 → 각본가 → 시청자(produce 의 이해 관문과 같은 순서 · 횟수). 통과하면 확정 대본을 찍는다"""
+    s = json.loads(path.read_text("utf-8"))
+    s = s.get("storyboard") if isinstance(s.get("storyboard"), dict) else s
+    sid = s.get("id")
+    if not sid or not s.get("scenes"):
+        fail("bundle", stage="script", error="id 와 scenes(장면별 role · narration · caption · screen)가 필요합니다")
+    sys.path.insert(0, str(ROOT / "engine" / "story"))
+    sb = {k: v for k, v in s.items() if k not in ("research", "scenes")}
+    sb.setdefault("version", 1)
+    if isinstance(s.get("research"), dict):
+        _save_research(sid, s["research"], sb)
+    if isinstance(s.get("script"), str) and s["script"].strip():   # 대본을 한 덩어리(' / ')로 썼으면 장면에 나눈다
+        import script as _script
+        ps = _script.pieces(s["script"])
+        if len(ps) != len(s["scenes"]):
+            fail("bundle", stage="script", error=f"script 조각 {len(ps)}개 ≠ 장면 {len(s['scenes'])}개")
+        for x, p_ in zip(s["scenes"], ps):
+            x["narration"] = p_
+        sb.pop("script", None)
+    sb["scenes"] = [{"role": x.get("role"), "narration": x.get("narration") or "", "caption": x.get("caption") or "",
+                     "materials": [{"type": "note", "what": x["screen"]}] if x.get("screen") else []} for x in s["scenes"]]
+    probs = script_problems(sb)
+    if probs:
+        for x in probs:
+            print(f"✗ {x}")
+        fail("bundle", stage="script", error=f"대본 막힘 {len(probs)}건 — 대본만 고쳐 다시 script", hard=str(len(probs)))
+    sbp = ROOT / "data" / "compositions" / sid / "script.sb.json"
+    sbp.parent.mkdir(parents=True, exist_ok=True)
+    sbp.write_text(json.dumps(sb, ensure_ascii=False, indent=1), "utf-8")
+    r = subprocess.run([sys.executable, "engine/story/skill_pass.py", "comprehension", str(sbp), "--write"], cwd=ROOT, capture_output=True, text=True, timeout=1500)
+    err = next((ln[6:] for ln in r.stdout.splitlines() if ln.startswith("error=")), "")
+    if r.returncode != 0:
+        cur = json.loads(sbp.read_text("utf-8"))        # 각본가가 이미 고친 대사 — 여기서부터 고친다(처음 대본으로 되돌리지 않게)
+        print("지금 대본(각본가가 고친 것 — 이걸 고쳐 다시 script):")
+        print(f"- 제목: {cur.get('title')}")
+        for i, x in enumerate(cur["scenes"], 1):
+            print(f"- 장면{i} [{x.get('role')}] 말: {x.get('narration')} | 화면 글자: {x.get('caption')}")
+        fail("bundle", stage="script", error=(err or "시청자 검토 막힘") + " — 대본만 고쳐 다시 script(콘티 · 장면은 아직 쓰지 않는다)")
+    done = json.loads(sbp.read_text("utf-8"))
+    probs = script_problems(done)                       # 각본가가 고친 뒤에도 길이 검사 통과인지
+    if probs:
+        fail("bundle", stage="script", error="각본가가 고친 대본이 길이 검사에 걸림: " + " · ".join(probs) + " — 대본만 줄여 다시 script")
+    print("확정 대본(콘티에 글자 그대로 옮긴다 — 바꾸면 검토를 다시 받는다):")
+    print(f"- 제목: {done.get('title')}")
+    for i, x in enumerate(done["scenes"], 1):
+        print(f"- 장면{i} [{x.get('role')}] 말: {x.get('narration')} | 화면 글자: {x.get('caption')}")
+    ok("bundle", stage="script", file=str(sbp.relative_to(ROOT)), next="이 대본 그대로 콘티 · 형태 · 장면 코드를 묶음으로 써서 bundle.py apply 한 번")
+    return 0
+
+
 def main() -> int:
     a = sys.argv[1:]
-    if len(a) < 2 or a[0] not in ("apply", "check"):
+    if len(a) < 2 or a[0] not in ("apply", "check", "script"):
         print(__doc__); return 2
+    if a[0] == "script":
+        return script(Path(a[1]) if Path(a[1]).is_absolute() else ROOT / a[1])
     sid = apply(Path(a[1]) if Path(a[1]).is_absolute() else ROOT / a[1]) if a[0] == "apply" else a[1]
     hard, soft = check(sid)
+    if a[0] == "apply":
+        sys.path.insert(0, str(ROOT / "engine" / "story"))
+        import skill_pass as _sp
+        sbp = ROOT / "data" / "storyboards" / f"{sid}.json"
+        if not _sp.is_approved(sbp):                    # 대본이 검토받은 것과 다르다(또는 검토 전) — 화면을 다 쓴 뒤 되돌아가지 않게
+            hard.insert(0, "S01 대사 · 제목이 검토를 통과한 대본과 다름(또는 검토 전) — bundle.py script 로 대본부터 통과시키고, 확정 대본을 글자 그대로 콘티에 옮긴다")
     for x in hard:
         print(f"✗ {x}")
     for x in soft[:12]:
