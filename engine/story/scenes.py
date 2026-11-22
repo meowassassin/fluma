@@ -204,6 +204,14 @@ def _syntax(code: str) -> str:
 def write(sid: str, only: list[int] | None, note: str, jobs: int) -> dict:
     from agent_cli import run_agent
     sp = ROOT / "data" / "storyboards" / f"{sid}.json"
+    sys.path.insert(0, str(ROOT / "engine"))
+    from story.skill_pass import is_approved
+    if not is_approved(sp):                               # 장면 코드는 대본이 시청자 검토를 통과한 뒤에만(대사가 바뀌면 $CUE 가 어긋난다)
+        vr = subprocess.run([sys.executable, "engine/story/skill_pass.py", "comprehension", str(sp.relative_to(ROOT))], cwd=ROOT,
+                            capture_output=True, text=True, timeout=900)
+        if vr.returncode != 0:
+            raise RuntimeError("시청자 이해 검토가 막음 — 대본부터 고친다(장면 코드는 통과한 뒤에): "
+                               + next((ln[6:] for ln in vr.stdout.splitlines() if ln.startswith("error=")), "")[:300])
     sb = json.loads(sp.read_text("utf-8"))
     import copy
     base = copy.deepcopy(sb)                                # 바뀐 칸만 합쳐 저장한다 — 뒤에서 도는 대본 준비(음성 · 음악)가 같은 파일을 고친다

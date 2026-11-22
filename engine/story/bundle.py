@@ -4,7 +4,8 @@
 2026-11-19 속도(한 편 15분): 콘티 · 장면 파일 · 형태를 따로 쓰고, 검사 → 고침 → 검사를 여러 번 돌아 도구 왕복이 수십 번이었다.
 음성을 만들기 전에 검사를 끝내면 음성 뒤 다시 고칠 일도 준다.
 
-  python3 engine/story/bundle.py apply <묶음.json>      # 저장 + 검사 → 막힘(L)만 고쳐 다시 apply
+  python3 engine/story/bundle.py apply <묶음.json>      # 저장 → 시청자 검토 → (없는) 장면 코드 동시 작성 → 검사. 막힘만 고쳐 다시 apply
+  (2026-11-22: 순서를 도구가 지킨다 — 장면 코드는 대본이 시청자 검토를 통과한 뒤에만, 대사가 바뀌어 신호 낱말이 어긋난 장면은 자동으로 다시 쓴다)
   python3 engine/story/bundle.py check <id>             # 저장된 콘티를 다시 검사만
 묶음 형식:
   {"storyboard": {…콘티 전체…},
@@ -15,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import time
@@ -177,7 +179,7 @@ def main() -> int:
         print(__doc__); return 2
     sid = apply(Path(a[1]) if Path(a[1]).is_absolute() else ROOT / a[1]) if a[0] == "apply" else a[1]
     viewer_block = ""
-    if "--write-scenes" in a:                          # 장면 코드가 없는 장면을 장면마다 동시에 쓴다(engine/story/scenes.py) — 콘티 · 형태를 먼저 저장한 뒤
+    if a[0] == "apply" and "--no-scenes" not in a:     # 기본: 검토 → 장면 코드(예전 --write-scenes 와 같음)                          # 장면 코드가 없는 장면을 장면마다 동시에 쓴다(engine/story/scenes.py) — 콘티 · 형태를 먼저 저장한 뒤
         # 시청자 이해 검토를 장면 코드보다 먼저 — 대본이 여기서 바뀔 수 있고(각본가), 바뀌면 장면 코드의 $CUE 가 어긋난다.
         # 2026-11-21: 제작 단계에서야 돌아 '구조를 다시 써라'(108초 + 고치는 왕복)로 10분을 넘겼다. 제작은 대본이 그대로면 건너뛴다(해시)
         hard0, _ = check(sid)
@@ -202,6 +204,14 @@ def main() -> int:
             r = _sc.write(sid, need, "", 8)
             print(f"- 장면 코드 {len(need)}개를 동시에 씀: {round(time.time() - t0, 1)}초" + "".join(f" · 장면 {n} 문법 오류: {e}" for n, (_, e) in r["times"].items() if e))
     hard, soft = check(sid)
+    cue_bad = sorted({int(m) for x in hard if x.startswith("L73") for m in re.findall(r"장면(\d+)", x)})
+    if cue_bad and not viewer_block:                   # 대사가 바뀌어 장면 코드의 신호 낱말이 어긋났다 — 그 장면만 자동으로 다시 쓴다(왕복 없이)
+        sys.path.insert(0, str(ROOT / "engine" / "story"))
+        import scenes as _sc
+        t0 = time.time()
+        _sc.write(sid, cue_bad, "대사가 바뀌었다 — $CUE 는 지금 대사의 어절로", 8)
+        print(f"- 대사가 바뀐 장면 {', '.join(map(str, cue_bad))} 의 장면 코드를 다시 씀: {round(time.time() - t0, 1)}초")
+        hard, soft = check(sid)
     if viewer_block:
         hard.insert(0, f"V10 시청자 이해 검토: {viewer_block} — 대본 · 장면 구조를 고친 뒤 다시 apply(장면 코드는 통과한 뒤에 쓴다)")
     for x in hard:
