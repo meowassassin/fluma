@@ -205,6 +205,8 @@ def write(sid: str, only: list[int] | None, note: str, jobs: int) -> dict:
     from agent_cli import run_agent
     sp = ROOT / "data" / "storyboards" / f"{sid}.json"
     sb = json.loads(sp.read_text("utf-8"))
+    import copy
+    base = copy.deepcopy(sb)                                # 바뀐 칸만 합쳐 저장한다 — 뒤에서 도는 대본 준비(음성 · 음악)가 같은 파일을 고친다
     forms = str(ROOT / "data" / "compositions" / sid / "forms") + "/"
     system = GUIDE.format(api=kit_api(), forms=forms)
     todo = only or list(range(1, len(sb.get("scenes") or []) + 1))
@@ -250,7 +252,9 @@ def write(sid: str, only: list[int] | None, note: str, jobs: int) -> dict:
                                                    "steps": [{"id": "script.run", "params": {"name": f"s{n:02d}", "code": ref}}]})
             changed = True
     if changed:
-        sp.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", "utf-8")
+        sys.path.insert(0, str(ROOT / "engine" / "story"))
+        import sbio
+        sbio.save(sp, base, sb)
     return {"times": times, "cost": round(cost, 3)}
 
 

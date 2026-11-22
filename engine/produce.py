@@ -691,10 +691,9 @@ def main() -> int:
              next="막음을 모두 고친다. 사용자가 그대로 두라고 한 항목만 콘티 waivers 에 {\"코드:장면\": {\"why\": ..., \"user_said\": 사용자 말 그대로}} 로 적는다(스스로 면제 금지)")
     upload_info = []
     if not a.scenes:                                    # 완성 — 유튜브 제목 · 설명 · 해시태그 · 태그를 마지막에 만든다(engine/publish/metadata.py, 내용이 같으면 건너뜀)
-        um = step("metadata", [PY, "engine/publish/metadata.py", rel], timeout=400)
-        bm = block(um.stdout)
-        if um.returncode == 0 and bm.get("title"):
-            upload_info = [f"유튜브 제목: {bm['title'][0]}", f"해시태그: {(bm.get('hashtags') or [''])[0]}"]
+        # 유튜브 제목 · 설명은 업로드 때만 쓰인다 — 완성을 기다리게 하지 않고 뒤에서 만든다(2026-11-22 속도, 20초). 업로드 단계가 없으면 다시 만든다
+        subprocess.Popen([PY, "engine/publish/metadata.py", rel], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        upload_info = ["유튜브 제목 · 설명 · 해시태그는 뒤에서 만드는 중(업로드 때 쓰임)"]
     ok("produce", file=b["file"][0], media=media, warn=warns, advise=len(q_adv), upload=upload_info, waived=[f"{qg.line(x)} — 면제: {x['waived']}" for x in q_waived], lint_soft=len(soft), depth=depth, sound=sound,
        time=[f"{k}:{v}" for k, v in TIMES.items()], next="먼저 '초안 · 레퍼런스 나란히'(sheet.png)를 Read 로 보고 director 검사(화면이 바뀌는 리듬 · 피사체 크기 · 글자 크기 · 시선 한 곳)로 레퍼런스와 견준다. "
             "고칠 장면만 있을 때는 전체 produce 를 반복하지 말고 knob.py set + knob.py preview --scene N(또는 produce.py --scenes N --no-audio) 로 확인한 뒤, 마지막에 한 번만 전체 produce")

@@ -144,6 +144,13 @@ def apply(path: Path) -> str:
             prev = json.loads(sp.read_text("utf-8"))
             if "music" not in sb and (prev.get("music") or {}).get("source") == "auto":
                 sb["music"] = prev["music"]
+            if "voice" not in sb and prev.get("voice"):
+                sb["voice"] = prev["voice"]
+            ps = prev.get("scenes") or []                   # 음성이 정한 장면 길이(sec) — 대사가 그대로인 장면은 유지(뒤에서 돈 대본 준비를 되돌리지 않게)
+            if len(ps) == len(sb.get("scenes") or []):
+                for a_, b_ in zip(ps, sb["scenes"]):
+                    if a_.get("narration") == b_.get("narration") and a_.get("sec") is not None:
+                        b_["sec"] = a_["sec"]
         except ValueError:
             pass
     for note in normalize(sb):
@@ -181,6 +188,10 @@ def main() -> int:
             print(f"- 시청자 이해 검토: {round(time.time() - t0, 1)}초" + (" · 통과" if vr.returncode == 0 else ""))
             if vr.returncode != 0:
                 viewer_block = next((ln[6:] for ln in vr.stdout.splitlines() if ln.startswith("error=")), "시청자 이해 검토 막힘")
+            else:                                       # 대본 확정 — 음악 · 목소리 · 음성(--prep)을 장면 코드 작성과 동시에 뒤에서(제작은 이걸 기다려 이어 간다)
+                subprocess.run([sys.executable, "engine/produce.py", f"data/storyboards/{sid}.json", "--prep", "--bg"], cwd=ROOT,
+                               capture_output=True, text=True, timeout=60)
+                print("- 대본 준비(음악 · 목소리 · 음성)를 뒤에서 시작 — 장면 코드와 동시에")
         sbx = json.loads((ROOT / "data" / "storyboards" / f"{sid}.json").read_text("utf-8"))
         sd = ROOT / "data" / "compositions" / sid / "scenes"
         need = [i for i in range(1, len(sbx.get("scenes") or []) + 1) if not (sd / f"s{i:02d}.jsx").exists()]
