@@ -113,6 +113,7 @@ const RUN_RULES = `## 명령 실행 · 결과
 - \`produce.py\` 는 그대로 부른다 — \`timeout\` · \`&\` · \`nohup\` 으로 감싸지 않는다. 스스로 뒤에서 돌고 최대 8분 기다린 뒤 결과 블록을 넘긴다. 종료 11(\`FLUMA_RUNNING\`)이면 **같은 명령을 그대로 다시** 실행한다(이어서 기다릴 뿐 처음부터 다시 하지 않는다)
 - Antigravity(\`run_command\`) 환경에서 외부 프로세스·네트워크·브라우저를 쓰는 엔진 명령(\`produce.py\`, \`trends.py\`, \`analyze_ref.py\`, \`ref_image.py\`, \`render.py\`)을 실행할 때는 처음부터 \`BypassSandbox: true\`와 \`WaitMsBeforeAsync: 10000\`으로 실행한다(표준 샌드박스로 먼저 실행해 실패한 뒤 재실행하지 않는다)
 - 기다리는 동안 sleep · ls · tail · ps 로 되묻지(폴링) 않는다
+- Bash 한 번에 명령 **하나**, 저장소 맨 위에서 상대 경로로(\`python3 engine/…\`). \`cd … &&\` · \`;\` · \`|\` 로 잇거나 sed · cat 을 쓰면 권한에서 막혀 호출만 버린다(파일 내용은 Read, 고치기는 Edit)
 - 끝나면 출력 맨 끝 블록만 읽는다:
   - 종료 0 \`FLUMA_RESULT\` — file · media 등. media= 줄은 그대로 \`\`\`media 블록에 붙여 보여 준다. 성공한 뒤 로그 전체를 다시 읽지 않는다
   - 종료 10 \`FLUMA_NEEDS_INPUT\` — needs 를 한 번에 묶어 사용자에게 **한 번만** 묻는다(how 대로 안내, 키는 채팅에 붙이지 말고 설정 화면에)
@@ -593,9 +594,13 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         "--append-system-prompt", sys,
         // 이 컴퓨터 사용자의 개인 MCP 연결 · 플러그인 · 개인 설정을 물려받지 않는다(2026-11-19 실측: 호출마다 약 1.7만 토큰 — Notion · Gamma 같은 연결과 플러그인 스킬 목록).
         // 쓰는 MCP 는 아래 --mcp-config(사용자가 Fluma 에 붙인 서버 + 켠 Craft 앱)뿐, 설정은 이 저장소(.claude/settings*.json)만
-        "--strict-mcp-config", "--setting-sources", "project"];
+        "--strict-mcp-config", "--setting-sources", "project",
+        // 2026-11-24 토큰 감사: 호출마다 기본 문맥 42~53K 를 다시 읽는다. 안 쓰는 기본 도구(Workflow · Agent · ListAgents · ScheduleWakeup · ReportFindings …,
+        // 약 5.6K)와 내장 스킬 목록(약 5K, Skill 도구 사용 0번 — 스킬은 Read 로 연다)을 뺀다. 쓰는 도구만 남긴다
+        "--tools", "Read,Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch,TodoWrite", "--disable-slash-commands"];
       // 사용자가 설정에서 켠 MCP 서버: 그 서버의 도구를 모두 허용(mcp__<이름>)
-      const mcp = mcpRunConfig(createCrafts(ROOT).mcpServers());   // 사용자 MCP + 설치된 Craft 앱(벡터 · 모션 · 이미지 …)
+      // 2026-11-24: 세션 39개에서 mcp__* 호출 0번(Craft 는 CLI crafts.py run 으로 쓴다) — 다듬기(refine) 스킬일 때만 붙인다. 서버 4개를 매 턴 띄우는 시간도 준다
+      const mcp = (skill === "refine" || process.env.FLUMA_AGENT_MCP === "1") ? mcpRunConfig(createCrafts(ROOT).mcpServers()) : null;
       if (mcp) {
         args.push("--mcp-config", mcp.file); args.splice(args.indexOf("--disallowedTools"), 0, ...mcp.tools);
         // Craft 앱의 '전체 명령 목록' 도구는 막는다 — 결과가 크고, 한 턴에 10번씩 다시 불렀다(2026-11-17 sjedqou).
