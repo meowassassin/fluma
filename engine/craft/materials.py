@@ -592,6 +592,39 @@ def _files_in(o) -> list[Path]:
     return out
 
 
+def _code_deps(m: dict) -> list[str]:
+    """장면 코드 파일("$FILE:…")의 내용과, 코드가 부르는 저장소 안 파일 · 폴더(그림 판 · 층) — 2026-11-23: 열쇠에 빠져 있어
+    장면 코드 · 렌더한 그림을 고쳐도 예전 장면 영상을 그대로 썼다(검토가 같은 문제를 세 번 다시 냈다)"""
+    import re
+    out = []
+
+    def walk(o):
+        if isinstance(o, dict):
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+        elif isinstance(o, str) and o.startswith("$FILE:"):
+            f = _abs(o[6:].strip())
+            if f.is_file():
+                code = f.read_text("utf-8", errors="ignore")
+                out.append(f"{o[6:]}:{hashlib.sha1(code.encode()).hexdigest()}")
+                for path in set(re.findall(r"['\"](/[^'\"\n]+)['\"]", code)):
+                    q = Path(path)
+                    try:
+                        if ROOT not in q.resolve().parents:
+                            continue
+                        if q.is_dir():
+                            out.append(f"{path}:" + "|".join(f"{x.name}:{x.stat().st_size}:{int(x.stat().st_mtime)}" for x in sorted(q.iterdir()) if x.is_file()))
+                        elif q.is_file():
+                            out.append(f"{path}:{_hash(q)}")
+                    except OSError:
+                        pass
+    walk(m)
+    return out
+
+
 # ---------------------------------------------------------------- 디스패처
 def _build_one(task: dict, sb: dict, sid: str, base: Path, reg: dict, plug: dict, post: dict, adapters: dict) -> dict:
     from . import usage
@@ -626,6 +659,7 @@ def _build_one(task: dict, sb: dict, sid: str, base: Path, reg: dict, plug: dict
         m = {**m, "_uses": got}
     if t == "craft":                   # craft 재료: 칸 안의 입력 파일 · 레시피 내용이 바뀌면 다시
         srcs += [f"{q.relative_to(ROOT)}:{_hash(q)}" for q in _files_in({k: v for k, v in m.items() if k not in ("src", "csv", "xlsx", "pdf")})]
+        srcs += _code_deps(m)
     if m.get("ask"):                   # 사용자가 올린 파일(이름으로 찾은 것)도 열쇠에 — 새로 올리면 다시 만든다
         up_f = find_upload(sid, m)
         srcs.append(f"{up_f.name}:{_hash(up_f)}" if up_f else "missing")

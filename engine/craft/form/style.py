@@ -628,7 +628,7 @@ def render_style(c: Ctx, bg="#f6f1ea"):
         mi = c.mi[h]
         kind = np.array([{"plastic": 0, "metal": 1, "liquid": 2, "fuzz": 3, "wood": 4, "matte": 5, "glass": 6}.get(smats[n].get("kind", "plastic"), 0) for n in mats])[mi]
         rough = np.array([float(smats[n].get("rough", max(0.04, 1 - float(smats[n].get("gloss", 0.3))))) for n in mats], np.float32)[mi]
-        bump = np.array([float(smats[n].get("bump", {"fuzz": 0.6, "wood": 0.15, "matte": 0.12}.get(smats[n].get("kind", ""), 0.04))) for n in mats], np.float32)[mi]
+        bump = np.array([float(smats[n].get("bump", {"fuzz": 0.6, "wood": 0.15, "matte": 0.12, "plastic": 0.04}.get(smats[n].get("kind", "plastic"), 0.0))) for n in mats], np.float32)[mi]   # 액체 · 유리 · 금속은 매끈하게
         bsc = np.array([float(smats[n].get("bump_scale", {"fuzz": 90, "wood": 30}.get(smats[n].get("kind", ""), 40))) for n in mats], np.float32)[mi]
         alb = np.power(c.base_t, 2.2)[mi]
         # 굴곡: 노이즈 기울기로 면 방향을 흔든다

@@ -899,11 +899,12 @@ def _mats(sc: dict) -> list[dict]:
 def kit_only_scenes(sb: dict) -> list[int]:
     """K 도형 · 글자만으로 그린 장면(앱 효과 · 프리셋 · 실제 자료 · 다른 앱이 하나도 없음) 번호"""
     out = []
+    r3d = ((sb.get("direction") or {}).get("art") or {}).get("style") == "render"   # 3D 렌더 화풍: 장면 코드가 까는 그림이 렌더한 판 · 층(2026-11-23)
     for i, sc in enumerate(sb.get("scenes") or []):
         mats = _mats(sc)
         if not mats:
             continue
-        native = False
+        native = r3d and "K.image(" in json.dumps(mats, ensure_ascii=False)
         for m in mats:
             if m.get("type") != "craft" or (m.get("app") or "effectcraft") != "effectcraft":
                 native = True                            # 실제 자료(사진 · 화면 · 문서 …) · 다른 Craft 앱

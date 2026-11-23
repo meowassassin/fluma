@@ -83,10 +83,15 @@ def _normal(x, y, z, codes, P, sd, sm):
 
 @njit(cache=True, fastmath=True)
 def _softshadow(x, y, z, lx, ly, lz, codes, P, sd, sm, k, tmax):
-    res = 1.0; t = 0.01
+    res = 1.0; t = 0.025
     for _ in range(128):                                   # 2026-11-23: 걸음이 커서(최소 0.012) 얇은 물체(숟가락 자루) 그림자에 물결 띠 — 최소 걸음을 줄이고 더 걷는다
         h = sdf.sdf_eval(x + lx * t, y + ly * t, z + lz * t, codes, P, sd, sm)[0]
-        res = min(res, k * h / t)
+        # 출발 근처(0.2 안)는 실제로 막힐 때만 — 빛이 비스듬한 매끈한 면(단지 · 라벨)에서 광선이 제 면을 스쳐 나뭇결 같은 띠가 생겼다
+        if t < 0.2:
+            if h < 0.0015:
+                res = 0.0
+        else:
+            res = min(res, k * h / t)
         if res < 0.002 or t > tmax:
             break
         t += min(max(h, 0.004), 0.2)
@@ -139,7 +144,7 @@ def march(codes, P, W, H, eye, f, r, u, th, L, Lf, bc, br, out, asp=1.0):
                 ndl = nx * L[0] + ny * L[1] + nz * L[2]
                 sh = 1.0
                 if ndl > 0:
-                    sh = _softshadow(x + nx * 0.004, y + ny * 0.004, z + nz * 0.004, L[0], L[1], L[2], codes, P, sd, sm, 10.0, 3.0)
+                    sh = _softshadow(x + nx * 0.01, y + ny * 0.01, z + nz * 0.01, L[0], L[1], L[2], codes, P, sd, sm, 10.0, 3.0)
                 hx, hy, hz = L[0] - dx, L[1] - dy, L[2] - dz
                 hl = math.sqrt(hx * hx + hy * hy + hz * hz)
                 out[0, j, i] = 1.0
