@@ -195,9 +195,13 @@ def snapshot(job, seconds):
     proj = build(job)
     snaps = job.work / "snaps"
     snaps.mkdir(parents=True, exist_ok=True)
-    out = []
-    for s in seconds:
-        p = snaps / f"f{float(s):07.3f}.png"
+    out = [snaps / f"f{float(s):07.3f}.png" for s in seconds]
+
+    def one(sp):
+        s, p = sp
         run([_cli(), "render-frame", "--project", proj, "--comp", "Main", "--time", str(s), "--out", p], cwd=job.work, env=_env(), label="effectcraft frame", timeout=120)
-        out.append(p)
+    # 장면마다 프로젝트를 여는 프로세스를 하나씩 차례로 띄웠다(정지 화면 7장 약 10~20초) — 3개씩 함께
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=int(os.environ.get("FLUMA_STILL_JOBS", "3"))) as ex:
+        list(ex.map(one, zip(seconds, out)))
     return out

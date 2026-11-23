@@ -605,11 +605,15 @@ def _code_deps(m: dict) -> list[str]:
         elif isinstance(o, list):
             for v in o:
                 walk(v)
-        elif isinstance(o, str) and o.startswith("$FILE:"):
-            f = _abs(o[6:].strip())
-            if f.is_file():
+        elif isinstance(o, str) and (o.startswith("$FILE:") or (len(o) > 120 and "\n" in o)):
+            code = o                                 # 이미 펼친 장면 코드(scenefile.inline) — 그 안에서 부르는 파일 · 폴더를 본다
+            if o.startswith("$FILE:"):
+                f = _abs(o[6:].strip())
+                if not f.is_file():
+                    return
                 code = f.read_text("utf-8", errors="ignore")
                 out.append(f"{o[6:]}:{hashlib.sha1(code.encode()).hexdigest()}")
+            if True:
                 for path in set(re.findall(r"['\"](/[^'\"\n]+)['\"]", code)):
                     q = Path(path)
                     try:

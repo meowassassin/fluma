@@ -1319,8 +1319,8 @@ def carry_jsx(sid: str, cv: dict, n: int, t_cut: float, W: int, H: int) -> str:
         ki = [i for i, (t, _, _) in enumerate(keys) if t >= t_cut - 1e-6]
         out += [f"var pv = null, nx = null; for (var q = 1; q <= main.numLayers; q++) {{ if (main.layer(q).name === {js(f'SceneL {n:02d}')}) pv = main.layer(q); if (main.layer(q).name === {js(f'SceneL {n + 1:02d}')}) nx = main.layer(q); }}",
                 "if (pv && nx) {",
-                f"pv.timeRemapEnabled = true; pv.property('Time Remap').expression = 'Math.min(time - thisLayer.startTime, thisLayer.source.duration - thisLayer.source.frameDuration)'; pv.outPoint = {t1 + 0.05:.3f};",
-                f"var tl = main.layers.addShape(); tl.name = 'Trail {n:02d}'; tl.startTime = 0; tl.inPoint = {t_cut - 0.01:.3f}; tl.outPoint = nx.outPoint; tl.property('Transform').property('Position').setValue([0, 0]); tl.property('Transform').property('Anchor Point').setValue([0, 0]);",   # 매트는 다음 장면 끝까지 · 화면 좌표 그대로
+                f"pv.timeRemapEnabled = true; pv.property('Time Remap').expression = 'Math.min(time, {t_cut:.3f} - 0.07) - thisLayer.startTime'; pv.outPoint = {t1 + 0.05:.3f};",   # 2026-11-24: 장면 컴프 길이 기준으로 멈추면 컴프가 장면보다 길 때 재료 영상이 끝난 뒤(검은 화면)에 멈췄다 → 컷 직전 프레임에
+                f"var tl = main.layers.addShape(); tl.name = 'Trail {n:02d}'; tl.startTime = 0; tl.inPoint = {t_cut - 0.01:.3f}; tl.outPoint = nx.outPoint + 3; tl.property('Transform').property('Position').setValue([0, 0]); tl.property('Transform').property('Anchor Point').setValue([0, 0]);",   # 매트는 다음 장면 끝 뒤로도(그 장면이 다음 전환에서 멈춰 늘어나도 매트가 남게 — 2026-11-24 두 번째 전환이 검은 화면) · 화면 좌표 그대로
                 "var tg = tl.property('Contents').addProperty('ADBE Vector Group'); var tp = tg.property('Contents').addProperty('ADBE Vector Shape - Group').property('Path');",
                 "tg.property('Contents').addProperty('ADBE Vector Graphic - Fill').property('Color').setValue([1, 1, 1]);",
                 "function shp(v) { var s = new Shape(); s.vertices = v; s.closed = true; return s; }"]
