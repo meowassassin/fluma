@@ -14,7 +14,7 @@ from pathlib import Path
 
 import numpy as np
 
-STYLES = ("flat", "cel", "sketch", "clay", "vector")      # vector: VectorCraft 벡터 마감(engine/craft/form/vector.py)
+STYLES = ("flat", "cel", "sketch", "clay", "vector", "render")      # render: 재질 · 주변 빛 3D 렌더(2026-11-23)      # vector: VectorCraft 벡터 마감(engine/craft/form/vector.py)
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 CACHE = ROOT / "data" / "workspace" / "cache" / "form"
 RENDER_VERSION = 17          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
@@ -62,6 +62,8 @@ def _style_on(ctx, style: str, bg: str):
     fn = st.STYLES[style]
     if style == "clay":
         img = fn(ctx, bg_top=bg, bg_bot=bg, bounce_col="#e8dfd3")
+    elif style == "render":
+        return ctx.finish(fn(ctx, bg=bg))
     elif style == "sketch":
         img = fn(ctx, paper=bg, texture=False)
     else:

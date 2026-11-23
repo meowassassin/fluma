@@ -47,6 +47,7 @@ def _fit(cam, lo, hi):
     az, el = math.radians(cam.get("azimuth", 35)), math.radians(cam.get("elevation", 18))
     fov = math.radians(cam.get("fov", 30))
     fill = cam.get("fill", 0.86)
+    asp = float(cam.get("aspect", 1.0))                    # 세로 / 가로(9:16 세로 화면이면 1.777…) — 한 장면 전체를 그릴 때
     dirv = np.array([math.sin(az) * math.cos(el), math.sin(el), math.cos(az) * math.cos(el)])
     target = center.copy()
     dist = 5.0
@@ -57,10 +58,10 @@ def _fit(cam, lo, hi):
         f = _norm(target - eye); r = _norm(np.cross(f, [0, 1, 0])); u = np.cross(r, f)
         rel = corners - eye
         z = rel @ f
-        sx = (rel @ r) / z / th; sy = (rel @ u) / z / th
+        sx = (rel @ r) / z / th; sy = (rel @ u) / z / th / asp
         # recenter target on screen bbox center, then fit largest extent to `fill`
         cx, cy = (sx.max() + sx.min()) / 2, (sy.max() + sy.min()) / 2
-        target = target + (r * cx + u * cy) * (float((target - eye) @ f) * th)
+        target = target + (r * cx + u * cy * asp) * (float((target - eye) @ f) * th)
         ext = max(sx.max() - sx.min(), sy.max() - sy.min()) / 2
         dist *= ext / fill
     eye = target + dirv * dist
@@ -105,12 +106,12 @@ def _ao(x, y, z, nx, ny, nz, codes, P, sd, sm):
 
 
 @njit(cache=True, fastmath=True, parallel=True)
-def march(codes, P, W, H, eye, f, r, u, th, L, Lf, bc, br, out):
+def march(codes, P, W, H, eye, f, r, u, th, L, Lf, bc, br, out, asp=1.0):
     for j in prange(H):
         sd = np.empty(32); sm = np.empty(32)
         for i in range(W):
             px = ((i + 0.5) / W * 2 - 1) * th
-            py = (1 - (j + 0.5) / H * 2) * th
+            py = (1 - (j + 0.5) / H * 2) * th * asp
             dx = f[0] + r[0] * px + u[0] * py
             dy = f[1] + r[1] * px + u[1] * py
             dz = f[2] + r[2] * px + u[2] * py
@@ -192,15 +193,19 @@ def render(scene, res=1080, ss=2, cam=None):
     Lf = _norm(0.8 * r + 0.2 * np.array([0, 1, 0]) - 0.6 * f)
     bc = (lo + hi) / 2; br = float(np.linalg.norm(hi - lo) / 2 + 0.05)
     N = res * ss
-    out = np.zeros((len(NAMES), N, N), np.float32)
+    asp = float(scene.get("camera", {}).get("aspect", 1.0))
+    NH = int(round(N * asp))
+    out = np.zeros((len(NAMES), NH, N), np.float32)
     t1 = time.time()
-    march(codes, P, N, N, eye, f, r, u, th, L, Lf, bc, br, out)
+    if scene.get("camera", {}).get("aspect") or scene.get("backdrop"):
+        br = 1e3                                           # 장면 전체(바닥 · 배경까지) — 형태 둘레 구 밖의 광선도 바닥까지 따라간다
+    march(codes, P, N, NH, eye, f, r, u, th, L, Lf, bc, br, out, asp)
     t_march = time.time() - t1
     buf = {k: out[i] for i, k in enumerate(NAMES)}
     hitm = buf["hit"] > 0
     foot = hitm & (buf["py"] < 0.05)
     meta = dict(mats=mats, mat_table=sdf.material_table(scene), L=L, Lf=Lf, eye=eye, f=f, r=r, u=u, th=th,
-                res=res, ss=ss, lo=lo, hi=hi,
+                res=res, ss=ss, lo=lo, hi=hi, aspect=asp,
                 foot_center=np.array([(lo[0] + hi[0]) / 2, (lo[2] + hi[2]) / 2]),
                 foot_size=np.array([(hi[0] - lo[0]) / 2, (hi[2] - lo[2]) / 2]),
                 scene=scene, strokes=sdf.collect_strokes(scene))

@@ -134,9 +134,10 @@ class Ctx:
         return (~self.hit) & (r < 1.0) & (self.b["depth"] < 999)
 
     def finish(self, img):
-        if img.shape[0] != self.N:
+        if img.shape[0] != self.hit.shape[0]:
             return (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8)
-        out = cv2.resize(np.clip(img, 0, 1).astype(np.float32), (self.N // self.ss,) * 2, interpolation=cv2.INTER_AREA)
+        hh, ww = self.hit.shape
+        out = cv2.resize(np.clip(img, 0, 1).astype(np.float32), (ww // self.ss, hh // self.ss), interpolation=cv2.INTER_AREA)
         return (out * 255 + 0.5).astype(np.uint8)
 
 
@@ -493,3 +494,229 @@ def draw_strokes(c: Ctx, img):
                 tp = st.get("taper") if full else [0.2, 0.2]
                 cv2.fillPoly(img, [np.round(_taper_poly(dense[a:b], max(w, 1.2), tp) * (1 << SH)).astype(np.int32)], col, cv2.LINE_AA, SH)
     return img
+
+
+# ------------------------------------------------------------------ RENDER (2026-11-23 사용자: 3D 렌더 느낌 — 다시 그린 2D 도 '클립아트' 수준)
+# 재질마다 빛이 다르게 맺힌다: 금속은 주변을 비추고(반사), 꿀 · 젤리는 빛이 속을 지나 두꺼운 곳이 짙고(투과),
+# 털은 가장자리가 빛나고(sheen), 나무 · 돌은 결(무늬)이 있다. 주변(env)은 하늘 · 지평선 · 바닥 색과 큰 조명판(softbox) —
+# 반사 · 은은한 빛이 같은 주변에서 온다. 장면 전체(camera.aspect · backdrop)면 바닥 · 배경까지 그리고 초점 흐림 · 번짐 · 입자로 마감.
+# 재질 칸: kind(plastic · metal · liquid · fuzz · wood · matte) · rough(0~1, 없으면 1-gloss) · bump(굴곡 세기) · bump_scale(굴곡 촘촘함)
+# 장면 칸: env {sky, horizon, ground, key, key_power, rim} · floor {color, color2, texture: "wood"|"plain", scale} · camera {dof, focus}
+
+def _h3(ix, iy, iz):
+    n = (ix * 73856093) ^ (iy * 19349663) ^ (iz * 83492791)
+    n = (n ^ (n >> 13)) * 1274126177
+    return ((n ^ (n >> 16)) & 0xFFFF).astype(np.float32) / 65535.0
+
+
+def vnoise3(x, y, z):
+    """3D 값 노이즈(0~1) — 표면 위치에 붙는 무늬라 카메라 · 자세가 바뀌어도 무늬가 미끄러지지 않는다"""
+    ix, iy, iz = np.floor(x), np.floor(y), np.floor(z)
+    fx, fy, fz = x - ix, y - iy, z - iz
+    ux, uy, uz = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy), fz * fz * (3 - 2 * fz)
+    ix, iy, iz = ix.astype(np.int64), iy.astype(np.int64), iz.astype(np.int64)
+    acc = 0
+    for dx in (0, 1):
+        for dy in (0, 1):
+            for dz in (0, 1):
+                w = (ux if dx else 1 - ux) * (uy if dy else 1 - uy) * (uz if dz else 1 - uz)
+                acc = acc + w * _h3(ix + dx, iy + dy, iz + dz)
+    return acc
+
+
+def fbm3(x, y, z, oct=3):
+    a, t, f, out = 1.0, 0.0, 1.0, 0
+    for _ in range(oct):
+        out = out + a * vnoise3(x * f, y * f, z * f); t += a; a *= 0.5; f *= 2.03
+    return out / t
+
+
+def _lin(h):
+    return np.power(hexrgb(h), 2.2).astype(np.float32)
+
+
+def _env(d, rough, E):
+    """주변 빛(선형 RGB) — d: 방향(n,3), rough: (n,) 0~1(거칠수록 조명판 가장자리가 퍼지고 약해진다)"""
+    y = d[:, 1:2]
+    up = E["horizon"] + (E["sky"] - E["horizon"]) * np.clip(y / 0.7, 0, 1) ** 0.8
+    dn = E["horizon"] * 0.7 + (E["ground"] - E["horizon"] * 0.7) * np.clip(-y / 0.35, 0, 1)
+    col = np.where(y >= 0, up, dn)
+    r = rough[:, None]
+    for L, colr, size in E["boxes"]:
+        c = d @ L
+        edge = np.cos(np.radians(size))
+        w = 0.015 + 0.35 * r[:, 0] ** 1.5
+        box = np.clip((c - edge + w) / (2 * w), 0, 1)
+        box = box * box * (3 - 2 * box)
+        col = col + colr * (box * (1 - 0.75 * r[:, 0]))[:, None] * (1 + 3 * (1 - r[:, 0]))[:, None] * 0.25
+    return col
+
+
+def render_style(c: Ctx, bg="#f6f1ea"):
+    m = c.m; sc = m["scene"]; mats = m["mats"]; smats = sc["materials"]
+    H, W = c.hit.shape
+    eye = np.asarray(m["eye"], np.float32); f = np.asarray(m["f"], np.float32)
+    r = np.asarray(m["r"], np.float32); u = np.asarray(m["u"], np.float32)
+    th = float(m["th"]); asp = float(m.get("aspect", 1.0)) if "aspect" in m else 1.0
+    L = np.asarray(m["L"], np.float32)
+    e = sc.get("env") or {}
+    E = {"sky": _lin(e.get("sky", "#cfd9e6")), "horizon": _lin(e.get("horizon", "#f3e6d2")), "ground": _lin(e.get("ground", "#6b5a4a"))}
+    key = _lin(e.get("key", "#fff1dc")) * float(e.get("key_power", 2.6))
+    rimc = _lin(e.get("rim", "#cfe2ff"))
+    fh = np.array([f[0], 0, f[2]], np.float32); fh /= max(np.linalg.norm(fh), 1e-4)
+    back = fh + np.array([0, 0.55, 0], np.float32); back /= np.linalg.norm(back)      # 형태 뒤 위쪽의 큰 창 — 액체 · 금속 · 바닥에 비치고 윤곽을 밝힌다
+    side = r * 0.9 + np.array([0, 0.25, 0], np.float32) - f * 0.2; side /= np.linalg.norm(side)
+    E["boxes"] = [(L, key * 0.9, 14), (side, _lin(e.get("fill", "#e9eef7")) * 0.9, 22), (back, rimc * 2.2, 24)]
+    # 화소마다 보는 방향
+    jj, ii = np.mgrid[0:H, 0:W].astype(np.float32)
+    pxx = ((ii + 0.5) / W * 2 - 1) * th
+    pyy = (1 - (jj + 0.5) / H * 2) * th * asp
+    V = f[None, None] + r[None, None] * pxx[..., None] + u[None, None] * pyy[..., None]
+    V /= np.linalg.norm(V, axis=-1, keepdims=True)
+    full = bool(sc.get("backdrop") or sc.get("camera", {}).get("aspect"))
+    img = np.zeros((H, W, 3), np.float32)
+    # ── 배경: 주변 그대로(초점 밖) ───────────────────────────────
+    if full:
+        sky = ~c.hit & (c.b["depth"] >= 999)
+        img[sky] = _env(V[sky], np.full(int(sky.sum()), 0.9, np.float32), E)
+        nb = int(e.get("bokeh", 0))                        # 먼 배경의 빛 망울(초점 흐림이 둥글게 퍼뜨린다)
+        if nb:
+            rng = np.random.default_rng(int(e.get("seed", 3)))
+            lay = np.zeros((H, W, 3), np.float32)
+            cols = [_lin(x) for x in (e.get("bokeh_colors") or [e.get("horizon", "#f3e6d2"), e.get("sky", "#cfd9e6")])]
+            for _ in range(nb):
+                cx_, cy_ = rng.uniform(0, W), rng.uniform(0, H * 0.55)
+                rad = rng.uniform(0.008, 0.03) * W
+                cv2.circle(lay, (int(cx_), int(cy_)), int(rad), tuple(float(v) for v in cols[rng.integers(len(cols))] * rng.uniform(0.6, 1.6)), -1, cv2.LINE_AA)
+            img[sky] = img[sky] + lay[sky] * 0.45
+        # 바닥
+        fl = sc.get("floor") or {}
+        gm = ~c.hit & (c.b["depth"] < 999)
+        gx, gz = c.b["gx"][gm], c.b["gz"][gm]
+        fc1, fc2 = _lin(fl.get("color", "#8a5a34")), _lin(fl.get("color2", fl.get("color", "#6a4026")))
+        if fl.get("texture", "wood") == "wood":
+            s_ = float(fl.get("scale", 1.0))
+            plank = np.floor(gz * 2.2 / s_)
+            pv = _h3(plank.astype(np.int64), np.zeros_like(plank, np.int64), np.ones_like(plank, np.int64))
+            grain = fbm3(gx * 0.8 / s_ + pv * 7, gz * 26 / s_, pv * 3, 4)
+            ring = 0.5 + 0.5 * np.sin((gz * 30 / s_ + grain * 9 + pv * 5))
+            t = np.clip(0.25 + 0.5 * ring * grain + 0.25 * pv, 0, 1)[:, None]
+            alb = fc1 * (1 - t) + fc2 * t
+            seam = np.abs(((gz * 2.2 / s_) % 1.0) - 0.5) > 0.493
+            alb = np.where(seam[:, None], alb * 0.45, alb)
+        else:
+            alb = fc1 * np.ones((int(gm.sum()), 1), np.float32)
+        gs = (0.25 + 0.75 * c.b["gshadow"][gm]) * c.b["gao"][gm]
+        amb = _env(np.tile(np.array([[0, 1, 0]], np.float32), (int(gm.sum()), 1)), np.ones(int(gm.sum()), np.float32), E) * 0.55
+        lit = alb * (key * max(float(L[1]), 0.1) * gs[:, None] * 0.75 + amb * (0.55 + 0.45 * c.b["gao"][gm][:, None]))
+        Vg = V[gm]; Rg = Vg * np.array([1, -1, 1], np.float32)
+        fr = (0.04 + 0.96 * (1 - np.clip(-Vg[:, 1], 0, 1)) ** 5)[:, None]
+        lit = lit + fr * _env(Rg, np.full(len(Rg), 0.55, np.float32), E) * float(fl.get("reflect", 0.5)) * gs[:, None]
+        img[gm] = lit
+    else:
+        img[:] = _lin(bg)
+        gs = (0.35 + 0.65 * c.b["gshadow"]) * c.b["gao"]
+        img *= (0.55 + 0.45 * gs)[..., None]
+    # ── 형태 ───────────────────────────────────────────────
+    h = c.hit
+    if h.any():
+        P = np.stack([c.b["px"][h], c.b["py"][h], c.b["pz"][h]], -1)
+        N = np.stack([c.b["nx"][h], c.b["ny"][h], c.b["nz"][h]], -1)
+        mi = c.mi[h]
+        kind = np.array([{"plastic": 0, "metal": 1, "liquid": 2, "fuzz": 3, "wood": 4, "matte": 5, "glass": 6}.get(smats[n].get("kind", "plastic"), 0) for n in mats])[mi]
+        rough = np.array([float(smats[n].get("rough", max(0.04, 1 - float(smats[n].get("gloss", 0.3))))) for n in mats], np.float32)[mi]
+        bump = np.array([float(smats[n].get("bump", {"fuzz": 0.6, "wood": 0.15, "matte": 0.12}.get(smats[n].get("kind", ""), 0.04))) for n in mats], np.float32)[mi]
+        bsc = np.array([float(smats[n].get("bump_scale", {"fuzz": 90, "wood": 30}.get(smats[n].get("kind", ""), 40))) for n in mats], np.float32)[mi]
+        alb = np.power(c.base_t, 2.2)[mi]
+        # 굴곡: 노이즈 기울기로 면 방향을 흔든다
+        if (bump > 0).any():
+            q = P * bsc[:, None]; eps = 0.35
+            n0 = fbm3(q[:, 0], q[:, 1], q[:, 2], 2)
+            g = np.stack([(fbm3(q[:, 0] + eps, q[:, 1], q[:, 2], 2) - n0), (fbm3(q[:, 0], q[:, 1] + eps, q[:, 2], 2) - n0),
+                          (fbm3(q[:, 0], q[:, 1], q[:, 2] + eps, 2) - n0)], -1) / eps
+            g = g - N * (g * N).sum(-1, keepdims=True)
+            N = N - g * bump[:, None]
+            N /= np.linalg.norm(N, axis=-1, keepdims=True)
+        else:
+            n0 = np.zeros(len(P), np.float32)
+        Vh = V[h]
+        ndv = np.clip(-(N * Vh).sum(-1), 1e-3, 1)
+        ndl = (N @ L)
+        sh = c.b["shadow"][h]; ao = c.b["ao"][h]
+        R = Vh - 2 * (N * Vh).sum(-1, keepdims=True) * N
+        Hh = L[None] - Vh; Hh /= np.linalg.norm(Hh, axis=-1, keepdims=True)
+        ndh = np.clip((N * Hh).sum(-1), 0, 1)
+        a2 = np.maximum(rough ** 2, 0.002) ** 2
+        D = a2 / (np.pi * (ndh * ndh * (a2 - 1) + 1) ** 2)
+        F0 = np.where((kind == 1)[:, None], alb, 0.04)
+        Fr = F0 + (1 - F0) * ((1 - ndv) ** 5)[:, None]
+        spec = (D * np.clip(ndl, 0, 1) * sh / (4 * np.maximum(ndv, 0.15)))[:, None] * Fr * key * 0.5
+        envR = _env(R, rough, E)
+        irr = _env(N, np.ones(len(N), np.float32), E) * 0.9
+        wrap = np.clip((ndl + 0.25) / 1.25, 0, 1)
+        diff = key * (wrap * np.minimum(sh + 0.08, 1))[:, None] * 0.55 + irr * ao[:, None]
+        col = alb * diff * (1 - Fr) + spec + envR * Fr * ao[:, None]
+        # 금속: 주변을 그대로 비춘다(자기 색을 입혀)
+        k1 = kind == 1
+        if k1.any():
+            col[k1] = envR[k1] * Fr[k1] * (0.35 + 0.65 * ao[k1, None]) + spec[k1] * 1.5 + alb[k1] * diff[k1] * 0.04
+        # 액체 · 젤리: 두꺼운 가운데는 짙고 얇은 가장자리는 밝게, 빛이 속에서 번진다
+        k2 = kind == 2
+        if k2.any():
+            thick = ndv[k2] ** 0.6
+            body = np.power(np.maximum(alb[k2], 1e-4), 0.55 + 1.6 * thick[:, None])
+            glow = (np.clip(-ndl[k2], 0, 1) * 0.6 + 0.6)[:, None] * key * 0.35
+            col[k2] = body * (diff[k2] * 0.9 + glow) * (1 - Fr[k2]) + envR[k2] * np.minimum(Fr[k2], 0.35) * 0.8 + spec[k2] * 2.0
+        # 유리 · 얇은 막(날개): 몸은 거의 비치고 주변 반사와 가장자리만 보인다
+        k6 = kind == 6
+        if k6.any():
+            edge = ((1 - ndv[k6]) ** 1.5)[:, None]
+            col[k6] = alb[k6] * irr[k6] * 0.35 + envR[k6] * (0.12 + 0.88 * edge) * 0.9 + spec[k6] * 1.5
+        # 털: 가장자리가 빛나고(sheen) 결이 거칠다
+        k3 = kind == 3
+        if k3.any():
+            sheen = ((1 - ndv[k3]) ** 2.2)[:, None] * (alb[k3] * 0.6 + 0.4) * (irr[k3] + key * 0.25 * np.clip(ndl[k3], 0, 1)[:, None])
+            col[k3] = alb[k3] * diff[k3] * (0.75 + 0.5 * n0[k3, None]) + sheen * 0.9 + spec[k3] * 0.2
+        # 나무 결
+        k4 = kind == 4
+        if k4.any():
+            Pk = P[k4] * bsc[k4, None] * 0.1
+            grain = fbm3(Pk[:, 0] * 0.5, Pk[:, 1] * 8, Pk[:, 2] * 8, 3)
+            ring = 0.5 + 0.5 * np.sin(Pk[:, 0] * 2 + grain * 10)
+            col[k4] = col[k4] * (0.7 + 0.45 * ring)[:, None]
+        # 가장자리 빛(뒤에서 오는 빛)
+        rim = ((1 - ndv) ** 2.5 * np.clip(N @ back + 0.15, 0, 1))[:, None] * rimc * 0.9 * (kind != 1)[:, None]
+        img[h] = col + rim
+    # ── 마감: 초점 흐림 · 번짐 · 톤 · 비네트 · 입자 ────────────────────
+    cam = sc.get("camera", {})
+    dep = np.where(c.b["depth"] < 999, c.b["depth"], np.nan)
+    fd = float(cam.get("focus_depth") or np.nanmedian(np.where(h, dep, np.nan)) if h.any() else np.nanmedian(dep))
+    dof = float(cam.get("dof", 0.6 if full else 0.0))
+    if dof > 0:
+        dd = np.nan_to_num(np.abs(1 / np.maximum(np.nan_to_num(dep, nan=1e3), 1e-3) - 1 / fd) * fd, nan=1.0)
+        coc = np.clip(dd * dof * 2.2, 0, 1)
+        levels = [0, 2.5, 6, 12]
+        bl = [img] + [cv2.GaussianBlur(img, (0, 0), s * W / 1080) for s in levels[1:]]
+        x = coc * (len(levels) - 1)
+        out = np.zeros_like(img)
+        for k in range(len(levels)):
+            wk = np.clip(1 - np.abs(x - k), 0, 1)[..., None]
+            out += bl[k] * wk
+        img = out
+    bright = np.clip(img - 0.9, 0, None)
+    img = img + cv2.GaussianBlur(bright, (0, 0), 18 * W / 1080) * 0.5
+    a, b_, c2, d, e2 = 2.51, 0.03, 2.43, 0.59, 0.14            # ACES 근사
+    img = np.clip((img * (a * img + b_)) / (img * (c2 * img + d) + e2), 0, 1)
+    img = np.power(img, 1 / 2.2)
+    if not full:                                           # 투명 배경으로 뽑을 때: 형태 밖은 받은 바탕 그대로(바닥 그림자만) — 톤 매핑이 바탕색을 바꾸면 투명도가 틀어진다
+        gsh = ((0.35 + 0.65 * c.b["gshadow"]) * c.b["gao"])[..., None]
+        img[~h] = (hexrgb(bg) * (0.55 + 0.45 * gsh))[~h]
+    if full:
+        yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+        vg = ((xx / W - 0.5) ** 2 * 1.2 + (yy / H - 0.48) ** 2) ** 0.5
+        img *= np.clip(1.15 - 0.75 * vg, 0, 1)[..., None]
+        img += (np.random.default_rng(1).standard_normal((H, W, 1)).astype(np.float32)) * 0.012
+    return np.clip(img, 0, 1)
+
+
+STYLES["render"] = render_style
