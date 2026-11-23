@@ -115,14 +115,15 @@ def compile_scene(scene):
             n = expand(n)
         xf = _compose(parent, _xf(n))
         if "prim" in n:
-            emit(PRIM[n["prim"]], xf, _shape_params(n), mid[n["mat"]], n.get("round", 0.0), n.get("shell", 0.0))
+            emit(PRIM[n["prim"]], xf, _shape_params(n), mid[n["mat"]], n.get("round", 0.0) * xf[2], n.get("shell", 0.0) * xf[2])   # 부풀림 · 껍데기도 묶음 크기만큼(2026-11-23: 줄인 꿀벌이 부풀어 눈을 삼켰다)
             if n.get("mirror_x"):
                 m = dict(n); m.pop("mirror_x")
                 pos = list(m.get("pos", [0, 0, 0])); pos[0] = -pos[0]; m["pos"] = pos
                 rot = list(m.get("rot", [0, 0, 0])); m["rot"] = [rot[0], -rot[1], -rot[2]]
                 if "rotm" in m:
                     M = np.diag([-1.0, 1.0, 1.0]); m["rotm"] = (M @ np.array(m["rotm"]) @ M).tolist()
-                emit(PRIM[m["prim"]], _compose(parent, _xf(m)), _shape_params(m), mid[m["mat"]], m.get("round", 0.0), m.get("shell", 0.0))
+                xm = _compose(parent, _xf(m))
+                emit(PRIM[m["prim"]], xm, _shape_params(m), mid[m["mat"]], m.get("round", 0.0) * xm[2], m.get("shell", 0.0) * xm[2])
                 emit(OPS["union"])
         else:
             kids = n["children"]
@@ -139,7 +140,7 @@ def compile_scene(scene):
                     _, cw, scw = _compose(xf, (np.eye(3), np.array(n["at"], float), 1.0))
                     emit(OPS["joint_union"], (np.eye(3), cw, 1.0), params=[float(n["reach"]) * scw], k=float(n.get("k", 0.0)) * scw)
                 else:
-                    emit(OPS[n["op"]], k=n.get("k", 0.0), mat=1 if n.get("cut_mat") else 0)
+                    emit(OPS[n["op"]], k=n.get("k", 0.0) * xf[2], mat=1 if n.get("cut_mat") else 0)   # 녹여 붙이는 반경도 묶음 크기만큼
             if bi is not None:
                 bs = [b for b in bnd[bi + 1:] if b is not None]
                 prim_rows = sum(1 for cd in codes[bi + 1:] if cd < 100)

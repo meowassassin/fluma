@@ -573,7 +573,7 @@ def render_style(c: Ctx, bg="#f6f1ea"):
     pyy = (1 - (jj + 0.5) / H * 2) * th * asp
     V = f[None, None] + r[None, None] * pxx[..., None] + u[None, None] * pyy[..., None]
     V /= np.linalg.norm(V, axis=-1, keepdims=True)
-    full = bool(sc.get("backdrop") or sc.get("camera", {}).get("aspect"))
+    full = bool(sc.get("backdrop") or sc.get("camera", {}).get("aspect")) and not sc.get("layer")   # layer: 같은 카메라로 형태만(투명) — 배경 판 위에 따로 움직일 층
     img = np.zeros((H, W, 3), np.float32)
     # ── 배경: 주변 그대로(초점 밖) ───────────────────────────────
     if full:
@@ -674,7 +674,7 @@ def render_style(c: Ctx, bg="#f6f1ea"):
         k6 = kind == 6
         if k6.any():
             edge = ((1 - ndv[k6]) ** 1.5)[:, None]
-            col[k6] = alb[k6] * irr[k6] * 0.35 + envR[k6] * (0.12 + 0.88 * edge) * 0.9 + spec[k6] * 1.5
+            col[k6] = alb[k6] * (irr[k6] * 0.75 + key * 0.18) + envR[k6] * edge * 0.45 + spec[k6] * 1.5   # 얇은 막은 제 색(밝게)이 바탕 — 주변 색(초록 창)을 그대로 비추면 탁해진다
         # 털: 가장자리가 빛나고(sheen) 결이 거칠다
         k3 = kind == 3
         if k3.any():
@@ -713,6 +713,8 @@ def render_style(c: Ctx, bg="#f6f1ea"):
     img = np.power(img, 1 / 2.2)
     if not full:                                           # 투명 배경으로 뽑을 때: 형태 밖은 받은 바탕 그대로(바닥 그림자만) — 톤 매핑이 바탕색을 바꾸면 투명도가 틀어진다
         gsh = ((0.35 + 0.65 * c.b["gshadow"]) * c.b["gao"])[..., None]
+        if sc.get("shadow") is False:                      # 바닥이 아닌 곳(숟가락 테두리 · 공중)에 얹는 층 — 바닥 그림자를 남기지 않는다
+            gsh = np.ones_like(gsh)
         img[~h] = (hexrgb(bg) * (0.55 + 0.45 * gsh))[~h]
     if full:
         yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)

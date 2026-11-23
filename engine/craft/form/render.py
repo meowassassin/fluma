@@ -197,7 +197,7 @@ def render(scene, res=1080, ss=2, cam=None):
     NH = int(round(N * asp))
     out = np.zeros((len(NAMES), NH, N), np.float32)
     t1 = time.time()
-    if scene.get("camera", {}).get("aspect") or scene.get("backdrop"):
+    if (scene.get("camera", {}).get("aspect") or scene.get("backdrop")) and not scene.get("layer"):
         br = 1e3                                           # 장면 전체(바닥 · 배경까지) — 형태 둘레 구 밖의 광선도 바닥까지 따라간다
     march(codes, P, N, NH, eye, f, r, u, th, L, Lf, bc, br, out, asp)
     t_march = time.time() - t1
@@ -223,3 +223,18 @@ def load(path):
     meta["mats"] = list(meta["mats"]); meta["scene"] = json.loads(str(meta["scene"]))
     meta["strokes"] = json.loads(str(meta["strokes"])) if "strokes" in meta else []
     return buf, meta
+
+
+def project(scene, pts, res=1080):
+    """3D 점 → 화면 px(같은 카메라로 그린 판 위에 글자 · 2D 층을 맞춰 놓을 때). camera.focus 가 있어야 형태를 재지 않는다"""
+    codes, P, _ = sdf.compile_scene(scene)
+    eye, f, r, u, th, _ = auto_camera(scene, codes, P, res)
+    asp = float(scene.get("camera", {}).get("aspect", 1.0))
+    W, H = res, int(round(res * asp))
+    out = []
+    for p in pts:
+        rel = np.asarray(p, float) - eye
+        z = rel @ f
+        sx, sy = (rel @ r) / z / th, (rel @ u) / z / th / asp
+        out.append([float((sx + 1) / 2 * W), float((1 - sy) / 2 * H), float(z)])
+    return out
