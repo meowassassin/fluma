@@ -182,7 +182,16 @@ def script_problems(sb: dict) -> list[str]:
     import skill_pass as sp
     out = []
     scenes = sb.get("scenes") or []
+    try:                                          # 2026-11-23 시험 10: 대본의 role(myth · mechanism)이 통과한 뒤 apply 에서 막혔다
+        sch = json.loads((ROOT / "engine" / "spec" / "schema" / "storyboard.schema.json").read_text("utf-8"))
+        roles, formats = sch["$defs"]["scene"]["properties"]["role"]["enum"], sch["properties"]["format"]["enum"]
+    except (OSError, ValueError, KeyError):
+        roles = formats = None
+    if formats and sb.get("format") not in formats:
+        out.append(f"L01 format '{sb.get('format')}' — 허용: {' | '.join(formats)}")
     for i, x in enumerate(scenes, 1):
+        if roles and x.get("role") not in roles:
+            out.append(f"L01 장면{i} role '{x.get('role')}' — 허용: {' | '.join(roles)}")
         n = len(str(x.get("narration") or ""))
         if n > sp.NARRATION_MAX:
             out.append(f"L01 장면{i} 대사 {n}자 > {sp.NARRATION_MAX}자")
