@@ -59,7 +59,22 @@ def step(name: str, cmd: list[str], timeout: int = 3600) -> subprocess.Completed
     t0 = time.time()
     print(f"[제작] {name} …", flush=True)
     progress(name)
-    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
+    # 시간이 넘으면 단계와 그 아래 프로세스(claude CLI · 렌더러)까지 묶어서 끝낸다 — 2026-11-24: 파이썬만 죽고 남은 에이전트가 다음 produce 가
+    # 도는 동안 콘티 · review.json 을 덮어쓸 수 있었고, produce 는 결과 블록 없이 traceback 으로 끝났다
+    import signal
+    pr = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        out, err = pr.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(pr.pid, signal.SIGTERM); time.sleep(3); os.killpg(pr.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        pr.communicate()
+        TIMES[name] = round(time.time() - t0, 1)
+        save_times(PROG.get("sid") or "unknown")
+        fail("produce", stage=name, error=f"{name} 단계가 {timeout}초를 넘어 멈췄습니다(하위 프로세스까지 정리함)")
+    r = subprocess.CompletedProcess(cmd, pr.returncode, out, err)
     TIMES[name] = round(time.time() - t0, 1)
     progress(None)
     print(f"[제작] {name} {TIMES[name]}초 · 종료 {r.returncode}", flush=True)
@@ -371,7 +386,17 @@ def main() -> int:
     lock_dir = ROOT / "data" / "workspace" / "tmp" / sid
     lock_dir.mkdir(parents=True, exist_ok=True)
     lock_f = lock_dir / "produce.lock"
-    lock_f.write_text(json.dumps({"pid": os.getpid(), "at": time.time()}), "utf-8")
+    try:                                                       # 잠금은 원자적으로(동시에 둘이 '없음'을 보고 함께 들어오지 않게)
+        fd = os.open(lock_f, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        try:
+            os.kill(int(json.loads(lock_f.read_text("utf-8")).get("pid")), 0)
+            fail("produce", stage="lock", error="같은 영상의 produce 가 이미 돌고 있습니다")
+        except (ValueError, OSError, TypeError):               # 죽은 프로세스가 남긴 잠금
+            lock_f.unlink(missing_ok=True)
+            fd = os.open(lock_f, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    with os.fdopen(fd, "w") as fh:
+        fh.write(json.dumps({"pid": os.getpid(), "at": time.time()}))
     import atexit
 
     atexit.register(lambda: lock_f.unlink(missing_ok=True))
@@ -603,6 +628,9 @@ def main() -> int:
     if deep and not a.scenes:
         rr = step("review", [PY, "engine/story/skill_pass.py", "review", rel], timeout=2400)
         print("\n".join(ln for ln in (rr.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
+        if rr.returncode != 0:                                 # 검토가 실패했는데 지난 review.json 으로 막음 여부를 정하지 않는다
+            save_times(sid)
+            fail("produce", stage="review", error=f"렌더 전 검토 실패 — {_why(rr)}")
         sb = json.loads(sp.read_text("utf-8"))
         # 검토가 이미 막을 것(겹침 · 잘림 · 안전 영역 — 품질 관문 D21)을 찾았으면 렌더하지 않는다 — 렌더해도 관문에서 막힌다
         # (2026-11-20 실측: 막힐 영상을 매번 36~187초씩 렌더, 한 편에 렌더 6번 · 8.4분)

@@ -657,6 +657,9 @@ def _build_one(task: dict, sb: dict, sid: str, base: Path, reg: dict, plug: dict
             got[name] = str((ROOT / u["file"]).resolve())
             got[name + "/"] = str((d / f"{mid}.craft").resolve())     # 그 재료의 작업 폴더(SVG · 중간 파일) — "$USE:이름/파일"
         m = {**m, "_uses": got}
+    if t == "form":                    # 형태 렌더러가 바뀌면(RENDER_VERSION) 이미 만든 형태 그림도 다시 — 2026-11-24: 렌더러 수정이 기존 재료에 안 들어갔다
+        from craft import form as _F
+        srcs.append(f"form:{_F.RENDER_VERSION}")
     if t == "craft":                   # craft 재료: 칸 안의 입력 파일 · 레시피 내용이 바뀌면 다시
         srcs += [f"{q.relative_to(ROOT)}:{_hash(q)}" for q in _files_in({k: v for k, v in m.items() if k not in ("src", "csv", "xlsx", "pdf")})]
         srcs += _code_deps(m)

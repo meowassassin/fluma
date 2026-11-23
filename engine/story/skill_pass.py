@@ -133,12 +133,32 @@ def _baseline_path(sid: str, name: str) -> Path:
     return ROOT / "data" / "compositions" / sid / "skill_pass" / f"{name}_baseline.json"
 
 
-def baseline(sid: str, name: str) -> list:
-    """첫 판정이 막은 문제 목록(수렴 기준) — 다음 판정은 이것이 풀렸는지만 본다. 없으면 []"""
+def _sb_shape(sid: str) -> dict:
+    """기준 목록이 유효한 콘티 모양 — 장면 수와 장면별 대사 · 화면 글자"""
     try:
-        return json.loads(_baseline_path(sid, name).read_text("utf-8")).get("items") or []
+        sb = json.loads((ROOT / "data" / "storyboards" / f"{sid}.json").read_text("utf-8"))
+    except (OSError, ValueError):
+        return {}
+    sc = sb.get("scenes") or []
+    return {"n": len(sc), "text": [hashlib.sha1(f"{x.get('narration')}|{x.get('caption')}".encode()).hexdigest()[:10] for x in sc]}
+
+
+def baseline(sid: str, name: str) -> list:
+    """첫 판정이 막은 문제 목록(수렴 기준) — 다음 판정은 이것이 풀렸는지만 본다. 없으면 [].
+    2026-11-24: 기준이 한 번도 지워지지 않아, 장면을 넣고 빼거나 대사를 크게 고친 뒤에도 옛 번호의 문제로 막거나 새 문제를 권고로만 흘렸다 →
+    장면 수가 달라졌거나 장면 절반 넘게 대사가 바뀌면 기준을 버리고 처음 판정으로 돌아간다"""
+    try:
+        rec = json.loads(_baseline_path(sid, name).read_text("utf-8"))
     except (OSError, ValueError):
         return []
+    shape, now = rec.get("shape") or {}, _sb_shape(sid)
+    if shape and now and (shape.get("n") != now.get("n") or sum(a != b for a, b in zip(shape.get("text") or [], now.get("text") or [])) * 2 > now.get("n", 0)):
+        try:
+            _baseline_path(sid, name).unlink()
+        except OSError:
+            pass
+        return []
+    return rec.get("items") or []
 
 
 def _verify_block(items: list, key: str) -> str:
@@ -157,7 +177,7 @@ def converge(sid: str, name: str, patch: dict, list_key: str, is_blocking) -> di
         blocking = [x for x in items if is_blocking(x)]
         if blocking:
             bp = _baseline_path(sid, name); bp.parent.mkdir(parents=True, exist_ok=True)
-            bp.write_text(json.dumps({"items": blocking, "at": time.strftime("%Y-%m-%dT%H:%M:%S")}, ensure_ascii=False, indent=1), "utf-8")
+            bp.write_text(json.dumps({"items": blocking, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "shape": _sb_shape(sid)}, ensure_ascii=False, indent=1), "utf-8")
         return patch
     ver = {int(v.get("id", 0)): v for v in (patch.get("verify") or []) if isinstance(v, dict)}
     left = [x for i, x in enumerate(base, 1) if not (ver.get(i) or {}).get("resolved")]
@@ -591,7 +611,10 @@ def stills(sb: dict, sbp: Path) -> list[str]:
     tm = json.loads((ROOT / "data" / "public" / "audio" / f"{sb['id']}.timing.json").read_text("utf-8"))
     ts = [f"{(float(t['start']) + float(t['end'])) / 2:.2f}" for t in tm]
     r = subprocess.run([sys.executable, str(ROOT / "engine" / "core" / "still.py"), str(sbp), *ts], capture_output=True, text=True, timeout=900)
-    return [ln.strip() for ln in r.stdout.splitlines() if ln.strip().endswith(".png")]
+    out = [ln.strip() for ln in r.stdout.splitlines() if ln.strip().endswith(".png")]
+    if r.returncode != 0 or len(out) != len(ts):          # 2026-11-24: 정지 화면이 실패해도 그림 없이 검토해 '문제 없음'으로 관문을 지났다
+        raise RuntimeError(f"정지 화면 {len(out)}/{len(ts)}장 — still.py 실패: {(r.stderr or r.stdout)[-600:]}")
+    return out
 
 
 def run_refine(sbp: Path) -> dict:
@@ -1097,7 +1120,8 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
     if name == "review":          # 이번에 안 본(그림이 그대로인) 장면의 지난 문제는 이어 붙인다 · 다음 비교용 장면 지문은 고친 뒤 그림 기준
         keep = [x for x in review_ctx.get("prev_problems") or [] if x.get("scene") in set(review_ctx.get("same") or [])]
         rec["problems"] = keep + [x for x in (rec.get("problems") or []) if not (isinstance(x, dict) and x.get("scene") in set(review_ctx.get("same") or []))]
-        rec["scene_digests"] = _REVIEW_CTX.get("digests") or []
+        # 검토가 실제로 본 그림(고치기 전)의 지문 — 고친 뒤 그림 지문을 남기면 다음 검토가 '그대로'라며 보지 않고 고치기 전 문제를 영원히 이어 붙였다(2026-11-24)
+        rec["scene_digests"] = review_ctx.get("digests") or []
         rec["looked"] = [i + 1 for i in range(len(rec["scene_digests"])) if i + 1 not in set(review_ctx.get("same") or [])]
     rec_p.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
     _log_skill_timing(sid, name, time.perf_counter() - t_pass, changed=len(changed or []))

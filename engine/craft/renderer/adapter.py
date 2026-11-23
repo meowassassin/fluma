@@ -59,7 +59,17 @@ def paths(job):
 
 
 def build(job) -> Path:
-    """프로젝트를 만들거나(입력이 바뀌었을 때) 사람이 고친 것을 그대로 둔다 → .ecproj 경로"""
+    """프로젝트를 만들거나(입력이 바뀌었을 때) 사람이 고친 것을 그대로 둔다 → .ecproj 경로.
+    같은 영상의 빌드는 한 번에 하나(produce 렌더 · 정지 화면 · 미리보기가 동시에 프로젝트를 쓰면 반쯤 쓴 파일이 남았다, 2026-11-24)"""
+    import fcntl
+    _, _, man_p = paths(job)
+    man_p.parent.mkdir(parents=True, exist_ok=True)
+    with open(man_p.with_suffix(".lock"), "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        return _build(job)
+
+
+def _build(job) -> Path:
     d, proj, man_p = paths(job)
     proj.parent.mkdir(parents=True, exist_ok=True)
     man = json.loads(man_p.read_text("utf-8")) if man_p.exists() else {}
@@ -74,7 +84,9 @@ def build(job) -> Path:
     from craft import refine
     rsteps = refine.motion_steps(job.sb, [int(t.get("index", i)) + 1 for i, t in enumerate(job.scenes)])            # 다듬기(장면 컴프 안 레이어에 EffectCraft 명령) — 열쇠에 넣어 바뀌면 다시
     src_key = hashlib.sha1((jsx + json.dumps(rsteps, ensure_ascii=False) + "".join(_sha(Path(json.loads(f'"{r}"'))) for r in refs)).encode()).hexdigest()
-    if proj.exists() and mo.get("hash") and _sha(proj) != mo["hash"]:
+    # 2026-11-24: 빌드가 중간에 끊기면(다듬기 시간 초과 · 동시 빌드) 프로젝트 해시가 기록과 달라져 '사람이 고침'으로 굳고, 콘티를 고쳐도 옛 프로젝트를 렌더했다.
+    # 빌드 중 표시(building)가 남아 있으면 사람이 고친 것이 아니라 끊긴 빌드 — 다시 만든다
+    if proj.exists() and mo.get("hash") and not mo.get("building") and _sha(proj) != mo["hash"]:
         print(f"[craft] {proj.relative_to(ROOT)} 은 사람이 고쳤습니다 — 다시 만들지 않고 그대로 렌더합니다", file=sys.stderr)
         mo["edited"] = True
         man[mkey] = mo
@@ -82,6 +94,8 @@ def build(job) -> Path:
         return proj
     if proj.exists() and mo.get("source") == src_key:
         return proj
+    man[mkey] = {**mo, "building": True}
+    man_p.write_text(json.dumps(man, ensure_ascii=False, indent=1), "utf-8")
     script = job.work / "motion.jsx"
     script.write_text(jsx, "utf-8")
     run([_cli(), "script", script], cwd=job.work, env=_env(), label="effectcraft script", timeout=300)
@@ -94,7 +108,10 @@ def build(job) -> Path:
         import subprocess
         bak = proj.with_suffix(proj.suffix + ".pre-refine")
         shutil.copy2(proj, bak)             # 다듬기 기록 하나가 깨져도(레이어 이름이 바뀜 등) 초벌 프로젝트로 돌아가 렌더는 계속한다(2026-11-11)
-        r = subprocess.run([str(x) for x in (_cli(), "run", "--commands", rf, "--project", proj, "--save")], cwd=str(job.work), env=_env(), capture_output=True, text=True, timeout=600)
+        try:
+            r = subprocess.run([str(x) for x in (_cli(), "run", "--commands", rf, "--project", proj, "--save")], cwd=str(job.work), env=_env(), capture_output=True, text=True, timeout=600)
+        except subprocess.TimeoutExpired:
+            r = subprocess.CompletedProcess([], 1, "", "다듬기 600초 초과")
         bad = refine.script_failures(r.stdout)
         if r.returncode != 0 or bad:
             print("[craft] 다듬기 기록을 적용하지 못해 건너뜀(초벌로 렌더): " + (" / ".join(bad[:6]) or (r.stderr or r.stdout)[-400:]), file=sys.stderr)
@@ -129,7 +146,14 @@ def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
     import time
     sys.path.insert(0, str(Path(__file__).parent))
     from segcache import frames, plan
-    p = plan(proj, job.fps, {"extra": extra, "cli": _cli().name})
+    cli = _cli()
+    try:                                                       # 렌더러 · 글꼴이 바뀌면 구간을 다시 그린다(2026-11-24: 이름만 열쇠에 있었다)
+        cst = cli.stat(); cli_id = f"{cli.name}:{cst.st_size}:{int(cst.st_mtime)}"
+    except OSError:
+        cli_id = cli.name
+    fonts = os.environ.get("EFFECTCRAFT_FONT_DIRS", "")
+    fsig = hashlib.sha1("|".join(f"{q}:{q.stat().st_size}" for d_ in fonts.split(os.pathsep) if d_ and Path(d_).is_dir() for q in sorted(Path(d_).iterdir()) if q.is_file()).encode()).hexdigest()[:12] if fonts else ""
+    p = plan(proj, job.fps, {"extra": extra, "cli": cli_id, "fonts": fsig})
     if not p:
         return False
     segs, total = p
