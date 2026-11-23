@@ -606,9 +606,12 @@ def render_style(c: Ctx, bg="#f6f1ea"):
             alb = np.where(seam[:, None], alb * 0.45, alb)
         else:
             alb = fc1 * np.ones((int(gm.sum()), 1), np.float32)
-        gs = (0.25 + 0.75 * c.b["gshadow"][gm]) * c.b["gao"][gm]
+        # 바닥 그림자 · 접촉 그늘은 화면에서 한 번 뭉갠다 — 깎고 녹인 형태의 거리장은 정확하지 않아 링 · 줄무늬가 생긴다(2026-11-23 숟가락)
+        gsh_s = cv2.GaussianBlur(c.b["gshadow"].astype(np.float32), (0, 0), 0.006 * W)
+        gao_s = 0.45 + 0.55 * cv2.GaussianBlur(c.b["gao"].astype(np.float32), (0, 0), 0.015 * W)
+        gs = (0.25 + 0.75 * gsh_s[gm]) * gao_s[gm]
         amb = _env(np.tile(np.array([[0, 1, 0]], np.float32), (int(gm.sum()), 1)), np.ones(int(gm.sum()), np.float32), E) * 0.55
-        lit = alb * (key * max(float(L[1]), 0.1) * gs[:, None] * 0.75 + amb * (0.55 + 0.45 * c.b["gao"][gm][:, None]))
+        lit = alb * (key * max(float(L[1]), 0.1) * gs[:, None] * 0.75 + amb * gao_s[gm][:, None])
         Vg = V[gm]; Rg = Vg * np.array([1, -1, 1], np.float32)
         fr = (0.04 + 0.96 * (1 - np.clip(-Vg[:, 1], 0, 1)) ** 5)[:, None]
         lit = lit + fr * _env(Rg, np.full(len(Rg), 0.55, np.float32), E) * float(fl.get("reflect", 0.5)) * gs[:, None]

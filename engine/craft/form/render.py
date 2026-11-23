@@ -83,13 +83,13 @@ def _normal(x, y, z, codes, P, sd, sm):
 
 @njit(cache=True, fastmath=True)
 def _softshadow(x, y, z, lx, ly, lz, codes, P, sd, sm, k, tmax):
-    res = 1.0; t = 0.02
-    for _ in range(64):
+    res = 1.0; t = 0.01
+    for _ in range(128):                                   # 2026-11-23: 걸음이 커서(최소 0.012) 얇은 물체(숟가락 자루) 그림자에 물결 띠 — 최소 걸음을 줄이고 더 걷는다
         h = sdf.sdf_eval(x + lx * t, y + ly * t, z + lz * t, codes, P, sd, sm)[0]
         res = min(res, k * h / t)
         if res < 0.002 or t > tmax:
             break
-        t += min(max(h, 0.012), 0.25)
+        t += min(max(h, 0.004), 0.2)
     res = min(max(res, 0.0), 1.0)
     return res * res * (3 - 2 * res)
 
