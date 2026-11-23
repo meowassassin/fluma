@@ -12,6 +12,31 @@ from . import sdf
 _H = os.path.dirname(os.path.abspath(__file__))
 
 
+def _numba_stamp():
+    """numba 캐시는 파일마다 따로 본다 — sdf.py 의 커널만 고치면 render.py 커널이 옛 sdf 코드를 품은 채 캐시에서 나온다(2026-11-24).
+    두 파일 내용이 바뀌었으면 두 파일의 numba 캐시를 지운다"""
+    import hashlib
+    pc = os.path.join(_H, "__pycache__")
+    h = hashlib.sha1(b"".join(open(os.path.join(_H, f), "rb").read() for f in ("sdf.py", "render.py"))).hexdigest()
+    st = os.path.join(pc, "kernels.stamp")
+    try:
+        if open(st).read() == h:
+            return
+    except OSError:
+        pass
+    try:
+        for e in os.scandir(pc):
+            if (e.name.startswith("render.") or e.name.startswith("sdf.")) and e.name.endswith((".nbi", ".nbc")):
+                os.remove(e.path)
+        os.makedirs(pc, exist_ok=True)
+        open(st, "w").write(h)
+    except OSError:
+        pass
+
+
+_numba_stamp()
+
+
 def _norm(v):
     v = np.asarray(v, float); return v / np.linalg.norm(v)
 
@@ -111,7 +136,7 @@ def _ao(x, y, z, nx, ny, nz, codes, P, sd, sm):
 
 
 @njit(cache=True, fastmath=True, parallel=True)
-def march(codes, P, W, H, eye, f, r, u, th, L, Lf, bc, br, out, asp=1.0):
+def march(codes, P, W, H, eye, f, r, u, th, L, Lf, bc, br, out, asp=1.0, ground=True):
     for j in prange(H):
         sd = np.empty(32); sm = np.empty(32)
         for i in range(W):
@@ -164,7 +189,9 @@ def march(codes, P, W, H, eye, f, r, u, th, L, Lf, bc, br, out, asp=1.0):
                 out[0, j, i] = 0.0
                 out[8, j, i] = -1
                 out[15, j, i] = 1.0; out[16, j, i] = 1.0
-                if dy < -1e-6:
+                if dy < -1e-6 and not ground:              # 바닥 그림자를 버리는 층(shadow: false) — 바닥 패스를 건너뛴다(층 광선 추적의 약 45%)
+                    out[1, j, i] = -oy / dy
+                elif dy < -1e-6:
                     tg = -oy / dy
                     gx, gz = ox + dx * tg, oz + dz * tg
                     out[1, j, i] = tg
@@ -204,7 +231,13 @@ def render(scene, res=1080, ss=2, cam=None):
     t1 = time.time()
     if (scene.get("camera", {}).get("aspect") or scene.get("backdrop")) and not scene.get("layer"):
         br = 1e3                                           # 장면 전체(바닥 · 배경까지) — 형태 둘레 구 밖의 광선도 바닥까지 따라간다
-    march(codes, P, N, NH, eye, f, r, u, th, L, Lf, bc, br, out, asp)
+    ground = not (scene.get("layer") and scene.get("shadow") is False) and scene.get("ground") is not False
+    import numba
+    try:                                                   # 형태가 몇 줄에 몰려도 스레드가 고르게 나눠 갖게(정적 분할은 8스레드에서 1.6배뿐)
+        with numba.parallel_chunksize(4):
+            march(codes, P, N, NH, eye, f, r, u, th, L, Lf, bc, br, out, asp, ground)
+    except AttributeError:
+        march(codes, P, N, NH, eye, f, r, u, th, L, Lf, bc, br, out, asp, ground)
     t_march = time.time() - t1
     buf = {k: out[i] for i, k in enumerate(NAMES)}
     hitm = buf["hit"] > 0
@@ -217,13 +250,35 @@ def render(scene, res=1080, ss=2, cam=None):
     return buf, meta, dict(compile=t_compile, camera=time.time() - t1 - t_march + 0, march=t_march, total=time.time() - t0)
 
 
+KEEP32 = {"depth", "px", "py", "pz", "gx", "gz"}      # 위치 · 깊이는 무늬 · 초점 흐림에 정밀도가 필요 — 나머지(면 방향 · 빛 · 그늘 0~1)는 반 정밀도로
+
+
 def save(buf, meta, path):
-    np.savez(path, **buf, **{"meta_" + k: (json.dumps(v) if k in ("scene", "strokes") else v) for k, v in meta.items()})
+    """2026-11-24: 무압축 float32 로 장당 630MB, 캐시 폴더가 95GB 까지 커졌다 → 빛 · 면 칸은 float16, 압축, 폴더 상한(가장 오래 안 쓴 것부터 지움)"""
+    np.savez_compressed(path, **{k: (v if k in KEEP32 or v.dtype != np.float32 else v.astype(np.float16)) for k, v in buf.items()},
+                        **{"meta_" + k: (json.dumps(v) if k in ("scene", "strokes") else v) for k, v in meta.items()})
+    trim_cache(os.path.dirname(str(path)))
+
+
+def trim_cache(folder, cap_gb=None):
+    cap = float(cap_gb if cap_gb is not None else os.environ.get("FLUMA_FORM_CACHE_GB", "12")) * (1 << 30)
+    try:
+        fs = [(e.stat().st_atime, e.stat().st_size, e.path) for e in os.scandir(folder) if e.name.endswith(".npz")]
+    except OSError:
+        return
+    total = sum(x[1] for x in fs)
+    for _, size, pth in sorted(fs):
+        if total <= cap:
+            break
+        try:
+            os.remove(pth); total -= size
+        except OSError:
+            pass
 
 
 def load(path):
     z = np.load(path, allow_pickle=True)
-    buf = {k: z[k] for k in z.files if not k.startswith("meta_")}
+    buf = {k: (z[k].astype(np.float32) if z[k].dtype == np.float16 else z[k]) for k in z.files if not k.startswith("meta_")}
     meta = {k[5:]: z[k] for k in z.files if k.startswith("meta_")}
     meta["mats"] = list(meta["mats"]); meta["scene"] = json.loads(str(meta["scene"]))
     meta["strokes"] = json.loads(str(meta["strokes"])) if "strokes" in meta else []

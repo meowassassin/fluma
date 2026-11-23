@@ -568,31 +568,45 @@ def render_style(c: Ctx, bg="#f6f1ea"):
     side = r * 0.9 + np.array([0, 0.25, 0], np.float32) - f * 0.2; side /= np.linalg.norm(side)
     E["boxes"] = [(L, key * 0.9, 14), (side, _lin(e.get("fill", "#e9eef7")) * 0.9, 22), (back, rimc * 2.2, 24)]
     # 화소마다 보는 방향
-    jj, ii = np.mgrid[0:H, 0:W].astype(np.float32)
-    pxx = ((ii + 0.5) / W * 2 - 1) * th
-    pyy = (1 - (jj + 0.5) / H * 2) * th * asp
-    V = f[None, None] + r[None, None] * pxx[..., None] + u[None, None] * pyy[..., None]
-    V /= np.linalg.norm(V, axis=-1, keepdims=True)
+    def Vof(mask):                                          # 필요한 화소만(2026-11-24: 화면 전체 V 가 형태가 0.5% 인 층에서도 돌았다)
+        jj, ii = np.nonzero(mask)
+        pxx = ((ii.astype(np.float32) + 0.5) / W * 2 - 1) * th
+        pyy = (1 - (jj.astype(np.float32) + 0.5) / H * 2) * th * asp
+        v = f[None] + r[None] * pxx[:, None] + u[None] * pyy[:, None]
+        return (v / np.linalg.norm(v, axis=-1, keepdims=True)).astype(np.float32)
     full = bool(sc.get("backdrop") or sc.get("camera", {}).get("aspect")) and not sc.get("layer")   # layer: 같은 카메라로 형태만(투명) — 배경 판 위에 따로 움직일 층
     img = np.zeros((H, W, 3), np.float32)
     # ── 배경: 주변 그대로(초점 밖) ───────────────────────────────
     if full:
-        sky = ~c.hit & (c.b["depth"] >= 999)
-        img[sky] = _env(V[sky], np.full(int(sky.sum()), 0.9, np.float32), E)
+        # 배경(하늘 · 바닥)은 초점 밖이라 어차피 흐려진다 → 가로세로 ss 분의 1 격자에서 칠하고 키운다(2026-11-24: 판 한 장 화풍 처리 25초 중 대부분)
+        k = max(1, int(c.ss))
+        sl = (slice(k // 2, None, k), slice(k // 2, None, k))
+        Hl, Wl = c.hit[sl].shape
+        dep_l = c.b["depth"][sl]
+        sky = (dep_l >= 999) & ~c.hit[sl]
+        gm = ~sky
+
+        def Vlo(mask):
+            jj, ii = np.nonzero(mask)
+            pxx = (((ii * k + k // 2).astype(np.float32) + 0.5) / W * 2 - 1) * th
+            pyy = (1 - ((jj * k + k // 2).astype(np.float32) + 0.5) / H * 2) * th * asp
+            v = f[None] + r[None] * pxx[:, None] + u[None] * pyy[:, None]
+            return (v / np.linalg.norm(v, axis=-1, keepdims=True)).astype(np.float32)
+        lo = np.zeros((Hl, Wl, 3), np.float32)
+        lo[sky] = _env(Vlo(sky), np.full(int(sky.sum()), 0.9, np.float32), E)
         nb = int(e.get("bokeh", 0))                        # 먼 배경의 빛 망울(초점 흐림이 둥글게 퍼뜨린다)
         if nb:
             rng = np.random.default_rng(int(e.get("seed", 3)))
-            lay = np.zeros((H, W, 3), np.float32)
+            lay = np.zeros((Hl, Wl, 3), np.float32)
             cols = [_lin(x) for x in (e.get("bokeh_colors") or [e.get("horizon", "#f3e6d2"), e.get("sky", "#cfd9e6")])]
             for _ in range(nb):
-                cx_, cy_ = rng.uniform(0, W), rng.uniform(0, H * 0.55)
-                rad = rng.uniform(0.008, 0.03) * W
-                cv2.circle(lay, (int(cx_), int(cy_)), int(rad), tuple(float(v) for v in cols[rng.integers(len(cols))] * rng.uniform(0.6, 1.6)), -1, cv2.LINE_AA)
-            img[sky] = img[sky] + lay[sky] * 0.45
-        # 바닥
+                cx_, cy_ = rng.uniform(0, Wl), rng.uniform(0, Hl * 0.55)
+                rad = rng.uniform(0.008, 0.03) * Wl
+                cv2.circle(lay, (int(cx_), int(cy_)), max(1, int(rad)), tuple(float(v) for v in cols[rng.integers(len(cols))] * rng.uniform(0.6, 1.6)), -1, cv2.LINE_AA)
+            lo[sky] = lo[sky] + lay[sky] * 0.45
+        # 바닥(형태 화소 자리도 그 아래 바닥으로 칠해 둔다 — 키울 때 가장자리에 빈 화소가 섞이지 않게)
         fl = sc.get("floor") or {}
-        gm = ~c.hit & (c.b["depth"] < 999)
-        gx, gz = c.b["gx"][gm], c.b["gz"][gm]
+        gx, gz = c.b["gx"][sl][gm], c.b["gz"][sl][gm]
         fc1, fc2 = _lin(fl.get("color", "#8a5a34")), _lin(fl.get("color2", fl.get("color", "#6a4026")))
         if fl.get("texture", "wood") == "wood":
             s_ = float(fl.get("scale", 1.0))
@@ -607,15 +621,16 @@ def render_style(c: Ctx, bg="#f6f1ea"):
         else:
             alb = fc1 * np.ones((int(gm.sum()), 1), np.float32)
         # 바닥 그림자 · 접촉 그늘은 화면에서 한 번 뭉갠다 — 깎고 녹인 형태의 거리장은 정확하지 않아 링 · 줄무늬가 생긴다(2026-11-23 숟가락)
-        gsh_s = cv2.GaussianBlur(c.b["gshadow"].astype(np.float32), (0, 0), 0.006 * W)
-        gao_s = 0.45 + 0.55 * cv2.GaussianBlur(c.b["gao"].astype(np.float32), (0, 0), 0.015 * W)
+        gsh_s = cv2.GaussianBlur(np.ascontiguousarray(c.b["gshadow"][sl]).astype(np.float32), (0, 0), 0.006 * Wl)
+        gao_s = 0.45 + 0.55 * cv2.GaussianBlur(np.ascontiguousarray(c.b["gao"][sl]).astype(np.float32), (0, 0), 0.015 * Wl)
         gs = (0.25 + 0.75 * gsh_s[gm]) * gao_s[gm]
         amb = _env(np.tile(np.array([[0, 1, 0]], np.float32), (int(gm.sum()), 1)), np.ones(int(gm.sum()), np.float32), E) * 0.55
         lit = alb * (key * max(float(L[1]), 0.1) * gs[:, None] * 0.75 + amb * gao_s[gm][:, None])
-        Vg = V[gm]; Rg = Vg * np.array([1, -1, 1], np.float32)
+        Vg = Vlo(gm); Rg = Vg * np.array([1, -1, 1], np.float32)
         fr = (0.04 + 0.96 * (1 - np.clip(-Vg[:, 1], 0, 1)) ** 5)[:, None]
         lit = lit + fr * _env(Rg, np.full(len(Rg), 0.55, np.float32), E) * float(fl.get("reflect", 0.5)) * gs[:, None]
-        img[gm] = lit
+        lo[gm] = lit
+        img[:] = cv2.resize(lo, (W, H), interpolation=cv2.INTER_LINEAR)
     else:
         img[:] = _lin(bg)
         gs = (0.35 + 0.65 * c.b["gshadow"]) * c.b["gao"]
@@ -642,7 +657,7 @@ def render_style(c: Ctx, bg="#f6f1ea"):
             N /= np.linalg.norm(N, axis=-1, keepdims=True)
         else:
             n0 = np.zeros(len(P), np.float32)
-        Vh = V[h]
+        Vh = Vof(h)
         ndv = np.clip(-(N * Vh).sum(-1), 1e-3, 1)
         ndl = (N @ L)
         sh = c.b["shadow"][h]; ao = c.b["ao"][h]
@@ -706,16 +721,19 @@ def render_style(c: Ctx, bg="#f6f1ea"):
             wk = np.clip(1 - np.abs(x - k), 0, 1)[..., None]
             out += bl[k] * wk
         img = out
-    bright = np.clip(img - 0.9, 0, None)
-    img = img + cv2.GaussianBlur(bright, (0, 0), 18 * W / 1080) * 0.5
     a, b_, c2, d, e2 = 2.51, 0.03, 2.43, 0.59, 0.14            # ACES 근사
-    img = np.clip((img * (a * img + b_)) / (img * (c2 * img + d) + e2), 0, 1)
-    img = np.power(img, 1 / 2.2)
-    if not full:                                           # 투명 배경으로 뽑을 때: 형태 밖은 받은 바탕 그대로(바닥 그림자만) — 톤 매핑이 바탕색을 바꾸면 투명도가 틀어진다
+    tone = lambda x: np.power(np.clip((x * (a * x + b_)) / (x * (c2 * x + d) + e2), 0, 1), 1 / 2.2)  # noqa: E731
+    if full:
+        bright = np.clip(img - 0.9, 0, None)
+        img = tone(img + cv2.GaussianBlur(bright, (0, 0), 18 * W / 1080) * 0.5)
+    else:                                                  # 층: 형태 화소만 톤(번짐은 바탕으로 새어 투명도를 틀어서 뺀다)
+        img[h] = tone(img[h])
+        # 투명 배경으로 뽑을 때: 형태 밖은 받은 바탕 그대로(바닥 그림자만) — 톤 매핑이 바탕색을 바꾸면 투명도가 틀어진다
         gsh = ((0.35 + 0.65 * c.b["gshadow"]) * c.b["gao"])[..., None]
         if sc.get("shadow") is False:                      # 바닥이 아닌 곳(숟가락 테두리 · 공중)에 얹는 층 — 바닥 그림자를 남기지 않는다
             gsh = np.ones_like(gsh)
         img[~h] = (hexrgb(bg) * (0.55 + 0.45 * gsh))[~h]
+        c.alpha = np.where(h, 1.0, 0.45 * (1 - gsh[..., 0])).astype(np.float32)   # 한 번 그리기 투명도(바탕과 무관한 값)
     if full:
         yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
         vg = ((xx / W - 0.5) ** 2 * 1.2 + (yy / H - 0.48) ** 2) ** 0.5

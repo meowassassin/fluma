@@ -17,7 +17,7 @@ import numpy as np
 STYLES = ("flat", "cel", "sketch", "clay", "vector", "render")      # render: 재질 · 주변 빛 3D 렌더(2026-11-23)      # vector: VectorCraft 벡터 마감(engine/craft/form/vector.py)
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 CACHE = ROOT / "data" / "workspace" / "cache" / "form"
-RENDER_VERSION = 21          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
+RENDER_VERSION = 22          # 렌더러(카메라 맞춤 · 광선 추적)가 바뀌면 올린다 — 캐시가 예전 그림을 내지 않게(2026-11-20: 카메라 범위를 고쳐도 잘린 그림이 그대로 나왔다)
 
 
 def _scene_with_view(scene: dict, view: dict | None) -> dict:
@@ -291,7 +291,21 @@ def _image(ctx, style: str, background: str | None, out):
         dst.parent.mkdir(parents=True, exist_ok=True)
         vector.draw(ctx, dst, bg=background)
         return Image.open(dst).convert("RGBA")
-    if background:
+    if style == "render" and not background:              # 3D 렌더 층은 한 번만 그린다 — 검은 바탕 색 + 렌더가 낸 투명도(2026-11-24: 흰 · 검 두 번에 층 하나 약 10초)
+        import cv2
+        from . import style as st
+        full = st.render_style(ctx, bg="#000000")
+        al = getattr(ctx, "alpha", None)
+        if al is None:
+            al = ctx.hit.astype(np.float32)
+        hh, ww = al.shape
+        sz = (ww // ctx.ss, hh // ctx.ss)
+        a = cv2.resize(al, sz, interpolation=cv2.INTER_AREA)
+        prem = cv2.resize(np.clip(full, 0, 1).astype(np.float32), sz, interpolation=cv2.INTER_AREA)
+        rgb = np.clip(prem / np.maximum(a[..., None], 1e-3), 0, 1)
+        a[a < 0.02] = 0
+        img = Image.fromarray(np.dstack([(rgb * 255 + 0.5).astype(np.uint8), (a * 255 + 0.5).astype(np.uint8)]), "RGBA")
+    elif background:
         img = Image.fromarray(_style_on(ctx, style, background))
     else:
         w = _style_on(ctx, style, "#ffffff").astype(np.float32) / 255

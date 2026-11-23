@@ -20,6 +20,47 @@ from pathlib import Path
 _SKIP = {"id", "uid", "parent", "label", "comment"}
 
 
+_HASHES: dict | None = None
+_HASH_F = Path(__file__).resolve().parents[3] / "data" / "workspace" / "cache" / "filehash.json"
+
+
+def _content_sha(f: Path, st) -> str:
+    """파일 내용 해시 — (경로 · 크기 · 수정 시각)별로 기억해 같은 파일을 두 번 읽지 않는다.
+    2026-11-24: 열쇠가 크기 · 수정 시각뿐이라 재료를 같은 내용으로 다시 쓰기만 해도 모든 구간을 다시 렌더했다(반복 실행 렌더 76~125초)"""
+    global _HASHES
+    if _HASHES is None:
+        try:
+            _HASHES = json.loads(_HASH_F.read_text("utf-8"))
+        except (OSError, ValueError):
+            _HASHES = {}
+    k = f"{f}|{st.st_size}|{st.st_mtime_ns}"
+    if k not in _HASHES:
+        h = hashlib.sha1()
+        with open(f, "rb") as fh:
+            for blk in iter(lambda: fh.read(1 << 20), b""):
+                h.update(blk)
+        _HASHES[k] = h.hexdigest()
+        if not _HASHES.get("__dirty__"):
+            import atexit
+            atexit.register(_save_hashes)
+        _HASHES["__dirty__"] = 1
+    return _HASHES[k]
+
+
+def _save_hashes():
+    global _HASHES
+    if not _HASHES:
+        return
+    _HASHES.pop("__dirty__", None)
+    if len(_HASHES) > 20000:
+        _HASHES = dict(list(_HASHES.items())[-10000:])
+    try:
+        _HASH_F.parent.mkdir(parents=True, exist_ok=True)
+        tmp = _HASH_F.with_suffix(".tmp"); tmp.write_text(json.dumps(_HASHES), "utf-8"); tmp.replace(_HASH_F)
+    except OSError:
+        pass
+
+
 def _file_sha(p: str, memo: dict) -> str:
     if p not in memo:
         f = Path(p)
@@ -27,7 +68,7 @@ def _file_sha(p: str, memo: dict) -> str:
             memo[p] = "missing"
         else:
             st = f.stat()
-            memo[p] = hashlib.sha1(f"{p}|{st.st_size}|{st.st_mtime_ns}".encode()).hexdigest()   # 크기 · 수정 시각 — 큰 영상 재료를 매번 읽지 않는다
+            memo[p] = hashlib.sha1(f"{p}|{_content_sha(f, st) if st.st_size < (256 << 20) else st.st_mtime_ns}".encode()).hexdigest()
     return memo[p]
 
 
