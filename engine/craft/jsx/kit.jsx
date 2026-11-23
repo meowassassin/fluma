@@ -40,14 +40,14 @@ var K = (function () {
         if (r && r.width > mw) { d = t.property('Source Text').value; d.fontSize = Math.max(8, size * mw / r.width); t.property('Source Text').setValue(d); } } catch (x) {} }
       return t;
     },
-    /** 도형 레이어 — kind: 'rect'|'ellipse', o: {fill, stroke, strokeW, round, name} */
+    /** 도형 레이어 — kind: 'rect'|'ellipse', o: {fill, stroke, strokeW, round, name} — stroke 만 주면 속이 빈 고리 · 테두리 */
     shape: function (kind, x, y, w, h, o) {
       o = o || {};
       var L = C.layers.addShape(); if (o.name) L.name = o.name;
       var g = L.property('Contents').addProperty('ADBE Vector Group');
       var sh = g.property('Contents').addProperty(kind === 'ellipse' ? 'ADBE Vector Shape - Ellipse' : 'ADBE Vector Shape - Rect');
       sh.property('Size').setValue([w, h]); if (kind !== 'ellipse' && o.round) sh.property('Roundness').setValue(o.round);
-      if (o.fill !== false) g.property('Contents').addProperty('ADBE Vector Graphic - Fill').property('Color').setValue(hx(o.fill || '#ffffff'));
+      if (o.fill !== false && !(o.stroke && o.fill === undefined)) g.property('Contents').addProperty('ADBE Vector Graphic - Fill').property('Color').setValue(hx(o.fill || '#ffffff'));
       if (o.stroke) { var st = g.property('Contents').addProperty('ADBE Vector Graphic - Stroke'); st.property('Color').setValue(hx(o.stroke)); st.property('Stroke Width').setValue(o.strokeW || 6); }
       K.P(L).setValue([x, y]);
       return L;
