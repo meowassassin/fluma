@@ -23,7 +23,6 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import json
 import math
-import os
 import re
 import subprocess
 import sys
@@ -418,13 +417,16 @@ def main() -> int:
     a = ap.parse_args()
     sp = Path(a.storyboard); sp = sp if sp.is_absolute() else ROOT / sp
     sb = json.loads(sp.read_text("utf-8"))
+    import copy
+    import sbio
+    base = copy.deepcopy(sb)
     use, why, ref = decide(sb)
     old = sb.get("music") or {}
     print(f"[음악] {'넣음' if use else '안 넣음'} — {why}")
     if a.cmd == "decide":
         return 0
-    if old.get("src") and old.get("source") != "auto" and a.cmd == "auto":
-        return 0                                          # 사용자가 준 곡은 건드리지 않는다
+    if a.cmd == "auto" and old and old.get("source") != "auto" and (old.get("src") or old.get("use") is False):
+        return 0                                          # 사용자가 준 곡 · '음악 없이'는 건드리지 않는다(2026-11-18 감사: use:false 를 덮었다)
     if not use:
         sb["music"] = {**{k: v for k, v in old.items() if k in ("allow_any",)}, "use": False, "why": why, "source": "auto"}
     else:
@@ -439,7 +441,7 @@ def main() -> int:
             print(f"[음악] {m['title']} — {m.get('by')} · {m.get('bpm') or '?'} BPM(목표 {m['target_bpm']:.0f}) · {m['start']}초부터 · {m['why']}")
         if m.get("upload_sound"):
             print("[음악] 업로드 때 쇼츠 편집기 '사운드 추가'로 붙일 수 있는 유행곡: " + " / ".join(m["upload_sound"][:3]))
-    sp.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", "utf-8")
+    sbio.save(sp, base, sb)
     return 0
 
 

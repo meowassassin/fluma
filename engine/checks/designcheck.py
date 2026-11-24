@@ -18,7 +18,8 @@ import json
 import sys
 from pathlib import Path
 
-FLAT = 0.72          # D10: 평평한 칸 비율
+FLAT = 0.72          # D10: 평평한 칸 비율 — 권고
+FLAT_BLOCK = 0.80    # D10 막음(quality_gate) — 레퍼런스 쇼츠 30편 평균 중간값 0.55 · 상위 25% 0.68 · 0.72 초과 17%(2026-11-18 실측)
 STILL = 0.012        # D11: 바뀐 화소 비율(장면 평균)
 SMALL = 0.30         # D12: 내용 상자 면적 비율
 SAME = 0.82          # D13: 윤곽 상관
@@ -88,7 +89,7 @@ def measure(video: Path, sb: dict) -> list:
     out = []
     for r in rows:
         if r["flat"] > FLAT:
-            out.append(("D10", r["scene"], f"빈 화면 — 평평한 면적 {r['flat'] * 100:.0f}%"))
+            out.append(("D10", r["scene"], f"빈 화면 — 평평한 면적 {r['flat'] * 100:.0f}%" + (" (레퍼런스 대부분보다 비었음 — 재료를 키우거나 배경에 무늬 · 층)" if r["flat"] > FLAT_BLOCK else " (권고)")))
         if r["change"] < STILL and r["sec"] >= 2:
             out.append(("D11", r["scene"], f"멈춘 장면 — {r['sec']}초 동안 바뀐 화소 {r['change'] * 100:.1f}%"))
         if r["box"] < SMALL:
@@ -105,7 +106,8 @@ def measure(video: Path, sb: dict) -> list:
     lum = float(np.mean(lums)) if lums else 255.0
     if lum < DARK:
         out.append(("D15", None, f"어두운 영상 — 평균 밝기 {lum:.0f}/255"))
-    return [{"code": c, "scene": s, "msg": m} for c, s, m in out] + [{"rows": rows}]
+    flat_of = {r["scene"]: r["flat"] for r in rows}
+    return [{"code": c, "scene": s, "msg": m, **({"block": flat_of.get(s, 0) > FLAT_BLOCK} if c == "D10" else {})} for c, s, m in out] + [{"rows": rows}]
 
 
 def findings(video: Path, sb: dict) -> list:

@@ -7,7 +7,7 @@ import { api, errMsg } from "../../lib/api";
 import { t } from "../../lib/i18n";
 import { qc, qk } from "../../lib/queries";
 import { useUi } from "../../lib/ui";
-import { ago } from "../home/HomePage";
+import { ago } from "../../ui/engines";
 import { Icon } from "../../ui/Icon";
 import { Button, EmptyState, Segmented, confirmDialog } from "../../ui/kit";
 import { PipelineGraph, StateIcon } from "./PipelineGraph";
@@ -15,8 +15,8 @@ import "./videos.css";
 
 type Row = { id: string; topic: string; shots: number; updated: number; thumb?: string | null; style?: string; route?: string };
 type TrashRow = { name: string; id: string; title: string; deletedAt: string; files: string[] };
-type Route = "all" | "generate" | "clip" | "material" | "trash";
-const ROUTE_TX: Record<string, string> = { generate: "생성", clip: "클립 재편집", material: "실제 자료", trash: "휴지통" };
+type Route = "all" | "clip" | "material" | "trash";
+const ROUTE_TX: Record<string, string> = { clip: "클립 재편집", material: "실제 자료", trash: "휴지통" };
 const F = (rel: string | null | undefined) => (rel ? `/api/pipefiles/${rel}` : "");
 
 export const VideosPage: React.FC = () => {
@@ -56,11 +56,11 @@ export const VideosPage: React.FC = () => {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: rows?.length ?? 0, trash: trash.length };
-    for (const r of rows ?? []) c[r.route || "generate"] = (c[r.route || "generate"] ?? 0) + 1;
+    for (const r of rows ?? []) c[r.route || "material"] = (c[r.route || "material"] ?? 0) + 1;
     return c;
   }, [rows, trash]);
   const list = useMemo(() => (rows ?? [])
-    .filter((r) => route === "all" || (r.route || "generate") === route)
+    .filter((r) => route === "all" || (r.route || "material") === route)
     .filter((r) => !q || `${r.topic} ${r.id} ${r.style || ""}`.toLowerCase().includes(q.toLowerCase())), [rows, q, route]);
 
   const toggle = (id: string) => setSp((p) => { const n = new URLSearchParams(p); if (n.get("open") === id) n.delete("open"); else n.set("open", id); return n; }, { replace: true });
@@ -68,7 +68,7 @@ export const VideosPage: React.FC = () => {
   const delVideo = async (r: Row) => {
     const ok = await confirmDialog({
       title: t("“{title}”을(를) 휴지통으로 옮길까요?", { title: r.topic || r.id }),
-      body: t("콘티 · 키프레임 · 클립 · 음성 · 편집본이 함께 옮겨지고, 휴지통에서 되돌릴 수 있습니다."),
+      body: t("콘티 · 재료 · 음성 · 편집본이 함께 옮겨지고, 휴지통에서 되돌릴 수 있습니다."),
       ok: t("휴지통으로"),
       danger: true,
     });
@@ -104,7 +104,7 @@ export const VideosPage: React.FC = () => {
             aria-label={t("경로")}
             value={route}
             onChange={(v) => setRoute(v as Route)}
-            options={(["all", "generate", "clip", "material", "trash"] as Route[]).map((k) => ({
+            options={(["all", "clip", "material", "trash"] as Route[]).map((k) => ({
               value: k,
               label: (
                 <span className="vids-seg-item">
@@ -166,7 +166,7 @@ export const VideosPage: React.FC = () => {
                         onClick={() => toggle(r.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(r.id); } }}>
                         <div className="vids-thumb">{r.thumb ? <img src={F(r.thumb)} alt="" loading="lazy" /> : <Icon n="film" s={16} />}</div>
                         <div className="vids-name" title={`${r.id}${r.updated ? ` · ${ago(new Date(r.updated * 1000).toISOString())}` : ""}`}>{r.topic}</div>
-                        <span className={`vids-route r-${r.route || "generate"}`} title={t(ROUTE_TX[r.route || "generate"])} />
+                        <span className={`vids-route r-${r.route || "material"}`} title={t(ROUTE_TX[r.route || "material"])} />
                         {run && <span className="vids-live" title={run}><StateIcon s="running" /></span>}
                         <div className="vids-acts" onClick={(e) => e.stopPropagation()}>
                           <button type="button" className="vids-edit" onClick={() => nav(`/veditor/${r.id}`)} title={t("편집기에서 열기")} aria-label={t("편집기에서 열기")}>

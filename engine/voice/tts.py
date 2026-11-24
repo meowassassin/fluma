@@ -17,11 +17,9 @@ CLI:  python engine/voice/tts.py "문장" out.wav
       python engine/voice/tts.py "문장" out.wav edge ko-KR-SunHiNeural   (엔진 · 목소리 지정)
 """
 import json
-import math
 import os
 import re
 import shutil
-import struct
 import subprocess
 import sys
 import tempfile
@@ -332,9 +330,6 @@ def estimate_words(text: str, seconds: float) -> list:
         out.append({"text": tok, "startMs": round(t * 1000), "endMs": round((t + d) * 1000)})
         t += d
     return out
-
-
-ENDING_MODES = ("keep", "period")
 
 
 def tts_text(text: str, ending: str | None) -> str:

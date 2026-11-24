@@ -8,7 +8,7 @@ metadata:
 
 # Fluma — install, start, first video
 
-Fluma is a local Shorts studio: an in-app agent (the user's own Claude Code or Codex login) plans with the user, studies
+Fluma is a local Shorts studio: an in-app agent (the user's own Claude Code, Codex or Antigravity login) plans with the user, studies
 reference Shorts, records real screens, checks the result and renders editable Craft projects. Your job is to get it
 running and hand the user a Studio with the first video already being planned. Do not try to make the video yourself.
 
@@ -29,8 +29,8 @@ running and hand the user a Studio with the first video already being planned. D
 
 ## Exit codes
 - **0** `FLUMA_RESULT` — `url=` (open this for the user) · `video=` (the new video id when a topic was given). Tell the user:
-  the Studio is at that URL, the agent is already planning the video in the Home chat, and production starts when they press
-  **Start production** after checking the storyboard. Finished videos: **Download** next to **Render** in the editor.
+  the Studio is at that URL and the agent is already planning the video in the Home chat; once the storyboard passes its
+  checks the agent builds and renders it (the *자동 진행* autopilot switch lets it finish without asking). Finished videos: **Download** next to **Render** in the editor.
 - **10** `FLUMA_NEEDS_INPUT` — `needs=` / `how=`: usually "log in to Claude Code or Codex once" (`claude` → `/login`) or a system
   program (ffmpeg, Node.js). Ask once, then rerun the same command.
 - **1** `FLUMA_ERROR` — `stage=` / `error=`. Fix what the short error says (e.g. port 4311 used by another Fluma: stop it) and

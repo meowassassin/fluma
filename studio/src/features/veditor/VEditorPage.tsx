@@ -5,14 +5,12 @@
    - AI 에이전트: 타임라인 우측에 AgentDock 도킹 (Cmd+J 로 열기/닫기 토글) */
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   VideoEditor,
   EditorCore,
   mediaTimeToSeconds,
-  mediaTimeFromSeconds,
   type EditorExtraPanel,
-  type TimelineElement,
 } from "../../vendor/artcraft/video-editor/src";
 import { createFlumaAdapters, flumaMediaUrl, flumaToast } from "./adapters/fluma-adapters";
 import { createCraftEffectProvider } from "./craftFx";
@@ -169,8 +167,6 @@ export const VEditorPage: React.FC = () => {
       if (turnSessionId !== id || !files.length) return;
       const shouldReload = files.some((f) =>
         f.path.includes(`compositions/${id}/editor/project.json`) ||
-        f.path.includes(`compositions/${id}/clips/`) ||
-        f.path.includes(`compositions/${id}/keyframes/`) ||
         f.path.includes(`compositions/${id}/craft/`) ||
         f.path.includes(`audio/${id}`) ||
         f.path.includes(`storyboards/${id}.json`),
@@ -264,14 +260,14 @@ export const VEditorPage: React.FC = () => {
                 `사용자가 영상 편집기(VEditor)에서 프로젝트 '${id}'를 편집 중입니다.`,
                 `현재 재생 헤드 위치: ${playheadSec}s / 전체 길이 ${totalSec}s.`,
                 curSel ? curSel.detailNote : "현재 선택된 타임라인 클립/자막 없음.",
-                "클립 자르기, 자막 수정, 나레이션 오디오 조정 및 샷 재생성 지시를 처리할 수 있습니다.",
+                "클립 자르기, 자막 수정, 나레이션 오디오 조정 지시를 처리할 수 있습니다.",
               ].join(" "),
             };
           }}
           hints={[
             t("자막 폰트 및 스타일 변경해줘"),
             t("나레이션 볼륨 키우고 BGM 줄여줘"),
-            t("2번 샷 클립 재생성해줘"),
+            t("2번 장면 자막 더 크게 해줘"),
             t("앞부분 2초 잘라내줘"),
           ]}
         />

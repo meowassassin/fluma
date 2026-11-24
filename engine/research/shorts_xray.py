@@ -481,7 +481,6 @@ def sound(src: Path, dur: float, segs: list[dict]) -> dict:
     for s in segs:
         in_speech[int(s["start"] * fr):int(s["end"] * fr) + 1] = True
     music = []
-    floor = np.percentile(db, 20)
     peak = np.percentile(db, 98)
     for k in range(int(np.ceil(len(S) / fr))):
         a, b = int(k * fr), int((k + 1) * fr)

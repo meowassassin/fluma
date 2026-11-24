@@ -30,7 +30,6 @@ idle(() => {
   qc.prefetchQuery({ queryKey: qk.settings, queryFn: async ({ signal }) => (await api.settings(signal)).settings });
   setTimeout(() => {
     qc.prefetchQuery({ queryKey: qk.engines, queryFn: ({ signal }) => api.engines(signal), staleTime: 5 * 60_000 });
-    qc.prefetchQuery({ queryKey: qk.characters, queryFn: ({ signal }) => api.characters(signal), staleTime: 5 * 60_000 });
     qc.prefetchQuery({ queryKey: qk.skills, queryFn: ({ signal }) => api.skills(signal), staleTime: 5 * 60_000 });
     qc.prefetchQuery({ queryKey: qk.trends, staleTime: 30_000, queryFn: async ({ signal }) => {
       const r = await fetch("/api/public/trends/index.json", { signal }); if (!r.ok) return { requests: [], items: [] };

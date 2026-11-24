@@ -1,5 +1,5 @@
 /* 파이프라인 상태 모델 — 영상 목록 · 파이프라인 그래프 · 편집기 옆 패널이 같이 쓴다.
-   경로(생성 · 클립 재편집 · 실제 자료)마다 단계 노드와 연결을 만들고, 실시간 상태(/live: 작업 · 에이전트)를 겹친다.
+   경로(클립 재편집 · 실제 자료)마다 단계 노드와 연결을 만들고, 실시간 상태(/live: 작업 · 에이전트)를 겹친다.
    글자는 최소 — 단계 이름(짧게)과 상태 · 모델만. 자세한 말은 title(마우스를 올리면)로. */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type Pipeline, type PipelineLive } from "../../lib/api";
@@ -23,15 +23,7 @@ const VOICE: Record<string, string> = {
   edge: "Edge TTS", typecast: "Typecast", elevenlabs: "ElevenLabs", melotts: "MeloTTS", xtts: "XTTS", cosyvoice: "CosyVoice",
   chatterbox: "Chatterbox", supertonic: "Supertonic", espeak: "eSpeak", silent: "무음",
 };
-const BACKEND: Record<string, string> = { flow: "Google Flow", gflow: "Google Flow", antigravity: "Antigravity", mock: "모의 생성" };
-/** veo_3_1_lite → Veo 3.1 Lite */
-export const prettyModel = (m: string) => m.split(/[_\s-]+/).reduce<string[]>((a, w) => {
-  if (/^\d+$/.test(w) && a.length && /\d$/.test(a[a.length - 1])) a[a.length - 1] += `.${w}`; else a.push(w.charAt(0).toUpperCase() + w.slice(1));
-  return a;
-}, []).join(" ");
-
 const JOB_STEP: Record<string, string> = {
-  "캐릭터 시트 만들기": "character", "키 프레임 만들기": "keyframe", "영상 생성": "video", "편집 초안": "draft",
   "클립 재편집 초안": "draft", "실제 자료 초안": "draft", "최종 렌더": "publish",
 };
 const jobStep = (j: PipelineLive["jobs"][number]) => (j.label && JOB_STEP[j.label]) || ({ voice: "voice", upload: "publish", draft: "draft", render: "publish" } as Record<string, string>)[j.type] || null;
@@ -47,12 +39,12 @@ const CRAFT_ICON: Record<string, string> = {
   figcraft: "craft-figcraft.svg",
   solidcraft: "craft-solidcraft.png",
   cadcraft: "craft-cadcraft.png",
+  texturecraft: "craft-texturecraft.svg",
   deckcraft: "craft-deckcraft.svg",
   gridcraft: "craft-gridcraft.svg",
   pdfcraft: "craft-pdfcraft.svg",
   wordcraft: "craft-wordcraft.svg",
   lightcraft: "craft-lightcraft.svg",
-  texturecraft: "craft-texturecraft.svg",
   designcraft: "craft-designcraft.svg",
   "craft-anything": "craft-craft-anything.svg",
 };
@@ -70,20 +62,6 @@ const craftModel = (app: string): Model => {
     ? { name: k.replace(/craft$/, "Craft").replace(/^./, (c) => c.toUpperCase()), src: I(CRAFT_ICON[k]), tile: true }
     : { name: app, glyph: "film" };
 };
-/** 이미지 · 영상 모델 이름 → 아이콘(Google 모델은 DeepMind/Veo/Flow 마크, Nano Banana 는 제 마크) */
-function genModel(name: string | null | undefined, via?: string | null): Model {
-  const n = String(name || "");
-  if (!n) return UNKNOWN;
-  if (/mock/i.test(n)) return { name: t("모의 생성"), glyph: "video" };
-  const label = `${/^[a-z0-9_]+$/.test(n) ? prettyModel(n) : n}${via ? ` · ${via.startsWith("agy") || via === "antigravity" ? "Antigravity" : BACKEND[via] || via}` : ""}`;
-  if (/veo/i.test(n)) return { name: label, src: I("veo.svg") };
-  if (/flow/i.test(via || "") || /flow/i.test(n)) return { name: label, src: I("flow.svg") };
-  if (/antigravity|agy/i.test(via || "") || /antigravity/i.test(n)) return { name: label, src: I("antigravity.svg") };
-  if (/nano|banana/i.test(n)) return { name: label, src: I("nanobanana.svg"), dark: true };
-  if (/gemini|flash|pro/i.test(n)) return { name: label, src: I("gemini.svg") };
-  if (/omni|imagen|google/i.test(n)) return { name: label, src: I("deepmind.svg") };
-  return { name: label, glyph: "photo" };
-}
 function recorded(p: Pipeline): Record<string, Model[]> {
   const pv = p.provenance || {};
   const r: Record<string, Model[]> = {};
@@ -92,9 +70,6 @@ function recorded(p: Pipeline): Record<string, Model[]> {
     r.plan = [{ ...a, name: pv.plan.model ? `${a.name} · ${pv.plan.model}` : a.name }];
     r.cut = r.research = r.storyboard = r.plan;
   }
-  if (pv.character?.length) r.character = pv.character.map((x) => genModel(x.model, x.via));
-  if (pv.keyframe?.length) r.keyframe = pv.keyframe.map((x) => genModel(x.model, x.via));
-  if (pv.video?.length) r.video = pv.video.map((x) => genModel(x.model, x.backend));
   if (pv.voice) r.voice = pv.voice.engine ? [{ name: VOICE[pv.voice.engine] || pv.voice.engine, id: pv.voice.engine }] : [{ name: t("나레이션 없음"), glyph: "sound" }];
   // 재료와 초안은 따로 — 재료는 장면 재료를 만든 도구, 초안은 조립 단계 앱(예전엔 둘을 합쳐 두 칸에 똑같이 붙였다)
   if (pv.materials?.length) r.materials = pv.materials.map(craftModel);
@@ -114,53 +89,22 @@ export const STATE_TX: Record<State, string> = { done: "완료", running: "실�
 
 export function buildSteps(p: Pipeline, live: PipelineLive | null): { steps: Step[]; edges: Edge[] } {
   const rec = recorded(p);
-  const route = p.route || "generate";
-  const plan = p.plan;
+  const route = p.route || "material";
   const agent = (live?.agent.runtime && RUNTIME[live.agent.runtime]) || RUNTIME.claude;
   const agentM: Model = { ...agent, name: live?.agent.model ? `${agent.name} · ${live.agent.model}` : agent.name };
   const voiceId = live?.models.voice || "edge";
   const voiceM: Model = { name: VOICE[voiceId] || voiceId, id: voiceId };
-  const stageM: Model = { name: "ArtCraft 3D 무대", src: I("craft-solidcraft.png"), tile: true };
   const editorM: Model = { name: "Fluma 편집기", src: I("fluma.svg"), dark: true };
   const ytM: Model = { name: "YouTube", src: I("youtube.svg") };
-  const imgBackend = (p as any).imagegen?.backend || "gflow";
-  const imgModel = (p as any).imagegen?.model || "nano-pro";
-  const nanoSrc = imgBackend === "agy" ? I("antigravity.svg") : /nano/i.test(imgModel) ? I("nanobanana.svg") : I("flow.svg");
-  const nanoM: Model = { name: `${prettyModel(imgModel)} · ${BACKEND[imgBackend] || imgBackend}`, src: nanoSrc, dark: true };
-  const backend = p.clips.find((c) => c.backend)?.backend || (p.videogen as any)?.backend || "flow";
-  const vm = p.videogen?.model || live?.models.video || "veo_3_1_lite";
-  const veoSrc = /antigravity/i.test(backend) ? I("antigravity.svg") : /mock/i.test(backend) ? undefined : /veo/i.test(vm) ? I("veo.svg") : I("flow.svg");
-  const veoM: Model = { name: `${prettyModel(vm)} · ${BACKEND[backend] || backend}`, src: veoSrc, glyph: /mock/i.test(backend) ? "video" : undefined };
+
 
   const hasDraft = !!p.edit?.draft, hasSb = !!p.edit?.storyboard, ed = live?.editor;
   const S = (key: string, name: string, col: number, row: number, state: State, models: Model[], tip: string): Step => ({ key, name, col, row, state, models, tip });
   const steps: Step[] = [], edges: Edge[] = [];
   const planErr = !!p.check?.errors?.length;
-  const planDone = route === "generate" ? !!plan?.shots?.length && !planErr : !!plan;
-  steps.push(S("plan", t("기획"), 0, 0, planErr ? "error" : planDone ? "done" : "todo", [agentM],
-    planErr ? p.check.errors.join(" · ") : route === "generate" ? t("샷 {n}개", { n: plan?.shots?.length ?? 0 }) : ""));
+  steps.push(S("plan", t("기획"), 0, 0, planErr ? "error" : p.plan ? "done" : "todo", [agentM], planErr ? p.check.errors.join(" · ") : ""));
 
-  if (route === "generate") {
-    const chars = p.characters || [], kfs = p.keyframes || [], clips = p.clips || [];
-    let prev = "plan", c = 1;
-    if (plan?.needs_character) {
-      const ok = chars.filter((x) => x.state === "승인").length;
-      steps.push(S("character", t("캐릭터"), c, 0, chars.length && ok === chars.length ? "done" : chars.some((x) => Object.keys(x.files || {}).length) ? "waiting" : "todo",
-        [nanoM], t("승인 {a}/{b}", { a: ok, b: chars.length })));
-      edges.push(["plan", "character"]); prev = "character"; c++;
-    }
-    const kOk = kfs.filter((k) => k.state === "승인" || k.has_stage || k.has_compose).length;
-    const kWaiting = kfs.some((k) => k.has_stage || k.has_compose || k.first);
-    steps.push(S("keyframe", t("3D 무대 연출"), c, 0, kfs.length && kOk === kfs.length ? "done" : kWaiting ? "waiting" : "todo", [stageM], t("구도 확정 {a}/{b}", { a: kOk, b: kfs.length })));
-    edges.push([prev, "keyframe"]); c++;
-    const cOk = clips.filter((x) => x.approved).length;
-    steps.push(S("video", t("영상"), c, 0, clips.length && cOk === clips.length ? "done" : clips.some((x) => x.clip_url) ? "waiting" : "todo", [veoM], t("샷 검토 {a}/{b}", { a: cOk, b: clips.length })));
-    edges.push(["keyframe", "video"]); c++;
-    steps.push(S("voice", t("음성"), 1, 1, hasDraft ? "done" : "todo", [voiceM], ""));
-    const draftModels = rec.draft?.length ? rec.draft : (p.planned?.draft || []).map(craftModel);
-    steps.push(S("draft", t("초안"), c, 0, hasDraft ? "done" : "todo", draftModels, ""));
-    edges.push(["plan", "voice"], ["video", "draft"], ["voice", "draft"]);
-  } else if (route === "clip") {
+  if (route === "clip") {
     steps.push(S("source", t("클립"), 1, 0, hasSb || hasDraft ? "done" : "todo", [{ name: "yt-dlp", glyph: "video" }], ""));
     steps.push(S("cut", t("더빙"), 2, 0, hasSb ? "done" : "todo", [agentM], ""));
     steps.push(S("voice", t("소리"), 1, 1, hasDraft ? "done" : "todo", [voiceM], ""));
@@ -208,7 +152,7 @@ export function buildSteps(p: Pipeline, live: PipelineLive | null): { steps: Ste
   if (live?.agent.busy && !pr?.running && !steps.some((x) => x.state === "running")) {
     const sk = live.agent.skill || "";
     const key = /research|trends/.test(sk) ? "research" : /storyboard|writer|director|designer/.test(sk) ? "storyboard" : /plan/.test(sk) ? "plan"
-      : /produce/.test(sk) ? "materials" : /character/.test(sk) ? "character" : /keyframe/.test(sk) ? "keyframe" : /video-gen/.test(sk) ? "video" : null;
+      : /produce/.test(sk) ? "materials" : null;
     const s = key ? steps.find((x) => x.key === key) : null;
     if (s) { s.state = "running"; s.tip = live.agent.tool ? t("에이전트 · {tool}", { tool: live.agent.tool }) : t("에이전트 작업 중"); }
   }

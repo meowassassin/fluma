@@ -13,7 +13,6 @@ card step: {"do": "card", "text": "한 줄이면 됩니다", "sub": "작은 설�
 from __future__ import annotations
 
 import bisect
-import json
 import math
 import subprocess
 import sys

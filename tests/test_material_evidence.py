@@ -1,7 +1,6 @@
 """material 증거 정책 — 카드만 막기 · 브랜드 아이콘 보강."""
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -47,7 +46,7 @@ def test_l59_blocks_card_only_body():
 
 def test_dedupe_and_icon(tmp_path, monkeypatch):
     monkeypatch.chdir(ROOT)
-    from material_evidence import apply_storyboard, material_evidence_checks
+    from material_evidence import apply_storyboard
 
     sb = _sb(
         {

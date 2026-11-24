@@ -21,6 +21,36 @@ direction 칸(모두 선택):
 """
 from __future__ import annotations
 
+# 연출 모드(direction.mode) — 쇼츠 설명형만이 아니라 애니메이션 · 만화 · 영화적 연출도(2026-11-19 사용자: 디자이너가 쇼츠 폼에만 맞는다, 다양하게).
+# 모드는 기본값 묶음이다: 콘티에 직접 적은 칸이 늘 이긴다(subs 는 칸마다 합친다). 디자이너 스킬 0장이 모드별 구도 · 리듬 규칙을 정한다.
+MODES = {
+    "shorts": {},
+    "animation": {"layout": "full", "pin_title": False, "cam_push": 1.03,
+                  "subs": {"box": False, "fg": "#ffffff", "h": 0.022, "y": 0.78}},
+    "comic": {"layout": "full", "pin_title": False, "panel": True,
+              "subs": {"box": True, "bg": "#ffffff", "fg": "#111111", "hot": "#d6342b", "h": 0.023, "y": 0.74, "bubble": True}},
+    "cinematic": {"layout": "full", "pin_title": False, "cam_push": 1.05, "letterbox": 0.17,
+                  "subs": {"box": False, "fg": "#f2efe8", "hot": "#ffd28a", "h": 0.018, "y": 0.80}},
+}
+
+
+def with_mode(sb: dict) -> dict:
+    """연출 모드의 기본값을 direction 에 채운 사본(직접 적은 칸은 그대로)"""
+    d = dict(sb.get("direction") or {})
+    m = MODES.get(str(d.get("mode") or "shorts"), {})
+    if not m:
+        return sb
+    for k, v in m.items():
+        if k == "subs":
+            d["subs"] = {**v, **(d.get("subs") or {})}
+        elif k == "layout":                       # 레이아웃은 레퍼런스 카드가 늘 채워 넣는다 — 모드가 이긴다(사용자가 layout_user 로 고정했을 때만 그대로)
+            if not d.get("layout_user"):
+                d["layout"] = v
+        else:
+            d.setdefault(k, v)
+    return {**sb, "direction": d}
+
+
 NONE = {
     "bg_preset": None, "bg_motion": False, "enter": None, "title_preset": None, "sub_preset": None, "text_pop": False,
     "cam_push": 1.0, "frame": {"shadow": False, "round": False, "push": 1.0},
@@ -83,7 +113,8 @@ def apply_art(sb: dict) -> dict:
     d = sb.get("direction")
     if not isinstance(d, dict):
         return sb
-    locked = set(d.get("locked") or [])
+    lk = d.get("locked")
+    locked = {f"color_{k}" for k in ("bg", "surface", "text", "muted", "accent")} if lk is True else set(lk if isinstance(lk, list) else [])   # locked: true(시안을 고름) = 전부 잠금
     fp = (d.get("feel") or {}).get("palette") or {}
     for k in ("bg", "surface", "text", "muted", "accent"):      # 고른 느낌의 색이 direct.py 자동 색보다 앞선다(2026-11-11: 크림 느낌을 골랐는데 검은 배경)
         if fp.get(k) and f"color_{k}" not in locked:

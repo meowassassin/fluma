@@ -1,6 +1,6 @@
 // 서버 공용 도구: 오류 봉투 · id 검사 · 원자적 쓰기 · 하위 프로세스(프로세스 그룹 종료 · 시간 제한)
 import { spawn } from "node:child_process";
-import { promises as fs, existsSync } from "node:fs";
+import { promises as fs } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -57,7 +57,6 @@ export async function atomicWrite(file, data, { mode } = {}) {
 export async function readJson(file, fallback = null) {
   try { return JSON.parse(await fs.readFile(file, "utf8")); } catch { return fallback; }
 }
-export const exists = (p) => existsSync(p);
 
 // ---------- 하위 프로세스 ----------
 /** 프로세스 그룹째 끈다 (python → chrome · ffmpeg 자식까지). SIGTERM 뒤 5초 지나면 SIGKILL */

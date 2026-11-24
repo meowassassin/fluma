@@ -16,18 +16,3 @@ export const RouteError: React.FC = () => {
   );
 };
 
-/** 패널 단위 오류 경계 — 한 패널이 깨져도 편집기 나머지는 동작 */
-export class PanelBoundary extends React.Component<{ name: string; children: React.ReactNode }, { err: Error | null }> {
-  state = { err: null as Error | null };
-  static getDerivedStateFromError(err: Error) { return { err }; }
-  componentDidCatch(err: Error) { console.error(`[${this.props.name}]`, err); }
-  render() {
-    if (!this.state.err) return this.props.children;
-    return (
-      <div className="panel-error">
-        <EmptyState compact icon="warn" title={t("{name}을(를) 그리지 못했어요", { name: t(this.props.name) })} body={String(this.state.err.message).slice(0, 160)}
-          action={<Button size="sm" onClick={() => this.setState({ err: null })}>{t("다시 시도")}</Button>} />
-      </div>
-    );
-  }
-}

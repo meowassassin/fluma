@@ -7,7 +7,7 @@
 // 다른 점: 권한을 bypass 하지 않고 허용 목록으로 제한한다 (쓰기는 콘텐츠 폴더만).
 import { spawn, execFile, execFileSync } from "node:child_process";
 import { randomUUID, createHash } from "node:crypto";
-import { promises as fs, existsSync, readFileSync, readdirSync, unlinkSync } from "node:fs";
+import { promises as fs, existsSync, readFileSync, readdirSync, statSync, unlinkSync } from "node:fs";
 import path from "node:path";
 import { resolveRuntime, codexArgs, codexPrompt, makeCodexParser, agyArgs, makeAgyParser, cursorArgs, makeCursorParser, agentEnv } from "./runtimes.mjs";
 import { pythonCmd, spawnTarget } from "./platform.mjs";
@@ -30,6 +30,10 @@ export const TOOLS = [
   "Bash(mkdir -p data/*)", "Bash(cp data/*)", "Bash(mv data/*)",
   "Bash(cd *)",          // 2026-11-10: 'cd /app && python3 engine/…' 조합이 막혀 에이전트가 우회하느라 호출이 늘었다 — cd 는 무해(뒤 명령은 각자 규칙대로)
 ];
+export const absEngineTools = (root) => {
+  const r = root.replace(/\/+$/, "");
+  return [`Bash(python3 ${r}/engine/*)`, `Bash(python ${r}/engine/*)`, `Bash(.venv/bin/python ${r}/engine/*)`, `Bash(${r}/.venv/bin/python engine/*)`, `Bash(${r}/.venv/bin/python ${r}/engine/*)`];
+};
 // 키·인증 파일은 읽지도 못하게
 // 저장소 코드 · 설정은 고치지 못하게 — 쓰기는 acceptEdits(저장소 안 파일 편집 자동 허용)로 열고 여기서 막는다.
 // 2026-11-09: Claude Code 2.1 에서 경로 허용 규칙(Write(./data/…/**))만으로는 쓰기가 자주 막혀, 기획 대화마다 '쓰기 승인해 달라'고 멈췄다
@@ -43,8 +47,28 @@ const DENY = [...PROTECT.flatMap((p) => [`Edit(${p})`, `Write(${p})`]),
 const TRACKED = WRITABLE.filter((p) => !p.startsWith("data/workspace/tmp"));  // 임시 폴더는 변경 목록에 안 띄움
 
 const autoChain = new Map();   // 프로젝트 → 사용자 말 이후 자동 이어가기를 몇 번 연속으로 했나
+const pilotChain = new Map();  // 프로젝트 → 사용자 말 이후 자동 진행(선택지 대신 고르기)을 몇 번 했나
 
 /** 에이전트가 사용자 답을 기다리며 턴을 끝냈나 — 선택지 블록이 있거나, 마지막 문장이 질문 */
+// 자동 진행(채팅창 스위치): 턴이 선택지 · 질문으로 끝나면 서버가 추천안(첫째 선택지)으로 대신 답한다.
+// 되돌릴 수 없거나 사람만 할 수 있는 일(업로드 · 녹화 · 키 · 로그인 · 삭제)은 고르지 않고 사용자에게 남긴다.
+// 결제 · 크레딧은 뺐다(2026-11-19 영상 생성 제거 뒤 결제를 묻는 단계가 없다 — 유료는 Typecast 음성뿐이고 제작 중 자동으로 쓴다)
+export const PILOT_MAX = 15;   // 사용자 말 하나에 자동으로 이어 보내는 최대 횟수(끝나지 않는 고리 방지)
+const PILOT_HOLD = /업로드|올려|올리|공개|publish|upload|녹화|로그인|log ?in|API ?키|키를|삭제|지워/i;
+export function pilotReply(text) {
+  const t = String(text || "");
+  const blocks = [...t.matchAll(/```choices\n([\s\S]*?)```/g)];
+  if (blocks.length) {
+    const opts = blocks[blocks.length - 1][1].split("\n").map((x) => x.replace(/^[-*\s①-⑨\d.)]+/, "").trim()).filter(Boolean);
+    const pick = opts.find((o) => !/직접 말할|직접 입력|내가 고를/.test(o));
+    if (!pick || PILOT_HOLD.test(pick)) return null;
+    return `(자동 진행) ${pick}`;
+  }
+  const tail = t.replace(/```[\s\S]*?```/g, "").trim().slice(-400);
+  if (PILOT_HOLD.test(tail)) return null;
+  return "(자동 진행) 추천하는 쪽으로 직접 정하고, 묻지 말고 영상 완성(품질 관문 막음 0)까지 이어서 진행해 줘.";
+}
+
 export function waitsForUser(text) {
   const t = String(text || "").trim();
   if (!t) return false;
@@ -80,15 +104,16 @@ const SHOW_RULES = `## 결과는 채팅에 바로 보여 준다
 const TALK_RULES = `## 말로만 제작한다
 - 사용자에게 터미널 명령(python3 …, produce 돌려 주세요)을 시키지 않는다. 필요한 명령은 네가 Bash로 실행한다.
 - material: produce 전에 콘티 L=0 → \`production_ready\`(\`lint.py\` 통과 시 자동). ui_mock 은 \`data/compositions/<id>/ui/*.tsx\` 를 채팅에서 쓰고 produce 는 빌드만. 그다음 \`python3 engine/produce.py data/storyboards/<id>.json\` — 엔진은 스킬 중복 없이 음성·재료·render. produce 돌리는 동안 같은 프로젝트 plan 턴은 서버가 거부한다.
-- generate: 샷 검토 후 \`python3 engine/gen/assemble.py build <id>\` 까지 네가 이어서 실행한다(말로 멈추지 않는다 — 승인·선택지가 필요할 때만 잠깐 묻는다).
-- 최종 화질은 produce · assemble 이 한 번에 내보낸다(초안 half 를 사용자에게 '완성'으로 주지 않는다).`;
+- clip: 더빙 계획 뒤 \`python3 engine/gen/dub.py build <id>\` 까지 네가 이어서 실행한다(asset-edit 스킬).
+- 최종 화질은 produce · dub 이 한 번에 내보낸다(초안 half 를 사용자에게 '완성'으로 주지 않는다).`;
 
 const RUN_RULES = `## 명령 실행 · 결과 
-- 오래 걸리는 명령(렌더 · 레퍼런스 분석 · 녹화 · 버전 비교 · 재료 만들기 · 캐릭터/키프레임/영상 생성)은 **앞에서 한 번** 실행하고 Bash 의 timeout 을 600000(10분)으로. 백그라운드로 돌려 두고 턴을 끝내지 않는다
+- 오래 걸리는 명령(렌더 · 레퍼런스 분석 · 녹화 · 버전 비교 · 재료 만들기)은 **앞에서 한 번** 실행하고 Bash 의 timeout 을 600000(10분)으로. 백그라운드로 돌려 두고 턴을 끝내지 않는다
 - 콘티(\`data/storyboards/<id>.json\`)는 **한 번에 통째로 Write** — 같은 파일을 Edit 로 여러 번 나눠 고치지 않는다(호출마다 수십 초). 사용자가 '길어도 된다'고 하면 줄이지 말고 콘티에 \`"allow_long": true\`
 - \`produce.py\` 는 그대로 부른다 — \`timeout\` · \`&\` · \`nohup\` 으로 감싸지 않는다. 스스로 뒤에서 돌고 최대 8분 기다린 뒤 결과 블록을 넘긴다. 종료 11(\`FLUMA_RUNNING\`)이면 **같은 명령을 그대로 다시** 실행한다(이어서 기다릴 뿐 처음부터 다시 하지 않는다)
-- Antigravity(\`run_command\`) 환경에서 외부 프로세스·네트워크·브라우저를 쓰는 엔진 명령(\`character.py make\`, \`keyframe.py make\`, \`video.py\`, \`produce.py\`, \`trends.py\`, \`analyze_ref.py\`, \`ref_image.py\`, \`render.py\`)을 실행할 때는 처음부터 \`BypassSandbox: true\`와 \`WaitMsBeforeAsync: 10000\`으로 실행한다(표준 샌드박스로 먼저 실행해 실패한 뒤 재실행하지 않는다)
+- Antigravity(\`run_command\`) 환경에서 외부 프로세스·네트워크·브라우저를 쓰는 엔진 명령(\`produce.py\`, \`trends.py\`, \`analyze_ref.py\`, \`ref_image.py\`, \`render.py\`)을 실행할 때는 처음부터 \`BypassSandbox: true\`와 \`WaitMsBeforeAsync: 10000\`으로 실행한다(표준 샌드박스로 먼저 실행해 실패한 뒤 재실행하지 않는다)
 - 기다리는 동안 sleep · ls · tail · ps 로 되묻지(폴링) 않는다
+- Bash 한 번에 명령 **하나**, 저장소 맨 위에서 상대 경로로(\`python3 engine/…\`). \`cd … &&\` · \`;\` · \`|\` 로 잇거나 sed · cat 을 쓰면 권한에서 막혀 호출만 버린다(파일 내용은 Read, 고치기는 Edit)
 - 끝나면 출력 맨 끝 블록만 읽는다:
   - 종료 0 \`FLUMA_RESULT\` — file · media 등. media= 줄은 그대로 \`\`\`media 블록에 붙여 보여 준다. 성공한 뒤 로그 전체를 다시 읽지 않는다
   - 종료 10 \`FLUMA_NEEDS_INPUT\` — needs 를 한 번에 묶어 사용자에게 **한 번만** 묻는다(how 대로 안내, 키는 채팅에 붙이지 말고 설정 화면에)
@@ -180,29 +205,20 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const parts = [];
     parts.push(readIf(path.join(ROOT, "studio", "agent", "system.md")) ?? "");
     parts.push(STYLE_RULES, MEMORY_RULES, SETUP_RULES, SHOW_RULES, TALK_RULES, RUN_RULES);
-    // 붙어 있는 Craft 앱(MCP) — 5단계 초안 다듬기 및 실제 자료(material) 경로에서 활용
+    // 붙어 있는 Craft 앱(MCP) — 실제 자료(material) · 클립(clip) 경로에서 활용
     const cr = createCrafts(ROOT).list().filter((c) => c.agentOn && c.installed?.cli);
     if (cr.length) parts.push(`## 제작 도구 (Craft 앱, MCP: ${cr.map((c) => `mcp__${c.name}`).join(" · ")})\n` +
       cr.map((c) => `- ${c.title} — ${c.kind}: ${c.use}`).join("\n") +
-      "\n생성(generate) 경로에서는 1~4단계(plan · character · keyframe · video)로 캐릭터 시트 · 키 프레임 · 영상을 만들고 5단계(assemble.py)에서 Craft 초안을 조립한다. 실제 자료(material) 경로에서는 실제 자료와 Craft 도구로 장면을 구성한다. 결과는 data/compositions/<영상 id>/ 아래에만 쓴다.");
+      "\n실제 자료(material) 경로에서는 실제 자료와 Craft 도구로 장면을 구성한다. 결과는 data/compositions/<영상 id>/ 아래에만 쓴다.");
     if (skill) {
       const body = readIf(path.join(ROOT, ".claude", "skills", skill, "SKILL.md"));
       if (body) parts.push(`## 활성 스킬: ${skill} (.claude/skills/${skill}/SKILL.md)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
     }
     const shotplanPath = !project.startsWith("_") ? path.join(ROOT, "data", "shotplans", `${project}.json`) : null;
     const hasShotplan = shotplanPath ? existsSync(shotplanPath) : false;
-    let routeKind = hasShotplan ? "generate" : null;
+    let routeKind = null;
     if (hasShotplan) {
-      try { routeKind = JSON.parse(readFileSync(shotplanPath, "utf8")).route || "generate"; } catch { routeKind = "generate"; }
-    }
-    const isGenPipeline = routeKind === "generate" || ["plan", "character-sheet", "keyframes", "video-gen", "edit-shots", "publish"].includes(skill);
-    // 생성 파이프라인 스킬들(자료조사 · 프롬프트 조립 · 캐릭터 시트 일관성 · 키 프레임 참조 · i2v 생성 · 5단계 편집)을 함께 주입
-    if (!project.startsWith("_") && isGenPipeline) {
-      for (const n of ["research", "plan", "character-sheet", "keyframes", "video-gen", "edit-shots", "publish"]) {
-        if (n === skill) continue;
-        const body = readIf(path.join(ROOT, ".claude", "skills", n, "SKILL.md"));
-        if (body) parts.push(`## 함께 쓰는 파이프라인 스킬: ${n} (.claude/skills/${n}/SKILL.md)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
-      }
+      try { routeKind = JSON.parse(readFileSync(shotplanPath, "utf8")).route || null; } catch { routeKind = null; }
     }
     // 실제 자료(material) 경로이거나 storyboard/produce 스킬일 때는 produce · storyboard 스킬을 함께 주입
     const companion = "produce";
@@ -214,14 +230,10 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       const body = readIf(path.join(ROOT, ".claude", "skills", "storyboard", "SKILL.md"));
       if (body) parts.push(`## 함께 쓰는 스킬: storyboard (콘티 작성 규칙)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
     }
-    // 감독 · 작가 · 디자이너 스킬은 실제 자료(material) 경로의 기획 · 콘티 · 제작 · 장면 고치기 및 5단계(edit-shots)에 함께 주입
-    // (생성 경로 1~4단계에서는 director/designer 의 '그림·영상 생성 모델 금지 · 캐릭터 그리기 금지' 문구가 충돌하므로 writer 만 함께 주입)
-    if (!project.startsWith("_") && (["plan", "storyboard", "produce", "refine", "scene-edit", "edit-shots", undefined, null, ""].includes(skill) || (skill || "").startsWith("format-"))) {
-      const roles = (isGenPipeline && skill !== "edit-shots" && skill !== "refine" && skill !== "scene-edit") ? ["writer"] : ["director", "writer", "designer"];
-      for (const n of roles) {
-        const body = readIf(path.join(ROOT, ".claude", "skills", n, "SKILL.md"));
-        if (body) parts.push(`## 함께 쓰는 스킬: ${n} (.claude/skills/${n}/SKILL.md — 늘 적용)\n\n${body.replace(/^---[\s\S]*?---\n/, "")}`);
-      }
+    // 감독 · 작가 · 디자이너 스킬은 매 턴 붙이지 않는다 — 엔진 단계(skill_pass 의 감독 · 각본가 · 디자이너 · 검토)가 같은 스킬로 콘티를 고친다.
+    // 2026-11-19 실측: 셋을 붙이면 호출마다 약 1.3만 토큰이 늘었다(한 편에 도구 호출 100~370번). 직접 고칠 때만 Read 로 연다.
+    if (!project.startsWith("_") && (["plan", "storyboard", "produce", "refine", "scene-edit", undefined, null, ""].includes(skill) || (skill || "").startsWith("format-"))) {
+      parts.push("## 감독 · 각본가 · 디자이너 스킬\n대사 · 연출 · 화면 디자인은 produce 의 엔진 단계가 같은 스킬(.claude/skills/director · writer · designer/SKILL.md)로 맞춘다. 사용자가 그 부분을 직접 고치라고 할 때만 해당 SKILL.md 를 Read 로 열어 규칙대로 고친다.");
     }
     if (!project.startsWith("_") && skill !== "scene-edit" && skill !== "plan" && existsSync(path.join(ROOT, "data", "storyboards", `${project}.json`))) {
       const body = readIf(path.join(ROOT, ".claude", "skills", "scene-edit", "SKILL.md"));
@@ -234,7 +246,6 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         "## 현재 작업 (작업 공간 대화 — 특정 영상이 아님)",
         "- 사용자가 지금 보는 화면은 매 메시지의 <FLUMA_CONTEXT> 의 '화면' 줄. 그 화면에서 결과가 보이게 일한다:",
         "  · 트렌드 → `engine/research/trends.py search --queries '…'` (구체 주제는 검색어, 결과가 트렌드 화면에 바로 나타남)",
-        "  · 라이브러리 → 캐릭터(.claude/skills/character)",
         "- 사용자가 선택한 것(선택: …)이 있으면 그것에 대해 말하는 것으로 본다.",
       ].join("\n"));
       return parts.join("\n\n---\n\n");
@@ -244,9 +255,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     parts.push([
       "## 현재 작업",
       `- 프로젝트 id: ${project}`,
-      `- 샷 계획 파일(생성 파이프라인 1~4단계 정본): ${spRel} ${hasShotplan ? `(있음 · 경로: ${routeKind})` : "(아직 없음 — plan.py new 로 생성)"}`,
-      `- 콘티 파일(5단계 조립 / material 경로): ${sbRel} ${existsSync(path.join(ROOT, sbRel)) ? "(있음 — 읽고 고친다)" : "(아직 없음)"}`,
-      `- 파이프라인: 생성(generate) 경로는 plan.py → character.py(승인 ①) → keyframe.py(승인 ②) → video.py → assemble.py → editor_bridge.py 순서와 프롬프트·캐릭터 일관성 규칙을 따른다.`,
+      `- 기획 파일(경로 · 주제): ${spRel} ${hasShotplan ? `(있음 · 경로: ${routeKind || "미정"})` : "(아직 없음 — plan.py new 로 생성)"}`,
+      `- 콘티 파일(material 경로 정본): ${sbRel} ${existsSync(path.join(ROOT, sbRel)) ? "(있음 — 읽고 고친다)" : "(아직 없음)"}`,
+      `- 경로: material(실제 자료 + Craft → produce.py) · clip(퍼온 클립 재편집 → dub.py). Craft 초안 뒤 최종본은 편집기(editor_bridge.py)에서 내보낸다.`,
       scene != null ? `- 이번 요청은 **장면 ${scene}만** 고친다. 다른 장면과 sec 합계는 건드리지 않는다.` : "",
     ].filter(Boolean).join("\n"));
     return parts.join("\n\n---\n\n");
@@ -351,21 +362,20 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
   ].join("\n");
   const MEMORY_RULES = [
     "## Fluma 공유 기억",
-    "- 메뉴(홈 · 트렌드 · 캐릭터 · 스튜디오)는 기억을 함께 쓴다. 매 메시지 끝의 <FLUMA_CONTEXT> 에 지금 화면과 관련 기억이 붙는다. 기억은 참고용 — 지금 요청과 다르면 지금 요청을 따른다.",
+    "- 메뉴(홈 · 트렌드 · 스튜디오)는 기억을 함께 쓴다. 매 메시지 끝의 <FLUMA_CONTEXT> 에 지금 화면과 관련 기억이 붙는다. 기억은 참고용 — 지금 요청과 다르면 지금 요청을 따른다.",
     "- 사용자가 **오래 갈 취향 · 결정 · 지시 · 제약**을 말하면(예: \"앞으로 2D 위주\", \"우리 브랜드 색은 …\", \"IT 쪽 관심\") 한 번 기억한다:",
-    "  `python3 engine/core/memory.py remember --type <preference|decision|instruction|constraint|convention|fact|error> --scope <global|trends|character|studio|project:<id>> --menu <지금 메뉴> --title \"짧은 제목\" --body \"맥락이 담긴 두세 문장(왜 · 어디서 · 무엇)\"`",
+    "  `python3 engine/core/memory.py remember --type <preference|decision|instruction|constraint|convention|fact|error> --scope <global|trends|studio|project:<id>> --menu <지금 메뉴> --title \"짧은 제목\" --body \"맥락이 담긴 두세 문장(왜 · 어디서 · 무엇)\"`",
     "- 한 문장 조각이 아니라 나중에 혼자 읽어도 이해되는 짧은 문단으로. 같은 제목이면 새 기억이 옛 기억을 대체한다. 이번 대화에만 쓸 일 · 파일에 이미 있는 것 · 키 · 비밀번호는 기억하지 않는다.",
     "- 범위: 모든 메뉴에 해당하면 global, 특정 메뉴 이야기면 그 메뉴.",
     "- 더 찾아볼 때: `python3 engine/core/memory.py recall --query \"…\" --any-scope`",
     "- 중간 파일은 <FLUMA_CONTEXT> 의 임시 폴더에 쓴다(7일 뒤 지워짐).",
   ].join("\n");
-  const MENU_LABEL = { plan: "홈 · 기획 대화", trends: "트렌드", character: "캐릭터", look: "라이브러리", studio: "영상 편집", home: "홈", global: "홈" };
+  const MENU_LABEL = { plan: "홈 · 기획 대화", trends: "트렌드", look: "라이브러리", studio: "영상 편집", home: "홈", global: "홈" };
   function menuOf(project, context) {
     if (project === "_workspace" && context?.note === "홈 화면") return "global";
     if (context?.menu) return context.menu;
     if (project === "_trends") return "trends";
     if (project === "_brand") return "brand";
-    if (project === "_character") return "character";
     return "studio";
   }
   function memoryCall(args) {
@@ -389,6 +399,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const lines = ["<FLUMA_CONTEXT>", `화면: ${MENU_LABEL[menu] || menu}${menu === "studio" ? ` · 프로젝트 ${project}` : ""}`];
     if (context?.selection) lines.push(`선택: ${String(context.selection).slice(0, 600)}`);
     if (context?.note) lines.push(String(context.note).slice(0, 600));
+    if (context?.autopilot) lines.push("진행 방식: 자동 진행(사용자가 켬) — 선택지를 띄우지 말고 추천안을 스스로 골라 한 줄로 알린 뒤 다음 단계로 간다(경로는 route.py --by default). 영상 완성(품질 관문 막음 0)까지 이어서 한다. 사람만 할 수 있는 것(업로드 · 녹화 · API 키 · 로그인)만 묻는다. 단계를 마칠 때마다(① 기획 기록 · prepare.py ② bundle.py 검사 통과 ③ 제작 · 관문) 한 줄 보고로 턴을 끝낸다 — 다음 단계는 새 대화에서 파일(기획 기록 · prepare.json · 콘티)을 읽고 이어 간다. 막음 0 으로 완성되면 정지 화면을 한 번 보고, 큰 문제(글자 잘림 · 빈 화면 · 틀린 사실 · 깨진 장면)만 모아 한 번에 고쳐 마지막 제작 한 번 — 그 뒤엔 더 다듬지 않고 끝낸다(엔진도 막는다). 고칠 곳이 여럿이면 Edit 를 한 응답에 나란히 보낸다(한 칸 고치고 검사 · 렌더 반복 금지).");
+    // 이 영상을 올릴 YouTube 채널(채팅창에서 고름) — 이름만. 토큰은 서버 밖으로 나오지 않는다
+    if (context?.youtubeAccount?.title && !project.startsWith("_")) lines.push(`유튜브 계정: ${String(context.youtubeAccount.title).replace(/\s+/g, " ").slice(0, 80)} (업로드는 이 계정으로 — publish.py upload 가 이 영상의 선택을 따른다)`);
     lines.push(`임시 폴더: ${tmp}/`);
     // 사용자가 올린 사진 · 영상 (data/public/uploads/<id>/) — 장면에 쓰라고 하면 이것을 쓴다
     try {
@@ -421,6 +434,13 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     }
     const last = [...(s.messages || [])].reverse().find((m) => m.role === "assistant" && m.text);
     if (last) out.push(`직전 답(요약): ${String(last.text).replace(/\s+/g, " ").slice(0, 500)}`);
+    const prep = path.join(ROOT, "data", "compositions", project, "prepare.json");
+    if (existsSync(prep)) {
+      try {
+        const pj = JSON.parse(readFileSync(prep, "utf8"));
+        out.push(`기획 준비(prepare.json): 주제 ${pj.topic} · 레퍼런스 ${(pj.references || []).map((r) => r.id).join(" ")} · 조사 파일 ${existsSync(path.join(ROOT, pj.research_file || "")) ? "있음" : "아직"} — 자세한 건 ${path.relative(ROOT, prep)}`);
+      } catch { /* 생략 */ }
+    }
     const sbp = path.join(ROOT, "data", "storyboards", `${project}.json`);
     if (existsSync(sbp)) {
       try {
@@ -488,10 +508,11 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     slots.add(project);
     try { return await startInner(project, opts); } catch (e) { unbusy(project); throw e; }
   }
-  async function startInner(project, { message, look, template, skill: skillIn, scene, model, context, auto }) {
+  async function startInner(project, { message, look, template, skill: skillIn, scene, model, context, auto, pilot, resumed }) {
     let skill = skillIn;
-    if (!auto) { clearTimeout(autoTimers.get(project)); autoTimers.delete(project); autoChain.set(project, 0); }   // 사용자가 직접 보내면 예약된 자동 이어가기는 취소 · 연속 횟수 0
+    if (!auto) { clearTimeout(autoTimers.get(project)); autoTimers.delete(project); autoChain.set(project, 0); pilotChain.set(project, 0); fs.rm(path.join(ROOT, "data", "workspace", "tmp", project, "polish.json"), { force: true }).catch(() => {}); }   // 사용자가 새로 말하면 완성 뒤 다듬기 횟수도 다시   // 사용자가 직접 보내면 예약된 자동 이어가기는 취소 · 연속 횟수 0
     else if (!autoTimers.has(project)) { unbusy(project); return { sessionId: null }; }   // 그사이 멈췄으면 자동 이어가기 안 함
+    else if (pilot) { autoTimers.delete(project); pilotChain.set(project, (pilotChain.get(project) ?? 0) + 1); }
     else { autoTimers.delete(project); autoChain.set(project, (autoChain.get(project) ?? 0) + 1); }
     // 장면 코멘트는 따로 고른 스킬이 없으면 scene-edit 를 쓴다
     if (scene != null && !skill && existsSync(path.join(ROOT, ".claude", "skills", "scene-edit", "SKILL.md"))) skill = "scene-edit";
@@ -501,6 +522,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     // Claude 세션을 실제로 연 적이 있어야 --resume (같은 대화를 Codex 로만 하다가 Claude 로 바꾸면 새 세션으로 시작)
     let first = false, ctx = null, rotated = false;
     const sess = await mutate(project, async (s) => {
+      s.autopilot = !!context?.autopilot;                   // 서버가 다시 켜질 때 끊긴 자동 진행을 이어 가려고(resumeInterrupted)
+      if (context?.autopilot) s.pilotContext = context;
+      if (!auto && !resumed) s.resumes = 0;
       if (rtPre === "cursor") {
         first = !s.cursorSession;
       } else if (rtPre === "codex") {
@@ -512,7 +536,8 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         first = !s.sessionId || !claudeUsed;
         // 대화 갈아타기: 한 Claude 대화에 턴이 쌓이면 매 턴 앞 대화 전체(정지 화면 · 도구 출력 포함)를 다시 읽어 턴 비용이 계속 커졌다
         // (2026-11-09 영상: 턴 비용 0.8 → 36.7, 전체의 3/4 이 쌓인 대화 다시 읽기). ROTATE 턴마다 새 대화로 시작하고, 상태는 코드가 요약해 넘긴다
-        if (claudeUsed && s.sessionId && (s.claudeTurns ?? 0) >= ROTATE && !project.startsWith("_")) {
+        // 자동 진행은 단계(기획 → 콘티 → 제작)마다 새 대화로 — 앞 단계 도구 출력을 다시 읽지 않게(2026-11-19 토큰: 호출당 컨텍스트 14만 → 단계 시작 4~5만)
+        if (claudeUsed && s.sessionId && (pilot || (s.claudeTurns ?? 0) >= ROTATE) && !project.startsWith("_")) {
           s.sessionId = randomUUID(); first = true; rotated = true; s.claudeTurns = 0;
         }
       }
@@ -564,10 +589,18 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       bin = process.env.SF_CLAUDE_BIN || "claude";
       args = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--include-partial-messages",
         first ? "--session-id" : "--resume", sess.sessionId,
-        "--permission-mode", "acceptEdits", "--allowedTools", ...TOOLS, "--disallowedTools", ...DENY,
-        "--append-system-prompt", sys];
+        // 엔진 명령을 절대 경로로 불러도 허용(2026-11-18: 'python3 /…/engine/produce.py' 가 상대 경로 규칙에 안 맞아 막히고 왕복이 한 번 더 들었다)
+        "--permission-mode", "acceptEdits", "--allowedTools", ...TOOLS, ...absEngineTools(ROOT), "--disallowedTools", ...DENY,
+        "--append-system-prompt", sys,
+        // 이 컴퓨터 사용자의 개인 MCP 연결 · 플러그인 · 개인 설정을 물려받지 않는다(2026-11-19 실측: 호출마다 약 1.7만 토큰 — Notion · Gamma 같은 연결과 플러그인 스킬 목록).
+        // 쓰는 MCP 는 아래 --mcp-config(사용자가 Fluma 에 붙인 서버 + 켠 Craft 앱)뿐, 설정은 이 저장소(.claude/settings*.json)만
+        "--strict-mcp-config", "--setting-sources", "project",
+        // 2026-11-24 토큰 감사: 호출마다 기본 문맥 42~53K 를 다시 읽는다. 안 쓰는 기본 도구(Workflow · Agent · ListAgents · ScheduleWakeup · ReportFindings …,
+        // 약 5.6K)와 내장 스킬 목록(약 5K, Skill 도구 사용 0번 — 스킬은 Read 로 연다)을 뺀다. 쓰는 도구만 남긴다
+        "--tools", "Read,Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch,TodoWrite", "--disable-slash-commands"];
       // 사용자가 설정에서 켠 MCP 서버: 그 서버의 도구를 모두 허용(mcp__<이름>)
-      const mcp = mcpRunConfig(createCrafts(ROOT).mcpServers());   // 사용자 MCP + 설치된 Craft 앱(벡터 · 모션 · 이미지 …)
+      // 2026-11-24: 세션 39개에서 mcp__* 호출 0번(Craft 는 CLI crafts.py run 으로 쓴다) — 다듬기(refine) 스킬일 때만 붙인다. 서버 4개를 매 턴 띄우는 시간도 준다
+      const mcp = (skill === "refine" || process.env.FLUMA_AGENT_MCP === "1") ? mcpRunConfig(createCrafts(ROOT).mcpServers()) : null;
       if (mcp) {
         args.push("--mcp-config", mcp.file); args.splice(args.indexOf("--disallowedTools"), 0, ...mcp.tools);
         // Craft 앱의 '전체 명령 목록' 도구는 막는다 — 결과가 크고, 한 턴에 10번씩 다시 불렀다(2026-11-17 sjedqou).
@@ -589,6 +622,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     if (safe.dropped.length) console.warn(`[agent] 로그인 모드라 결제 경로를 바꾸는 환경 변수를 넘기지 않음: ${safe.dropped.join(", ")}`);
     // FLUMA_AGENT_*: 엔진 스크립트가 '누가 만들었나'를 결과 파일에 적는다(파이프라인 뷰는 설정이 아니라 이 기록을 보여 준다)
     const child = spawn(st.cmd, args, { cwd: ROOT, env: { ...safe.env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1", ...rt.env,
+      FLUMA_API: `http://127.0.0.1:${process.env.PORT || 4310}`, FLUMA_PROJECT: project, ...(context?.autopilot ? { FLUMA_AUTOPILOT: "1" } : {}),   // engine/core/batch.py(일괄 제작)가 서버에 요청할 때
       FLUMA_AGENT_RUNTIME: rt.runtime || "", FLUMA_AGENT_MODEL: (rt.runtime === "claude" ? (model || rt.model || process.env.SF_AGENT_MODEL) : rt.model) || "" }, stdio, shell: st.shell, detached: process.platform !== "win32" });
     const run = { project, live: true, child, events: [], clients: clientsOf(project), stdinOpen: rt.runtime === "claude", text: "", tools: [], todos: null, startedAt: Date.now(), runtime: rt.label, skill: skill || null };
     runs.set(project, run);
@@ -666,19 +700,26 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       const chain = autoChain.get(project) ?? 0;
       // 사용 한도 · 크레딧 · 로그인 오류는 다시 보내도 똑같이 실패한다 — 이어가기 없이 사용자에게 알린다
       const blocked = /usage limit|rate.?limit|quota|credits?|not logged in|log ?in required|unauthori[sz]ed|\b40[13]\b|\b429\b/i.test(errorText || "");
-      if (!ok && !userStopped && !killed && !run.result && !asked && !blocked && chain < 2) {
+      const pilotOn = !!context?.autopilot && !project.startsWith("_");   // 작업 공간 대화(트렌드 · 홈)는 완성할 영상이 없다
+      // 이번 턴에 품질 관문을 막음 0 으로 통과했으면(완성) 자동 진행은 여기서 멈춘다 — 다듬기 선택지를 계속 골라 고치기를 반복하지 않게
+      let finished = false;
+      try {
+        const qf = path.join(ROOT, "data", "workspace", "tmp", project, "quality.json");
+        if (existsSync(qf) && statSync(qf).mtimeMs >= run.startedAt) finished = !(JSON.parse(readFileSync(qf, "utf8")).block || []).length;
+      } catch { finished = false; }
+      // 자동 진행 = 완성까지 그냥 간다: 질문으로 끝났으면 추천안으로 답하고, 진행 보고로 끝났어도 완성 전이면 이어서 보낸다
+      const pilotMsg = pilotOn && !finished && ok && !userStopped && !killed && (pilotChain.get(project) ?? 0) < PILOT_MAX
+        ? (asked ? pilotReply(run.text) : "(자동 진행) 아직 완성 전이야(이번에 품질 관문을 막음 0 으로 통과한 영상이 없음). 묻지 말고 남은 단계를 이어서 완성까지 진행해 줘.")
+        : null;
+      if (pilotMsg) {                                   // 자동 진행: 선택지 · 질문에 추천안으로 대신 답하고 이어 간다
+        autoTimers.set(project, setTimeout(() => start(project, { message: pilotMsg, look, template, skill, scene, model, context, auto: true, pilot: true }).catch(() => {}), 1200));
+      } else if (!ok && !userStopped && !killed && !run.result && !asked && !blocked && chain < 2) {
         autoTimers.set(project, setTimeout(() => start(project, { message: "(자동 이어가기) 방금 작업이 중간에 끊겼어. 이미 한 일은 다시 하지 말고, 남은 단계부터 이어서 마무리해 줘.", look, template, skill, scene, model, context, auto: true }).catch(() => {}), 1500));
-      } else if (ok && !auto && !userStopped && !asked && skill !== "plan") {
+      } else if (ok && (!auto || pilotOn) && !userStopped && !asked && skill !== "plan") {
         const missing = missingComposition(files);
         if (missing) {
           autoTimers.set(project, setTimeout(() => start(project,
             { message: `(자동 이어가기) 콘티 ${missing.id}.json 은 있는데 아직 제작이 없어. 네가 python3 engine/produce.py data/storyboards/${missing.id}.json 을 실행해서 완성 영상을 media 로 보여 줘. 사용자에게 명령을 시키지 마(produce 스킬).`, look, template, skill: "produce", scene: null, model, context, auto: true }).catch(() => {}), 1500));
-        } else {
-          const ga = missingAssembleBuild(project);
-          if (ga) {
-            autoTimers.set(project, setTimeout(() => start(project,
-              { message: `(자동 이어가기) 생성 파이프라인 ${ga.id} — 샷 검토까지 끝났는데 합성·편집 영상이 없어. 네가 python3 engine/gen/assemble.py build ${ga.id} 를 실행하고 media 로 보여 줘. 승인·선택이 필요할 때만 잠깐 묻고 멈추지 마(edit-shots · produce 스킬).`, look, template, skill: "edit-shots", scene: null, model, context, auto: true }).catch(() => {}), 1500));
-          }
         }
       }
     });
@@ -694,21 +735,6 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         if (!existsSync(path.join(ROOT, "data", "compositions", m[1], "craft", "craft.json"))) return { id: m[1] };
       } catch { /* 깨진 콘티는 무시 */ }
     }
-    return null;
-  }
-
-  /** 생성 경로: 샷 검토까지 끝났는데 5단계 합성 MP4 가 아직 없음 */
-  function missingAssembleBuild(pid) {
-    const sp = path.join(ROOT, "data", "shotplans", `${pid}.json`);
-    if (!existsSync(sp)) return null;
-    try {
-      const route = JSON.parse(readFileSync(sp, "utf8")).route || "generate";
-      if (route !== "generate") return null;
-    } catch { return null; }
-    try {
-      const st = JSON.parse(execFileSync(PY, ["engine/gen/status.py", pid], { cwd: ROOT, encoding: "utf8", maxBuffer: 2_000_000 }));
-      if (st.next === "5 편집 — 초안 만들기") return { id: pid };
-    } catch { /* status 실패 시 자동 이어가기 생략 */ }
     return null;
   }
 
@@ -796,7 +822,30 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     return () => clients.delete(res);
   }
 
+  /** 서버 재시작(메모리 부족 · 업데이트)으로 끊긴 자동 진행을 이어 간다 — 마지막 말이 답 없는 사용자 말인 자동 진행 대화만.
+   *  같은 곳에서 계속 죽는 영상이 끝없이 다시 돌지 않게 대화마다 2번까지(사용자가 말하면 다시 0). 대기열(maxConcurrent)을 그대로 따른다. */
+  async function resumeInterrupted() {
+    const names = await fs.readdir(SESS).catch(() => []);
+    const out = [];
+    for (const n of names) {
+      if (!n.endsWith(".json") || n.startsWith("_")) continue;
+      const id = n.slice(0, -5);
+      let s;
+      try { s = await load(id); } catch { continue; }
+      const last = (s.messages || []).at(-1);
+      if (!s.autopilot || !last || last.role !== "user" || Date.now() - (last.ts || 0) > 6 * 3600e3) continue;
+      if ((s.resumes ?? 0) >= 2) { out.push({ id, skipped: "이어가기 2번 다 씀" }); continue; }
+      if (busy.has(id) || runs.get(id)?.live) continue;
+      await mutate(id, (s2) => { s2.resumes = (s2.resumes ?? 0) + 1; });
+      start(id, { message: `(자동 진행 · 서버 재시작 ${(s.resumes ?? 0) + 1}/2) 서버가 다시 켜지며 작업이 끊겼어. 이미 한 일은 다시 하지 말고 파일 상태에서 이어서 완성까지 진행해 줘. 같은 단계에서 또 끊기면(메모리 부족 등) 그 단계를 가볍게(장면만 · 낮은 해상도) 바꿔 봐.`,
+        context: s.pilotContext || { autopilot: true }, resumed: true }).catch(() => {});
+      out.push({ id, resumed: true });
+    }
+    return out;
+  }
+
   return {
+    resumeInterrupted,
     history: async (id) => ({ ...(await load(id)), running: busy.has(id) || !!runs.get(id)?.live, queued: (queued.get(id) || []).map((x) => x.message) }),
     running: (id) => busy.has(id) || !!runs.get(id)?.live,
     reset: async (id) => {

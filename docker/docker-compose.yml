@@ -30,6 +30,7 @@ services:
       - fluma_clips:/app/data/public/clips             # 클립 후보 목록(clip.py search)
       - fluma_trends:/app/data/public/trends           # 레퍼런스 분석(분해 · 스타일 · 채널 카드) — 다시 빌드해도 다시 분석하지 않게
       - fluma_research:/app/data/research
+      - fluma_shotplans:/app/data/shotplans
       - fluma_characters:/app/data/characters
       - fluma_briefs:/app/data/briefs
       - fluma_scenes:/app/data/scenes
@@ -61,6 +62,7 @@ volumes:
   fluma_elements:
   fluma_trends:
   fluma_research:
+  fluma_shotplans:
   fluma_characters:
   fluma_briefs:
   fluma_scenes:

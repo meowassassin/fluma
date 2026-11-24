@@ -1,7 +1,6 @@
 """ui_mock .tsx → build.mjs (품질 게이트). Agent 없이 기존 파일만 다시 빌드."""
 from __future__ import annotations
 
-import json
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed

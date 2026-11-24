@@ -1,8 +1,8 @@
 # TextureCraft 참고 (v0.3.0)
 
-**한 줄 요약**: Substance Painter 류 3D 텍스처 페인팅 앱(순수 Rust, MIT/Apache-2.0, 저장소 `storytold/texturecraft`). 명령 162개를 헤드리스 CLI(`new` · `run` · `batch` · `bake` · `render` · `export`)와 MCP 로 부른다. 쇼츠에서는 **3D 개체에 실제 같은 재질(녹 · 금 · 나무 · 벗겨진 페인트 93종) 입히기 · 한글 로고 데칼 · 붓질이 묻는 과정 · 각도 돌려 찍기(턴테이블) · 경로 추적 렌더** 를 맡는다. 지금 Fluma 는 이 앱을 **전혀 쓰지 않는다**(craft.json `agent:false`, 부르는 곳 없음).
+**한 줄 요약**: Substance Painter 류 3D 텍스처 페인팅 앱(순수 Rust, MIT/Apache-2.0, 저장소 `storytold/texturecraft`). 명령 162개를 헤드리스 CLI(`new` · `run` · `batch` · `bake` · `render` · `export`)와 MCP 로 부른다. 쇼츠에서는 **3D 개체에 실제 같은 재질(녹 · 금 · 나무 · 벗겨진 페인트 93종) 입히기 · 한글 로고 데칼 · 붓질이 묻는 과정 · 각도 돌려 찍기(턴테이블) · 경로 추적 렌더** 를 맡는다. Fluma 는 재료 어댑터(engine/craft/adapters/texturecraft.py — `model3d` 재질)로 부른다(craft.json `agent:false` — 에이전트 MCP 로는 붙지 않음).
 
-- 실행 파일: `tools/crafts/texturecraft/app/texturecraft-0.3.0-linux-x86_64/bin/texturecraft-cli`
+- 실행 파일: `tools/crafts/texturecraft/app/texturecraft-<버전>-<플랫폼>/bin/texturecraft-cli`
   (에이전트는 `python3 engine/craft/crafts.py run texturecraft <인자…>` 로 부른다)
 
 ---

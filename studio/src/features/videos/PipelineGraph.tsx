@@ -8,11 +8,9 @@ import { api, errMsg, type Pipeline, type PipelineLive } from "../../lib/api";
 import { t } from "../../lib/i18n";
 import { EngineIcon } from "../../ui/EngineIcon";
 import { AppGlyph } from "../../ui/AppGlyph";
-import { buildSteps, prettyModel, STATE_TX, usePipeline, type Model, type State, type Step } from "./pipelineModel";
-import { KeyframeStudioModal } from "./KeyframeStudioModal";
+import { buildSteps, STATE_TX, usePipeline, type Model, type State, type Step } from "./pipelineModel";
 import "./pipeline-graph.css";
 
-const F = (rel: string | null | undefined) => (rel ? `/api/pipefiles/${rel}` : "");
 const OUT = (id: string, name: string) => `/api/projects/${id}/studio-file?p=${encodeURIComponent(`data/out/${name}`)}`;
 
 /** GitHub 식 상태 아이콘 */
@@ -134,29 +132,14 @@ const Graph: React.FC<{
   );
 };
 
-/* ---------- 세로 목록(편집기 옆 패널) ---------- */
-const List: React.FC<{ steps: Step[]; sel: string | null; onSel: (k: string) => void }> = ({ steps, sel, onSel }) => (
-  <ol className="pgx-list">
-    {[...steps].sort((a, b) => a.col - b.col || a.row - b.row).map((s) => (
-      <li key={s.key}>
-        <button type="button" className={`pgx-li s-${s.state} ${sel === s.key ? "is-sel" : ""}`} title={tipOf(s)} onClick={() => onSel(s.key)}>
-          <StateIcon s={s.state} />
-          <span className="pgx-name">{s.name}</span>
-          <span className="pgx-models">{s.models.slice(0, 3).map((m, i) => <ModelIcon key={i} m={m} size={18} spin={s.state === "running" && i === 0} />)}</span>
-        </button>
-      </li>
-    ))}
-  </ol>
-);
 
 export interface PipelineGraphProps { id: string; variant?: "full" | "panel"; orientation?: "horizontal" | "vertical"; onOpenEditor?: () => void }
 
 export const PipelineGraph: React.FC<PipelineGraphProps> = ({ id, variant = "full", orientation, onOpenEditor }) => {
   const { data, live, error, reload } = usePipeline(id);
   const [sel, setSel] = useState<string | null>(null);
-  const [studioShot, setStudioShot] = useState<number | null>(null);
   const g = useMemo(() => (data ? buildSteps(data, live) : null), [data, live]);
-  const act = async (step: string, action: string, body: { name?: string; views?: string; shots?: string; say?: string; candidates?: number; candidate?: number } = {}) => {
+  const act = async (step: string, action: string, body: Record<string, unknown> = {}) => {
     try { await api.pipelineAct(id, step, action, body); reload(); } catch (e) { toast.error(errMsg(e)); }
   };
   const isVert = orientation === "vertical" || variant === "panel";
@@ -187,18 +170,8 @@ export const PipelineGraph: React.FC<PipelineGraphProps> = ({ id, variant = "ful
           p={data}
           live={live}
           act={act}
-          onOpenStudio={(sh) => setStudioShot(sh)}
           onOpenEditor={onOpenEditor}
           onClose={() => setSel(null)}
-        />
-      )}
-      {studioShot !== null && (
-        <KeyframeStudioModal
-          id={id}
-          shot={studioShot}
-          pipeline={data}
-          onClose={() => setStudioShot(null)}
-          onUpdated={reload}
         />
       )}
     </div>
@@ -207,11 +180,10 @@ export const PipelineGraph: React.FC<PipelineGraphProps> = ({ id, variant = "ful
 
 /* ---------- 단계 상세: 결과물 · 버튼만 ---------- */
 const Detail: React.FC<{
-  id: string; s: Step; p: Pipeline; live: PipelineLive | null; onClose: () => void; onOpenEditor?: () => void; onOpenStudio: (shot: number) => void;
-  act: (step: string, action: string, body?: { name?: string; views?: string; shots?: string; say?: string; candidates?: number; candidate?: number }) => void;
-}> = ({ id, s, p, live, act, onOpenStudio, onOpenEditor, onClose }) => {
-  const route = p.route || "generate";
-  const draftStep = route === "clip" ? ["dub", "build"] : route === "material" ? ["material", "produce"] : ["edit", "build"];
+  id: string; s: Step; p: Pipeline; live: PipelineLive | null; onClose: () => void; onOpenEditor?: () => void;
+  act: (step: string, action: string, body?: Record<string, unknown>) => void;
+}> = ({ id, s, p, live, act, onOpenEditor, onClose }) => {
+  const draftStep = p.route === "clip" ? ["dub", "build"] : ["material", "produce"];
   const busy = s.state === "running";
   return (
     <section className="pgx-detail">
@@ -226,53 +198,6 @@ const Detail: React.FC<{
 
       {s.key === "plan" && !!p.plan?.shots?.length && (
         <ol className="pgx-shots">{p.plan.shots.map((x) => <li key={x.n} title={`${x.shot_size} · ${x.camera_move}`}><b>{x.n}</b>{x.purpose}<em>{x.final_sec}s</em></li>)}</ol>
-      )}
-      {s.key === "character" && p.characters.map((c) => (
-        <div key={c.name} className="pgx-row">
-          <div className="pgx-thumbs">{Object.entries(c.files || {}).map(([v, f]) => <img key={v} src={F(f)} alt={v} title={v} />)}</div>
-          <div className="pgx-btns">
-            <button className="pgx-btn" disabled={busy} onClick={() => act("character", "make", { name: c.name, views: "all" })}>{t("다시 만들기")}</button>
-            <button className="pgx-btn is-primary" disabled={c.state === "승인" || !Object.keys(c.files || {}).length} onClick={() => act("character", "approve", { name: c.name })}>{t("승인")}</button>
-          </div>
-        </div>
-      ))}
-      {s.key === "keyframe" && (
-        <div className="pgx-row">
-          <div className="pgx-thumbs is-tall">{p.keyframes.map((k) => (
-            <figure key={k.shot} title={`${k.shot} · ${k.state}`}>
-              {k.first ? <img src={F(k.first)} alt="" /> : <span className="pgx-ph" />}
-              <div style={{ display: "flex", gap: 3, flexWrap: "wrap", justifyContent: "center" }}>
-                <button type="button" className="pgx-btn is-xs is-primary" onClick={() => onOpenStudio(k.shot)}>
-                  {k.has_stage ? t("3D무대 ✓") : k.has_compose ? t("2D합성 ✓") : t("3D 무대 연출")}
-                </button>
-                {(k.first || k.has_stage || k.has_compose) && k.state !== "승인" && (
-                  <button type="button" className="pgx-btn is-xs" onClick={() => act("keyframe", "approve", { shots: String(k.shot) })}>
-                    {t("승인")}
-                  </button>
-                )}
-              </div>
-            </figure>
-          ))}</div>
-          <div className="pgx-btns">
-            <button className="pgx-btn" disabled={busy} onClick={() => act("keyframe", "make")}>{t("키프레임 생성")}</button>
-            <button className="pgx-btn is-primary" disabled={!p.keyframes.some((k) => (k.first || k.has_stage) && k.state !== "승인")} onClick={() => act("keyframe", "approve")}>{t("구도 승인")}</button>
-          </div>
-        </div>
-      )}
-      {s.key === "video" && (
-        <div className="pgx-row">
-          <div className="pgx-thumbs is-tall">{p.clips.map((c) => (
-            <figure key={c.shot} title={`${c.shot} · ${c.state}`}>
-              {c.clip_url ? <video src={F(c.clip_url)} muted loop playsInline onMouseEnter={(e) => e.currentTarget.play()} onMouseLeave={(e) => e.currentTarget.pause()} /> : <span className="pgx-ph" />}
-              {c.clip_url && !c.approved && <button className="pgx-btn is-primary is-xs" onClick={() => act("video", "approve", { shots: String(c.shot) })}>{t("승인")}</button>}
-              {c.clip_url && !c.approved && <Revise onSay={(say) => act("video", "revise", { shots: String(c.shot), say })} />}
-            </figure>
-          ))}</div>
-          <div className="pgx-btns">
-            <span className="pgx-faint">{prettyModel(p.videogen?.model || live?.models.video || "")}</span>
-            <button className="pgx-btn" disabled={busy} onClick={() => act("video", "run")}>{t("생성")}</button>
-          </div>
-        </div>
       )}
       {s.key === "draft" && (
         <div className="pgx-row">
@@ -290,21 +215,5 @@ const Detail: React.FC<{
         </div>
       )}
     </section>
-  );
-};
-
-/** 말로 고치기 — 고칠 점(영어)을 그 샷 프롬프트에 붙인다. 다음 '생성'에 반영(한국어는 AI 에이전트에게 말로) */
-const Revise: React.FC<{ onSay: (say: string) => void }> = ({ onSay }) => {
-  const [v, setV] = useState("");
-  const send = () => {
-    const s = v.trim(); if (!s) return;
-    if (/[가-힣]/.test(s)) { toast.error(t("고칠 점은 영어로 적어 주세요 — 한국어는 AI 에이전트에게 말하면 옮겨 줍니다")); return; }
-    onSay(s); setV("");
-  };
-  return (
-    <form className="pgx-revise" onSubmit={(e) => { e.preventDefault(); send(); }}>
-      <input value={v} onChange={(e) => setV(e.target.value)} placeholder="Make the text bigger" aria-label={t("고칠 점")} />
-      <button type="submit" className="pgx-btn is-xs" disabled={!v.trim()} title={t("고칠 점을 붙이고 다음 생성에 반영")}>{t("고치기")}</button>
-    </form>
   );
 };

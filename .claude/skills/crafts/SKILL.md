@@ -17,7 +17,7 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
    `{"type":"craft","id":"m2","app":"vectorcraft","steps":[{"id":"shape.rectangle","params":{…}}, …],"export":{"format":"png"}}`
    params 는 `craft_catalog.py show <앱> <id>` 와 reference/<앱>.md 의 시험된 예를 따른다. 앞 결과 참조 `"$N.키"`, 작업 폴더 `$WORK/…`, 프레임 `$FRAMES`.
 3. 레시피 쓰기: `{"recipe":"hook-title-arc","fill":{"/steps/3/params/text":"새 제목"}}` — 바꿀 칸은 recipes/<이름>.json 의 slots.
-3-0. **2D 설명 장면은 예시부터 복사** — `engine/spec/examples/craft-2d.example.json`(VectorCraft 그리기 → EffectCraft 움직이기, 시험됨)을 그대로 재료에 넣고 좌표 · 색 · 글자 · `$CUE` 낱말만 바꾼다. EffectCraft 코드는 기본 함수 `K.*`(engine/craft/jsx/kit.jsx — 자동으로 붙음: scene · text · shape · image · leaves · layer · appear · fadeOut · dim · pop · move · shake · draw · popGroup · write · follow)를 쓴다 — 공용 함수를 새로 만들거나 엔진 소스(craft_script.py · cues.py · materials.py)를 읽지 않는다(2026-11-17: 소스 읽기 · 함수 만들기에 9분). 화면 밖 걱정은 엔진이 맡는다: `K.text` 는 한 줄이 화면 폭 92%(또는 `{maxW}`)를 넘으면 글자를 줄이고, 장면이 끝나면 `K.fit()` 이 멈춘 자리가 화면 가장자리(4%)를 넘은 묶음만 그만큼 안쪽으로 옮긴다(크기는 그대로)(일부러 잘라 보일 때만 `K.NOFIT = true` · 글자에 `{noFit: true}`).
+3-0. **2D 설명 장면은 예시부터 복사** — `engine/spec/examples/craft-2d.example.json`(VectorCraft 그리기 → EffectCraft 움직이기, 시험됨)을 그대로 재료에 넣고 좌표 · 색 · 글자 · `$CUE` 낱말만 바꾼다. EffectCraft 코드는 기본 함수 `K.*`(engine/craft/jsx/kit.jsx — 자동으로 붙음: scene · text · shape · image · leaves · layer · appear · fadeOut · dim · pop · move · shake · draw · popGroup · write · fx · follow · ease, 색은 `'#hex'` 그대로)를 쓴다 — 공용 함수를 새로 만들거나 엔진 소스(craft_script.py · cues.py · materials.py)를 읽지 않는다(2026-11-17: 소스 읽기 · 함수 만들기에 9분). 화면 밖 걱정은 엔진이 맡는다: `K.text` 는 한 줄이 화면 폭 92%(또는 `{maxW}`)를 넘으면 글자를 줄이고, 장면이 끝나면 `K.fit()` 이 멈춘 자리가 화면 가장자리(4%)를 넘은 묶음만 그만큼 안쪽으로 옮긴다(크기는 그대로)(일부러 잘라 보일 때만 `K.NOFIT = true` · 글자에 `{noFit: true}`).
 3-1. **앱을 넘나들며 · 말에 맞춰 (2026-11-16 시험됨)** — 설명 장면을 요청한 느낌(노트 손글씨 · 2D 애니메이션 · 모션그래픽 …)대로 이 장면만을 위해 짠다:
    - 그리기는 VectorCraft(`path.create` 손 떨림 좌표 · `shape.rectangle` · `paint.setStroke` · `stroke.set {cap: round}` · 붓 `brush.apply`) → 마지막에 `document.export {path: "$WORK/art.svg"}`.
    - 움직이기는 EffectCraft 재료에 `"uses": {"art": "<VectorCraft 재료 id>"}` 를 적고 `edit.pasteSvg {svg: "$READ:$USE:art/art.svg", name: "Ink"}` → 도형 레이어 하나(획 · 도형마다 그룹, **나중에 그린 것이 앞** — 그린 순서로 쓰려면 뒤집는다).
@@ -26,7 +26,7 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
    - `$USE:이름`(그 재료 결과 파일) · `$USE:이름/파일`(그 재료 작업 폴더 안 파일) · `$READ:<경로>`(파일 글자 내용).
    - 같은 짜임을 다음 영상에 그대로 쓰지 않는다(움직임 라이브러리를 쌓지 않음) — 요청 · 레퍼런스 · 주제에 맞게 매번 새로. 렌더한 프레임을 보고 고친다.
 4. 많이 쓰는 것과 효과 남발은 다르다 — 장면의 말을 더 잘 보여 주는 기능만. 결과는 정지 화면을 보고 판단(시선을 붙잡는가 — 채도 · 색 · 움직임).
-7. **다양성은 사용자의 선택으로**: 모양 · 효과의 큰 방향은 시안(engine/story/directions.py)으로 보여 주고 사용자가 고른다. '안 써 본 것'을 이유로 사용자가 원하지 않는 효과를 넣지 않는다. 같은 재료를 다른 앱으로 만들 수 있으면(`method`) 그 차이도 시안에 쓴다.
+7. **다양성 때문에 원하지 않는 효과를 넣지 않는다**: 모양 · 효과의 큰 방향은 레퍼런스대로 정하고 한 줄로 알린다 — 시안 비교(engine/story/directions.py)는 사용자가 보고 싶다고 할 때만. 같은 재료를 다른 앱으로 만들 수 있으면(`method`) 그 차이도 시안에 쓴다.
 
 ## 1. 재료 · 작업 → 앱 → 핵심 기능
 
@@ -47,7 +47,9 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 | 도식 (`diagram`) | DeckCraft | 쓰는 중(adapters/deckcraft.py): 540×960pt 덱에 SmartArt(steps · compare · cycle · hierarchy · pyramid · timeline · list) + `setBounds`, 항목마다 투명 층(빌드 애니메이션 대신) + base. 안 쓰는 것: 표 스타일, `render-transition` |
 | 문서 화면 (`document`) | WordCraft | 쓰는 중(adapters/wordcraft.py): 9:16 쪽으로 다시 배치 · 글자 일괄 확대, 진짜 `format.highlight`, 변경 추적(`review.compare`), 메모 말풍선. 안 쓰는 것: 대본 md ↔ docx |
 | 웹 · 터미널 실제 화면 (후보 `web-screen` 등) | craft-anything | 연결 없음. `web-walkthrough-record`(360×640@3x), `web_site_capture`, 터미널 기록. `--deep --allow-run` 필요. 기존 `web`(webrec.py) 재료와 겹치는지 먼저 본다 |
-| 실사 · 생성 영상 합성(`live`) | EffectCraft | 카메라를 풀어(시야각 자동 탐색, 독립 오차 `follow_px`) 글자 · 그림을 그 공간에 붙인다. 인물 뒤로 지나가기(`behind`) · 물체 따라가기(`follow`) · 색 바꾸기(`recolor`) · 바닥에 선 정지 물체 지우기(`remove`). 카메라가 움직이는 영상만 풀린다 |
+| 실사 영상 합성(`live`) | EffectCraft | 카메라를 풀어(시야각 자동 탐색, 독립 오차 `follow_px`) 글자 · 그림을 그 공간에 붙인다. 인물 뒤로 지나가기(`behind`) · 물체 따라가기(`follow`) · 색 바꾸기(`recolor`) · 바닥에 선 정지 물체 지우기(`remove`). 카메라가 움직이는 영상만 풀린다 |
+| 사물 · 동물 · 캐릭터 그림 (`form`) | 형태 도구(engine/craft/form) | 쓰는 중: 기본 도형을 녹여 붙인 형태(SDF) → 화풍 flat · cel · sketch · clay · vector, 또는 `render`(재질 · 주변 빛 3D 렌더 — 배경까지 그린 판 + 같은 카메라의 투명 층)(투명 PNG, 장당 1~5초, 화풍만 바꾸면 1초). 작성법 engine/craft/form/README.md · 미리보기 form_cli.py preview |
+| 사람 · 네 발 동물 · 새 (`form` + 뼈대) | 형태 도구 `{"rig": "humanoid"|"quadruped"|"bird"}` | 부품을 좌표로 따로 놓지 않는다 — 뼈대가 관절에 붙인다(떨어지지 않음). 자세는 관절 각도(`pose`), 표정 `face`, 머리 모양 `hair`, 손 `hands`, 움직임 `anim.tracks`(예: `pose.r_elbow` · `face.eyelid`, 12fps 반복). 정지 한 장으로 끝내지 말고 숨쉬기 · 깜빡임 · 동작을 넣는다. 세상 속 동작(걷기 · 뛰기 · 계단 · 소품 들기 · 끌기)은 `move` · `hold` · `ik` — 바닥 · 계단 같은 형태를 같은 장면에 놓으면 발이 디딘다(평평한 바닥은 `"floor": true` — 그리지 않고 그림자만, 받침판 무대 금지). 연출은 `look`(시선) · 카메라 `focus: "이름.관절"` · `radius` 를 시간에 따라. 날갯짓 같은 되풀이는 트랙 `{"osc": [...]}`, 영상 모티프가 장면을 잇는 전환은 콘티 `carry`. 마감은 화풍 `vector`(VectorCraft). 작성법 engine/craft/form/README.md "뼈대로 빚기" · "세상에서 움직인다" · "연출" |
 | 3D 제품(`model3d`) | SolidCraft + TextureCraft | 쓰는 중(adapters/solidcraft.py · texturecraft.py): 내장 형태 5종(case · phone · bottle · tumbler · puck) · 명령 목록 · STEP/STL 불러오기 → fine OBJ → TextureCraft 재질(쉬운 이름 → PBR) · 로고 데칼 · MCP `viewport_render`(장당 0.3초) 정지 컷 · turntable mp4, 분해도는 SolidCraft `explode.create` + `motion.export_animation` |
 | 도면 (`drawing`) | CADCraft (+ SolidCraft `file.export_view_dxf`) | 쓰는 중(adapters/cadcraft.py): DXF · 명령 · 3D 모형 → 3각법 투영도 + 치수 3개, MCP `render` 9:16 어두운 CAD 화면 또는 흰 종이(plot 단색 후처리), 빨간 구름 `revcloud` |
 
@@ -96,7 +98,7 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 
 ## 5. 공통 주의
 
-1. **글꼴**: Pretendard 는 시스템 글꼴이 아니다. EffectCraft 만 `EFFECTCRAFT_FONT_DIRS=<repo>/public/fonts` 로 Pretendard 를 쓴다. 나머지는 `Noto Sans CJK KR`(DesignCraft 는 `Noto Sans CJK SC`). 자막 글꼴과 섞이면 앞 단계 재료의 글자를 줄인다.
+1. **글꼴**: Pretendard 는 시스템 글꼴이 아니다. EffectCraft 만 `EFFECTCRAFT_FONT_DIRS`(engine/core/fonts.py 가 저장소 글꼴 + 받은 글꼴로 채움)로 Pretendard · 한국어 OFL 글꼴을 쓴다. 나머지는 `Noto Sans CJK KR`(DesignCraft 는 `Noto Sans CJK SC`). 자막 글꼴과 섞이면 앞 단계 재료의 글자를 줄인다.
 2. **조용히 무시되는 params**: WordCraft `edit.replace`(→ `replaceAll`), DesignCraft 모르는 키, SoundCraft `audiosuite` 틀린 키, LightCraft `--settings` 틀린 스키마, LightCraft `mask.add kind=sky`(모델 없이 ok). 결과를 `info` · `inspect` · 렌더로 꼭 확인한다.
 3. **시간 단위가 앱마다 다르다**: FilmCraft 1초 = `254016000000` ticks(키프레임 time 은 시퀀스 시각), SoundCraft 자동화 · 페이드 length 는 샘플(48 kHz), EffectCraft 는 초.
 4. **id 가 바뀐다**: PhotoCraft 레이어 id, GridCraft 차트 id 는 다시 열면 바뀐다. FilmCraft 효과 번호는 `effects.apply` 결과로 확인. 이름 · 라벨로 찾는 길을 쓴다.
@@ -119,7 +121,7 @@ Fluma 는 Craft 앱 16개를 단계별로 쓴다. 이 문서는 **고르는 표*
 ## 제품 · 툴 소개 영상(쇼케이스) — 에이전트 · MCP 도구 소개 페이지 데모처럼
 `python3 engine/capture/showcase.py make <계획.json> <출력 폴더> [--aspect 16:9|9:16] [--music auto]` — 실제 앱을 대본(클릭 · 입력 · 짚기 · 이동)대로 2배 해상도로 녹화하고,
 동작 대상 상자로 카메라가 줌 인 · 아웃(멀면 빠졌다 들어감), 짚는 곳만 선명 · 나머지 흐림, 입력은 실제 한 자씩, 글자 줄은 한 자씩, 기다림은 빨리 감기, 맞는 무료 곡까지.
-계획 형식은 파일 맨 위 설명. 예: data/public/showcase/fluma-demo.json(Fluma 자체 소개). 보내기(Enter) 같은 실제 동작은 대본에 넣지 않으면 일어나지 않는다.
+계획 형식은 engine/capture/showcase.py 맨 위 설명. 보내기(Enter) 같은 실제 동작은 대본에 넣지 않으면 일어나지 않는다.
 
 ## 앱 · 대시보드 화면은 Astryx 컴포넌트로 — 손으로 그린 표 · 버튼 대신
 영상 속 '실제 같은' 관리 화면 · 대시보드 · 설정 창 · 채팅 앱 · 표(예: DB 테이블, 주문 목록, 결제 화면)는 HTML 을 손으로 짜지 않고

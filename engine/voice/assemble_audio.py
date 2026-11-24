@@ -34,6 +34,30 @@ sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engin
 from tts import synth, duration, write_silence, resolve, read_words, restore_punct, DEFAULT_VOICE, FFMPEG, SR  # noqa: E402
 from tts import engine_available as tts_available  # noqa: E402
 FALLBACK_ORDER = ("elevenlabs", "typecast", "supertonic", "edge")   # 막혔을 때 넘어갈 순서(유료 · 자연스러움 → 무료)
+
+
+def voice_gender(prov: str, vid: str | None, sb: dict) -> str | None:
+    """지금 목소리의 성별(M · F) — 콘티 voice.gender, 없으면 엔진 목소리 목록(Typecast 는 캐시)에서"""
+    g = (sb.get("voice") or {}).get("gender")
+    if g in ("M", "F"):
+        return g
+    try:
+        import tts as _tts
+        vs = _tts.typecast_voices() if prov == "typecast" else (_tts.voice_meta(prov).get("voices") or [])
+    except Exception:  # noqa: BLE001 - 목록을 못 읽으면 성별 없이
+        return None
+    return next((v.get("gender") for v in vs if v.get("id") == vid and v.get("gender") in ("M", "F")), None)
+
+
+def fallback_voice(eng: str, gender: str | None) -> str | None:
+    """다른 엔진으로 넘어갈 때 그 엔진에서 같은 성별 목소리(목록 첫째) — 2026-11-19: 기본 목소리로 넘어가 여성 → 남성처럼 톤이 바뀌었다"""
+    try:
+        import tts as _tts
+        vs = _tts.voice_meta(eng).get("voices") or []
+    except Exception:  # noqa: BLE001
+        return None
+    same = [v for v in vs if gender and v.get("gender") == gender]
+    return (same or vs or [{}])[0].get("id")
 TOKENS = json.loads((ROOT / "engine" / "spec" / "tokens" / "default.json").read_text(encoding="utf-8"))
 from craft.music_pick import music_on  # noqa: E402
 SFX_DIR = ROOT / "assets" / "sfx"
@@ -129,6 +153,9 @@ def read_pcm(path: Path) -> bytes:
 def write_pcm(path: Path, pcm: bytes):
     with wave.open(str(path), "wb") as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes(pcm)
+
+
+ENGINE_PACE = {"supertonic": 1.18}
 
 
 def speed_up(src: Path, factor: float, dst: Path):
@@ -329,9 +356,16 @@ def main():
         sys.exit("사용: python engine/voice/assemble_audio.py data/storyboards/<id>.json [--keep-sec]")
     sb_path = Path(args[0])
     sb = json.loads(sb_path.read_text(encoding="utf-8"))
+    import copy
+    import sbio                                   # 합성(수 분) 동안 에이전트가 고친 칸을 지우지 않게 — 이 단계가 바꾼 칸만 얹는다
+    _base = [copy.deepcopy(sb)]
+
+    def _save() -> None:
+        sbio.save(sb_path, _base[0], sb)
+        _base[0] = copy.deepcopy(sb)
     import script as _script                      # 대본 한 덩어리(sb.script) → 장면 나레이션
     if _script.apply(sb)[0]:
-        sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _save()
     sid = sb["id"]
     work = ROOT / "data" / "audio" / sid
     work.mkdir(parents=True, exist_ok=True)
@@ -340,10 +374,11 @@ def main():
     from craft.pace_policy import apply_voice_pace, speech_led
 
     if apply_voice_pace(sb):
-        sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _save()
         print(f"[음성] 말 주도 박자 — 합성 배속 ×{sb['voice']['speed']}")
     # 말 속도(콘티 voice.speed, 0.8~1.6): 엔진이 직접 빠르게 말한다(합성 뒤 빨리 감기보다 자연스럽다)
-    speed = max(0.8, min(1.6, float((sb.get("voice") or {}).get("speed") or 1.0)))
+    # 엔진마다 기본 말 빠르기가 다르다 — 콘티 글자 수 기준(초당 5.5~6자)에 맞춰 곱한다(2026-11-19: Supertonic ×1.0 이 초당 4.8자라 36초 대본이 43초로 늘어 L70 · L05 에 막힘)
+    speed = max(0.8, min(1.6, float((sb.get("voice") or {}).get("speed") or 1.0) * ENGINE_PACE.get(prov, 1.0)))
     led = speech_led(sb)
     style = ((sb.get("voice") or {}).get("style") or "").strip() or None
     vopts = voice_opts(sb)
@@ -390,18 +425,20 @@ def main():
         try:
             parts, cont = synth_all(prov, vid, style, vopts)
             break
-        except (RuntimeError, OSError) as e:
+        except Exception as e:  # noqa: BLE001 - 2026-11-24: Edge 음성 403 은 aiohttp 예외(WSServerHandshakeError)라 넘어가지 못하고 제작이 죽었다 — 어떤 실패든 다음 엔진으로
             tried.append(prov)
             nxt = next((e2 for e2 in FALLBACK_ORDER if e2 not in tried and tts_available(e2)), None)
             print(f"[음성] {prov} 합성 실패: {str(e)[:200]}", file=sys.stderr)
             if not nxt:
                 raise
-            print(f"[음성] {prov} 대신 {nxt} 로 자동 전환합니다", file=sys.stderr)
-            sb.setdefault("voice", {})["fallback"] = {"from": prov, "to": nxt, "why": str(e)[:200]}
-            sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-            prov, vid, style, vopts = nxt, None, None, {}
+            gender = voice_gender(prov, vid, sb)
+            nvid = fallback_voice(nxt, gender)
+            print(f"[음성] {prov} 대신 {nxt} 로 자동 전환합니다" + (f" — 같은 성별({gender}) 목소리 {nvid}" if gender and nvid else ""), file=sys.stderr)
+            sb.setdefault("voice", {})["fallback"] = {"from": prov, "to": nxt, "voice": nvid, "gender": gender, "why": str(e)[:200]}
+            _save()
+            prov, vid, style, vopts = nxt, nvid, None, {}
     if not tried and (sb.get("voice") or {}).pop("fallback", None) is not None:   # 이번엔 원래 엔진으로 됐다 — 지난 전환 기록 지움
-        sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _save()
 
     # 2) 장면 길이 결정 — 말이 없는 영상(음악 · 화면 주도)은 콘티 길이 그대로. 최소 길이로 늘리면 재료가 끝난 뒤 화면이 빈다
     if keep or not any(p["text"] for p in parts):
@@ -479,7 +516,7 @@ def main():
                         if m.get("type") == "video":
                             m["out"] = round(float(m.get("in") or 0.0) + float(s), 2)
             sb["duration_sec"] = new_dur
-            sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            _save()
             print(f"[콘티] 장면 길이를 실측 음성으로 갱신 → 합계 {new_dur}s ({sb_path})")
 
     out_wav = ROOT / "data" / "audio" / f"{sid}.wav"

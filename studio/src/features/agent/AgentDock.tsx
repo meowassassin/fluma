@@ -6,17 +6,18 @@ import React, { createContext, memo, useContext, useEffect, useLayoutEffect, use
 import { toast } from "sonner";
 import { Icon } from "../../ui/Icon";
 import { FlumaBounce, FlumaStrain, FlumaGlyph } from "../../ui/BrandIcons";
-import { Button, IconButton, Menu, Spinner, Tip, composing, confirmDialog, cx } from "../../ui/kit";
-import { connect, doing, resetSession, sendMessage, stopAgent, unqueueMessage, useSession, TOOL_KO, type LiveTurn } from "../../lib/agent";
+import { Button, IconButton, Menu, Spinner, Switch, Tip, composing, confirmDialog, cx } from "../../ui/kit";
+import { connect, doing, resetSession, sendMessage, stopAgent, unqueueMessage, useSession, type LiveTurn } from "../../lib/agent";
 import { api, errMsg } from "../../lib/api";
 import { AttachChips, AttachMenu, attachNote, useAttachments } from "./attachments";
 import { qc, qk, useActiveAgents, useProjects, useSkills } from "../../lib/queries";
 import { useNavigate } from "react-router-dom";
 import * as RDialog from "@radix-ui/react-dialog";
 import { useUi } from "../../lib/ui";
-import type { ChatContext, ChatMessage, Todo } from "../../lib/types";
+import type { ChatContext, ChatMessage, Todo, UploadMeta } from "../../lib/types";
 import { t } from "../../lib/i18n";
 import { Stages } from "./stages";
+import { YtAvatar, setProjectYtAccount, useProjectYtAccount, useYoutube } from "../settings/ytAccounts";
 
 export interface AgentDockProps {
   sessionId: string;
@@ -47,8 +48,13 @@ const ApplyCtx = createContext<string | null>(null);
 const MediaCtx = createContext<string | null>(null);
 async function applyUpload(projectId: string, patch: { title?: string; caption?: string; hashtags?: string[] }) {
   try {
+    // 유튜브 업로드 정보(콘티 upload)에 적용 — 화면 안 고정 제목(title)은 건드리지 않는다. by: user 면 자동 생성이 덮지 않는다
     const sb = await api.storyboard(projectId);
-    await api.saveStoryboard(projectId, { ...sb, ...patch });
+    const up: UploadMeta = { ...(sb.upload ?? {}), by: "user" };
+    if (patch.title) up.title = patch.title;
+    if (patch.caption !== undefined) { up.description = patch.caption; delete up.full; }
+    if (patch.hashtags) up.hashtags = patch.hashtags;
+    await api.saveStoryboard(projectId, { ...sb, upload: up });
     qc.invalidateQueries({ queryKey: qk.storyboard(projectId) }); qc.invalidateQueries({ queryKey: qk.projects });
     toast.success(patch.title ? t("제목을 적용했어요") : t("설명을 적용했어요"));
   } catch (e) { toast.error(t("적용하지 못했어요"), { description: errMsg(e) }); }
@@ -255,6 +261,8 @@ const Todos: React.FC<{ todos: Todo[]; done?: boolean }> = ({ todos, done }) => 
 const Composer: React.FC<AgentDockProps & { live: boolean; sending: boolean; stopping: boolean }> = ({ sessionId, context, chip, placeholder, prefill, onPrefillUsed, live, sending, stopping, defaultSkill }) => {
   const [text, setText] = useState("");
   const [skill, setSkill] = useState<string | null>(null);
+  const autopilot = useUi((s) => s.autopilot);
+  const setUi = useUi((s) => s.set);
   const ta = useRef<HTMLTextAreaElement>(null);
   const { data: skills = [] } = useSkills();
   // 첨부: 사용자가 찍은 영상 · 사진을 이 영상(프로젝트)의 uploads 로 올리고, 보낼 때 정확한 경로를 메시지에 붙인다
@@ -288,6 +296,13 @@ const Composer: React.FC<AgentDockProps & { live: boolean; sending: boolean; sto
         <div className="composer-bar">
           {canAttach && <AttachMenu attach={attach} />}
           <Menu align="start" trigger={<Button size="sm" variant="ghost" icon="wand" aria-label={t("스킬 고르기")}>{t("스킬")}</Button>} items={skills.length ? skills.map((k) => ({ label: `/${k.name}`, onSelect: () => setSkill(k.name) })) : [{ label: t("스킬 없음"), disabled: true, onSelect: () => {} }]} />
+          <Tip label={t("켜면 선택지를 묻지 않고 추천안을 골라 영상 완성까지 이어서 진행해요 (업로드 · 녹화 · 키처럼 사람만 할 수 있는 일은 물어요)")}>
+            <label className={cx("autopilot", autopilot && "on")}>
+              <Switch on={autopilot} onChange={(v) => setUi({ autopilot: v })} label={t("자동 진행")} />
+              <span>{t("자동 진행")}</span>
+            </label>
+          </Tip>
+          {canAttach && <YtPicker projectId={sessionId} />}
           <span className="grow" />
           <span className="composer-hint faint">{live ? t("Ctrl+Enter 끼어들기") : t("Enter 보내기 · Shift+Enter 줄바꿈")}</span>
           {live && text.trim() && <Tip label={t("지금 하던 일을 멈추고 이 말을 바로 보내기")} kbd="Mod+Enter"><Button size="sm" variant="secondary" icon="skipFwd" disabled={sending || uploading} onClick={() => send(true)}>{t("끼어들기")}</Button></Tip>}
@@ -300,6 +315,27 @@ const Composer: React.FC<AgentDockProps & { live: boolean; sending: boolean; sto
         </div>
       </div>
     </div>
+  );
+};
+
+/** 이 영상을 올릴 YouTube 채널 — 연결한 채널이 2개 이상일 때만 고른다(하나면 이름만). 고른 채널은 에이전트 맥락에도 붙는다(lib/agent sendMessage) */
+const YtPicker: React.FC<{ projectId: string }> = ({ projectId }) => {
+  const { data: y } = useYoutube();
+  const { data: pa } = useProjectYtAccount(projectId);
+  const nav = useNavigate();
+  if (!y?.connected || !pa) return null;
+  const cur = pa.account;
+  const pick = async (id: string | null) => { try { await setProjectYtAccount(projectId, id); } catch (e) { toast.error(t("채널을 바꾸지 못했어요"), { description: errMsg(e) }); } };
+  return (
+    <Menu align="start" side="top" trigger={
+      <button className="yt-pick" aria-label={t("올릴 YouTube 채널")} title={t("이 영상을 올릴 YouTube 채널")}>
+        <YtAvatar a={cur} s={16} /><span className="ellipsis">{cur?.title ?? t("채널")}</span><Icon n="chevron" s={11} />
+      </button>}
+      items={[
+        ...y.accounts.map((a) => ({ label: `${a.title}${a.id === y.default ? ` · ${t("기본")}` : ""}`, icon: a.id === pa.id ? "check" : undefined, onSelect: () => pick(a.id) })),
+        "sep" as const,
+        { label: t("채널 추가 · 관리"), icon: "gear", onSelect: () => nav("/settings/youtube") },
+      ]} />
   );
 };
 
@@ -328,6 +364,7 @@ export const Md = memo<{ text: string }>(({ text }) => {
       const lang = line.slice(3).trim(); const buf: string[] = []; i++; while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
       if (lang === "choices") { out.push(<Choices key={i} items={buf.map((b) => b.replace(/^\s*[-*•]\s*/, "").trim()).filter(Boolean)} />); continue; }
       if (lang === "brief") { out.push(<Brief key={i} rows={parseBrief(buf.join("\n"))} />); continue; }
+      if (lang === "batch") { const bid = buf.join("").trim(); if (/^b[a-z0-9]+$/.test(bid)) out.push(<BatchBox key={i} id={bid} />); continue; }
       if (lang === "titles") { out.push(<Titles key={i} items={buf.map((b) => b.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean)} />); continue; }
       if (lang === "desc") { out.push(<Desc key={i} text={buf.join("\n").trim()} />); continue; }
       if (lang === "media") { out.push(<MediaRow key={i} ver={ver} items={buf.map(parseMedia).filter((x): x is MediaRef => !!x)} />); continue; }
@@ -466,15 +503,46 @@ export const lastBrief = (texts: string[]): [string, string][] | null => {
   return null;
 };
 
+/* ---------- 일괄 제작 진행(engine/core/batch.py · /api/batch) ---------- */
+type BatchItem = { project: string; topic: string; state: string; video?: string | null; block?: number | null };
+type BatchRec = { id: string; items: BatchItem[]; summary: { total: number; done: number; running: number; waiting: number; blocked: number } };
+const BATCH_STATE: Record<string, string> = { done: "완성", running: "만드는 중", waiting: "차례 기다림", blocked: "막힘", stopped: "멈춤", error: "시작 못 함" };
+const BatchBox: React.FC<{ id: string }> = ({ id }) => {
+  const [rec, setRec] = useState<BatchRec | null>(null);
+  const nav = useNavigate();
+  useEffect(() => {
+    let on = true, timer: ReturnType<typeof setTimeout>;
+    const tick = async () => {
+      try { const r = await fetch(`/api/batch/${id}`); if (r.ok && on) setRec(await r.json()); } catch { /* 다음에 */ }
+      if (on) timer = setTimeout(tick, 5000);
+    };
+    tick();
+    return () => { on = false; clearTimeout(timer); };
+  }, [id]);
+  if (!rec) return <div className="ytbox faint">{t("일괄 제작 불러오는 중…")}</div>;
+  const s = rec.summary;
+  return (
+    <div className="ytbox batchbox">
+      <div className="ytbox-h"><Icon n="list" s={13} />{t("일괄 제작")} <span className="faint">{t("완성 {d}/{n} · 만드는 중 {r} · 기다림 {w}{b}", { d: s.done, n: s.total, r: s.running, w: s.waiting, b: s.blocked ? ` · ${t("막힘 {k}", { k: s.blocked })}` : "" })}</span></div>
+      {rec.items.map((it) => (
+        <button key={it.project} className={cx("batch-i", `st-${it.state}`)} onClick={() => nav(`/?c=${it.project}`)} title={t("이 영상 대화 열기")}>
+          <span className="batch-st">{t(BATCH_STATE[it.state] ?? it.state)}</span><span className="grow ellipsis">{it.topic}</span>
+          {it.state === "running" && <Spinner />}
+          {it.state === "done" && <Icon n="check" s={13} />}
+        </button>))}
+    </div>
+  );
+};
+
 /* ---------- 유튜브 제목 후보 · 설명 ---------- */
 const Titles: React.FC<{ items: string[] }> = ({ items }) => {
   const pid = useContext(ApplyCtx);
   const [picked, setPicked] = useState<string | null>(null);
   return (
     <div className="ytbox">
-      <div className="ytbox-h"><Icon n="text" s={13} />{t("제목 후보")} <span className="faint">{t("누르면 이 영상 제목으로")}</span></div>
+      <div className="ytbox-h"><Icon n="text" s={13} />{t("제목 후보")} <span className="faint">{t("누르면 이 영상의 유튜브 제목으로")}</span></div>
       {items.map((it) => (
-        <button key={it} className={cx("yt-title", picked === it && "on")} disabled={!pid} onClick={async () => { if (!pid) return; await applyUpload(pid, { title: it.slice(0, 40) }); setPicked(it); }}>
+        <button key={it} className={cx("yt-title", picked === it && "on")} disabled={!pid} onClick={async () => { if (!pid) return; await applyUpload(pid, { title: it.slice(0, 100) }); setPicked(it); }}>
           <span className="grow">{it}</span><span className="mono faint">{t("{n}자", { n: it.length })}</span>{picked === it && <Icon n="check" s={13} />}
         </button>))}
     </div>

@@ -5,11 +5,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Icon } from "../../ui/Icon";
-import { FlumaBounce, FlumaStrain } from "../../ui/BrandIcons";
-import { Button, EmptyState, IconButton, Popover, Segmented, Select, Skeleton, Tag, Tip, confirmDialog, cx } from "../../ui/kit";
-import { toast } from "sonner";
-import { errMsg } from "../../lib/api";
-import { useProjects } from "../../lib/queries";
+import { FlumaStrain } from "../../ui/BrandIcons";
+import { Button, EmptyState, IconButton, Segmented, Skeleton, Tag, Tip, confirmDialog, cx } from "../../ui/kit";
 import { fmtViews } from "../../ui/engines";
 import { typing } from "../../lib/ui";
 import { t as tt } from "../../lib/i18n";

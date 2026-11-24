@@ -83,7 +83,6 @@
 .pgx-x { width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--tx-3); cursor: pointer; }
 .pgx-x:hover { background: var(--bg-3); color: var(--tx-1); }
 .pgx-errline { margin: 0; color: #ff9a9d; font-size: 12.5px; }
-.pgx-faint { color: var(--tx-4); font-size: 12px; }
 .pgx-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
 .pgx-btns { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .pgx-btn { height: 28px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--tx-1); font: 600 12.5px var(--font); cursor: pointer; }
@@ -91,11 +90,6 @@
 .pgx-btn:disabled { opacity: .45; cursor: default; }
 .pgx-btn.is-primary { background: #238636; border-color: #2ea043; color: #fff; }
 .pgx-btn.is-primary:hover:not(:disabled) { background: #2ea043; }
-.pgx-btn.is-xs { height: 22px; padding: 0 8px; font-size: 11px; }
-.pgx-thumbs { display: flex; gap: 6px; flex-wrap: wrap; }
-.pgx-thumbs img, .pgx-thumbs video, .pgx-ph { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; background: var(--bg-3); display: block; }
-.pgx-thumbs.is-tall img, .pgx-thumbs.is-tall video, .pgx-thumbs.is-tall .pgx-ph { width: 54px; height: 96px; }
-.pgx-thumbs figure { margin: 0; display: flex; flex-direction: column; gap: 4px; align-items: center; }
 .pgx-preview { width: 150px; aspect-ratio: 9 / 16; border-radius: 8px; background: #000; }
 .pgx-shots { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 12.5px; }
 .pgx-shots li { display: flex; gap: 8px; align-items: center; }
@@ -127,8 +121,5 @@
 @keyframes pgx-in { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .pgx *, .pgx *::after { animation: none !important; } }
 
-.pgx-revise { display: flex; gap: 4px; width: 100%; }
-.pgx-revise input { flex: 1; min-width: 0; height: 22px; padding: 0 6px; border-radius: 5px; border: 1px solid var(--line-2); background: var(--bg-0); color: var(--tx-1); font: 11px var(--font); }
-.pgx-thumbs.is-tall figure { width: 120px; }
 .pgx-now { font: 500 12px var(--font); color: var(--tx-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .pgx-now.is-wait { color: var(--wait); }

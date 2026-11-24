@@ -4,7 +4,7 @@
 //  - 에이전트 실행 때 켜 둔 서버만 --mcp-config 로 넘기고, 허용 도구에 mcp__<이름> 을 더한다.
 //  - '연결 시험': stdio 는 실제로 띄워 initialize → tools/list, http 는 같은 요청을 POST 로.
 import { spawn } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -150,5 +150,3 @@ async function testHttp(s) {
     return b.msg.error ? { ok: false, error: b.msg.error.message } : { ok: true, server: a.msg.result?.serverInfo?.name ?? null, tools: (b.msg.result?.tools ?? []).map((x) => x.name) };
   } catch (e) { return { ok: false, error: String(e.message || e) }; }
 }
-
-export const hasMcpFile = () => existsSync(MCP_FILE);

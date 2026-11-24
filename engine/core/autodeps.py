@@ -27,6 +27,8 @@ PACKAGES = {
     "googleapiclient": "google-api-python-client>=2.100",
     "google_auth_oauthlib": "google-auth-oauthlib>=1.2",
     "youtube_transcript_api": "youtube-transcript-api>=1.0",
+    "numba": "numba>=0.60",                       # 형태(engine/craft/form) 렌더 가속 — 처음 쓸 때 설치
+    "skimage": "scikit-image>=0.22",              # 형태 → 3D 모델(OBJ) 내보내기
 }
 
 

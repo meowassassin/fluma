@@ -22,7 +22,7 @@
 ## Fluma 는
 
 세로 숏폼(YouTube Shorts · 릴스 · 틱톡)을 만드는 로컬 에이전트 작업 공간입니다.
-이미 쓰고 있는 **Claude Code · Codex** 에게 말하면, 에이전트가 잘 되는 쇼츠를 먼저 분석하고 **실제 자료**(웹 화면 · 문서 · 데이터 · 사진 · 퍼온 클립 · 스톡 영상)를 오픈소스 제작 앱으로 다듬어 영상으로 엮습니다.
+이미 쓰고 있는 **Claude Code · Codex · Antigravity** 에게 말하면, 에이전트가 잘 되는 쇼츠를 먼저 분석하고 **실제 자료**(웹 화면 · 문서 · 데이터 · 사진 · 퍼온 클립 · 스톡 영상)를 오픈소스 제작 앱으로 다듬어 영상으로 엮습니다.
 그림 · 영상 생성 모델은 쓰지 않고(생성 비용 0), 결과는 전부 열어서 고칠 수 있는 프로젝트 파일로 남습니다. 세상에 없는 장면은 실사로 흉내 내지 않고 그림 · 도식 · 짤 · 비유로 연출합니다.
 
 ## 왜 Fluma
@@ -46,14 +46,14 @@ Fluma 는 이 틈새를 노립니다.
 - **시세 · 뉴스 · 매일 영상** — 데이터 카드를 틀에 채워 매일 찍기(`format-daily`)
 - **근거 · 문서** — 원문 PDF 에 형광펜 · 확대(PDFCraft)
 - **감성 · 광고** — 현장 사진 · 매장 영상 + 짧은 문장(`format-emotional` · `format-ad`)
-- **2D 그래픽 · 일러스트** — 에이전트가 VectorCraft 로 직접 그린 그림 · 구조도 · 차트
+- **캐릭터 · 사물 · 도식** — 도형 데이터로 빚은 캐릭터 · 동물 · 소품(`form`)을 플랫 · 셀 · 스케치 · 클레이 · 벡터, 또는 실제 재질의 3D 렌더로. 구조도 · 차트는 VectorCraft · EffectCraft 로
 
 
 ## 드는 비용
 
 | 필요한 것 | 비용 |
 |---|---|
-| 에이전트 | 이미 쓰는 Claude Code · Codex 로그인 그대로(또는 API 키) |
+| 에이전트 | 이미 쓰는 Claude Code · Codex · Antigravity 로그인 그대로(또는 API 키) |
 | 음성 | 무료 엔진 기본(Edge TTS · 로컬 TTS 6종) — 유료 음성은 내 Typecast · ElevenLabs 키로(설정 → 미디어 → 음성) |
 | 실사 자료 | 퍼온 클립(출처 자동 표기) · Pexels · Pixabay 무료 키 · 자료 사진 |
 | 배경 곡 | 같은 분야 쇼츠가 실제로 붙이는 유행 곡을 찾아, 업로드 때 쇼츠 편집기 라이브러리에서 붙임(저작권 · 수익 문제 없음) |
@@ -76,7 +76,7 @@ Fluma 는 이 틈새를 노립니다.
 - 🎞️ **느낌(룩) 고르기** — 현실 다큐 · 몽환 · 필름 같은 느낌을 에이전트가 2~4안 제안하고, 같은 장면에 입힌 시안을 나란히 보여 줍니다(`feel.py`). 고른 느낌은 실제 재료 전부에 같은 색 · 질감으로 입혀집니다.
 - 🎬 **감독 · 작가 스킬** — 쓰기 전에 다섯 기둥(감정 · 모티프 · 기준 물건 · 꺾임 · 끝 그림)과 리듬 계단을 정하고, 샷마다 시선 한 곳 · 카메라(확대) 이유 · 세 가지 구체를 짚습니다. 훅은 화면 · 첫 말 · 화면 글자 세 칸으로, AI 티 나는 문장은 막습니다(smixs/visual-skills · screenwriting-skills · marketingskills 를 옮김).
 - ♻️ **재활용 편집** — 클립 구간 자동 선택(`clip.py --best`), 주인공 추적 세로 리프레이밍(`reframe.py`), 유행 곡 찾기(`trend_music.py`), 업로드 안내(`upload_guide.py`).
-- 🎨 **모양은 사용자가 고르고, 효과는 근거가 있을 때만** — 첫 장면들을 디자인 시안 2~3개로 나란히 렌더해 고르게 합니다. 배경 움직임 · 전환 · 글자 애니메이션은 레퍼런스나 요청이 없으면 꺼져 있습니다.
+- 🎨 **효과는 근거가 있을 때만** — 디자인은 에이전트가 레퍼런스대로 정하고 한 줄로 알립니다. 보고 싶다고 하면 디자인 시안 2~3개를 나란히 렌더합니다. 배경 움직임 · 전환 · 글자 애니메이션은 레퍼런스나 요청이 없으면 꺼져 있습니다.
 - 🎲 **같은 영상이 나오지 않게** — 모든 명령 · 효과 · 프리셋 검색(`craft_catalog.py`), 검증된 레시피, 최근 영상과 겹침 검사(`V41~V45`).
 - ⏱️ **쇼츠 피드용** — 렌더마다 빈 첫 화면 · 첫 1초 변화 없음 · 긴 멈춤 · 말 끊김을 잽니다(`L32`, `T32~T34`).
 - 📈 **실제 숫자로 다음 영상에** — 내 채널을 공식 OAuth 로 연결해 조회수 · 평균 시청 비율 · 유입 경로 · **장면별** 시청 유지를 봅니다.
@@ -116,8 +116,8 @@ flowchart LR
 | 재료 | `engine/craft/materials.py` + `engine/craft/adapters/<앱>.py` | Craft 앱마다 어댑터 하나, `type: craft` 는 아무 명령 목록이나 실행 |
 | 다양성 | `engine/craft/craft_catalog.py` · `craft_variety.py`, `.claude/skills/crafts/` | 기능 9,000개 이상 검색, 레시피, 반복 검사, 영상별 사용 기록 |
 | 움직임 · 소리 · 편집 | `engine/craft/motion.py` · `audio.py` · `edit.py` | EffectCraft 컴포지션, SoundCraft 믹스, FilmCraft 조립 |
-| 한 줄 제작 | `engine/produce.py` | 음성 → 검사 → 재료 · 초안 → 장면별 정지 화면 |
-| 검사 | `engine/checks/` | 첫 1초 · 멈춤 · 말 끊김 · 컷 밀도, 의도 · 시안 관문 |
+| 한 줄 제작 | `engine/produce.py` | 음성 → 검사 → 재료 → 렌더 전 정지 화면 검토 → 납품 해상도 1회 렌더 → 품질 관문 |
+| 검사 | `engine/checks/` | 첫 1초 · 멈춤 · 말 끊김 · 컷 밀도, 화면 AI 티 · 품질 관문(막음이 남으면 업로드 불가) |
 | 올리기 · 배우기 | `engine/publish/`, `studio/youtube.mjs` | OAuth, 재개 업로드, 분석을 장면에 매핑 |
 
 ## 편집기
@@ -126,14 +126,14 @@ VS Code 같은 작업 공간입니다. 왼쪽 **탐색기**는 영상이 무엇�
 
 <table>
 <tr>
-<td width="50%"><img src="docs/assets/screens/settings-agent.webp" alt="모델 · 공급자" /><br/><sub><b>모델 · 공급자</b> — 내 Claude Code / Codex CLI, 또는 API 키</sub></td>
+<td width="50%"><img src="docs/assets/screens/settings-agent.webp" alt="모델 · 공급자" /><br/><sub><b>모델 · 공급자</b> — 내 Claude Code / Codex / Antigravity CLI, 또는 API 키</sub></td>
 <td width="50%"><img src="docs/assets/screens/settings-voice.webp" alt="미디어 설정" /><br/><sub><b>미디어</b> — 무료 · 유료 음성 엔진, 렌더 엔진</sub></td>
 </tr>
 </table>
 
 ## Craft 앱
 
-Fluma 는 오픈소스 **Craft** 데스크톱 · 웹 앱([storytold](https://github.com/storytold), MIT / Apache-2.0)을 CLI 와 MCP 서버로 씁니다. **함께 들어 있지 않으니** 필요한 것을 설치하세요(16개 전부 약 1.7GB):
+Fluma 는 오픈소스 **Craft** 데스크톱 · 웹 앱([storytold](https://github.com/storytold), MIT / Apache-2.0)을 CLI 와 MCP 서버로 씁니다. **함께 들어 있지 않으니** 필요한 것을 설치하세요(16개 전부 약 1.6GB):
 
 ```bash
 python3 engine/craft/crafts.py plan all        # 받을 것만 보여 줌
@@ -186,11 +186,14 @@ npm --prefix studio run dev                     # → http://localhost:4311
 |---|---|
 | `plan` | 대화로 기획, 콘티 전에 레퍼런스 쇼츠 분석 |
 | `storyboard` | 콘티 JSON: 형식 · 조사 · 장면 · 재료 · 검사 |
-| `produce` | Craft 파이프라인: 음성 → 재료 → 검사 → 초안 → 정지 화면 확인 |
+| `produce` | Craft 파이프라인: 음성 → 재료 → 검사 → 렌더 전 검토 → 렌더 → 품질 관문 |
 | `crafts` | 장면마다 어느 Craft 앱 · 기능을 쓸지 — 기능 검색 · 레시피 · 다양성 규칙 |
 | `research` | 출처 URL 있는 사실 모으기 — 5개 미만이면 만들지 않음 |
 | `trends` | 주제 · 해시태그로 쇼츠 찾기 |
-| `voice` · `scene-edit` · `character` | 음성 맞추기 · 장면 하나 고치기 · 립싱크 마스코트 |
+| `director` · `writer` · `designer` | 구성 · 샷 연출, 훅 · 대사, 레이아웃 · 글자 · 색 |
+| `voice` · `scene-edit` | 음성 맞추기 · 장면 하나 고치기 |
+| `asset-edit` | 퍼온 클립 하나를 다시 편집 — 밈 · 반응 · 더빙 자막 |
+| `publish` | 최종본 → 업로드(요청할 때만) → 성과 분석을 다음 기획에 |
 | `refine` | 초안 뒤 장면마다 디테일 다듬기(시도 → 전 · 후 비교 → 남김) |
 | `format-*` | 비교 · 시세 · 광고 · 감성 · 순위 모음 · 클립 반응 형식 |
 
@@ -199,15 +202,18 @@ npm --prefix studio run dev                     # → http://localhost:4311
 ```text
 fluma/
 ├─ engine/                 파이썬 제작 엔진
-│  ├─ produce.py           한 줄 제작: 콘티 → 음성 → 검사 → 초안 → 정지 화면
-│  ├─ produce.py · render.py · doctor.py · fluma_agent.py · mcp_server.py
+│  ├─ produce.py           한 줄 제작: 콘티 → 음성 → 검사 → 검토 → 렌더 → 품질 관문
+│  ├─ render.py · doctor.py · fluma_agent.py · mcp_server.py
 │  ├─ craft/               Craft 파이프라인 — 재료 · 움직임 · 소리 · 편집 · design.py(영상마다 효과) · adapters/<앱>.py
 │  │  ├─ apps/             Craft 앱 16개 등록(앱마다 craft.json)
 │  │  ├─ renderer/         렌더 엔진 등록(engine.json · adapter)
+│  │  ├─ form/             데이터로 빚는 형태(SDF) — 화풍 · 뼈대 · 3D 렌더
 │  │  └─ craft_catalog.py · craft_variety.py · crafts.py
 │  ├─ voice/               TTS · 음성 조립 · 목소리 맞추기 · engines/<음성> · sfx
 │  ├─ research/            트렌드 · 쇼츠 X-ray · 레퍼런스 스타일 · 채널 카드
 │  ├─ capture/             웹 · 터미널 녹화 · 실행 데모 · 퍼온 클립 · 세로 리프레이밍 · 짤 · 스톡 · 아이콘
+│  ├─ gen/                 기획 기록 · 경로 · 클립 더빙 · 편집기 연결 · 게시
+│  ├─ look/                에이전트가 보는 프레임 모음 · 기준점
 │  ├─ story/               콘티 도우미 — 콘셉트 · 느낌(feel.py) · 디자인 시안(directions.py) · 여러 버전 · 말투 고치기
 │  ├─ checks/              검사 · 템포 · 편집 밀도 · 관문
 │  ├─ publish/             YouTube 업로드

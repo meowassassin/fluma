@@ -18,9 +18,6 @@ const D: Record<string, Def> = {
   home: { b: [3, 8.5, 13, 12, 3, -10], d: "M5 11.4 12 5.3l7 6.1v6.6a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 18zM12 15.6v2.4" },
   film: { b: [3.2, 7.5, 12, 12, 3, -12], d: `${rr(8.6, 3.8, 12, 12, 3)}M13.4 7.6 17 9.8l-3.6 2.2z` },
   trend: { b: [3, 5, 14, 14, 3.5, -10], d: "M5 16.5 9.5 12l3 3L19 8.5M15 8.5h4v4" },
-  library: { b: [3.2, 6.5, 11, 14, 2.8, -14], d: `${rr(9.4, 4.2, 10.4, 14.4, 2.8)}M12.6 8.8h4.4M12.4 12h3.6` },
-  zap: { b: [4.2, 4.2, 12, 14, 3, -12], d: "M13 2.5 5.5 13.5h5L9.5 21.5 18.5 10.5h-5.5z" },
-  n8n: { b: [3, 3, 18, 18, 4, 0], d: "M6.5 7a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zm16 0a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zM14.5 17a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0zM6.5 7h11M5.5 9l4.5 6M18.5 9l-4.5 6" },
   clock: { b: [4, 4, 16, 16, 3, 0], d: "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zm0 4.5v3.5l3 2" },
   calendar: { b: [3.5, 5, 17, 15, 3, -6], d: `${rr(4, 5, 16, 15, 3)}M16 3v4M8 3v4M4 10h16` },
   refresh: { d: "M20 4v5h-5M4 20v-5h5M4.5 9a8 8 0 0 1 14.5-2.5L20 9M19.5 15a8 8 0 0 1-14.5 2.5L4 15" },
@@ -133,8 +130,3 @@ export const FlumaMark: React.FC<{ s?: number }> = ({ s = 18 }) => (
   <img src={s > 40 ? flumaIcon192 : flumaIcon64} width={s} height={s} alt="" aria-hidden draggable={false} style={{ display: "block" }} />
 );
 
-/** 9:16 썸네일 자리: 룩 색으로 그린 자리 표시 (실제 정지 화면이 있으면 그것) */
-export const Poster: React.FC<{ url?: string | null; bg?: string; accent?: string; title?: string }> = ({ url, bg = "#252526", accent = "#5850f8", title }) => (
-  url ? <img className="poster" src={url} alt="" />
-    : <div className="poster ph" style={{ background: `radial-gradient(120% 70% at 30% 20%, ${accent}33, transparent 60%), ${bg}` }}>{title && <span>{title}</span>}</div>
-);

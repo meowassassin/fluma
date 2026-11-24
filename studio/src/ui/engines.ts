@@ -2,7 +2,6 @@
 import { t, useLang } from "../lib/i18n";
 
 export const ENG_COLOR: Record<string, string> = { craft: "#36d399" };
-export const engColor = (e: string) => ENG_COLOR[e] ?? "#888";
 const LOCALE = { ko: "ko-KR", en: "en-US", zh: "zh-CN" } as const;
 export const fmtViews = (v: number | null | undefined) => {
   if (v == null) return "–";

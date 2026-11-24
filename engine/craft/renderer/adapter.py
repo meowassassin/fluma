@@ -37,7 +37,7 @@ def _cli() -> Path:
 
 def _env() -> dict:
     # 저장소의 글꼴(Pretendard 등)을 시스템에 설치하지 않고 넘긴다
-    return {**os.environ, "DO_NOT_TRACK": "1", "EFFECTCRAFT_FONT_DIRS": str(ROOT / "engine" / "assets" / "fonts")}
+    return {**os.environ, "DO_NOT_TRACK": "1", "EFFECTCRAFT_FONT_DIRS": __import__("fonts").font_dirs()}
 
 
 def available():
@@ -59,7 +59,17 @@ def paths(job):
 
 
 def build(job) -> Path:
-    """프로젝트를 만들거나(입력이 바뀌었을 때) 사람이 고친 것을 그대로 둔다 → .ecproj 경로"""
+    """프로젝트를 만들거나(입력이 바뀌었을 때) 사람이 고친 것을 그대로 둔다 → .ecproj 경로.
+    같은 영상의 빌드는 한 번에 하나(produce 렌더 · 정지 화면 · 미리보기가 동시에 프로젝트를 쓰면 반쯤 쓴 파일이 남았다, 2026-11-24)"""
+    import fcntl
+    _, _, man_p = paths(job)
+    man_p.parent.mkdir(parents=True, exist_ok=True)
+    with open(man_p.with_suffix(".lock"), "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        return _build(job)
+
+
+def _build(job) -> Path:
     d, proj, man_p = paths(job)
     proj.parent.mkdir(parents=True, exist_ok=True)
     man = json.loads(man_p.read_text("utf-8")) if man_p.exists() else {}
@@ -74,7 +84,9 @@ def build(job) -> Path:
     from craft import refine
     rsteps = refine.motion_steps(job.sb, [int(t.get("index", i)) + 1 for i, t in enumerate(job.scenes)])            # 다듬기(장면 컴프 안 레이어에 EffectCraft 명령) — 열쇠에 넣어 바뀌면 다시
     src_key = hashlib.sha1((jsx + json.dumps(rsteps, ensure_ascii=False) + "".join(_sha(Path(json.loads(f'"{r}"'))) for r in refs)).encode()).hexdigest()
-    if proj.exists() and mo.get("hash") and _sha(proj) != mo["hash"]:
+    # 2026-11-24: 빌드가 중간에 끊기면(다듬기 시간 초과 · 동시 빌드) 프로젝트 해시가 기록과 달라져 '사람이 고침'으로 굳고, 콘티를 고쳐도 옛 프로젝트를 렌더했다.
+    # 빌드 중 표시(building)가 남아 있으면 사람이 고친 것이 아니라 끊긴 빌드 — 다시 만든다
+    if proj.exists() and mo.get("hash") and not mo.get("building") and _sha(proj) != mo["hash"]:
         print(f"[craft] {proj.relative_to(ROOT)} 은 사람이 고쳤습니다 — 다시 만들지 않고 그대로 렌더합니다", file=sys.stderr)
         mo["edited"] = True
         man[mkey] = mo
@@ -82,6 +94,8 @@ def build(job) -> Path:
         return proj
     if proj.exists() and mo.get("source") == src_key:
         return proj
+    man[mkey] = {**mo, "building": True}
+    man_p.write_text(json.dumps(man, ensure_ascii=False, indent=1), "utf-8")
     script = job.work / "motion.jsx"
     script.write_text(jsx, "utf-8")
     run([_cli(), "script", script], cwd=job.work, env=_env(), label="effectcraft script", timeout=300)
@@ -94,7 +108,10 @@ def build(job) -> Path:
         import subprocess
         bak = proj.with_suffix(proj.suffix + ".pre-refine")
         shutil.copy2(proj, bak)             # 다듬기 기록 하나가 깨져도(레이어 이름이 바뀜 등) 초벌 프로젝트로 돌아가 렌더는 계속한다(2026-11-11)
-        r = subprocess.run([str(x) for x in (_cli(), "run", "--commands", rf, "--project", proj, "--save")], cwd=str(job.work), env=_env(), capture_output=True, text=True, timeout=600)
+        try:
+            r = subprocess.run([str(x) for x in (_cli(), "run", "--commands", rf, "--project", proj, "--save")], cwd=str(job.work), env=_env(), capture_output=True, text=True, timeout=600)
+        except subprocess.TimeoutExpired:
+            r = subprocess.CompletedProcess([], 1, "", "다듬기 600초 초과")
         bad = refine.script_failures(r.stdout)
         if r.returncode != 0 or bad:
             print("[craft] 다듬기 기록을 적용하지 못해 건너뜀(초벌로 렌더): " + (" / ".join(bad[:6]) or (r.stderr or r.stdout)[-400:]), file=sys.stderr)
@@ -108,22 +125,99 @@ def build(job) -> Path:
 def render(job) -> Path:
     proj = build(job)
     out = job.work / "silent.mp4"
-    args = [_cli(), "render", "--project", proj, "--comp", "Main", "--out", out, "--format", "h264", "--audio", "off", "--fps", str(job.fps)]
-    if job.draft:
-        args += ["--resolution", "half", "--quality", "draft"]
+    extra = ["--resolution", "half", "--quality", "draft"] if job.draft else []
+    if os.environ.get("FLUMA_SEGCACHE", "1") != "0":
+        try:
+            if _render_segments(job, proj, out, extra):
+                return out
+        except Exception as e:  # noqa: BLE001 - 캐시는 빨리 가는 길일 뿐, 실패하면 전체 렌더
+            print(f"[craft] 구간 캐시를 쓰지 못해 전체 렌더: {str(e)[:200]}", file=sys.stderr)
+    args = [_cli(), "render", "--project", proj, "--comp", "Main", "--out", out, "--format", "h264", "--audio", "off", "--fps", str(job.fps), *extra]
     run(args, cwd=job.work, env=_env(), label="effectcraft render", timeout=1800)
     if not out.exists():
         raise SystemExit("EffectCraft 렌더 출력이 없습니다")
     return out
 
 
+def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
+    """장면 구간마다 열쇠로 캐시하고 바뀐 구간만 그린 뒤 이어 붙인다(engine/craft/renderer/segcache.py)"""
+    import shutil
+    import subprocess
+    import time
+    sys.path.insert(0, str(Path(__file__).parent))
+    from segcache import frames, plan
+    cli = _cli()
+    try:                                                       # 렌더러 · 글꼴이 바뀌면 구간을 다시 그린다(2026-11-24: 이름만 열쇠에 있었다)
+        cst = cli.stat(); cli_id = f"{cli.name}:{cst.st_size}:{int(cst.st_mtime)}"
+    except OSError:
+        cli_id = cli.name
+    fonts = os.environ.get("EFFECTCRAFT_FONT_DIRS", "")
+    fsig = hashlib.sha1("|".join(f"{q}:{q.stat().st_size}" for d_ in fonts.split(os.pathsep) if d_ and Path(d_).is_dir() for q in sorted(Path(d_).iterdir()) if q.is_file()).encode()).hexdigest()[:12] if fonts else ""
+    p = plan(proj, job.fps, {"extra": extra, "cli": cli_id, "fonts": fsig})
+    if not p:
+        return False
+    segs, total = p
+    cache = paths(job)[0] / "segcache"
+    cache.mkdir(parents=True, exist_ok=True)
+    t0 = time.time()
+    todo = []
+    for s in segs:
+        f = cache / f"{s['key']}.mp4"
+        s["file"] = f
+        if not (f.exists() and f.stat().st_size > 1000):
+            todo.append(s)
+
+    def one(s):
+        f = s["file"]; tmp = f.with_suffix(f".part{os.getpid()}.mp4")
+        run([_cli(), "render", "--project", proj, "--comp", "Main", "--out", tmp, "--format", "h264", "--audio", "off", "--fps", str(job.fps),
+             # 렌더는 start ≤ k/fps < end 인 프레임 k 를 그린다 — 경계를 반 프레임 당겨야 소수 반올림에 흔들리지 않는다(실측: 6.666667 이 200번째 프레임을 빼먹음)
+             "--start", f"{max(0.0, (s['f0'] - 0.5) / job.fps):.6f}", "--end", f"{(s['f1'] - 0.5) / job.fps:.6f}", *extra], cwd=job.work, env=_env(), label="effectcraft render(구간)", timeout=1800)
+        if not tmp.exists() or frames(tmp) != s["f1"] - s["f0"]:
+            tmp.unlink(missing_ok=True)
+            return False
+        tmp.replace(f)
+        return True
+    # 바뀐 구간을 함께 그린다 — 렌더 하나가 CPU 약 2.7코어 · 메모리 약 3.7GB(1080×1920, 2026-11-24 실측)라 남은 메모리만큼(최대 3)
+    try:
+        avail = int(next(ln.split()[1] for ln in open("/proc/meminfo") if ln.startswith("MemAvailable"))) / (1 << 20)
+    except (OSError, StopIteration, ValueError):
+        avail = 4.0
+    per = 2.0 if extra else 4.2
+    jobs = max(1, min(int(os.environ.get("FLUMA_SEG_JOBS", "3")), int(avail // per), len(todo), max(1, (os.cpu_count() or 4) // 3)))
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=jobs) as ex:
+        okk = list(ex.map(one, todo))
+    if not all(okk):
+        return False
+    made = len(todo)
+    lst = job.work / "segments.txt"
+    lst.write_text("".join(f"file '{s['file'].as_posix()}'\n" for s in segs), "utf-8")
+    tmp_out = out.with_suffix(".cat.mp4")
+    r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(tmp_out)], capture_output=True, text=True)
+    if r.returncode != 0 or frames(tmp_out) != total:
+        tmp_out.unlink(missing_ok=True)
+        return False
+    shutil.move(str(tmp_out), out)
+    print(f"[craft] 구간 렌더: {len(segs)}구간 중 {made}구간만 새로 그림 · 동시 {jobs}({time.time() - t0:.1f}초)", file=sys.stderr)
+    # 오래된 구간 파일 정리(이번에 안 쓴 것 중 하루 지난 것)
+    keep = {s["file"].name for s in segs}
+    for f in cache.glob("*.mp4"):
+        if f.name not in keep and time.time() - f.stat().st_mtime > 86400:
+            f.unlink(missing_ok=True)
+    return True
+
+
 def snapshot(job, seconds):
     proj = build(job)
     snaps = job.work / "snaps"
     snaps.mkdir(parents=True, exist_ok=True)
-    out = []
-    for s in seconds:
-        p = snaps / f"f{float(s):07.3f}.png"
+    out = [snaps / f"f{float(s):07.3f}.png" for s in seconds]
+
+    def one(sp):
+        s, p = sp
         run([_cli(), "render-frame", "--project", proj, "--comp", "Main", "--time", str(s), "--out", p], cwd=job.work, env=_env(), label="effectcraft frame", timeout=120)
-        out.append(p)
+    # 장면마다 프로젝트를 여는 프로세스를 하나씩 차례로 띄웠다(정지 화면 7장 약 10~20초) — 3개씩 함께
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=int(os.environ.get("FLUMA_STILL_JOBS", "3"))) as ex:
+        list(ex.map(one, zip(seconds, out)))
     return out

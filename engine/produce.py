@@ -59,7 +59,22 @@ def step(name: str, cmd: list[str], timeout: int = 3600) -> subprocess.Completed
     t0 = time.time()
     print(f"[제작] {name} …", flush=True)
     progress(name)
-    r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
+    # 시간이 넘으면 단계와 그 아래 프로세스(claude CLI · 렌더러)까지 묶어서 끝낸다 — 2026-11-24: 파이썬만 죽고 남은 에이전트가 다음 produce 가
+    # 도는 동안 콘티 · review.json 을 덮어쓸 수 있었고, produce 는 결과 블록 없이 traceback 으로 끝났다
+    import signal
+    pr = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        out, err = pr.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(pr.pid, signal.SIGTERM); time.sleep(3); os.killpg(pr.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        pr.communicate()
+        TIMES[name] = round(time.time() - t0, 1)
+        save_times(PROG.get("sid") or "unknown")
+        fail("produce", stage=name, error=f"{name} 단계가 {timeout}초를 넘어 멈췄습니다(하위 프로세스까지 정리함)")
+    r = subprocess.CompletedProcess(cmd, pr.returncode, out, err)
     TIMES[name] = round(time.time() - t0, 1)
     progress(None)
     print(f"[제작] {name} {TIMES[name]}초 · 종료 {r.returncode}", flush=True)
@@ -307,7 +322,7 @@ def main() -> int:
 
     hard_skills = qm.hard_skills()
     use_draft = qm.use_draft_render() or (a.preview_only and not a.delivery)
-    # 렌더 뒤 화면 검토(review)는 --no-skills 에서도 돈다 — --no-skills 는 대본 단계(각본가 · 감독 · 디자이너)만 건너뛴다.
+    # 화면 검토(review, 렌더 전)는 --no-skills 에서도 돈다 — --no-skills 는 대본 단계(각본가 · 감독 · 디자이너)만 건너뛴다.
     # 2026-11-17: 빠르게 만들려고 --no-skills 로 돌리면 화면 검토까지 꺼져, 화면 밖으로 잘린 장면이 그대로 나갔다. 끄려면 --fast 또는 FLUMA_DEEP_REVIEW=0
     deep = qm.deep_review() and not a.fast
     sp = Path(a.storyboard)
@@ -316,6 +331,20 @@ def main() -> int:
         fail("produce", stage="storyboard", error=f"콘티가 없습니다: {a.storyboard}")
     sb = json.loads(sp.read_text("utf-8"))
     sid = sb["id"]
+    # 자동 진행: 막음 0 으로 완성한 뒤의 전체 제작(다듬기)은 한 번만 — 2026-11-19 실측: 완성 뒤 스스로 렌더 6번 더 · 10분
+    if os.environ.get("FLUMA_AUTOPILOT") and not a.scenes and not a.prep and not os.environ.get("FLUMA_POLISH_OK"):
+        qf0 = ROOT / "data" / "workspace" / "tmp" / sid / "quality.json"
+        pf0 = qf0.with_name("polish.json")
+        try:
+            done0 = qf0.exists() and not (json.loads(qf0.read_text("utf-8")).get("block") or [])
+        except ValueError:
+            done0 = False
+        if done0:
+            n0 = (json.loads(pf0.read_text("utf-8")).get("n", 0) if pf0.exists() else 0)
+            if n0 >= 1:
+                fail("produce", stage="autopilot", error="자동 진행: 이미 완성(막음 0)했고 다듬기 제작도 한 번 했다 — 더 렌더하지 말고 완성 영상을 media 로 보여 주며 끝낸다",
+                     file=str(qf0.relative_to(ROOT)))
+            pf0.write_text(json.dumps({"n": n0 + 1}), "utf-8")
     lock_f0 = ROOT / "data" / "workspace" / "tmp" / sid / "produce.lock"
     prep_f = ROOT / "data" / "compositions" / sid / "prep.json"
     if a.prep_status:
@@ -356,7 +385,17 @@ def main() -> int:
     lock_dir = ROOT / "data" / "workspace" / "tmp" / sid
     lock_dir.mkdir(parents=True, exist_ok=True)
     lock_f = lock_dir / "produce.lock"
-    lock_f.write_text(json.dumps({"pid": os.getpid(), "at": time.time()}), "utf-8")
+    try:                                                       # 잠금은 원자적으로(동시에 둘이 '없음'을 보고 함께 들어오지 않게)
+        fd = os.open(lock_f, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        try:
+            os.kill(int(json.loads(lock_f.read_text("utf-8")).get("pid")), 0)
+            fail("produce", stage="lock", error="같은 영상의 produce 가 이미 돌고 있습니다")
+        except (ValueError, OSError, TypeError):               # 죽은 프로세스가 남긴 잠금
+            lock_f.unlink(missing_ok=True)
+            fd = os.open(lock_f, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    with os.fdopen(fd, "w") as fh:
+        fh.write(json.dumps({"pid": os.getpid(), "at": time.time()}))
     import atexit
 
     atexit.register(lambda: lock_f.unlink(missing_ok=True))
@@ -484,6 +523,19 @@ def main() -> int:
         return 0
 
     # 2) 검사 — 실패(L)면 렌더하지 않는다. 사용자만 줄 수 있는 것(L36 녹화 · L38 키)은 입력 요청으로
+    try:                                                 # 앞 단계(감독 · 디자이너)가 넣은 값의 형식 오타 · 없는 효과음을 형식 검사 전에 바로잡는다(뜻은 그대로)
+        sys.path.insert(0, str(ROOT / "engine" / "story"))
+        import copy as _cp
+        import bundle as _bd
+        import sbio as _sbio
+        _base = json.loads(sp.read_text("utf-8")); _mine = _cp.deepcopy(_base)
+        _notes = _bd.normalize(_mine)
+        if _notes:
+            _sbio.save(sp, _base, _mine)
+            print("[제작] 형식 바로잡음: " + " · ".join(_notes[:6]), flush=True)
+            sb = json.loads(sp.read_text("utf-8"))
+    except Exception as e:  # noqa: BLE001
+        print(f"[제작] 형식 바로잡기 생략: {str(e)[:120]}", flush=True)
     r = step("lint", [PY, "engine/checks/lint.py", rel])
     # 음성을 만든 뒤에야 드러나는 대사 문제(실측 길이 L05 · L14, 대사 길이)는 각본가 단계로 한 번 되돌려 고치고 음성을 다시 만든다
     if r.returncode != 0 and not a.no_skills and not a.no_audio and re.search(r"^(L05|L14|L04) |/narration", r.stdout or "", re.M):
@@ -514,16 +566,7 @@ def main() -> int:
     if not (sb.get("direction") or {}).get("locked") and not sb.get("variant_of"):
         soft.append(("D01", f"디자인 방향을 사용자가 고르지 않음 — 전체 초안 전에 python3 engine/story/directions.py propose {rel} 로 시안을 보여 주고 고르게(지금은 레퍼런스에서 잰 값 · 없으면 효과 없음)"))
 
-    # 2-0a) 콘셉트를 벌려 보고 사람이 골랐나(engine/story/concepts.py) — 건너뛰면 첫 안으로 굳는다(권고)
-    if not sb.get("concept") and not sb.get("variant_of") and not sb.get("reference_skip"):
-        soft.append(("D04", "콘셉트를 고르지 않음 — 콘티 전에 engine/story/concepts.py 로 안 6~8개를 벌리고 5초 시안을 보여 고르게"))
-
-    # 2-0a2) 아트 디렉션 — 영상마다 시각 언어를 정한다(없으면 고정 템플릿 모양)
-    if not sb.get("variant_of"):
-        from craft.design import art_problems
-        _ap = art_problems(sb)
-        if _ap:
-            soft.append(("D05", " · ".join(_ap) + " — 콘티 direction.art 에 palette · rule · avoid 를 정하기(produce 스킬)"))
+    # 2-0a) 콘셉트(각도 · 깨는 것 · 흐름) · 아트 디렉션은 lint 가 막는다(L66 · L67 · L68, 2026-11-19 — 권고로 두니 매 영상 건너뛰어 다 비슷해졌다)
 
     # 2-0a3) 시청 지속 — 형식 반복 · 한 사람만 · 실제 자료 없음 · 긴 정지(모든 영상에 드는 규칙)
     if not sb.get("variant_of"):
@@ -551,6 +594,54 @@ def main() -> int:
     except Exception as e:  # noqa: BLE001
         print(f"[제작] ui 병렬 빌드 생략: {e}", flush=True)
 
+    # 2.8) 장면 코드 빌드 검사 — 렌더 없이 프로젝트만 만든다(EffectCraft 스크립트 실행). 장면 코드 실행 오류(색 값 null · 키프레임 있는 속성에 setValue …)를
+    #      LLM 검토 · 렌더 전에 잡는다(2026-11-20: 1 · 2편이 렌더에서야 이 오류로 멈춤). 만든 프로젝트는 렌더가 그대로 쓴다(같은 입력이면 다시 만들지 않음)
+    if (sb.get("engine") or "craft") == "craft" and os.environ.get("FLUMA_BUILD_CHECK", "1") != "0":
+        bc = step("build", [PY, "engine/render.py", rel, "--build"] + (["--scenes", a.scenes] if a.scenes else []) + (["--aspect", a.aspect] if a.aspect else []), timeout=1200)
+        if bc.returncode != 0:
+            save_times(sid)
+            fail("produce", stage="build", error="장면 코드 실행 오류(렌더 전 빌드) — " + _why(bc)[:400],
+                 next="오류가 난 장면 코드만 고쳐 다시 produce(렌더 전에 잡았으니 LLM 검토 · 렌더는 아직 안 돌았다)")
+
+    # 2.82) 화면 AI 티 검사(engine/checks/visual_tell.py) — 장면 코드만 읽어 몇 초. 어두운 바탕 반복 · 빛번짐 · 둥근 카드 · 고정 카메라 · 같은 구도를
+    #       LLM 검토 · 렌더 전에 한 번에 알려 준다(2026-11-21: 레퍼런스 13편 실측과 비교해 정함, 최근 영상 9편 모두 걸림)
+    if (sb.get("engine") or "craft") == "craft" and not a.scenes and not a.keep_going and os.environ.get("FLUMA_VISUAL_TELL", "1") != "0":
+        import quality_gate as qg
+        import visual_tell as vt
+        vt_block = [x for x in vt.find(sb, sid) if x["block"] and not qg.waived(sb, x)]
+        if vt_block:
+            save_times(sid)
+            fail("produce", stage="visual_tell", error=f"화면 AI 티 {len(vt_block)}건 — 렌더 · 검토 전에 멈춘다. 모두 한 번에 고친 뒤 다시 produce",
+                 block=[f"{x['code']} {x['msg']}"[:300] for x in vt_block],
+                 next="장면 코드(data/compositions/<id>/scenes/*.jsx)를 고친다 → python3 engine/checks/visual_tell.py <콘티> 로 0 확인 → produce 한 번")
+
+    # 2.85) 훅 장면 하나만 앱 기능으로 다듬기(skill_pass refine_hook) — 영상당 한 번, 훅 장면이 그대로면 건너뜀. 끄려면 FLUMA_HOOK_REFINE=0
+    #       2026-11-19: 전체 refine 은 219초라 꺼 두었고, 그 결과 에이전트가 Craft 기능을 0.9% 만 썼다
+    if deep and not a.scenes and os.environ.get("FLUMA_HOOK_REFINE", "1") != "0":
+        rh = step("refine_hook", [PY, "engine/story/skill_pass.py", "refine_hook", rel], timeout=1200)
+        print("\n".join(ln for ln in (rh.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
+        sb = json.loads(sp.read_text("utf-8"))
+
+    # 2.9) 디자이너 정지 화면 검토(skill_pass review) — 렌더 앞에서. 정지 화면은 영상이 아니라 프로젝트에서 바로 그린다(engine/core/still.py → snapshot)
+    #      2026-11-18: 렌더 뒤에 검토하면 바뀐 값(글자 위치 등)이 화면 전체에 걸려 두 번째 렌더가 통째로 돌았다(90초)
+    if deep and not a.scenes:
+        rr = step("review", [PY, "engine/story/skill_pass.py", "review", rel], timeout=2400)
+        print("\n".join(ln for ln in (rr.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
+        if rr.returncode != 0:                                 # 검토가 실패했는데 지난 review.json 으로 막음 여부를 정하지 않는다
+            save_times(sid)
+            fail("produce", stage="review", error=f"렌더 전 검토 실패 — {_why(rr)}")
+        sb = json.loads(sp.read_text("utf-8"))
+        # 검토가 이미 막을 것(겹침 · 잘림 · 안전 영역 — 품질 관문 D21)을 찾았으면 렌더하지 않는다 — 렌더해도 관문에서 막힌다
+        # (2026-11-20 실측: 막힐 영상을 매번 36~187초씩 렌더, 한 편에 렌더 6번 · 8.4분)
+        if not a.keep_going and os.environ.get("FLUMA_REVIEW_STOP", "1") != "0":
+            import quality_gate as qg
+            rv_block = [x for x in qg.from_review(sid) if x.get("block") and not qg.waived(sb, x)]
+            if rv_block:
+                save_times(sid)
+                fail("produce", stage="review", error=f"렌더 전 검토가 막을 것 {len(rv_block)}건을 찾음 — 렌더하지 않고 멈춘다(렌더해도 품질 관문에서 막힘). 모두 한 번에 고친 뒤 다시 produce",
+                     block=[qg.line(x)[:170] for x in rv_block[:8]], detail=f"data/compositions/{sid}/skill_pass/review.json",
+                     next="장면 코드 · knob.py set 으로 전부 고친다(고친 장면만 다시 검토된다) → produce 한 번")
+
     # 3) 재료 · 초안 렌더(재료는 렌더가 만든다 — engine/craft/materials.py)
     outfile_label = "완성" if not use_draft else "초안"
     cmd = [PY, "engine/render.py", rel] + (["--draft"] if use_draft else []) + (["--scenes", a.scenes] if a.scenes else []) + (["--aspect", a.aspect] if a.aspect else [])
@@ -561,20 +652,10 @@ def main() -> int:
         fail("produce", stage="render", error=(b.get("error") or [(r.stderr or r.stdout).strip()[-300:]])[0], time=[f"{k}:{v}" for k, v in TIMES.items()])
     video = ROOT / b["file"][0]
 
-    # 3.5) 디자이너 정지 화면 검토(skill_pass review) — 장면마다 정지 화면을 열어 겹침 · 잘림 · 작은 주인공을 값으로 고치고, 바뀌면 한 번 더 렌더
+    # 3.5) 렌더 뒤 자동 다듬기(refine)는 켤 때만 — 정지 화면 검토(review)는 렌더 앞(2.9)에서 한다
     #      2026-11-11: 디자인 값을 정해 놓고 결과를 안 봐서 터미널이 잘리고 숫자가 글자와 겹쳤다
-    if deep and not a.scenes:
-        rr = step("review", [PY, "engine/story/skill_pass.py", "review", rel], timeout=2400)
-        print("\n".join(ln for ln in (rr.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
-        if rr.returncode == 0 and '"changed": [' in (rr.stdout or "") and '"changed": []' not in (rr.stdout or ""):
-            sb = json.loads(sp.read_text("utf-8"))
-            r = step("render", cmd)
-            b = block(r.stdout)
-            if r.returncode != 0 or b.get("head") != "FLUMA_RESULT":
-                save_times(sid)
-                fail("produce", stage="render", error=(b.get("error") or [(r.stderr or r.stdout).strip()[-300:]])[0], time=[f"{k}:{v}" for k, v in TIMES.items()])
-            video = ROOT / b["file"][0]
-        if deep and os.environ.get("FLUMA_DEEP_REFINE") == "1":   # 자동 다듬기(refine)는 켤 때만 — 2026-11-17 실측 219초(영상 하나 15분 안에 못 들어옴). 정지 화면 검토(review)는 그대로
+    if deep and not a.scenes:   # (정지 화면 검토는 렌더 앞 2.9 로 옮김)
+        if os.environ.get("FLUMA_DEEP_REFINE") == "1":   # 자동 다듬기(refine)는 켤 때만 — 2026-11-17 실측 219초(영상 하나 15분 안에 못 들어옴). 정지 화면 검토(review)는 그대로
             rf = step("refine", [PY, "engine/story/skill_pass.py", "refine", rel], timeout=2700)
             print("\n".join(ln for ln in (rf.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
             if rf.returncode == 0 and '"kept": [{' in (rf.stdout or ""):
@@ -583,15 +664,21 @@ def main() -> int:
                 if r.returncode == 0 and b.get("head") == "FLUMA_RESULT":
                     video = ROOT / b["file"][0]
     # 렌더가 찍은 편집 밀도 · 템포 문제(✗ 실패 · △ 권고)
-    warns = [ln.strip() for ln in r.stdout.splitlines() if re.match(r"^\s*[✗△]", ln)]
-    # 레퍼런스 대조(engine/checks/refmatch.py): 재료가 만들어진 뒤에 본다 — 맨 앞에 둬야 잘리지 않는다
-    import refmatch
-    warns = [f"D03 {n}장면 {mid}: {why} — python3 engine/checks/refmatch.py sheet {rel} {mid} 로 그림을 보고 ok" for n, mid, why in refmatch.status(sb)] + warns
-    warns += [f"{c} {m}" for c, m in soft]
-    # 렌더 결과를 재는 디자인 검사(engine/checks/designcheck.py) · 앱을 얼마나 깊게 썼나
-    from designcheck import findings as _df
-    _found = _df(video, sb) if not a.scenes else []
-    warns = [f"{x['code']} {str(x['scene']) + '장면 ' if x['scene'] else ''}{x['msg']}" for x in _found] + warns
+    # 품질 관문(engine/checks/quality_gate.py): 경고를 막음 · 권고로 나눈다 — 막음이 남으면 완성본으로 내보내지 않는다(2026-11-18)
+    import quality_gate as qg
+    issues = [qg.from_render_line(ln) for ln in r.stdout.splitlines() if re.match(r"^\s*[✗△]", ln)]
+    import refmatch   # 레퍼런스 대조: ref 를 적었는데 나란히 보지 않은 재료
+    issues = [qg.issue("D03", n, f"{mid}: {why} — python3 engine/checks/refmatch.py sheet {rel} {mid} 로 그림을 보고 ok") for n, mid, why in refmatch.status(sb)] + issues
+    from designcheck import findings as _df   # 렌더 결과를 재는 디자인 검사
+    issues = [qg.issue(x["code"], x["scene"], x["msg"], x.get("block")) for x in (_df(video, sb) if not a.scenes else [])] + issues
+    if deep and not a.scenes:
+        issues += qg.from_review(sid)                                     # 디자이너 정지 화면 검토가 본 문제(겹침 · 잘림 · 안전 영역은 막음)
+    if (sb.get("engine") or "craft") == "craft" and not a.scenes:
+        import visual_tell as vt
+        issues += [qg.issue(x["code"], x["scene"], x["msg"], x["block"]) for x in vt.find(sb, sid)]
+    issues += [qg.issue(c, None, m, block=False) for c, m in soft]      # 말투 · 구성 · 절차(lint T · D01 · D02 · D04 · D05 · R) — 권고
+    q_block, q_waived, q_adv = qg.split(sb, qg.relevant(sb, issues))
+    warns = [qg.line(x) for x in q_block + q_adv]
     import usage as _usage
     depth = _usage.depth(sid)
 
@@ -620,7 +707,21 @@ def main() -> int:
              f"목소리: {vo.get('engine')} · {vo.get('id') or '기본'} · ×{vo.get('speed', 1)}" + (f" — {vo['why']}" if vo.get("why") else "")]
     if mu.get("upload_sound"):
         sound.append("업로드 때 붙일 수 있는 유행곡(쇼츠 편집기 '사운드 추가'): " + " / ".join(mu["upload_sound"][:3]))
-    ok("produce", file=b["file"][0], media=media, warn=warns[:16], lint_soft=len(soft), depth=depth, sound=sound,
+    if not a.scenes:
+        qg.save(sid, b["file"][0], q_block, q_waived, q_adv)
+    if q_block and not a.scenes:
+        fail("produce", stage="quality", error=f"막음 {len(q_block)}건이 남아 완성본이 아니다 — 고친 뒤 다시(고칠 장면만: knob.py preview --scene N 으로 확인 → 마지막에 전체 produce 한 번)",
+             block=[qg.line(x)[:170] for x in q_block[:8]], advise=[qg.line(x)[:110] for x in q_adv[:6]] + ([f"외 권고 {len(q_adv) - 6}건"] if len(q_adv) > 6 else []),
+             waived=[f"{qg.line(x)[:110]} — 면제: {x['waived']}" for x in q_waived], detail=f"data/workspace/tmp/{sid}/quality.json(전문)",
+             file=b["file"][0], media=media, time=[f"{k}:{v}" for k, v in TIMES.items()],
+             next="막음을 모두 고친다. 사용자가 그대로 두라고 한 항목만 콘티 waivers 에 {\"코드:장면\": {\"why\": ..., \"user_said\": 사용자 말 그대로}} 로 적는다(스스로 면제 금지)")
+    upload_info = []
+    if not a.scenes:                                    # 완성 — 유튜브 제목 · 설명 · 해시태그 · 태그를 마지막에 만든다(engine/publish/metadata.py, 내용이 같으면 건너뜀)
+        um = step("metadata", [PY, "engine/publish/metadata.py", rel], timeout=400)
+        bm = block(um.stdout)
+        if um.returncode == 0 and bm.get("title"):
+            upload_info = [f"유튜브 제목: {bm['title'][0]}", f"해시태그: {(bm.get('hashtags') or [''])[0]}"]
+    ok("produce", file=b["file"][0], media=media, warn=warns, advise=len(q_adv), upload=upload_info, waived=[f"{qg.line(x)} — 면제: {x['waived']}" for x in q_waived], lint_soft=len(soft), depth=depth, sound=sound,
        time=[f"{k}:{v}" for k, v in TIMES.items()], next="먼저 '초안 · 레퍼런스 나란히'(sheet.png)를 Read 로 보고 director 검사(화면이 바뀌는 리듬 · 피사체 크기 · 글자 크기 · 시선 한 곳)로 레퍼런스와 견준다. "
             "고칠 장면만 있을 때는 전체 produce 를 반복하지 말고 knob.py set + knob.py preview --scene N(또는 produce.py --scenes N --no-audio) 로 확인한 뒤, 마지막에 한 번만 전체 produce")
 

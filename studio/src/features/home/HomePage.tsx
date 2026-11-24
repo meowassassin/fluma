@@ -1,25 +1,22 @@
 /* 홈 = 만들기. 한가운데 로고와 입력 하나만. 만든 영상은 '영상' 화면(/videos)에서.
    엔진 · 템플릿 같은 내부 사정은 여기 두지 않는다(설정으로). */
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { FlumaMark, Icon } from "../../ui/Icon";
-import { Button, EmptyState, IconButton, Menu, Segmented, Skeleton, Tag, Tip, composing, confirmDialog, cx } from "../../ui/kit";
+import { Button, IconButton, Menu, Tip, composing, confirmDialog, cx } from "../../ui/kit";
 import { FlumaGlyph } from "../../ui/BrandIcons";
-import { api, errMsg } from "../../lib/api";
-import { qc, qk, useChats, useLint, useProducing, useProjects, useStoryboard } from "../../lib/queries";
+import { errMsg } from "../../lib/api";
+import { qc, useChats, useProducing, useStoryboard } from "../../lib/queries";
 import { useUi } from "../../lib/ui";
 import { AgentDock, Brief, lastBrief } from "../agent/AgentDock";
 import { AttachChips, AttachMenu, attachNote, useAttachments } from "../agent/attachments";
 import { BgJobs } from "../studio/BgJobs";
 import { PipelineGraph } from "../videos/PipelineGraph";
-import { resetSession, sendMessage, useSession } from "../../lib/agent";
+import { resetSession, useSession } from "../../lib/agent";
 import { FlumaBounce, FlumaStrain } from "../../ui/BrandIcons";
-import type { ProjectSummary } from "../../lib/types";
-import { t, useLang } from "../../lib/i18n";
+import { t } from "../../lib/i18n";
 
-const FORMAT_KO: Record<string, string> = { compare: "비교", concept: "개념", ad: "광고", emotional: "감성", daily: "시세", countdown: "순위", mythbust: "오해 풀기", fix: "해결", series: "시리즈" };
 
 /* ---------- 홈 = 기획 대화 ----------
    처음: 로고 + 입력. 보내면 이 자리에서 대화가 열린다(편집기로 바로 가지 않음).
@@ -137,7 +134,6 @@ const ChatList: React.FC<{ cur: string | null }> = ({ cur }) => {
   );
 };
 
-const PRODUCE = "제작 시작: produce 스킬대로 지금 콘티를 Craft 파이프라인으로 만들어 줘 — 음성(assemble_audio) → 장면 재료(materials: 숫자는 chart, 근거는 doc_quote, 비주얼은 실제 자료 · 목업) → lint → 초안 렌더(render.py --draft) → 정지 화면 확인. 콘티 내용은 바꾸지 말고, 막히면 멈추고 알려 줘.";
 
 /* 가운데 대화 + 오른쪽 콘티 보드 */
 const HomeChat: React.FC<{ id: string }> = ({ id }) => {
@@ -152,7 +148,7 @@ const HomeChat: React.FC<{ id: string }> = ({ id }) => {
     <>
       <div className="home-chat">
         <AgentDock layout="page" sessionId={id} defaultSkill={produced ? null : "plan"}
-          context={{ menu: produced ? "studio" : "plan", note: produced ? undefined : "홈 기획 대화 — plan 스킬(.claude/skills/plan/SKILL.md)을 따른다. 경로(generate · clip · material)와 추천 선택지를 보여 주고 사용자 확인을 받아 진행하며, 생성(generate) 경로에서는 1단계 샷 계획(plan.py) → 2단계 캐릭터 시트(character.py) → 3단계 키 프레임(keyframe.py) → 4단계 영상 생성(video.py) 순서와 프롬프트·캐릭터 일관성 규칙을 지킨다." }}
+          context={{ menu: produced ? "studio" : "plan", note: produced ? undefined : "홈 기획 대화 — plan 스킬(.claude/skills/plan/SKILL.md)을 따른다. 경로(material · clip)와 추천 선택지를 보여 주고 사용자 확인을 받아 진행한다." }}
           autoSend={autoSend} onAutoSent={() => { setAutoSend(null); nav(`/?c=${id}`, { replace: true, state: null }); }}
           placeholder={produced ? t("영상에 대해 더 말해 주세요 — 편집기에서 장면별로 고칠 수도 있어요") : t("답하거나 선택지를 누르세요. 예: 훅은 B안, 20초로")} />
       </div>
@@ -219,109 +215,3 @@ const StoryBoard: React.FC<{ id: string; produced: boolean; producing: boolean }
 };
 const ROLE_KO: Record<string, string> = { hook: "훅", step: "단계", reveal: "공개", payoff: "결론", verdict: "결론", outro: "맺음", cta: "행동", problem: "고민", benefit: "이점", proof: "증거", compare: "비교", context: "맥락", item: "항목", explain: "설명", twist: "반전" };
 
-/* ---------- 영상 목록 ---------- */
-type Filter = "all" | "working" | "rendered" | "trash";
-export const Projects: React.FC = () => {
-  const { data, isLoading, error } = useProjects();
-  const [filter, setFilter] = useState<Filter>("all");
-  const [q, setQ] = useState("");
-  const list = useMemo(() => (data ?? []).filter((p) => !p.id.startsWith("_"))
-    .filter((p) => !q || `${p.title} ${p.id}`.toLowerCase().includes(q.toLowerCase()))
-    .filter((p) => filter === "all" || (filter === "rendered" ? (p.renders?.final ?? 0) > 0 : filter === "working" ? !(p.renders?.final) : true))
-    .sort((a, b) => (a.updated < b.updated ? 1 : -1)), [data, q, filter]);
-  const counts = useMemo(() => {
-    const ps = (data ?? []).filter((p) => !p.id.startsWith("_"));
-    return { all: ps.length, rendered: ps.filter((p) => (p.renders?.final ?? 0) > 0).length, working: ps.filter((p) => !p.renders?.final).length };
-  }, [data]);
-  return (
-    <section className="home-sec">
-      <div className="home-sec-h">
-        <h2>{t("내 영상")}</h2>
-        <Segmented aria-label={t("영상 거르기")} size="sm" value={filter} onChange={(v) => setFilter(v as Filter)} options={[
-          { value: "all", label: t("전체 {n}", { n: counts.all }) }, { value: "working", label: t("작업 중 {n}", { n: counts.working }) },
-          { value: "rendered", label: t("렌더됨 {n}", { n: counts.rendered }) }, { value: "trash", label: t("휴지통") }]} />
-        <span className="grow" />
-        {filter !== "trash" && <label className="search"><Icon n="search" s={14} /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("제목 찾기")} aria-label={t("영상 제목 찾기")} /></label>}
-      </div>
-      {filter === "trash" ? <Trash /> : isLoading ? (
-        <div className="cards">{[0, 1, 2, 3].map((i) => <div key={i} className="pcard"><Skeleton h="100%" r={10} className="pcard-skel" /></div>)}</div>
-      ) : error ? <EmptyState icon="warn" title={t("영상 목록을 불러오지 못했어요")} body={errMsg(error)} action={<Button onClick={() => qc.invalidateQueries({ queryKey: qk.projects })}>{t("다시 시도")}</Button>} />
-        : !list.length ? <EmptyState icon="film" title={q ? t("맞는 영상이 없어요") : t("아직 만든 영상이 없어요")} body={q ? t("다른 낱말로 찾아보세요.") : t("홈에서 주제를 쓰고 만들기를 누르면 첫 영상이 시작됩니다.")} />
-          : <div className="cards">{list.map((p) => <ProjectCard key={p.id} p={p} />)}</div>}
-    </section>
-  );
-};
-
-const ProjectCard: React.FC<{ p: ProjectSummary }> = ({ p }) => {
-  const nav = useNavigate();
-  const rendered = (p.renders?.final ?? 0) > 0;
-  const producing = useProducing().includes(p.id) || !!p.draft;
-  const stage = rendered ? 3 : p.composed ? 2 : 1;
-  const [img, setImg] = useState(rendered);
-  const open = () => { useUi.getState().set({ lastProject: p.id }); nav(`/p/${p.id}`); };
-  const del = async () => {
-    if (!(await confirmDialog({ title: t("“{title}”을(를) 휴지통으로 옮길까요?", { title: p.title || p.id }), body: t("콘티 · 화면 구성 · 음성 · 렌더 · 대화가 함께 옮겨지고, 휴지통에서 되돌릴 수 있습니다."), ok: t("휴지통으로"), danger: true }))) return;
-    try {
-      const r = await api.deleteProject(p.id);
-      qc.invalidateQueries({ queryKey: qk.projects });
-      if (useUi.getState().lastProject === p.id) useUi.getState().set({ lastProject: null });
-      toast(t("휴지통으로 옮겼어요"), { action: { label: t("되돌리기"), onClick: () => api.restore(r.trash).then(() => qc.invalidateQueries({ queryKey: qk.projects })).catch((e) => toast.error(errMsg(e))) } });
-    } catch (e) { toast.error(t("옮기지 못했어요"), { description: errMsg(e) }); }
-  };
-  return (
-    <article className="pcard">
-      <button className="pcard-hit" onClick={open} aria-label={t("{title} 열기", { title: p.title || t("제목 없음") })}>
-        <div className="pcard-poster">
-          {img ? <img src={`/api/projects/${p.id}/cover`} alt="" loading="lazy" onError={() => setImg(false)} /> : <span className="pcard-ph">{p.title || t("새 영상")}</span>}
-          {rendered && <span className="pcard-done" title={t("최종 영상 있음")}><Icon n="play" s={12} /></span>}
-          {p.duration_sec > 0 && <span className="pcard-dur mono">{t("{n}초", { n: Math.round(p.duration_sec) })}</span>}
-          {/* 진행: 콘티 · 화면 · 완성 세 칸 — 포스터 아래 가장자리에 얇게 */}
-          <span className="pcard-pips" aria-label={t("진행 {n}/3", { n: stage })}>{[0, 1, 2].map((k) => <i key={k} className={k < stage ? "on" : undefined} />)}</span>
-        </div>
-        <div className="pcard-b">
-          <b className="pcard-t">{p.title || t("제목 없음")}</b>
-          <span className="pcard-m">{producing ? <span className="pcard-prod"><FlumaStrain s={12} />{t("만드는 중")}</span> : <span className={cx("pcard-stage", rendered && "done")}>{rendered ? t("완성") : p.composed ? t("화면까지") : t("콘티")}</span>}
-            <span>{[FORMAT_KO[p.format] ? t(FORMAT_KO[p.format]) : p.format, ago(p.updated)].filter(Boolean).join(" · ")}</span></span>
-        </div>
-      </button>
-      <Menu trigger={<IconButton className="pcard-more" icon="more" label={t("영상 메뉴")} size="sm" />} items={[
-        { label: t("열기"), icon: "film", onSelect: open },
-        "sep",
-        { label: t("휴지통으로"), icon: "trash", danger: true, onSelect: del },
-      ]} />
-    </article>
-  );
-};
-
-const Trash: React.FC = () => {
-  const { data = [], isLoading, refetch } = useQuery({ queryKey: ["trash"], queryFn: () => api.trash() });
-  const act = async (fn: () => Promise<unknown>, ok: string) => { try { await fn(); toast.success(ok); refetch(); qc.invalidateQueries({ queryKey: qk.projects }); } catch (e) { toast.error(errMsg(e)); } };
-  if (isLoading) return <Skeleton h={120} />;
-  if (!data.length) return <EmptyState icon="trash" title={t("휴지통이 비었어요")} body={t("지운 영상은 여기로 옮겨지고, 되돌릴 수 있어요.")} />;
-  return (
-    <div className="trash">
-      {data.map((x) => (
-        <div key={x.name} className="trash-r">
-          <Icon n="film" s={14} /><b className="ellipsis">{x.title || x.id}</b><span className="faint">{ago(x.deletedAt)} · {t("파일 {n}개", { n: x.files.length })}</span>
-          <span className="grow" />
-          <Button size="sm" icon="undo" onClick={() => act(() => api.restore(x.name), t("되돌렸어요"))}>{t("되돌리기")}</Button>
-          <Button size="sm" variant="danger" onClick={async () => {
-            if (await confirmDialog({ title: t("“{title}”을(를) 완전히 지울까요?", { title: x.title || x.id }), body: t("되돌릴 수 없습니다."), ok: t("완전히 지우기"), danger: true })) act(() => api.purge(x.name), t("지웠어요"));
-          }}>{t("완전히 지우기")}</Button>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const LOCALE = { ko: "ko-KR", en: "en-US", zh: "zh-CN" } as const;
-export const fmtViews = (v: number | null | undefined) => {
-  if (v == null) return "–";
-  // 영어는 K · M(천 단위), 한국어 · 중국어는 만 · 억(万 · 亿)
-  if (useLang.getState().lang === "en") return v >= 1e3 ? new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(v) : v.toLocaleString("en-US");
-  return v >= 1e8 ? t("{n}억", { n: (v / 1e8).toFixed(1) }) : v >= 1e4 ? t("{n}만", { n: Math.round(v / 1e4).toLocaleString() }) : v.toLocaleString();
-};
-export const ago = (iso: string) => {
-  const m = (Date.now() - new Date(iso).getTime()) / 60000;
-  return m < 1 ? t("방금") : m < 60 ? t("{n}분 전", { n: Math.round(m) }) : m < 1440 ? t("{n}시간 전", { n: Math.round(m / 60) }) : m < 1440 * 7 ? t("{n}일 전", { n: Math.round(m / 1440) }) : new Date(iso).toLocaleDateString(LOCALE[useLang.getState().lang], { month: "short", day: "numeric" });
-};

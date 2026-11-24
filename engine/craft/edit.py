@@ -149,6 +149,16 @@ def assemble(sb: dict, video: Path, audio: Path | None, out: Path, fps: int = 30
         shutil.copy2(proj, bak)
         print(f"[조립] {os.path.relpath(proj, ROOT)} 이 바뀌어 있어 백업({bak.name})하고 새 영상으로 다시 짓습니다 — 고친 판을 그대로 쓰려면 craft.json edit.keep=true")
         edited = False
+    # 같은 입력이면 다시 짓지 않는다(2026-11-18 실측: 조립 · 내보내기가 렌더마다 22초 — 화면 · 소리가 그대로인 재렌더에도)
+    from .refine import edit_lines as _el
+    arec0 = (man.get("audio") or {}) if audio else {}
+    key = hashlib.sha1(json.dumps({"v": 1, "video": _sha(video), "audio": _sha(audio) if audio and audio.exists() else None, "markers": markers(sb) if sb.get("scenes") else [],
+                                   "edit": _el(sb), "title": sb.get("title") or sid, "size": [width, height, fps], "preset": PRESET,
+                                   "st": export_settings(width, height, arec0.get("lufs"), keep_level="target_lufs" in arec0 and arec0.get("target_lufs") is None)},
+                                  sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
+    if not edited and ed.get("key") == key and out.exists() and ed.get("out_sha") == _sha(out) and proj.exists():
+        print("[조립] 화면 · 소리 · 편집이 그대로 — 지난 내보내기를 그대로 쓴다")
+        return out
     try:
         if not edited:
             proj.unlink(missing_ok=True)
@@ -193,6 +203,8 @@ def assemble(sb: dict, video: Path, audio: Path | None, out: Path, fps: int = 30
         ed["thumb"] = {"file": os.path.relpath(thumb, ROOT), "t": tt} if thumb.exists() else None
     except (RuntimeError, subprocess.TimeoutExpired) as e:
         print(f"[조립] 마커 목록 · 썸네일을 못 뽑았습니다(영상은 그대로): {e}")
+    if out.exists() and not ed.get("edited"):
+        ed["key"], ed["out_sha"] = key, _sha(out)
     man["edit"] = ed
     man_p.write_text(json.dumps(man, ensure_ascii=False, indent=1), "utf-8")
     return out if out.exists() else None

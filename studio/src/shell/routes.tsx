@@ -10,8 +10,6 @@ const preloadLoaders = {
   videos: () => import("../features/videos/VideosPage"),
   trends: () => import("../features/trends/TrendsPage"),
   xray: () => import("../features/trends/XrayPage"),
-  library: () => import("../features/library/LibraryPage"),
-  automation: () => import("../features/automation/AutomationPage"),
   settings: () => import("../features/settings/SettingsPage"),
   crafts: () => import("../features/crafts/CraftsPage"),
 };
@@ -22,8 +20,6 @@ const loaders = {
 const VideosPage = lazy(() => loaders.videos().then((m) => ({ default: m.VideosPage })));
 const TrendsPage = lazy(() => loaders.trends().then((m) => ({ default: m.TrendsPage })));
 const XrayPage = lazy(() => loaders.xray().then((m) => ({ default: m.XrayPage })));
-const LibraryPage = lazy(() => loaders.library().then((m) => ({ default: m.LibraryPage })));
-const AutomationPage = lazy(() => loaders.automation().then((m) => ({ default: m.AutomationPage })));
 const CraftsPage = lazy(() => loaders.crafts().then((m) => ({ default: m.CraftsPage })));
 const CraftViewPage = lazy(() => loaders.crafts().then((m) => ({ default: m.CraftViewPage })));
 const VEditorPage = lazy(() => loaders.veditor().then((m) => ({ default: m.VEditorPage })));
@@ -61,8 +57,6 @@ export const router = createBrowserRouter([
       { path: "pipeline/:id", element: <PipelineRedirect /> },
       { path: "trends", element: L(<TrendsPage />), errorElement: <RouteError /> },
       { path: "trends/x/:vid", element: L(<XrayPage />), errorElement: <RouteError /> },
-      { path: "library", element: L(<LibraryPage />), errorElement: <RouteError /> },
-      { path: "automation", element: L(<AutomationPage />), errorElement: <RouteError /> },
       { path: "crafts", element: L(<CraftsPage />), errorElement: <RouteError /> },
       { path: "engine/craft/apps/:name", element: L(<CraftViewPage />), errorElement: <RouteError /> },
       { path: "settings", element: <Navigate to="/settings/agent" replace /> },

@@ -15,7 +15,7 @@ Fluma is Apache-2.0, so you're also free to use and modify it in your own projec
 
 | Idea | Where |
 |---|---|
-| connect another Craft app (or any tool) as a material maker | `engine/craft/apps/<app>/craft.json` (`provides`) + an adapter in `engine/craft/materials.py` |
+| connect another Craft app (or any tool) as a material maker | `engine/craft/apps/<app>/craft.json` (`provides`) + an adapter `engine/craft/adapters/<app>.py` |
 | better motion for a material type | `engine/craft/motion.py` (`material_jsx`) |
 | a new voice engine | `engine/voice/engines/<name>/` — `voice.json` + `adapter.py` |
 | a format preset measured from Shorts you like | `engine/research/ref_channel.py` → `engine/research/format_presets.py build` |
@@ -30,7 +30,7 @@ Open it whenever you like — draft PRs are great. If you have a minute, running
 
 ```bash
 python -m pytest tests
-npx tsc --noEmit -p web
+npm --prefix studio run typecheck
 ```
 
 If they fail and you're not sure why, send it anyway and say so; we'll figure it out together.

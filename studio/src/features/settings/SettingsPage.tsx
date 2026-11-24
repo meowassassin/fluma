@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Icon } from "../../ui/Icon";
 import { EngineIcon, modelIconSrc } from "../../ui/EngineIcon";
-import { Button, EmptyState, Field, Popover, Segmented, Select, Skeleton, Spinner, Switch, Tag, confirmDialog, cx } from "../../ui/kit";
+import { Button, EmptyState, Field, Segmented, Select, Skeleton, Spinner, Switch, Tag, confirmDialog, cx } from "../../ui/kit";
 import { api, errMsg } from "../../lib/api";
 import { qc, qk, useEngines, useSettings } from "../../lib/queries";
 import type { EngineMeta, Settings } from "../../lib/types";
@@ -15,7 +15,7 @@ import { YoutubeSec } from "./YoutubeSec";
 import { LANGS, agentLang, t, useLang, type Lang } from "../../lib/i18n";
 import { sapi, type AgentInfo, type GenKey, type Mem, type Voice } from "./api";
 
-type Sec = "agent" | "videogen" | "media" | "youtube" | "memory" | "mcp" | "about";
+type Sec = "agent" | "media" | "youtube" | "memory" | "mcp" | "about";
 type MediaTab = "voice" | "music" | "stock";
 interface AgentCfg { cli: string; claudeModel: string; codexModel: string; agyModel?: string; cursorModel?: string; effort: string }
 type Save = "idle" | "saving" | "saved" | "failed";
@@ -25,8 +25,6 @@ const SCOPE: Record<string, string> = { global: "공통", trends: "트렌드", b
 const AGENT_ICON: Record<string, string> = { claude: "agent-claude", codex: "agent-codex", antigravity: "antigravity", cursor: "agent-cursor" };
 /** 에이전트 카드 모델 선택 기본값(빈 값일 때 modelIconSrc 용) */
 const AGENT_MODEL_FALLBACK: Record<string, string> = { claude: "claude", codex: "gpt", antigravity: "gemini", cursor: "composer" };
-const commTone = (c: string) => (c.startsWith("가능") ? "ok" : c.startsWith("불가") ? "danger" : "warn") as "ok" | "danger" | "warn";
-const availTag = (a: boolean | null | undefined, off = "설치 필요") => a === null || a === undefined ? <Tag>{t("확인 중")}</Tag> : a ? <Tag tone="ok">{t("사용 가능")}</Tag> : <Tag tone="warn">{t(off)}</Tag>;
 /** 번역문의 {이름} 자리에 JSX 를 끼운다(굵은 글씨 등) */
 const rich = (s: string, parts: Record<string, React.ReactNode>): React.ReactNode =>
   s.split(/\{(\w+)\}/).map((x, i) => (i % 2 ? <React.Fragment key={i}>{parts[x] ?? `{${x}}`}</React.Fragment> : x));
@@ -35,7 +33,7 @@ const DATE_LOCALE: Record<Lang, string> = { ko: "ko-KR", en: "en-US", zh: "zh-CN
 export const SettingsPage: React.FC = () => {
   const raw = useParams().section ?? "agent";
   // 예전 주소(/settings/voice · render)는 미디어의 그 탭으로
-  const sec = (["voice", "render"].includes(raw) ? "media" : raw) as Sec;
+  const sec = (["voice", "render"].includes(raw) ? "media" : raw === "videogen" ? "agent" : raw) as Sec;
   const { data: remote, isLoading, error } = useSettings();
   const [s, setS] = useState<Settings | null>(null);
   const [save, setSave] = useState<Save>("idle");
@@ -60,7 +58,6 @@ export const SettingsPage: React.FC = () => {
   // open-design 처럼 두 덩어리: 글을 쓰는 모델(에이전트) · 소리와 화면 재료(음성 · 스톡 영상 · 렌더 엔진)
   const NAV: [Sec, string, string, string][] = [
     ["agent", "agent", t("에이전트"), t("Claude · Cursor · Antigravity · Codex")],
-    ["videogen", "sparkle", t("AI 생성 (영상 · 이미지)"), t("Google Flow · Antigravity 모델 및 경로")],
     ["media", "image", t("미디어"), t("음성 · 스톡 영상")],
     ["youtube", "video", t("YouTube"), t("채널 연결 · 업로드 · 통계")],
     ["memory", "memory", t("기억"), t("{n}개", { n: activeMem.length })],
@@ -88,7 +85,6 @@ export const SettingsPage: React.FC = () => {
           {isLoading || !s ? (error ? <EmptyState icon="warn" title={t("설정을 불러오지 못했어요")} body={errMsg(error)} action={<Button onClick={() => qc.invalidateQueries({ queryKey: qk.settings })}>{t("다시 시도")}</Button>} />
             : <div className="col"><Skeleton w={240} h={22} /><Skeleton h={64} /><Skeleton h={64} /></div>) : <>
             {sec === "agent" && <AgentSec s={s} set={set} />}
-            {sec === "videogen" && <VideoGenSec s={s} set={set} />}
             {sec === "media" && <MediaSec s={s} set={set} engines={engines} voices={voices} keys={keys} />}
             {sec === "youtube" && <YoutubeSec />}
             {sec === "memory" && <MemorySec mem={activeMem} />}
@@ -230,35 +226,6 @@ const LangSwitch: React.FC<{ s: Settings }> = ({ s }) => {
   return <Segmented aria-label={t("언어")} size="sm" value={lang} onChange={pick} options={LANGS.map((x) => ({ value: x.value, label: x.label }))} />;
 };
 
-/* ---------- 렌더 · 요소 엔진 ---------- */
-const ROLE_TXT: Record<string, string> = { craft: "장면 합성 · 소리 · 조립(모든 장면)" };
-const RenderSec: React.FC<{ engines: EngineMeta[] }> = ({ engines }) => {
-  const order = ["craft"];
-  const list = [...engines].sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
-  const [sel, setSel] = useState<string | null>(null);
-  if (!list.length) return <><Head t={t("렌더 엔진")} d={t("불러오는 중")} /><Skeleton h={120} /></>;
-  const e = list.find((x) => x.name === sel) ?? list[0];
-  return <>
-    <Head t={t("렌더 엔진")} d={t("모든 장면은 Craft 파이프라인(EffectCraft 움직임 → SoundCraft 소리 → FilmCraft 조립)이 만듭니다. 장면 재료를 만드는 앱은 Craft 앱 화면에서 관리합니다.")}
-      right={<Button size="sm" variant="ghost" icon="render" onClick={() => sapi.refreshRegistry().then(() => toast(t("엔진 상태를 다시 확인하는 중이에요"))).catch((er) => toast.error(errMsg(er)))}>{t("상태 다시 확인")}</Button>} />
-    <div className="gk-chips" role="tablist" aria-label={t("렌더 엔진")}>
-      {list.map((x) => (
-        <button key={x.name} role="tab" aria-selected={x.name === e.name} className={cx("gk-chip", x.name === e.name && "on")} onClick={() => setSel(x.name)}>
-          {x.icon ? <img className="gk-ic" src={x.icon} alt="" /> : <Icon n="engine" s={14} />}{x.title ?? x.name}
-          <i className={cx("gk-dot", x.available && "ok")} aria-label={x.available ? t("사용 가능") : t("설치 필요")} />
-        </button>))}
-    </div>
-    <div className="gk-card" role="tabpanel" aria-label={e.title ?? e.name}>
-      <div className="gk-card-h">
-        <EngineIcon id={e.name} src={e.icon} title={e.title ?? e.name} size={40} />
-        <div className="gk-t"><b>{e.title ?? e.name}</b><small>{t(ROLE_TXT[e.name] ?? "렌더 엔진")} · {e.summary ? t(e.summary) : ""}</small></div>
-        <span className="gk-caps">{e.available ? t("사용 가능") : e.available === false ? t("설치 필요") : t("확인 중")}</span>
-      </div>
-      <p className="gk-facts">{e.license ? t("라이선스 {name}", { name: e.license }) : ""} · {t("제작 파일을 앱에서 열어 고칠 수 있음")}</p>
-      {e.available === false && <InstallButton kind="engines" name={e.name} title={e.title ?? e.name} note={e.install} onDone={() => qc.invalidateQueries({ queryKey: qk.engines })} />}
-    </div>
-  </>;
-};
 
 /* ---------- API 키(음성 · 스톡 영상) ---------- */
 /** 음성 · 스톡 영상 API 키 — open-design 의 Media providers 구성을 따름(REA 로 실행 화면 확인, 2026-11-02):
@@ -346,247 +313,6 @@ const MediaSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void; eng
     {tab === "music" && <MusicSec s={s} set={set} keys={mk} />}
     {tab === "stock" && <GenKeys keys={sk} title={t("스톡 영상 API 키")} desc={t("무료 스톡 영상(Pexels · Pixabay) — 일상 · 감성 · 광고 장면의 바탕(B-roll). 출처는 설명란에 자동으로 붙습니다.")} />}
   </>;
-};
-
-/* ---------- 영상 및 이미지 생성 설정(videogen & imagegen) ---------- */
-const VIDEOGEN_BACKENDS = [
-  { value: "gflow", label: "Google Flow (Veo 기반 · 권장)", icon: "/api/engine-icons/flow.svg" },
-  { value: "antigravity", label: "Antigravity Chat (Gemini)", icon: "/api/engine-icons/antigravity.svg" },
-  { value: "mock", label: "Mock (테스트용)", icon: null },
-];
-
-const GFLOW_VIDEO_MODELS = [
-  { value: "veo_3_1_lite", label: "Veo 3.1 Lite (기본 · 10 크레딧 · 빠른 속도)", icon: "/api/engine-icons/veo.svg" },
-  { value: "veo_3_1_fast", label: "Veo 3.1 Fast (20 크레딧 · 더 빠른 속도)", icon: "/api/engine-icons/veo.svg" },
-  { value: "veo_3_1_quality", label: "Veo 3.1 Quality (100 크레딧 · 최고 화질)", icon: "/api/engine-icons/veo.svg" },
-  { value: "omni_1_2_flash", label: "Omni 1.2 Flash (초당 3 크레딧 · 옴니)", icon: "/api/engine-icons/deepmind.svg" },
-];
-
-const AGY_VIDEO_MODELS = [
-  { value: "gemini", label: "Gemini Video (Antigravity Chat · 기본)", icon: "/api/engine-icons/gemini.svg" },
-  { value: "veo", label: "Veo Video (Antigravity Chat)", icon: "/api/engine-icons/veo.svg" },
-];
-
-const MOCK_VIDEO_MODELS = [
-  { value: "mock", label: "Mock (빠른 더미 비디오)", icon: null },
-];
-
-const IMAGEGEN_BACKENDS = [
-  { value: "gflow", label: "Google Flow (Imagen / Nano Banana · 기본)", icon: "/api/engine-icons/flow.svg" },
-  { value: "agy", label: "Antigravity Chat / CLI (Gemini image-generator)", icon: "/api/engine-icons/antigravity.svg" },
-  { value: "mock", label: "Mock (테스트용 빠른 더미)", icon: null },
-];
-
-const GFLOW_IMAGE_MODELS = [
-  { value: "nano-pro", label: "Nano Banana Pro (기본 · 고품질)", icon: "/api/engine-icons/nanobanana.svg" },
-  { value: "nano2", label: "Nano Banana 2 (빠른 생성)", icon: "/api/engine-icons/nanobanana.svg" },
-  { value: "nano2-lite", label: "Nano Banana 2 Lite (경량)", icon: "/api/engine-icons/nanobanana.svg" },
-  { value: "image4", label: "Imagen 4 (Google 최고 화질)", icon: "/api/engine-icons/flow.svg" },
-];
-
-const AGY_IMAGE_MODELS = [
-  { value: "flash", label: "Gemini Flash (기본 · 빠른 속도)", icon: "/api/engine-icons/gemini.svg" },
-  { value: "pro", label: "Gemini Pro (고품질)", icon: "/api/engine-icons/gemini.svg" },
-  { value: "flash_lite", label: "Gemini Flash Lite (초경량)", icon: "/api/engine-icons/gemini.svg" },
-];
-
-const VideoGenSec: React.FC<{ s: Settings; set: (p: Partial<Settings>) => void }> = ({ s, set }) => {
-  const vg = s.videogen || { backend: "gflow", model: "veo_3_1_lite", max_attempts: 3 };
-  const updateVg = (p: Partial<typeof vg>) => set({ videogen: { ...vg, ...p } });
-
-  const ig = s.imagegen || { backend: "gflow", model: "nano-pro" };
-  const updateIg = (p: Partial<typeof ig>) => set({ imagegen: { ...ig, ...p } });
-
-  const currentVideoBackend = vg.backend || "gflow";
-  const videoModels =
-    currentVideoBackend === "antigravity"
-      ? AGY_VIDEO_MODELS
-      : currentVideoBackend === "mock"
-      ? MOCK_VIDEO_MODELS
-      : GFLOW_VIDEO_MODELS;
-
-  const currentImageBackend = ig.backend || "gflow";
-  const imageModels =
-    currentImageBackend === "agy"
-      ? AGY_IMAGE_MODELS
-      : currentImageBackend === "mock"
-      ? [{ value: "mock", label: "Mock 기본", icon: null }]
-      : GFLOW_IMAGE_MODELS;
-
-  // 선택된 비디오 아이콘
-  const curVb = VIDEOGEN_BACKENDS.find((b) => b.value === currentVideoBackend);
-  const curVm = videoModels.find((m) => m.value === (vg.model || videoModels[0]?.value));
-
-  // 선택된 이미지 아이콘
-  const curIb = IMAGEGEN_BACKENDS.find((b) => b.value === currentImageBackend);
-  const curIm = imageModels.find((m) => m.value === (ig.model || imageModels[0]?.value));
-
-  const { data: gfStatus, refetch: refetchGf, isFetching: gfFetching } = useQuery({
-    queryKey: ["gflow-status"],
-    queryFn: ({ signal }) => sapi.gflowStatus(signal),
-  });
-  const [loggingIn, setLoggingIn] = useState(false);
-  const handleGflowLogin = async () => {
-    setLoggingIn(true);
-    try {
-      toast.info(t("Google 로그인 창을 엽니다... 로그인을 완료해주세요."));
-      const res = await sapi.gflowLogin();
-      if (res.ok) {
-        toast.success(t("Google Flow 로그인이 완료되었습니다."));
-      } else {
-        toast.error(t("Google Flow 로그인 실패"), { description: res.error ?? "" });
-      }
-    } catch (e) {
-      toast.error(t("로그인 실행 중 오류"), { description: errMsg(e) });
-    } finally {
-      setLoggingIn(false);
-      refetchGf();
-    }
-  };
-
-  return (
-    <>
-      <Head
-        t={t("Google Flow 서비스 연동")}
-        d={t("Google 공식 Flow(Veo 비디오 및 Imagen/Nano 이미지) 생성을 위한 계정 세션 연동 상태입니다.")}
-      />
-      <div className="gk-card" style={{ marginBottom: 24, padding: "18px 20px" }}>
-        <div className="gk-card-h" style={{ alignItems: "center" }}>
-          <EngineIcon id="flow" src="/api/engine-icons/flow.svg" title="Google Flow" size={44} />
-          <div className="gk-t" style={{ marginLeft: 12 }}>
-            <b style={{ fontSize: 16 }}>Google Flow</b>
-            <small style={{ color: "var(--fg-faint)", marginTop: 2 }}>
-              {t("Google Veo 비디오 및 Imagen 이미지 생성 엔진 · flow.google.com 계정 연동")}
-            </small>
-          </div>
-          <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-            {gfStatus?.available ? (
-              <Tag tone="ok">{t("계정 로그인됨")}</Tag>
-            ) : (
-              <Tag tone="warn">{t("로그인 필요")}</Tag>
-            )}
-            <Button
-              size="sm"
-              variant={gfStatus?.available ? "secondary" : "primary"}
-              icon="link"
-              loading={loggingIn || gfFetching}
-              onClick={handleGflowLogin}
-            >
-              {gfStatus?.available ? t("다시 로그인") : t("브라우저로 로그인")}
-            </Button>
-          </span>
-        </div>
-        <p className="gk-facts" style={{ marginTop: 12, marginBottom: 0 }}>
-          <Icon n="info" s={13} />{" "}
-          {t("Google Flow 세션이 연결되면 샷 생성 시 Veo 및 Imagen 모델을 고속으로 사용할 수 있습니다. 만료 시 자동으로 로그인 창을 호출합니다.")}
-        </p>
-      </div>
-
-      <Head
-        t={t("영상 생성 설정 (4단계)")}
-        d={t("숏폼 생성 파이프라인 4단계(video.py)에서 사용할 영상 생성 경로와 모델, 샷당 재시도 상한을 설정합니다.")}
-      />
-      <Row
-        t={t("영상 생성 경로 (백엔드)")}
-        d={t("Google Flow(Veo 기반 공식 파이프라인)를 쓸지, Antigravity Chat CLI(Gemini)를 쓸지 선택합니다.")}
-      >
-        <div className="row" style={{ alignItems: "center", gap: 10 }}>
-          {curVb?.icon ? (
-            <img src={curVb.icon} alt="" style={{ width: 22, height: 22, objectFit: "contain", flex: "none" }} />
-          ) : (
-            <Icon n="video" s={20} />
-          )}
-          <Select
-            aria-label={t("영상 생성 경로")}
-            value={currentVideoBackend}
-            onChange={(b) => {
-              const defM = b === "antigravity" ? "gemini" : b === "mock" ? "mock" : "veo_3_1_lite";
-              updateVg({ backend: b, model: defM });
-            }}
-            options={VIDEOGEN_BACKENDS.map((b) => ({ value: b.value, label: b.label }))}
-          />
-        </div>
-      </Row>
-      <Row
-        t={t("영상 생성 모델")}
-        d={t("선택한 경로에서 실제 비디오 렌더링에 사용할 모델입니다.")}
-      >
-        <div className="row" style={{ alignItems: "center", gap: 10 }}>
-          {curVm?.icon ? (
-            <img src={curVm.icon} alt="" style={{ width: 22, height: 22, objectFit: "contain", flex: "none" }} />
-          ) : (
-            <Icon n="video" s={20} />
-          )}
-          <Select
-            aria-label={t("영상 생성 모델")}
-            value={vg.model || videoModels[0]?.value}
-            onChange={(m) => updateVg({ model: m })}
-            options={videoModels.map((m) => ({ value: m.value, label: m.label }))}
-          />
-        </div>
-      </Row>
-      <Row
-        t={t("샷당 최대 시도 횟수")}
-        d={t("한 샷당 무한 생성을 방지하기 위한 최대 시도 상한입니다 (기본 3회).")}
-      >
-        <Segmented
-          aria-label={t("최대 시도 횟수")}
-          value={String(vg.max_attempts || 3)}
-          onChange={(v) => updateVg({ max_attempts: Number(v) })}
-          options={[
-            { value: "1", label: "1회" },
-            { value: "2", label: "2회" },
-            { value: "3", label: "3회 (권장)" },
-            { value: "5", label: "5회" },
-          ]}
-        />
-      </Row>
-
-      <Head
-        t={t("이미지 생성 설정 (2·3단계)")}
-        d={t("캐릭터 시트 및 키 프레임 생성(image.py)에 사용할 생성 경로(Google Flow 또는 Antigravity Chat)와 모델을 선택합니다.")}
-      />
-      <Row
-        t={t("이미지 생성 경로 (백엔드)")}
-        d={t("Google Flow Imagen/Nano Banana를 쓸지, Antigravity Chat CLI(Gemini)를 쓸지 선택합니다.")}
-      >
-        <div className="row" style={{ alignItems: "center", gap: 10 }}>
-          {curIb?.icon ? (
-            <img src={curIb.icon} alt="" style={{ width: 22, height: 22, objectFit: "contain", flex: "none" }} />
-          ) : (
-            <Icon n="image" s={20} />
-          )}
-          <Select
-            aria-label={t("이미지 생성 경로")}
-            value={currentImageBackend}
-            onChange={(b) => {
-              const defM = b === "agy" ? "flash" : b === "gflow" ? "nano-pro" : "mock";
-              updateIg({ backend: b, model: defM });
-            }}
-            options={IMAGEGEN_BACKENDS.map((b) => ({ value: b.value, label: b.label }))}
-          />
-        </div>
-      </Row>
-      <Row
-        t={t("이미지 생성 모델")}
-        d={t("선택한 경로에서 실제 이미지 생성에 사용할 모델입니다.")}
-      >
-        <div className="row" style={{ alignItems: "center", gap: 10 }}>
-          {curIm?.icon ? (
-            <img src={curIm.icon} alt="" style={{ width: 22, height: 22, objectFit: "contain", flex: "none" }} />
-          ) : (
-            <Icon n="image" s={20} />
-          )}
-          <Select
-            aria-label={t("이미지 생성 모델")}
-            value={ig.model || imageModels[0]?.value}
-            onChange={(m) => updateIg({ model: m })}
-            options={imageModels.map((m) => ({ value: m.value, label: m.label }))}
-          />
-        </div>
-      </Row>
-    </>
-  );
 };
 
 /* ---------- 음성 ---------- */

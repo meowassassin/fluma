@@ -13,7 +13,7 @@ Fluma runs locally: a web Studio (Node) plus a Python pipeline, driving the open
 | To run it directly on your machine | [Install](#2-install) — `doctor.py --fix` | ~10 min + downloads |
 | To change Fluma itself | Install, then `npm --prefix studio run dev` and the [tests](#check--troubleshoot) | — |
 
-Either way you need an agent: a logged-in **Claude Code** or **Codex** CLI on your computer (Docker reuses that login),
+Either way you need an agent: a logged-in **Claude Code**, **Codex** or **Antigravity** CLI on your computer (Docker reuses the Claude Code and Codex logins),
 or an API key (Anthropic, OpenAI, Gemini, or a local Ollama) entered in **Settings → Models · Providers**.
 
 ### What your computer needs
@@ -35,7 +35,7 @@ Smaller: `PROFILE=lite CRAFTS=core MODELS=0 docker compose build`, or `doctor.py
 | Node.js | 20+ | [nodejs.org](https://nodejs.org) |
 | ffmpeg | any recent | `sudo apt install ffmpeg` · `sudo dnf install ffmpeg` · `brew install ffmpeg` · `winget install ffmpeg` |
 
-You also need an agent: a logged-in **Claude Code** or **Codex** CLI, or an API key (Anthropic, OpenAI,
+You also need an agent: a logged-in **Claude Code**, **Codex** or **Antigravity** CLI, or an API key (Anthropic, OpenAI,
 Gemini, or a local Ollama) entered later in **Settings → Models · Providers**.
 
 ## 2. Install
@@ -46,7 +46,7 @@ python3 engine/doctor.py --fix
 ```
 
 That one command installs **everything**: `.venv` with all Python packages (`requirements-full.txt`), Chromium,
-all 16 open-source [Craft apps](https://github.com/storytold) (MIT / Apache-2.0, about 1.4 GB, checked against their
+all 16 open-source [Craft apps](https://github.com/storytold) (MIT / Apache-2.0, about 1.6 GB, checked against their
 SHA256SUMS into `tools/crafts/`), the analysis and background-removal models, and the npm packages. It only *tells*
 you how to install Node / ffmpeg — it does not need admin rights.
 
@@ -62,8 +62,9 @@ npm --prefix studio run dev     # API on 127.0.0.1:4310, Studio on http://localh
 If it says the Studio packages are missing, step 2 (`doctor.py --fix`) was skipped — run `npm --prefix studio install` once and start again. Same command on Windows, macOS and Linux.
 
 
-Open the Studio, type a topic on Home and plan the video in chat. Press **Start production** when the storyboard
-looks right — the agent studies reference Shorts, builds the scenes and renders a draft. The editor's Explorer shows
+Open the Studio, type a topic on Home and plan the video in chat — the agent studies reference Shorts, and once the
+storyboard passes its checks it builds the scenes and renders right away (turn on the autopilot switch, *자동 진행*, in the agent
+panel and it picks the recommended option at each step and finishes the video). The editor's Explorer shows
 what the video is made of; ask the agent on the right to change anything.
 
 ### Where your files are

@@ -1,0 +1,198 @@
+{
+ "name": "rubber duck",
+ "materials": {
+  "body": {
+   "color": "#ffcf2e",
+   "gloss": 0.45,
+   "spec_power": 40,
+   "shadow": "#f08a1c"
+  },
+  "beak": {
+   "color": "#ff8a1f",
+   "gloss": 0.4,
+   "spec_power": 40,
+   "shadow": "#d9481a"
+  },
+  "eye": {
+   "color": "#1b1714",
+   "gloss": 1.0,
+   "spec_power": 160,
+   "shadow": "#0d0a08"
+  }
+ },
+ "camera": {
+  "target": [
+   0.0,
+   0.52,
+   0.05
+  ],
+  "azimuth": 38,
+  "elevation": 18,
+  "fov": 30,
+  "frame": 1.55
+ },
+ "root": {
+  "op": "union",
+  "children": [
+   {
+    "op": "smooth_union",
+    "k": 0.03,
+    "children": [
+     {
+      "op": "smooth_subtract",
+      "k": 0.06,
+      "children": [
+       {
+        "op": "smooth_union",
+        "k": 0.16,
+        "children": [
+         {
+          "prim": "ellipsoid",
+          "radii": [
+           0.5,
+           0.38,
+           0.62
+          ],
+          "pos": [
+           0,
+           0.34,
+           -0.06
+          ],
+          "mat": "body"
+         },
+         {
+          "prim": "sphere",
+          "r": 0.36,
+          "pos": [
+           0,
+           0.36,
+           0.2
+          ],
+          "mat": "body"
+         },
+         {
+          "prim": "ellipsoid",
+          "radii": [
+           0.18,
+           0.1,
+           0.28
+          ],
+          "pos": [
+           0,
+           0.62,
+           -0.6
+          ],
+          "rot": [
+           -50,
+           0,
+           0
+          ],
+          "mat": "body"
+         },
+         {
+          "prim": "ellipsoid",
+          "radii": [
+           0.3,
+           0.31,
+           0.3
+          ],
+          "pos": [
+           0,
+           0.98,
+           0.18
+          ],
+          "mat": "body"
+         }
+        ]
+       },
+       {
+        "prim": "halfspace",
+        "pos": [
+         0,
+         0.0,
+         0
+        ],
+        "mat": "body"
+       }
+      ]
+     },
+     {
+      "prim": "ellipsoid",
+      "radii": [
+       0.1,
+       0.17,
+       0.3
+      ],
+      "pos": [
+       0.44,
+       0.42,
+       -0.12
+      ],
+      "rot": [
+       -12,
+       0,
+       0
+      ],
+      "mirror_x": true,
+      "mat": "body"
+     }
+    ]
+   },
+   {
+    "op": "smooth_union",
+    "k": 0.02,
+    "children": [
+     {
+      "prim": "ellipsoid",
+      "radii": [
+       0.19,
+       0.06,
+       0.19
+      ],
+      "pos": [
+       0,
+       0.935,
+       0.47
+      ],
+      "rot": [
+       -10,
+       0,
+       0
+      ],
+      "mat": "beak"
+     },
+     {
+      "prim": "ellipsoid",
+      "radii": [
+       0.15,
+       0.045,
+       0.14
+      ],
+      "pos": [
+       0,
+       0.87,
+       0.45
+      ],
+      "rot": [
+       8,
+       0,
+       0
+      ],
+      "mat": "beak"
+     }
+    ]
+   },
+   {
+    "prim": "sphere",
+    "r": 0.064,
+    "pos": [
+     0.135,
+     1.065,
+     0.41
+    ],
+    "mirror_x": true,
+    "mat": "eye"
+   }
+  ]
+ }
+}

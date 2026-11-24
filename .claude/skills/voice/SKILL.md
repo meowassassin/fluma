@@ -12,7 +12,6 @@ order: 4
 4. 다시 1~2. 모든 장면이 1.15배 이내가 될 때까지.
 
 제공자는 설정(설정 → 미디어 → 음성) 또는 환경변수 `TTS_PROVIDER`(기본 edge).
-- 로컬 및 클라우드 음성 엔진: 기본 Edge TTS(무료, 정밀한 단어 타이밍) 외에 ElevenLabs, Typecast, Supertonic, MeloTTS 등을 설정에서 활성화하여 사용합니다.
 
 ## 레퍼런스 목소리에 맞추기 — 감이 아니라 숫자로 (목소리 복제 아님)
 레퍼런스(채널 카드 > 스타일 카드)의 높이 · 억양 폭 · 말끝 처리 · 세기 변화 · 속도에 가까운 목소리와 조절 값을 고른다.
@@ -25,7 +24,7 @@ order: 4
 - 유료 엔진은 시험마다 크레딧이 든다: 대본 전체를 다시 합성하지 말고 pick · tune 의 샘플(캐시됨)로 고른 뒤 한 번만 전체 합성.
 
 ## 음성 엔진 (렌더 엔진처럼 갈아 끼움)
-- 엔진 목록 · 라이선스: `engine/voice/engines/<엔진>/voice.json` (edge · supertonic · espeak · melotts · chatterbox · cosyvoice · xtts · silent). 설치 여부는 설정 화면 또는 `python3 -c "import sys;sys.path.insert(0,'engine');import paths,tts;print({n:tts.engine_available(n) for n in tts.list_voice_engines()})"`.
+- 엔진 목록 · 라이선스: `engine/voice/engines/<엔진>/voice.json` (edge · typecast · elevenlabs · supertonic · espeak · melotts · chatterbox · cosyvoice · xtts · silent — 유료 둘은 설정에 키). 설치 여부는 설정 → 미디어 → 음성 화면에 나온다.
 - 기본은 설정(data/workspace/settings.json 의 voice_engine · voice_id). 영상마다 바꾸려면 콘티에 `"voice": {"engine": "supertonic", "id": "F2"}` 를 적고 `assemble_audio.py` 를 다시 돌린다(엔진 · 목소리가 캐시 키라 자동으로 다시 합성).
 - **상업 이용 '불가'(XTTS-v2 등) 엔진은 발행용 영상에 쓰지 않는다.** 사용자가 고르면 라이선스를 한 줄로 알린다.
 - edge 는 단어 타이밍을 정확히 준다. 일부 다른 엔진은 글자 수로 추정하므로 단어 자막이 조금 어긋날 수 있다 — 자막 강조가 중요한 영상이면 알린다.
@@ -33,4 +32,4 @@ order: 4
 ## 어느 목소리로 읽나(우선순위)
 설정(설정 → 미디어 → 음성)이 **자동**(기본)이면 `voice_match.py auto` 가 콘티에 적은 목소리(source: auto — 엔진을 가로질러 레퍼런스와 가장 닮은 목소리 · 말 속도)를 쓴다. 설정에서 '이 목소리로 고정'했으면 그 목소리가 기본이고 도구가 적은 목소리는 말 속도 · 감정 값만 쓰인다.
 콘티 `voice.engine` 을 직접 적으면(source 가 auto 가 아니면) 설정보다 앞선다 — 사용자가 "○○ 로 바꿔"라고 하면 콘티 엔진만 바꾸면 된다.
-합성이 막히면(403 · 키 없음 · 크레딧 · 한도) 제작이 다른 쓸 수 있는 엔진으로 자동으로 넘어가고 콘티 `voice.fallback` 에 사유를 남긴다 — 결과를 알릴 때 그 사실을 함께 말한다.
+합성이 어떤 이유로든 실패하면(403 · 키 없음 · 크레딧 · 한도 · 네트워크 …) 제작이 다른 쓸 수 있는 엔진으로 자동으로 넘어가고(같은 성별 목소리) 콘티 `voice.fallback` 에 사유를 남긴다 — 결과를 알릴 때 그 사실을 함께 말한다.

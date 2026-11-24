@@ -84,7 +84,7 @@ def semantic(path: str) -> dict:
     step = 0.5
     # 처음부터 차례로 읽으며 필요한 프레임만 쓴다 — 프레임마다 위치를 옮기면(seek) 매번 앞 키프레임부터 다시 풀어 수십 초가 걸렸다(2026-11-05)
     want = [int((k * step + step / 2) * fps) for k in range(int(dur / step))]
-    frames_at, idx = {}, 0
+    idx = 0
     for k, target in enumerate(want):
         while idx < target:
             if not cap.grab():

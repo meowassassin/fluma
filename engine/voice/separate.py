@@ -9,11 +9,12 @@
 """
 from __future__ import annotations
 
-import os
 import subprocess
 import sys
 import urllib.request
 from pathlib import Path
+
+sys.path.insert(0, str(next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists()) / "engine")); import paths  # noqa: E402,F401 — HTTPS 인증서
 
 import numpy as np
 

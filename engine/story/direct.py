@@ -252,6 +252,51 @@ def _sat(h: str) -> float:
     return 0 if mx == 0 else (mx - mn) / mx
 
 
+# 레퍼런스에서 강조색을 못 찾을 때 — 영상마다 다른 색(2026-11-19: 9편 중 8편이 같은 빨강 #ff2d2d 로 고정돼 화풍이 다 같아 보였다)
+ACCENTS = ("#ff5a36", "#ffd23f", "#3ddc97", "#4cc9f0", "#b388ff", "#ff6ec7", "#ff9f1c", "#2ec4b6", "#e71d36", "#9ef01a")
+
+
+def _recent_accents(exclude: str, n: int = 4) -> set[str]:
+    out = set()
+    for p in sorted((ROOT / "data" / "storyboards").glob("*.json"), key=lambda x: -x.stat().st_mtime):
+        if p.stem == exclude:
+            continue
+        try:
+            a = ((json.loads(p.read_text("utf-8")).get("direction") or {}).get("color_accent") or "").lower()
+        except (OSError, ValueError):
+            continue
+        if a:
+            out.add(a)
+        if len(out) >= n:
+            break
+    return out
+
+
+def ref_accent(card_id: str | None, sid: str, bg: str = "#000000") -> str:
+    """강조색 — 레퍼런스 화면에서 가장 눈에 띄는 색(채도 높고 면적이 있는 색). 없으면 최근 영상과 겹치지 않는 색을 영상 id 로 고른다"""
+    best, score = None, 0.0
+    try:
+        x = json.loads((ROOT / "data" / "public" / "trends" / "xray" / str(card_id) / "xray.json").read_text("utf-8"))
+        for sh in x.get("shots") or []:
+            for c in sh.get("palette") or []:
+                h, w = c.get("hex"), float(c.get("w") or 0)
+                if not (isinstance(h, str) and h.startswith("#")) or w < 0.01:
+                    continue
+                sat, lum = _sat(h), _hexlum(h)
+                if sat < 0.45 or not 0.25 < lum < 0.85 or abs(lum - _hexlum(bg)) < 0.3:   # 바탕과 밝기 차이가 있어야 강조가 된다
+                    continue
+                sc = sat * min(w, 0.3)
+                if sc > score:
+                    best, score = h, sc
+    except (OSError, ValueError, TypeError):
+        pass
+    if best:
+        return best
+    used = _recent_accents(sid)
+    pool = [c for c in ACCENTS if c not in used and abs(_hexlum(c) - _hexlum(bg)) >= 0.3] or list(ACCENTS)
+    return pool[int(hashlib.sha1(sid.encode()).hexdigest(), 16) % len(pool)]
+
+
 def colors(pick: dict, ref: dict | None, seed: int) -> dict:
     if pick["palette"] == "reference" and ref:
         pal = [c["hex"] if isinstance(c, dict) else c for c in (ref.get("palette") or [])]
@@ -267,11 +312,6 @@ def colors(pick: dict, ref: dict | None, seed: int) -> dict:
     opts = PALETTES.get(pick["palette"]) or PALETTES["duotone"]
     bg, surface, text, muted, acc = opts[seed % len(opts)]
     return {"color_bg": bg, "color_surface": surface, "color_text": text, "color_muted": muted, "color_accent": acc}
-
-
-# 화면 내내 고정 요소(위 제목 · 자막판 · 분할)가 있는 배치는 다른 엔진 장면과 이어지기 어렵다 → 엔진이 확실히 나은 장면만
-PERSISTENT = {"top-title", "left-editorial", "split-screen"}
-STRONG = {"chart", "diff", "code", "footage", "still"}
 
 
 def brief(sb: dict, res: dict, engines: list[str | None]) -> str:
@@ -334,6 +374,10 @@ def style_card(sb: dict) -> dict | None:
     return None
 
 
+# 디자이너 단계(skill_pass designer · review)가 정하는 칸 — 제작마다 카드로 덮으면 디자이너 · 검토가 매번 같은 값을 다시 넣느라 LLM 을 또 불렀다(2026-11-18 실측: 제작마다 검토 32~65초)
+DESIGNER_KEYS = ("layout", "screen_text_y", "font_title", "font_subs", "font_body", "cam_push", "mode", "letterbox", "panel", "layout_user")   # mode 등: 연출 모드(craft/design.py MODES)
+
+
 def design_merge(sb: dict) -> dict:
     """레퍼런스 X-ray 에서 잰 디자인 값(craft/design.py from_reference)을 direction 에 채운다.
     사용자가 정한 칸 · 고른 시안(locked)은 그대로 — 자동으로 채운 칸(_auto)만 다시 계산한다. 근거가 없으면 아무것도 넣지 않는다(= 효과 없음)"""
@@ -371,16 +415,25 @@ def main():
     ap.add_argument("storyboard")
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--reroll", type=int, nargs="?", const=1, default=0)
-    ap.add_argument("--no-cast", action="store_true", help="(예전 옵션 · 무시) 장면 단위 엔진 캐스팅은 없어졌다")
     a = ap.parse_args()
     path = Path(a.storyboard)
     sb = json.loads(path.read_text(encoding="utf-8"))
+    prev0 = sb.get("direction") or {}
+    if a.write and not a.reroll and (prev0.get("locked") or prev0.get("user_locked")):
+        # 사용자가 고른 시안 · 직접 잠근 방향은 다시 만들지 않는다(2026-11-18 감사: 고른 시안이 다음 제작에서 지워졌다)
+        import copy
+        import sbio
+        base = copy.deepcopy(sb)
+        design_merge(sb)
+        sbio.save(path, base, sb)
+        print(f"[기록] direction 잠금({prev0.get('picked') or 'user_locked'}) — 그대로 둠")
+        return
     # 레퍼런스 스타일 카드가 있으면 무작위로 고르지 않는다 — 카드의 방향(바탕 · 배치 · 자막 · 움직임 · 전환)을 그대로
     card = style_card(sb)
     if card and not a.reroll:
         d = card["direction"]
         col = {"color_bg": d.get("color_bg", "#000000"), "color_surface": "#111111", "color_text": "#ffffff", "color_muted": "#9a9a9a",
-               "color_accent": "#ff2d2d", "color_caption_bg": d.get("caption_bg"), "color_caption_fg": d.get("caption_fg")}
+               "color_accent": ref_accent(card.get("id"), str(sb.get("id") or ""), d.get("color_bg", "#000000")), "color_caption_bg": d.get("caption_bg"), "color_caption_fg": d.get("caption_fg")}
         print(Path(ROOT / "data" / "public" / "trends" / "xray" / card["id"] / "style" / "style.md").read_text(encoding="utf-8"))
         if card.get("channel_card"):   # 구성 · 말투는 채널(여러 편) 카드가 기준 — 한 편 통계보다 먼저
             print(Path(ROOT / "data" / "public" / "trends" / "channels" / card["channel"] / "channel.md").read_text(encoding="utf-8").split("## 영상별 대사")[0])
@@ -396,7 +449,7 @@ def main():
             col.update({f"color_{k}": v for k, v in fp.items() if k in ("bg", "surface", "text", "muted", "accent")})   # 고른 느낌의 색이 레퍼런스 색보다 앞선다(배치 · 리듬은 레퍼런스)
             sb["direction"] = {**{k: v for k, v in d.items() if not k.startswith("caption_")}, **col, "style_card": f"data/public/trends/xray/{card['id']}/style/style.json",
                                **({"channel_card": f"data/public/trends/channels/{card['channel']}/channel.json"} if card.get("channel_card") else {}),
-                               **{k: prev[k] for k in ("anchors", "feel", "methods", "subs", "art", "number_punch") if k in prev}}   # 직접 적은 칸 보존
+                               **{k: prev[k] for k in ("anchors", "feel", "methods", "subs", "art", "number_punch", *DESIGNER_KEYS) if k in prev}}   # 직접 적은 칸 · 디자이너가 정한 칸 보존
             if not sb.get("voice"):   # 목소리도 카드에서: 가장 자연스러운 엔진 · 레퍼런스 말 속도 · 이어 말하기 · 말투 지시
                 sb["voice"] = voice_from_card(card)
                 print(f"[기록] 목소리: {sb['voice']}")
@@ -428,7 +481,7 @@ def main():
     if a.write:
         seed = int(hashlib.sha1(f"{sb.get('id')}:{a.reroll}".encode()).hexdigest(), 16)
         prev = sb.get("direction") or {}
-        keep = {k: prev[k] for k in ("anchors", "feel", "methods", "subs", "art", "number_punch") if k in prev}   # 감독 기둥 · 고른 느낌 등 직접 적은 칸은 지우지 않는다(2026-11-11: 통째로 덮어 anchors 가 사라졌다)
+        keep = {k: prev[k] for k in ("anchors", "feel", "methods", "subs", "art", "number_punch", *DESIGNER_KEYS) if k in prev}   # 감독 기둥 · 고른 느낌 등 직접 적은 칸은 지우지 않는다(2026-11-11: 통째로 덮어 anchors 가 사라졌다)
         col = colors(res["pick"], res["ref"], seed)
         fp = (prev.get("feel") or {}).get("palette") or {}
         col.update({f"color_{k}": v for k, v in fp.items() if k in ("bg", "surface", "text", "muted", "accent")})   # 고른 느낌의 색이 무작위 팔레트보다 앞선다

@@ -1,5 +1,4 @@
 """앱을 넘나드는 연결($USE · $READ)과 말에 맞추기($CUE) — 2026-11-16"""
-import json
 import sys
 from pathlib import Path
 

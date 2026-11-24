@@ -2,7 +2,6 @@
 검사(명령 id · 경로 · 참조)는 앱 없이, 실제 실행은 그 앱이 설치됐을 때만."""
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 

@@ -6,6 +6,15 @@
 var K = (function () {
   var C = app.project.activeItem || app.project.item(1);
   var GAP = 0.07;   // 두 프레임 넘게(30fps)
+  // 키프레임이 있는 속성에 setValue → 시작 값(0초 키)으로. 2026-11-21: 장면 코드가 K.appear 뒤에 Opacity.setValue 를 불러 빌드가 멈추는 일이
+  // 되풀이됐다(실전 1 · 2 · 꿀벌 시험). 뜻은 같다 — '처음 상태'를 정하는 것
+  try { (function () { var t = C.layers.addNull(); var pr = Object.getPrototypeOf(t.property('Transform').property('Opacity')); t.remove();
+    // 2026-11-24: 색 속성에 '#ffcc00' 글자를 그대로 넣어 'value must be an array of 3 or 4 numbers' 로 빌드가 멈췄다(장면 코드 오류 6건 중 5건) — 글자 색은 배열로 바꿔 받는다
+    function cv(v) { if (typeof v === 'string' && /^#?[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(v)) { var h = v.replace('#', ''); if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2); return [parseInt(h.substr(0, 2), 16) / 255, parseInt(h.substr(2, 2), 16) / 255, parseInt(h.substr(4, 2), 16) / 255]; } return v; }
+    if (pr && !pr.__fluma_sv) { var sv = pr.setValue, sva = pr.setValueAtTime;
+      pr.setValue = function (v) { v = cv(v); if (this.numKeys > 0) return this.setValueAtTime(0, v); return sv.call(this, v); };
+      if (sva) pr.setValueAtTime = function (t, v) { return sva.call(this, t, cv(v)); };
+      pr.__fluma_sv = true; } })(); } catch (e) {}
   function hx(h) { if (h instanceof Array) return h; h = String(h).replace('#', ''); if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2); return [parseInt(h.substr(0, 2), 16) / 255, parseInt(h.substr(2, 2), 16) / 255, parseInt(h.substr(4, 2), 16) / 255]; }
   function T(l) { return l.property('Transform'); }
   function ease(prop, infl) { var e = new KeyframeEase(0, infl || 75); for (var k = 1; k <= prop.numKeys; k++) { var a = []; var n = (prop.value && prop.value.length) || 1; for (var d = 0; d < n; d++) a.push(e); try { prop.setTemporalEaseAtKey(k, a, a); } catch (x) {} } }
@@ -18,7 +27,7 @@ var K = (function () {
       C.duration = sec;
       var s = C.layers.addSolid([0, 0, 0], 'BG', C.width, C.height, 1); s.moveToEnd();
       if (bg instanceof Array) { var g = s.property('Effects').addProperty('ADBE Ramp'); g.property('Start Color').setValue(hx(bg[0])); g.property('End Color').setValue(hx(bg[1])); g.property('Start of Ramp').setValue([C.width / 2, 0]); g.property('End of Ramp').setValue([C.width / 2, C.height]); }
-      else s.property('Effects').addProperty('ADBE Fill').property('Color').setValue(hx(bg || '#101218'));
+      else { if (!bg) throw new Error('K.scene: 바탕색을 고른다(두 번째 인자) — 기본값 어두운 남색이 모든 영상을 같은 AI 티로 만들었다(2026-11-21). 장면의 장소 · 물건 색에서'); s.property('Effects').addProperty('ADBE Fill').property('Color').setValue(hx(bg)); }
       return s;
     },
     /** 글자 — o: {font, style, align: 'left'|'center'|'right', stroke, strokeW, tracking, box:[w,h]} */
@@ -36,21 +45,25 @@ var K = (function () {
         if (r && r.width > mw) { d = t.property('Source Text').value; d.fontSize = Math.max(8, size * mw / r.width); t.property('Source Text').setValue(d); } } catch (x) {} }
       return t;
     },
-    /** 도형 레이어 — kind: 'rect'|'ellipse', o: {fill, stroke, strokeW, round, name} */
+    /** 도형 레이어 — kind: 'rect'|'ellipse', o: {fill, stroke, strokeW, round, name} — stroke 만 주면 속이 빈 고리 · 테두리 */
     shape: function (kind, x, y, w, h, o) {
       o = o || {};
       var L = C.layers.addShape(); if (o.name) L.name = o.name;
       var g = L.property('Contents').addProperty('ADBE Vector Group');
       var sh = g.property('Contents').addProperty(kind === 'ellipse' ? 'ADBE Vector Shape - Ellipse' : 'ADBE Vector Shape - Rect');
       sh.property('Size').setValue([w, h]); if (kind !== 'ellipse' && o.round) sh.property('Roundness').setValue(o.round);
-      if (o.fill !== false) g.property('Contents').addProperty('ADBE Vector Graphic - Fill').property('Color').setValue(hx(o.fill || '#ffffff'));
+      if (o.fill !== false && !(o.stroke && o.fill === undefined)) g.property('Contents').addProperty('ADBE Vector Graphic - Fill').property('Color').setValue(hx(o.fill || '#ffffff'));
       if (o.stroke) { var st = g.property('Contents').addProperty('ADBE Vector Graphic - Stroke'); st.property('Color').setValue(hx(o.stroke)); st.property('Stroke Width').setValue(o.strokeW || 6); }
       K.P(L).setValue([x, y]);
       return L;
     },
     /** 이미지 파일(png · jpg — 다른 재료의 결과는 "$USE:이름") */
     image: function (path, x, y, scale) {
-      var it = app.project.importFile(new ImportOptions(new File(path))); var L = C.layers.add(it);
+      var seq = /[\\\/]f000\.png$/.test(path);   // 움직이는 형태(form_cli anim → …/f000.png) — 프레임 묶음을 anim.json 의 fps(이동 24 · 제자리 12)로 반복 재생
+      var io = new ImportOptions(new File(path)); if (seq) io.sequence = true;
+      var it = app.project.importFile(io); var L = C.layers.add(it);
+      if (seq) { var fps = 12; try { var fj = new File(String(path).replace(/f000\.png$/, 'anim.json')); if (fj.open('r')) { var mm = /"fps":\s*(\d+)/.exec(fj.read()); fj.close(); if (mm) fps = +mm[1]; } } catch (e) {}
+        try { it.mainSource.conformFrameRate = fps; } catch (e) {} L.timeRemapEnabled = true; L.property('Time Remap').expression = 'time % thisLayer.source.duration'; L.outPoint = C.duration; }
       K.P(L).setValue([x, y]); if (scale) K.S(L).setValue([scale, scale]); return L;
     },
     /** 붙여 넣은 SVG(edit.pasteSvg) 레이어의 획 · 도형 그룹들 — 그린 순서대로 */
@@ -81,6 +94,16 @@ var K = (function () {
     /** 글자를 왼쪽부터 써 내려가기(Linear Wipe) — 글자 수에 맞는 속도 */
     write: function (L, t, d) { var w = L.property('Effects').addProperty('ADBE Linear Wipe'); w.property('Wipe Angle').setValue(270); w.property('Feather').setValue(30); var c = w.property('Transition Completion'); var n = 0; try { n = String(L.property('Source Text').value.text).length; } catch (x) {} c.setValue(100); c.setValueAtTime(t, 100); c.setValueAtTime(t + (d || Math.min(1.4, 0.12 + 0.07 * n)), 0); return L; },
     /** 자식이 부모 투명도를 따라가게(부모로 묶을 때) */
+    /** EffectCraft 효과 붙이기 — 이름은 카탈로그 id('ec.stylize.glow') · 화면 이름('Glow') · 내부 이름('ADBE Glo2') 모두 된다(craft_catalog.py search 로 찾음).
+     *  v = {속성 이름: 값 | [[초, 값], …](키프레임)}. 없는 이름이면 조용히 무시되던 것을 오류로 낸다(2026-11-19 시험) */
+    fx: function (L, name, v) {
+      var E = L.property('Effects'), n0 = E.numProperties; E.addProperty(name);
+      if (E.numProperties === n0) throw new Error('K.fx: 효과 없음 — ' + name + ' (craft_catalog.py search 로 id 확인)');
+      var f = E.property(E.numProperties);
+      for (var k in (v || {})) { var p = f.property(k); if (!p) throw new Error('K.fx: ' + name + ' 에 속성 없음 — ' + k);
+        var x = v[k]; if (x instanceof Array && x.length && x[0] instanceof Array) { for (var i = 0; i < x.length; i++) p.setValueAtTime(x[i][0], x[i][1]); } else p.setValue(x); }
+      return f;
+    },
     follow: function (child, parent) { child.parent = parent; K.O(child).expression = 'parent.transform.opacity'; return child; },
     /** 안전 영역 맞춤 — 장면 스크립트가 끝난 뒤 자동으로 불린다(craft_script.with_kit).
      *  묶음(맨 위 부모 레이어와 그 자식들)마다 움직임을 마친 자리(마지막 위치 · 크기 키)를 재서, 화면 가장자리(가로 m, 세로 m/2)를

@@ -3,11 +3,12 @@
 
   python3 engine/gen/publish.py final <plan id>                       # 최종 렌더(engine/render.py — 초안 아님)
   python3 engine/gen/publish.py upload <plan id> [--privacy private|unlisted|public] [--publish-at ISO]
-        # 사용자가 명시적으로 올리라고 할 때만. engine/publish/upload_youtube.py(중복 업로드 방지 · YOUTUBE_CLIENT_SECRET)
-  python3 engine/gen/publish.py feedback <plan id>                    # youtube.stats.json(작업 공간이 YouTube Analytics 에서 받아 둔 것) → 샷별 시청 지속
+        # 사용자가 명시적으로 올리라고 할 때만. engine/publish/upload_youtube.py(채널별 중복 업로드 방지).
+        # 채널 = 이 영상에 고른 것(data/compositions/<id>/youtube.account.json) → 없으면 설정의 기본 계정
+  python3 engine/gen/publish.py feedback <plan id>                    # youtube.stats.json(작업 공간이 YouTube Analytics 에서 받아 둔 것) → 장면별 시청 지속
         # → data/public/trends/own/<id>.json + 트렌드 목록(index.json)에 '내 영상'으로 → plan.py trends 가 1단계 추천 재료로 함께 보여 준다
-분석 숫자는 YouTube Analytics 가 약 2일 늦게 채운다. 시청 지속(elapsedVideoTimeRatio → audienceWatchRatio)을 샷 경계(편집 길이 누적)에 겹쳐
-'어느 샷에서 빠져나갔나'와 그 샷의 칸(목적 · 샷 크기 · 카메라 움직임)을 같이 남긴다 — 다음 기획이 같은 실수를 피하게.
+분석 숫자는 YouTube Analytics 가 약 2일 늦게 채운다. 시청 지속(elapsedVideoTimeRatio → audienceWatchRatio)을 콘티 장면 경계(sec 누적)에 겹쳐
+'어느 장면에서 빠져나갔나'와 그 장면의 칸(역할 · 연출 기능 · 재료 · 대사)을 같이 남긴다 — 다음 기획이 같은 실수를 피하게.
 """
 from __future__ import annotations
 
@@ -22,7 +23,7 @@ ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "path
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401
 sys.path.insert(0, str(Path(__file__).parent))
 from result import fail, ok  # noqa: E402
-import assemble as asm  # noqa: E402
+from result import parse_block  # noqa: E402
 import plan as planmod  # noqa: E402
 
 TRENDS = ROOT / "data" / "public" / "trends"
@@ -36,11 +37,27 @@ def published(pid: str) -> dict | None:
     return next((r for r in reversed(rows) if r.get("id") == pid), None)
 
 
+def chosen_account(pid: str) -> str | None:
+    """작업 공간(채팅창 · 게시 화면)에서 이 영상에 고른 YouTube 채널 id — 없으면 None(업로드 스크립트가 기본 계정을 쓴다)"""
+    try:
+        cid = json.loads((ROOT / "data" / "compositions" / pid / "youtube.account.json").read_text("utf-8")).get("id") or None
+    except (OSError, ValueError, AttributeError):
+        return None
+    try:   # 끊긴 계정이면 고르지 않은 것으로(기본 계정) — 계정 id 만 본다
+        st = json.loads((Path.home() / ".shortsforge" / "youtube.json").read_text("utf-8"))
+        ids = {a.get("id") for a in st.get("accounts") or [] if isinstance(a, dict)} | {(st.get("channel") or {}).get("id")}
+    except (OSError, ValueError, AttributeError):
+        return None
+    return cid if cid in ids else None
+
+
 def no_mock(pid: str, stage: str) -> None:
-    """mock 클립(키 프레임을 늘린 가짜 영상)이 섞인 영상은 최종본 · 업로드로 내보내지 않는다"""
-    bad = asm.videomod.mock_shots(pid)
-    if bad:
-        fail("publish", stage=stage, error=f"샷 {bad} 이(가) 시험용 mock 클립이다 — 실제 생성 경로(video.py run --shots {','.join(map(str, bad))})로 다시 만들고 검토 통과 뒤 진행")
+    """품질 관문에서 막음이 남은 영상은 최종본 · 업로드로 내보내지 않는다"""
+    sys.path.insert(0, str(ROOT / "engine" / "checks"))
+    import quality_gate   # produce 의 품질 관문에서 막음이 남은 영상은 최종본 · 업로드로 내보내지 않는다
+    left = quality_gate.check(pid)
+    if left:
+        fail("publish", stage=stage, error=f"품질 막음 {len(left)}건이 남았다 — produce 로 고친 뒤 진행: " + " / ".join(left[:4]), block=left)
 
 
 def final(pid: str) -> str:
@@ -59,9 +76,9 @@ def final(pid: str) -> str:
 
     sbp = ROOT / "data" / "storyboards" / f"{pid}.json"
     if not sbp.exists():
-        fail("publish", stage="final", error="콘티가 없다 — 5단계(assemble.py build)부터")
+        fail("publish", stage="final", error="콘티가 없다 — storyboard · produce(실제 자료) 또는 dub.py build(클립)부터")
     r = subprocess.run([sys.executable, "engine/render.py", str(sbp.relative_to(ROOT))], cwd=ROOT, capture_output=True, text=True, timeout=5400)
-    b = asm.block(r.stdout)
+    b = parse_block(r.stdout)
     if r.returncode or b.get("head") != "FLUMA_RESULT":
         fail("publish", stage="final", error=(b.get("error") or [(r.stderr or r.stdout).strip()[-400:]])[0])
     return b["file"][0]
@@ -88,6 +105,9 @@ def upload(pid: str, privacy: str, publish_at: str | None) -> dict:
         target = outs[-1]
 
     cmd = [sys.executable, "engine/publish/upload_youtube.py", f"data/storyboards/{pid}.json", str(target.relative_to(ROOT)), "--privacy", privacy]
+    acc = chosen_account(pid)
+    if acc:
+        cmd += ["--account", acc]
     if publish_at:
         cmd += ["--publish-at", publish_at]
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=3600)
@@ -109,22 +129,29 @@ def feedback(pid: str) -> dict:
     st = json.loads(sp.read_text("utf-8"))
     summ = (_rows(st.get("summary") or {}) or [{}])[0]
     ret = sorted(_rows(st.get("retention") or {}), key=lambda r: float(r.get("elapsedVideoTimeRatio") or 0))
-    total = sum(s["final_sec"] for s in sb["shots"]) or 1
+    # 장면 경계 = 콘티 장면 길이(sec) 누적 — 실측 음성으로 맞춘 값이라 실제 영상과 같다
+    stp = ROOT / "data" / "storyboards" / f"{pid}.json"
+    scenes = (json.loads(stp.read_text("utf-8")).get("scenes") or []) if stp.exists() else []
+    if not scenes:
+        fail("publish", stage="feedback", error=f"콘티가 없다: {stp.relative_to(ROOT)} — 장면 경계를 알 수 없다")
+    total = sum(float(s.get("sec") or 0) for s in scenes) or 1
     shots, t = [], 0.0
-    for s in sb["shots"]:
-        a, b = t / total, (t + s["final_sec"]) / total
+    for n, s in enumerate(scenes, 1):
+        sec = float(s.get("sec") or 0)
+        a, b = t / total, (t + sec) / total
         inside = [float(r.get("audienceWatchRatio") or 0) for r in ret if a <= float(r.get("elapsedVideoTimeRatio") or 0) <= b]
         before = [float(r.get("audienceWatchRatio") or 0) for r in ret if float(r.get("elapsedVideoTimeRatio") or 0) <= a]
         start = (before[-1] if before else (inside[0] if inside else None))
         end = inside[-1] if inside else None
-        shots.append({"n": s["n"], "purpose": s["purpose"], "shot_size": s["shot_size"], "camera_move": s["camera_move"], "final_sec": s["final_sec"],
-                      "watch_start": start, "watch_end": end, "drop": round(start - end, 3) if start is not None and end is not None else None})
-        t += s["final_sec"]
+        kinds = [m.get("type") for m in s.get("materials") or [] if isinstance(m, dict) and m.get("type")]
+        shots.append({"n": n, "purpose": s.get("role") or "", "shot_fn": s.get("shot_fn") or "", "materials": kinds[:4], "narration": s.get("narration") or "",
+                      "sec": sec, "watch_start": start, "watch_end": end, "drop": round(start - end, 3) if start is not None and end is not None else None})
+        t += sec
     traffic = _rows(st.get("traffic") or {})[:5]
     pub = published(pid) or {}
     own = {"id": pid, "video_id": st.get("videoId") or pub.get("video_id"), "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "topic": sb["topic"],
            "trend_option": (sb.get("trend") or {}).get("option"), "views": summ.get("views"), "avg_view_pct": summ.get("averageViewPercentage"),
-           "avg_view_sec": summ.get("averageViewDuration"), "shots": shots, "traffic": traffic,
+           "avg_view_sec": summ.get("averageViewDuration"), "scenes": shots, "traffic": traffic,
            "worst": sorted([x for x in shots if x["drop"] is not None], key=lambda x: -x["drop"])[:2]}
     (TRENDS / "own").mkdir(parents=True, exist_ok=True)
     (TRENDS / "own" / f"{pid}.json").write_text(json.dumps(own, ensure_ascii=False, indent=1), "utf-8")
@@ -153,7 +180,7 @@ def main() -> int:
         r = upload(a.pid, a.privacy, a.publish_at)
         ok("publish", url=str(r.get("url")), video_id=str(r.get("video_id")), next="약 2일 뒤 작업 공간에서 통계를 불러오고 publish.py feedback"); return 0
     r = feedback(a.pid)
-    ok("publish", avg_view_pct=str(r["avg_view_pct"]), worst=", ".join(f"샷 {x['n']}({x['purpose']} · {x['camera_move']}) -{x['drop']}" for x in r["worst"]) or "없음",
+    ok("publish", avg_view_pct=str(r["avg_view_pct"]), worst=", ".join(f"장면 {x['n']}({x['purpose']} · {'/'.join(x['materials']) or '-'}) -{x['drop']}" for x in r["worst"]) or "없음",
        next="plan.py trends 가 다음 기획 추천에 이 결과를 함께 보여 준다")
     return 0
 

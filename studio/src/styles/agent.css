@@ -41,15 +41,8 @@
 .todo.in_progress .todo-c { border-color: var(--agent); color: var(--agent); }
 
 .steps { display: flex; flex-direction: column; gap: 2px; }
-.steps-more { align-self: flex-start; font-size: var(--fs-xs); color: var(--tx-3); padding: 2px 0; }
-.steps-more:hover { color: var(--tx-1); }
 .step { display: flex; align-items: center; gap: 8px; height: 24px; font-size: var(--fs-xs); color: var(--tx-3); min-width: 0; }
-.step-i { width: 14px; display: grid; place-items: center; color: var(--ok); flex: none; }
-.step.err .step-i { color: var(--danger); }
 .step.run { color: var(--tx-2); }
-.step.run .step-i { color: var(--agent); }
-.step-n { flex: none; font-weight: 600; color: var(--tx-2); }
-.step-a { font-family: var(--mono); font-size: 12px; }
 
 .md p { margin: 0; }
 .md p + p { margin-top: 6px; }
@@ -119,10 +112,6 @@
 .md { overflow-wrap: anywhere; min-width: 0; }
 .md code { overflow-wrap: anywhere; }
 .step { flex-direction: column; align-items: stretch; height: auto; }
-.step-row { display: flex; align-items: center; gap: 8px; min-height: 24px; min-width: 0; width: 100%; text-align: left; color: inherit; font: inherit; border-radius: 6px; padding: 0 2px; }
-.step-row:hover:not(:disabled) { background: var(--bg-3); }
-.step-row:disabled { cursor: default; }
-.step-full { margin: 2px 0 6px 22px; padding: 6px 8px; border-radius: 6px; background: var(--bg-0); font: 12px/1.5 var(--mono); color: var(--tx-2); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 240px; overflow-y: auto; }
 /* 줄 선 추가 지시: 보내기 취소 */
 .m-user.queued .m-tag { display: inline-flex; align-items: center; gap: 8px; }
 .q-x { display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px; border-radius: 6px; color: var(--tx-2); font-size: 12px; }
@@ -172,3 +161,22 @@
 .stage-d.err { color: var(--danger); }
 .stage-dn { color: var(--tx-3); flex: none; width: 52px; }
 .stage-da { color: var(--tx-4); font-family: var(--mono); word-break: break-all; }
+
+/* 자동 진행 스위치(채팅 입력창) — 켜면 선택지를 묻지 않고 완성까지 */
+.composer-bar .autopilot { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; font-size: 12px; color: var(--tx-3); cursor: pointer; user-select: none; white-space: nowrap; }
+.composer-bar .autopilot .switch { width: 28px; height: 16px; }
+.composer-bar .autopilot .switch i { width: 10px; height: 10px; }
+.composer-bar .autopilot.on { color: var(--primary); }
+.composer-bar .autopilot .switch.on i { transform: translateX(12px); }
+/* 채팅창 — 올릴 YouTube 채널 고르기 */
+.composer-bar .yt-pick { display: inline-flex; align-items: center; gap: 5px; max-width: 140px; height: 24px; padding: 0 6px; border: 0; border-radius: 6px; background: none; color: var(--tx-3); font-size: 12px; cursor: pointer; }
+.composer-bar .yt-pick:hover { background: var(--bg-2); color: var(--tx-1); }
+.composer-bar .yt-pick > svg:last-child { transform: rotate(90deg); flex: none; }
+
+/* 일괄 제작 진행 */
+.batchbox .batch-i { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border-radius: 8px; text-align: left; font-size: 13px; color: var(--tx-1); }
+.batchbox .batch-i:hover { background: var(--bg-3); }
+.batchbox .batch-st { flex: none; min-width: 74px; font-size: 12px; color: var(--tx-3); }
+.batchbox .st-done .batch-st { color: var(--ok, #2fb67c); }
+.batchbox .st-running .batch-st { color: var(--primary); }
+.batchbox .st-blocked .batch-st, .batchbox .st-error .batch-st, .batchbox .st-stopped .batch-st { color: var(--danger, #e5484d); }

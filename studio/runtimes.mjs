@@ -160,7 +160,7 @@ export function codexArgs({ cwd, threadId, model, effort, codexConfig = [], prom
   return args;
 }
 
-/** agy(Antigravity CLI) 인자 — 한 번 실행(-p), 대화는 --conversation 으로 이어 간다. 오케스트레이터 역할 전용(영상 생성 경로 A 는 engine/gen/video.py 가 따로 부른다).
+/** agy(Antigravity CLI) 인자 — 한 번 실행(-p), 대화는 --conversation 으로 이어 간다. 오케스트레이터 역할 전용.
  *  도구 허용: 파일 읽기 · 쓰기 · 고치기 · 셸 · 웹 검색. 접근 제한(.env · 키 폴더 금지, 쓰기 경로)은 지시문(codexPrompt 와 같은 블록)으로 준다 */
 export function agyArgs({ cwd, conversation, model, effort, prompt }) {
   // 규칙은 "이름(대상)" 꼴이어야 한다 — 이름만 쓰면 무시되고 headless 에서 자동 거부된다(2026-11-12 실측: run_command 는 없는 이름, 셸은 command).

@@ -30,7 +30,9 @@
 from __future__ import annotations
 
 import json
+import math
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -49,6 +51,14 @@ def rgb(hexs: str, default=(0.06, 0.29, 0.49)) -> list[float]:
         return list(default)
     h = m.group(1)
     return [round(int(h[i:i + 2], 16) / 255, 4) for i in (0, 2, 4)]
+
+
+# 가운데 정렬 글자의 최대 폭(화면 폭 비율). 쇼츠 오른쪽 12% 는 좋아요 · 댓글 버튼 — 가운데에서 대칭이면 폭 0.76 까지, 상자 여백(36px)을 빼 0.72.
+# 2026-11-18: 0.86 이라 한 줄 자막 끝 글자가 x≈1000 까지 가 버튼과 겹쳤다(디자이너 검토 D21)
+SAFE_TEXT_W = 0.72
+# 위쪽 고정 제목 가운데 높이(화면 높이 비율). 위 8%(154px)는 상태 표시줄 — 상자(위아래 여백 30px)의 위 끝이 그 아래에 오게.
+# 2026-11-18: 0.062 라 상자가 62~138px 로 상태 표시줄 안에 있었다(디자이너 검토 D21)
+PIN_Y = 0.112
 
 
 def chunks(words: list[dict], max_chars: int = 9, max_words: int = 2) -> list[dict]:
@@ -161,6 +171,22 @@ FONTS = {"sans": "Pretendard-Black", "sans-bold": "Pretendard-Bold", "sans-regul
 _INSTALLED = set(FONTS.values()) | {"Pretendard-ExtraBold"}
 
 
+def _catalog_font(name: str) -> str | None:
+    """글꼴 목록(engine/assets/fonts/catalog.json)에서 PostScript 이름 · 파일 이름 · 한국어 이름('도현' · '주아')으로 찾기 — 없으면 렌더 직전에 받는다"""
+    try:
+        import fonts as _fonts
+        cat = _fonts.catalog()
+    except Exception:  # noqa: BLE001
+        return None
+    key = re.sub(r"[\s_-]+", "", name).lower()
+    norm = lambda k: re.sub(r"[\s_-]+", "", k or "").lower()  # noqa: E731
+    for want in (key, key + "bold", key + "black", key + "extrabold", key + "regular"):   # 이름만 적었으면 굵은 쪽부터(제목 · 자막)
+        for f in cat:
+            if want in (norm(f["ps"]), norm(f.get("file")), norm(f.get("name"))):
+                return f["ps"]
+    return None
+
+
 def resolve_font(name: str | None, default: str) -> str:
     """'Noto Serif CJK KR' · '명조' · 'serif light' · 'SongMyung-Regular' → 설치된 글꼴. 모르는 이름은 계열(세리프 · 산세리프 · 손글씨)로 가깝게"""
     n = str(name or "").strip()
@@ -168,6 +194,15 @@ def resolve_font(name: str | None, default: str) -> str:
         return default
     if n in _INSTALLED:
         return n
+    hit = _catalog_font(n)
+    if hit:
+        try:
+            import fonts as _fonts
+            _fonts.ensure([hit])
+            if _fonts.path_of(hit):
+                return hit
+        except Exception:  # noqa: BLE001 - 못 받으면 아래 계열로 가깝게
+            pass
     low = n.lower()
     if any(k in low for k in ("song", "송명", "display serif")):
         return FONTS["display-serif"]
@@ -409,12 +444,6 @@ BG_PRESET = {"concept": "blueprintGrid", "mythbust": "blueprintGrid", "fix": "bl
              "countdown": "blueprintGrid", "series": "blueprintGrid", "emotional": "bokehDrift", "ad": "pulseRings", "daily": "softGradientDrift"}
 
 
-def fmt_name(sb: dict) -> str:
-    """콘티 형식 — format 이 없으면 format 스킬 이름(format-ad 등)"""
-    f = str(sb.get("format") or sb.get("format_skill") or sb.get("skill") or "")
-    return f[7:] if f.startswith("format-") else f
-
-
 def bg_preset(sb: dict) -> str | None:
     """배경 프리셋 — 콘티 direction(사용자 · 레퍼런스) 만. 형식별 표(BG_PRESET)는 시안 후보일 뿐(design.proposals)"""
     return _design.resolve(sb)["bg_preset"]
@@ -443,11 +472,6 @@ def bg_tunes(preset: str, bg: list, pal: list) -> tuple[list, str | None, str | 
         cs = [_mix(bg, pal[k % len(pal)] if pal else bg, 0.12 if k % 2 else 0.05) for k in range(4)]
         return [[f"effects/#1/positionsColors/color{k + 1}", cs[k]] for k in range(4)], None, None
     return [], None, None
-
-
-# 글자 프리셋(엔진 내장 텍스트 애니메이터). 길이가 1.2~2초 고정이라 retimeKeys 로 줄인다
-TITLE_PRESET = "bounceInWords"
-SUB_PRESET = {"emotional": "fadeUpCharacters"}     # 형식별 자막 기본값 — 나머지는 지금의 짧은 '톡' 커지기(자막이 0.5초마다 바뀌어 단어 튀기기는 어지럽다)
 
 
 def is_over(rec: dict, mats: list[dict]) -> bool:
@@ -528,15 +552,6 @@ def adjust_jsx(mid: str, adj: dict, W: int, H: int) -> str:
             + " ".join(body) + " } })();")
 
 
-def _hex01(c, default):
-    if isinstance(c, list) and len(c) >= 3:
-        return [float(v) for v in c[:3]]
-    if isinstance(c, str) and re.fullmatch(r"#?[0-9a-fA-F]{6}", c.strip()):
-        h = c.strip().lstrip("#")
-        return [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
-    return default
-
-
 def spring_follow(targets: list, fps: int = 30, sec: float | None = None, stiffness: float = 60.0, damping: float = 0.75) -> list:
     """카메라를 목표에 스프링으로 매단다 — targets: [(초, x, y, 확대), …](그 시각부터 그 목표). 결과: 프레임마다 [x, y, 확대].
     stiffness: 단단함(클수록 빨리 붙음, 30~150) · damping: 1 이면 출렁임 없이 멈춤, 0.5 쯤이면 살짝 지나쳤다 돌아옴"""
@@ -575,8 +590,7 @@ def camera_follow_jsx(J, sc: dict, mats: list[dict], slots: dict, words: list[di
         t = float(e["t"]) if isinstance(e.get("t"), (int, float)) else (cue_time(e.get("at"), words, start, end) if e.get("at") else 0.0)
         marks.append((0.0 if t is None else t, e))
     marks.sort(key=lambda m: m[0])
-    for k, (t, e) in enumerate(marks):
-        t_next = marks[k + 1][0] if k + 1 < len(marks) else sec
+    for t, e in marks:
         z = float(e.get("zoom", 1.0))
         pts.append((t, float(e.get("x", 0.5)) * W, float(e.get("y", 0.5)) * H, z))
     if not pts:
@@ -653,7 +667,6 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
             hb_ = max(14.0, hmax)
             tb = t0 + 0.15 + best * 0.35 + 0.75
             side = -1 if best == n - 1 and n > 1 else 1
-            bx_ = cxb + side * (bw / 2 + 20) - (0 if side > 0 else 0)
             J(f"var rb = txt(c, {js('Ratio' + tag)}, {js(rt)}, {js(font)}, 64, [0.07, 0.07, 0.09], null, 0, [{cxb - side * 0:.0f}, {base - hb_ * 0.5:.0f}]);")
             J(f"var rbb = fitBox(c, {js('RatioBox' + tag)}, {js('Ratio' + tag)}, [1, 0.84, 0.04], 40, 22, 40);")
             J(f"rb.property('Transform').property('Position').setValue([{cxb:.0f}, {base - hb_ * 0.5:.0f}]); var rbs = rb.property('Transform').property('Scale'); rbs.setValueAtTime({tb:.2f}, [0, 0]); rbs.setValueAtTime({tb + 0.14:.2f}, [118, 118]); rbs.setValueAtTime({tb + 0.24:.2f}, [100, 100]);")
@@ -711,7 +724,16 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
     path = ROOT / f
     kind = mat_kind(rec)
     pre_in = enter_preset(rec, direction) if t0 > 0.05 else None    # 0초에 시작하는 재료는 첫 프레임부터 보여야 한다
-    J(f"var f = app.project.importFile(new ImportOptions(new File({js(str(path))}))); var ml = c.layers.add(f); ml.name = {js('Mat ' + mid)};")
+    if rec.get("seq"):     # 움직이는 형태(form anim) — 프레임 묶음을 12fps 로 들여와 장면 끝까지 반복
+        path = ROOT / rec["seq"]
+        try:
+            seq_fps = int(json.loads((path.parent / "anim.json").read_text("utf-8")).get("fps") or 12)
+        except Exception:  # noqa: BLE001
+            seq_fps = 12
+        J(f"var io = new ImportOptions(new File({js(str(path))})); io.sequence = true; var f = app.project.importFile(io); try {{ f.mainSource.conformFrameRate = {seq_fps}; }} catch (e) {{}} var ml = c.layers.add(f); ml.name = {js('Mat ' + mid)};"
+          " ml.timeRemapEnabled = true; ml.property('Time Remap').expression = 'time % thisLayer.source.duration'; ml.outPoint = c.duration;")
+    else:
+        J(f"var f = app.project.importFile(new ImportOptions(new File({js(str(path))}))); var ml = c.layers.add(f); ml.name = {js('Mat ' + mid)};")
     if path.suffix.lower() in VIDEO_EXT:
         J(f"try {{ ml.startTime = {t0:.2f}; }} catch (e) {{}}")   # 녹화는 등장하는 순간부터 재생
     if typ == "doc_quote":
@@ -1196,10 +1218,103 @@ def ref_layout(sb: dict) -> str:
     return "full" if votes.count("full") >= votes.count("card") else "card"
 
 
+def _carry_src(sid: str, by: str) -> tuple[Path, int, int, int]:
+    """운반자 그림: "anim:<형태 이름>"(forms/<이름>.anim 프레임 묶음) · 저장소 기준 경로 → (파일, 폭, 높이, fps 또는 0)"""
+    from PIL import Image
+    if by.startswith("anim:"):
+        d = ROOT / "data" / "compositions" / sid / "forms" / f"{by[5:]}.anim"
+        f = d / "f000.png"
+        try:
+            fps = int(json.loads((d / "anim.json").read_text("utf-8")).get("fps") or 12)
+        except Exception:  # noqa: BLE001
+            fps = 12
+    else:
+        f, fps = (ROOT / by if not Path(by).is_absolute() else Path(by)), 0
+        if f.name == "f000.png" and (f.parent / "anim.json").exists():     # 프레임 묶음 경로를 직접 준 경우
+            fps = int(json.loads((f.parent / "anim.json").read_text("utf-8")).get("fps") or 12)
+    w, h = Image.open(f).size
+    return f, w, h, fps
+
+
+def carry_jsx(sid: str, cv: dict, n: int, t_cut: float, W: int, H: int) -> str:
+    """장면 n → n+1 전환을 운반자가 맡는다(2026-11-21: 모티프를 정해도 전환은 컷뿐이었다 — 벌 영상이면 벌이 날아 지나가며 화면이 바뀌게).
+    cv = {"by": "anim:bee" | 경로, "path": [[x, y], …](화면 비율, 화면 밖에서 밖으로), "dur": 초, "size": 화면 폭 비율,
+          "reveal": "trail"(지나간 자리로 다음 장면이 드러남) | "none"(가로지르기만, 컷은 그대로), "bob": 흔들림(화면 높이 비율), "bank": 기울기 배수}
+    운반 · 경로 · 드러내는 방식은 영상마다 감독이 정한다(정해 둔 효과 목록이 아니다)."""
+    f, fw, fh, fps = _carry_src(sid, str(cv["by"]))
+    pts = [(float(x) * W, float(y) * H) for x, y in cv.get("path") or [[-0.15, 0.7], [0.5, 0.45], [1.15, 0.25]]]
+    dur = float(cv.get("dur", 0.9)); size = float(cv.get("size", 0.22)); bob = float(cv.get("bob", 0.012)) * H
+    bank = float(cv.get("bank", 0.35)); reveal = str(cv.get("reveal", "trail"))
+    t0, t1 = t_cut - 0.15 * dur, t_cut + 0.85 * dur
+
+    def cat(u):                                        # Catmull-Rom 위의 점
+        m = len(pts) - 1
+        x = min(m - 1e-6, max(0.0, u * m)); i = int(x); t = x - i
+        p0, p1, p2, p3 = pts[max(0, i - 1)], pts[i], pts[min(m, i + 1)], pts[min(m, i + 2)]
+        return tuple(0.5 * (2 * p1[k] + (-p0[k] + p2[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t * t + (-p0[k] + 3 * p1[k] - 3 * p2[k] + p3[k]) * t ** 3) for k in (0, 1))
+    N = 16
+    keys = []
+    for i in range(N + 1):
+        u = i / N
+        e = u * u * (3 - 2 * u) * 0.35 + u * 0.65         # 들어올 때 · 나갈 때 조금 느리게
+        x, y = cat(e)
+        y += bob * math.sin(u * math.pi * 6)
+        keys.append((t0 + (t1 - t0) * u, x, y))
+    sc_pct = size * W / max(1, fw) * 100
+    out = [f"(function () {{ var io = new ImportOptions(new File({js(str(f))})); {'io.sequence = true;' if fps else ''} var it = app.project.importFile(io);"]
+    if fps:
+        out.append(f"try {{ it.mainSource.conformFrameRate = {fps}; }} catch (e) {{}}")
+    out.append(f"var cr = main.layers.add(it); cr.name = 'Carry {n:02d}'; cr.startTime = {t0:.3f}; cr.inPoint = {t0:.3f}; cr.outPoint = {t1 + 0.05:.3f};")
+    if fps:
+        out.append("cr.timeRemapEnabled = true; cr.property('Time Remap').expression = '(time - thisLayer.startTime) % thisLayer.source.duration';")
+    out.append(f"cr.property('Transform').property('Scale').setValue([{sc_pct:.2f}, {sc_pct:.2f}]); var cp = cr.property('Transform').property('Position');")
+    out.append("".join(f"cp.setValueAtTime({t:.3f}, [{x:.1f}, {y:.1f}]);" for t, x, y in keys))
+    out.append(f"cr.property('Transform').property('Rotation').expression = 'var v = transform.position.velocityAtTime(time); var a = Math.atan2(v[1], Math.abs(v[0]) + 1e-3) * 180 / Math.PI; (v[0] < 0 ? -a : a) * {bank};';")
+    if pts[-1][0] < pts[0][0]:                          # 왼쪽으로 나는 운반자는 좌우를 뒤집는다(그림은 오른쪽을 본다고 가정)
+        out.append(f"cr.property('Transform').property('Scale').setValue([{-sc_pct:.2f}, {sc_pct:.2f}]);")
+    if reveal == "trail":                              # 지나간 자리로 다음 장면 — 경계선이 운반자를 지나며(진행 방향에 수직) 뒤쪽을 드러낸다
+        import cv2
+        import numpy as np
+        q = 4                                           # 1/4 크기 격자에서 면을 합친다
+        gw, gh = W // q + 2, H // q + 2
+        acc = np.zeros((gh, gw), np.uint8)
+        yy, xx = np.mgrid[0:gh, 0:gw].astype(np.float32) * q
+        polys = {}
+        for i in range(len(keys)):                      # 지금까지 지나간 '앞 경계선 뒤쪽'을 계속 합친다 — 한 번 드러난 곳은 다시 가려지지 않는다
+            x, y = keys[i][1], keys[i][2]
+            a0, b0 = keys[max(0, i - 1)], keys[min(len(keys) - 1, i + 1)]
+            tx, ty = b0[1] - a0[1], b0[2] - a0[2]
+            acc |= (((xx - x) * tx + (yy - y) * ty) <= 0).astype(np.uint8)
+            cs, _ = cv2.findContours(acc.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            if cs:
+                c = max(cs, key=cv2.contourArea)[:, 0, :].astype(float) * q
+                c[:, 0] = np.where(c[:, 0] <= 0, -60, np.where(c[:, 0] >= (gw - 2) * q, W + 60, c[:, 0]))   # 화면 가장자리는 밖으로 밀어 틈이 없게
+                c[:, 1] = np.where(c[:, 1] <= 0, -60, np.where(c[:, 1] >= (gh - 2) * q, H + 60, c[:, 1]))
+                polys[i] = "[" + ", ".join(f"[{px:.0f}, {py:.0f}]" for px, py in c) + "]"
+
+        def wake(i):
+            return polys.get(i, "[[-10, -10], [-9, -10], [-9, -9]]")
+        ki = [i for i, (t, _, _) in enumerate(keys) if t >= t_cut - 1e-6]
+        out += [f"var pv = null, nx = null; for (var q = 1; q <= main.numLayers; q++) {{ if (main.layer(q).name === {js(f'SceneL {n:02d}')}) pv = main.layer(q); if (main.layer(q).name === {js(f'SceneL {n + 1:02d}')}) nx = main.layer(q); }}",
+                "if (pv && nx) {",
+                f"pv.timeRemapEnabled = true; pv.property('Time Remap').expression = 'Math.min(time, {t_cut:.3f} - 0.07) - thisLayer.startTime'; pv.outPoint = {t1 + 0.05:.3f};",   # 2026-11-24: 장면 컴프 길이 기준으로 멈추면 컴프가 장면보다 길 때 재료 영상이 끝난 뒤(검은 화면)에 멈췄다 → 컷 직전 프레임에
+                f"var tl = main.layers.addShape(); tl.name = 'Trail {n:02d}'; tl.startTime = 0; tl.inPoint = {t_cut - 0.01:.3f}; tl.outPoint = nx.outPoint + 3; tl.property('Transform').property('Position').setValue([0, 0]); tl.property('Transform').property('Anchor Point').setValue([0, 0]);",   # 매트는 다음 장면 끝 뒤로도(그 장면이 다음 전환에서 멈춰 늘어나도 매트가 남게 — 2026-11-24 두 번째 전환이 검은 화면) · 화면 좌표 그대로
+                "var tg = tl.property('Contents').addProperty('ADBE Vector Group'); var tp = tg.property('Contents').addProperty('ADBE Vector Shape - Group').property('Path');",
+                "tg.property('Contents').addProperty('ADBE Vector Graphic - Fill').property('Color').setValue([1, 1, 1]);",
+                "function shp(v) { var s = new Shape(); s.vertices = v; s.closed = true; return s; }"]
+        out.append(f"tp.setValueAtTime({t_cut - 0.01:.3f}, shp({wake(max(0, ki[0] - 1) if ki else 0)}));")
+        out += [f"tp.setValueAtTime({keys[i][0]:.3f}, shp({wake(i)}));" for i in ki]
+        out.append(f"tp.setValueAtTime({t1 + 0.04:.3f}, shp([[-60, -60], [{W + 60}, -60], [{W + 60}, {H + 60}], [-60, {H + 60}]]));")   # 끝나면 화면 전체
+        out.append("nx.setTrackMatte(tl, TrackMatteType.ALPHA); cr.moveToBeginning(); }")
+    out.append("})();")
+    return "\n".join(out)
+
+
 def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: Path, *, width: int = 1080, height: int = 1920, fps: int = 30,
               font: str = "Pretendard-Black") -> str:
     """콘티 → JSX(EffectCraft 스크립트). 실행하면 out_project 에 .ecproj 가 저장된다"""
     sid = sb["id"]
+    sb = _design.with_mode(sb)        # 연출 모드(쇼츠 · 애니메이션 · 만화 · 영화)의 기본값 — 직접 적은 칸이 이긴다
     _design.apply_art(sb)             # 고른 느낌 · 디자인 팔레트를 색 칸에(정의만 있고 아무도 안 불렀다 — 2026-11-11 점검)
     global THEME
     _dd = sb.get("direction") or {}
@@ -1227,6 +1342,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
     W, H = width, height
     title_font = resolve_font(d.get("font_title"), font)       # 방향의 글꼴을 실제로 쓴다(설치된 것 중 가장 가까운 것)
     font = resolve_font(d.get("font_body"), font)
+    sub_font = resolve_font(d.get("font_subs"), font)          # 자막 글꼴(없으면 본문 글꼴) — 2026-11-19 사용자: 자막 · 화면 글자 글꼴도 다양하게
     J = Jsx()
     J(PRELUDE)
     J(f"var main = app.project.items.addComp('Main', {W}, {H}, 1, {total}, {fps});")
@@ -1240,6 +1356,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
     title_preset = DZ["title_preset"]
     sub_preset = DZ["sub_preset"]
     allsc = sb.get("_all_scenes") or sb["scenes"]          # 원래 영상의 장면 전체(장면 일부만 렌더할 때도 이웃 장면을 알게)
+    placed: dict = {}
     for k, (sc, tm) in enumerate(zip(sb["scenes"], scenes)):
         oi = int(tm.get("index", k))          # 원래 장면 번호(장면 일부만 렌더해도 재료 · 자막이 맞게)
         n = oi + 1
@@ -1249,7 +1366,12 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         J(f"\n// ---------- 장면 {n}: {sc.get('beat', '')[:60]}")
         J(f"var c = app.project.items.addComp({js(name)}, {W}, {H}, 1, {sec}, {fps});")
         J(f"var bgL = c.layers.addSolid({js(bg)}, 'BG', {W}, {H}, 1);")
-        if DZ["bg_motion"] or bgp:   # 배경 움직임 — 방향이 정했을 때만(기본은 단색)
+        # 장면 코드가 화면 전체를 자기 바탕으로 덮는 장면이면 바탕 장식(빛 · 질감 · 프리셋)은 그 아래에 가려 보이지 않는다 —
+        # 2026-11-21 측정: 가려진 질감 노이즈 130ms + 빛 블러 65ms 를 프레임마다 계산(30초 렌더 226초의 큰 몫). 그림은 같고 계산만 뺀다
+        _covered = any(owns_frame(m, W, H) for m in sc.get("materials") or [] if isinstance(m, dict))
+        if _covered:      # 2026-11-24 bench: 가려진 바탕 단색 합성이 프레임마다 약 35ms(한 프레임 135ms 의 4분의 1) — 장면 코드가 K.scene 바탕으로 화면을 덮으면 끈다
+            J("bgL.enabled = false;")
+        if (DZ["bg_motion"] or bgp) and not _covered:   # 배경 움직임 — 방향이 정했을 때만(기본은 단색)
             dress = f"dressBg(c, bgL, {start:.3f}, {js(bg_top)}, {js(bg_bot)}, {js(glow_a)}, {js(glow_b)});"
             if bgp:   # 형식별 내장 배경 프리셋(색은 콘티 바탕 · 팔레트로) — 안 되면 예전 그라데이션 + 빛
                 tunes, ef, et = bg_tunes(bgp, bg, pal)
@@ -1380,7 +1502,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             key = str(v.get("primary") or "").strip() or (sc.get("caption") or "").split("\n")[0].strip()
             colors = palette_list(sid)
             if items:
-                if key:
+                if key and len(key) <= 20:
                     J(f"var kt = txt(c, 'Key', {js(key[:20])}, {js(font)}, 96, {js(colors[0])}, null, 0, [{W / 2}, {H * 0.3:.0f}]); popIn(kt, 0.1, 0.2); kt.parent = cam;")
                 for k2, it in enumerate(items):
                     tk = cue_time(it, words, start, end)
@@ -1388,7 +1510,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                     y = H * 0.42 + k2 * 150
                     J(f"var ib = card(c, {js(f'Item {k2 + 1}')}, {int(W * 0.72)}, 116, [1, 1, 1], 28); ib.property('Transform').property('Position').setValue([{W / 2}, {y:.0f}]); ib.property('Transform').property('Opacity').setValue(12); popIn(ib, {tk:.2f}, 0.18); ib.parent = cam;")
                     J(f"var it = txt(c, {js(f'Item text {k2 + 1}')}, {js(f'{k2 + 1}. {it}'[:24])}, {js(font)}, 60, [0.07, 0.09, 0.18], null, 0, [{W / 2}, {y + 20:.0f}]); popIn(it, {tk:.2f}, 0.18); it.parent = cam;")
-            elif key:
+            elif key and len(key) <= 14:                  # 짧은 핵심어(숫자 · 낱말)만 — 연출 설명 문장을 화면에 찍지 않는다(2026-11-21: '가운데 큰 티스푼 하…'가 그대로 나옴)
                 J(f"var kt = txt(c, 'Key', {js(key[:16])}, {js(font)}, 150, {js(colors[0])}, null, 0, [{W / 2}, {H * 0.45:.0f}]); popIn(kt, 0.1, 0.22); kt.parent = cam;")
         # 훅 제목 — 노란 상자에 한 줄씩 쌓임
         te = element(sc, "훅 제목", "제목")
@@ -1426,6 +1548,10 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             # 훅 세 칸(writer 스킬)의 '화면 글자' — 본문 장면은 말 자막만(이중 노출 방지), 훅·맺음만 위 띠
             st_size = int(H * (0.05 if len(cap) <= 8 else 0.042 if len(cap) <= 14 else 0.034))
             st_y = float(d.get("screen_text_y", 0.17)) * H
+            if pin:   # 고정 제목 상자 아래로(겹치지 않게)
+                st_y = max(st_y, PIN_Y * H + 64 + st_size * 0.75)
+            if d.get("letterbox"):   # 영화 모드: 위 검은 띠 아래 그림 안으로
+                st_y = max(st_y, float(d["letterbox"]) * H + st_size * 1.2)
             st_col = rgb(d.get("color_accent") or "#ff5a36")
             J(f"var stx = txt(c, 'Screen text', {js(cap)}, {js(title_font)}, {st_size}, {js(st_col)}, null, 0, [{W / 2}, {st_y:.0f}]);"
               f" var sto = stx.property('Transform').property('Opacity'); sto.setValueAtTime(0, 0); sto.setValueAtTime(0.15, 0); sto.setValueAtTime(0.45, 100);"
@@ -1446,7 +1572,7 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 y = y0 + i * size * 1.3
                 ti = t0 + i * 0.25
                 J(f"var ct = txt(c, {js(f'Caption {i + 1}')}, {js(line)}, {js(title_font if ed else font)}, {size}, {js(fg)}, {stroke}, [{W / 2}, {y:.0f}]);")
-                J(f"fitText(ct, {W * 0.86:.0f});")
+                J(f"fitText(ct, {W * SAFE_TEXT_W:.0f});")
                 J(f"var cto = ct.property('Transform').property('Opacity'); cto.setValueAtTime(0, 0); cto.setValueAtTime({ti:.3f}, 0); cto.setValueAtTime({ti + 0.6:.3f}, 100); ease(cto, 60);"
                   f" var ctp = ct.property('Transform').property('Position'); ctp.setValueAtTime({ti:.3f}, [{W / 2}, {y + size * 0.3:.0f}]); ctp.setValueAtTime({ti + 0.7:.3f}, [{W / 2}, {y:.0f}]); ease(ctp, 80);"
                   f" cto.setValueAtTime({max(ti + 0.7, sec - 0.3):.3f}, 100); cto.setValueAtTime({sec:.3f}, 0);")
@@ -1464,7 +1590,11 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         has_num_mat = any(m.get("type") in ("stat", "chart") for m in sc.get("materials") or [])
         _ban = " ".join(map(str, ((sb.get("intent") or {}).get("must_not") or []) + list(sb.get("constraints") or [])))
         _no_fx = "number_punch" in ((sb.get("intent") or {}).get("ban") or []) or bool(re.search(r"효과|배지|큰 숫자|숫자 펀치|덧씌우", _ban))      # 의도 · 제약이 효과를 막으면 엔진도 얹지 않는다(2026-11-11: 금지라고 적었는데 큰 숫자가 붙었다)
-        if d.get("number_punch", not _no_fx) and not has_num_mat:     # 숫자 재료가 있는 장면은 그 재료가 숫자를 보여 준다
+        # 장면 코드가 화면을 직접 짜는 장면(craft 전체 화면)은 기본으로 끈다 — 2026-11-21: 엔진이 얹은 큰 노란 숫자가 장면 코드의 주인공(벌 · 달력)을
+        # 가려 렌더 전 검토에서 막혔고(꿀벌 시험 4장면 · 공항 영상 '50' '1'), 레퍼런스 13편 비교의 AI 티(주인공을 가리는 큰 숫자 팝) 그대로였다.
+        # 그런 장면은 숫자를 그림 속 물건(라벨 · 칸 · 단지)으로 이미 보여 준다. 감독이 direction.number_punch: true 로 켜면 쓴다
+        _owns = any(owns_frame(m, W, H) for m in sc.get("materials") or [] if isinstance(m, dict))
+        if d.get("number_punch", (not _no_fx) and not _owns) and not has_num_mat:     # 숫자 재료가 있는 장면은 그 재료가 숫자를 보여 준다
             cands = []
             shown_nums = set()
             for m in sc.get("materials") or []:
@@ -1490,6 +1620,20 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                 J(f"var pn = txt(c, 'Punch', {js(num)}, {js(font)}, {min(300, int(W * 1.1 / max(2, len(num))))}, [1, 0.84, 0.04], [0.02, 0.02, 0.05], 14, [{W / 2}, {H * 0.47:.0f}]); pn.inPoint = {tw:.2f}; pn.outPoint = {tw + 0.95:.2f};")
                 J(f"var pS = pn.property('Transform').property('Scale'); pS.setValueAtTime({tw:.2f}, [55, 55]); pS.setValueAtTime({tw + 0.12:.2f}, [112, 112]); pS.setValueAtTime({tw + 0.22:.2f}, [100, 100]); pS.setValueAtTime({tw + 0.95:.2f}, [104, 104]);")
                 J(f"var pO = pn.property('Transform').property('Opacity'); pO.setValueAtTime({tw + 0.8:.2f}, 100); pO.setValueAtTime({tw + 0.95:.2f}, 0);")
+        # 연출 모드 덧그림 — 자막보다 아래 층: 영화 레터박스(위아래 검은 띠) · 만화 칸 테두리(흰 여백 + 검은 선)
+        if d.get("letterbox"):
+            lb = float(d["letterbox"]) * H
+            J(f"var lbT = c.layers.addSolid([0, 0, 0], 'Letterbox top', {W}, {int(lb) + 2}, 1); lbT.property('Transform').property('Position').setValue([{W / 2}, {lb / 2:.0f}]);"
+              f" var lbB = c.layers.addSolid([0, 0, 0], 'Letterbox bottom', {W}, {int(lb) + 2}, 1); lbB.property('Transform').property('Position').setValue([{W / 2}, {H - lb / 2:.0f}]);")
+        if d.get("panel"):
+            gut = int(W * 0.035)
+            J(f"var pf = c.layers.addShape(); pf.name = 'Panel frame'; var pg = pf.property('Contents').addProperty('ADBE Vector Group');"
+              f" var pr = pg.property('Contents').addProperty('ADBE Vector Shape - Rect'); pr.property('Size').setValue([{W - gut}, {H - gut}]); pr.property('Position').setValue([0, 0]);"
+              f" var ps = pg.property('Contents').addProperty('ADBE Vector Graphic - Stroke'); ps.property('Color').setValue([1, 1, 1]); ps.property('Stroke Width').setValue({gut});"
+              f""
+              f" var pg2 = pf.property('Contents').addProperty('ADBE Vector Group'); var pr3 = pg2.property('Contents').addProperty('ADBE Vector Shape - Rect'); pr3.property('Size').setValue([{W - 2 * gut}, {H - 2 * gut}]);"
+              f" var ps2 = pg2.property('Contents').addProperty('ADBE Vector Graphic - Stroke'); ps2.property('Color').setValue([0.05, 0.05, 0.06]); ps2.property('Stroke Width').setValue(8);"
+              f" pf.property('Transform').property('Position').setValue([{W / 2}, {H / 2}]);")
         # 자막: 구절 단위(레퍼런스는 한 번에 한 구절을 크게) — 숫자 · 핵심어가 든 구절은 노란색
         gs = g["subs"]
         size = int(gs["h"] * H * 1.75)
@@ -1506,12 +1650,14 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
             hot = bool(re.search(r"\d", ch["text"])) or any(k and k in _norm(ch["text"]) for k in keys)
             fg = rgb(gs.get("hot", "#ffd60a")) if hot else rgb(gs.get("fg", "#ffffff"))   # 강조 낱말 색(방향 subs.hot — 밝은 상자면 빨강 등)
             stroke = "null, 0" if gs.get("box") else f"[0.02, 0.02, 0.05], {max(6, size // 5)}"     # 상자가 있으면 외곽선 없이(뭉개짐)
-            J(f"var s = txt(c, {js(f'Sub {i + 1:02d}')}, {js(ch['text'])}, {js(font)}, {size}, {js(fg)}, {stroke}, [{W / 2}, {gs['y'] * H:.0f}]);")
-            J(f"fitText(s, {W * 0.86:.0f});")   # 좌우 7% 안전 여백 — 길면 두 줄, 그래도 넘으면 줄임
+            J(f"var s = txt(c, {js(f'Sub {i + 1:02d}')}, {js(ch['text'])}, {js(sub_font)}, {size}, {js(fg)}, {stroke}, [{W / 2}, {gs['y'] * H:.0f}]);")
+            J(f"fitText(s, {W * SAFE_TEXT_W:.0f});")   # 가운데 정렬 글자가 오른쪽 12%(좋아요 · 댓글 버튼)에 닿지 않게 — 길면 두 줄, 그래도 넘으면 줄임
             pop = f"var sS = s.property('Transform').property('Scale'); sS.setValueAtTime({a_:.3f}, [88, 88]); sS.setValueAtTime({a_ + 0.09:.3f}, [100, 100]);"
             J(f"s.inPoint = {a_:.3f}; s.outPoint = {b_:.3f};")
             if gs.get("box"):   # 자막 상자(방향 subs.box) — 글자 뒤 반투명 판, 그 구절 동안만
-                J(f"var sbx = fitBox(c, {js(f'SubBox {i + 1:02d}')}, {js(f'Sub {i + 1:02d}')}, {js(rgb(gs.get('bg', '#0b0d12')))}, 36, 18, 14); sbx.inPoint = {a_:.3f}; sbx.outPoint = {b_:.3f};")
+                bub = bool(gs.get("bubble"))     # 만화 모드: 둥근 말풍선 + 검은 테두리
+                J(f"var sbx = fitBox(c, {js(f'SubBox {i + 1:02d}')}, {js(f'Sub {i + 1:02d}')}, {js(rgb(gs.get('bg', '#0b0d12')))}, {64 if bub else 36}, {34 if bub else 18}, {120 if bub else 14}); sbx.inPoint = {a_:.3f}; sbx.outPoint = {b_:.3f};"
+                  + (" var bst = sbx.property('Contents').property(1).property('Contents').addProperty('ADBE Vector Graphic - Stroke'); bst.property('Color').setValue([0.05, 0.05, 0.06]); bst.property('Stroke Width').setValue(6);" if bub else ""))
             if sub_preset:   # 글자 프리셋 — 자막 길이의 60%(최대 0.45초) 안에 다 나오게
                 J(f"if (!textPreset(c, s, {js(sub_preset)}, {a_:.3f}, {min(0.45, 0.6 * (b_ - a_)):.3f})) {{ {pop} }}")
             elif DZ["text_pop"]:
@@ -1525,7 +1671,11 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
                         print(f"[움직임] {m['id']}: 화면 전체 2D 장면 — 배치 조정 {dropped} 무시(장면 코드가 배치를 정한다)", file=sys.stderr)
                     adj = {k: v for k, v in adj.items() if k not in FRAME_KEYS}
                 J(adjust_jsx(str(m["id"]), adj, W, H))
-        J(f"var sl = main.layers.add(c); sl.startTime = {start:.3f};")
+        # 장면의 맨 위 레이어를 모두 카메라 Null 에 단다 — 2026-11-21: 샷 기능(충격 · 디테일 · 확대) 카메라 키가 Null 에만 들어가고
+        # 재료 · 장면 코드 레이어는 아무도 달려 있지 않아 화면이 한 번도 움직이지 않았다(레퍼런스 대비 실측: 우리 영상 100% 고정)
+        J("(function () { for (var i = 1; i <= c.numLayers; i++) { var L = c.layer(i); if (L === cam || L.parent) continue; try { L.parent = cam; } catch (e) {} } })();")
+        J(f"var sl = main.layers.add(c); sl.startTime = {start:.3f}; sl.name = {js(f'SceneL {n:02d}')};")
+        placed[n] = (start, sec, sc)
         # 끝 장면이 영상 없이 그림 · 로고 · 글자만이면 멈춘 화면이 된다(2026-11-09: 로고 4초 정지) → 천천히 다가오며 나타남
         # 2026-11-11: 93→100 으로 키우니 화면이 줄어 네 가장자리에 검은 테두리가 생겼고, 감독이 '끝'(고정)으로 정한 것도 무시했다 → 고정 기능이면 그대로, 아니면 100→106 으로 다가감
         if oi == len(allsc) - 1 and str(sc.get("shot_fn") or "") not in ("끝", "여운", "자리 잡기") and not any((m or {}).get("type") in ("video", "web", "screen", "stock") for m in sc.get("materials") or [] if isinstance(m, dict)):
@@ -1541,13 +1691,16 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         prev = allsc[oi - 1] if 0 < oi <= len(allsc) else None
         if prev is not None and "zoom" in str(prev.get("transition") or d.get("transition") or "") and sec > 0.8:
             J(f"var zI = sl.property('Transform').property('Scale'); zI.setValueAtTime({start:.3f}, [135, 135]); zI.setValueAtTime({start + 0.4:.3f}, [100, 100]); ease(zI, 70);")
+    for n, (start, sec, sc) in placed.items():            # 전환 운반자(carry) — 영상의 모티프가 장면 사이를 가로지르며 화면을 바꾼다
+        if isinstance(sc.get("carry"), dict) and (n + 1) in placed:
+            J(carry_jsx(sid, sc["carry"], n, start + sec, W, H))
     # 위쪽 고정 주제 제목(레퍼런스: '컴퓨터 버그의 유래'처럼 영상 내내 위에 떠 있음) — 콘티 direction.pin_title > pin_title > 짧은 제목
     if pin:
         J("\n// ---------- 위쪽 고정 주제 제목(영상 전체)")
         psz = max(36, min(52, int(W * 0.84 / max(1, len(pin)))))   # 한 줄에 들어가게
-        J(f"var pt = txt(main, 'PinTitle', {js(pin)}, {js(font)}, {psz}, [1, 1, 1], null, 0, [{W / 2}, {H * 0.062:.0f}]);")
+        J(f"var pt = txt(main, 'PinTitle', {js(pin)}, {js(font)}, {psz}, [1, 1, 1], null, 0, [{W / 2}, {H * PIN_Y:.0f}]);")
         J("var pbx = fitBox(main, 'PinBox', 'PinTitle', [0.05, 0.05, 0.08], 56, 30, 18); pbx.property('Transform').property('Opacity').setValue(82);")
-        g["pill"] = {**g["pill"], "y": max(g["pill"]["y"], 0.115)}      # 숫자 알약은 그 아래로
+        g["pill"] = {**g["pill"], "y": max(g["pill"]["y"], PIN_Y + 0.055)}      # 숫자 알약은 그 아래로
     if pills:
         gp = g["pill"]
         size = int(gp["h"] * H * 1.5)

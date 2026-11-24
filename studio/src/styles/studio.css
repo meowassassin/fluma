@@ -25,27 +25,16 @@
 
 .asset[draggable="true"] { cursor: grab; }
 
-.hov { position: absolute; left: 0; top: 0; display: none; border: 1px solid rgba(56, 189, 248, 0.75); pointer-events: none; }
-.hov span { position: absolute; left: -1px; top: -20px; padding: 1px 6px; border-radius: 3px; background: var(--canvas-sel); color: #fff; font-size: 12px; white-space: nowrap; }
-
-.zone { position: absolute; background: repeating-linear-gradient(45deg, rgba(245, 165, 36, 0.16) 0 8px, rgba(245, 165, 36, 0.06) 8px 16px); outline: 1px dashed rgba(245, 165, 36, 0.6); pointer-events: none; overflow: hidden; }
-.zone span { position: absolute; left: 4px; top: 4px; font-size: 11.5px; line-height: 12px; color: #ffd28a; background: rgba(0, 0, 0, 0.55); padding: 1px 4px; border-radius: 3px; max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .safe { position: absolute; outline: 1px dashed rgba(60, 203, 127, 0.7); pointer-events: none; }
 .safe span { position: absolute; right: 4px; bottom: 4px; font-size: 11.5px; color: #8be3b3; background: rgba(0, 0, 0, 0.55); padding: 1px 4px; border-radius: 3px; }
-.pin { position: absolute; z-index: 10; }
 
 /* ---------- 속성 ---------- */
-.insp { width: clamp(248px, 20vw, 320px); flex: none; overflow-y: auto; background: var(--bg-1); border-left: 1px solid var(--line-1); }
 
 .issues { display: flex; flex-direction: column; gap: 4px; }
 .issue { display: flex; gap: 6px; padding: 8px; border-radius: var(--r2); background: var(--warn-soft); color: #ffd28a; font-size: var(--fs-xs); line-height: 17px; }
 .issue .ic { margin-top: 2px; }
 
 /* ---------- 타임라인 ---------- */
-.studio.focus .tl { height: 118px; }
-.tl { flex: none; height: clamp(168px, 24vh, 232px); display: flex; flex-direction: column; background: var(--bg-1); border-top: 1px solid var(--line-1); }
-
-.tc { font-size: var(--fs-sm); min-width: 150px; }
 
 .lane.trk { height: 30px; border-top: 1px solid var(--line-1); }
 
@@ -74,8 +63,6 @@
 .kf { position: absolute; top: 7px; transform: translateX(-50%); width: 16px; height: 16px; display: grid; place-items: center; color: var(--agent); }
 .kf:hover { color: #fff; }
 
-@media (max-width: 1280px) { .tc { min-width: 110px; } }
-
 /* 백그라운드 작업(3D 렌더) */
 .bgjobs { display: flex; flex-direction: column; gap: 4px; }
 .bgjobs.compact { flex-direction: row; margin-left: 8px; }
@@ -90,10 +77,6 @@
 .pick-dot { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: var(--comment); box-shadow: 0 0 0 4px rgba(245, 165, 36, 0.35); pointer-events: none; }
 
 .editor { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg-0); }
-
-.einfo { flex: 1; padding: 28px 32px; display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
-.einfo h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font-size: var(--fs-lg); }
-.einfo p { white-space: pre-wrap; margin: 0; }
 
 /* 결과물 보기 */
 .result { flex: 1; min-height: 0; display: flex; flex-direction: column; }

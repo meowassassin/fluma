@@ -8,7 +8,7 @@ from pathlib import Path
 
 def live_material(m: dict, out: Path, work: Path) -> dict:
     from ..live import compose
-    from ..materials import ROOT, _hash, find_upload
+    from ..materials import ROOT, _hash
     src = Path(m["src"]) if m.get("src") else None
     if not src:
         raise RuntimeError(f"{m.get('id')}: src(올린 영상) 가 필요합니다")

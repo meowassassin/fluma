@@ -1,7 +1,6 @@
 """최적화 패치 회귀 · 동시성 · 세션 재사용 검증 테스트."""
 from __future__ import annotations
 
-import json
 import sys
 import threading
 import time
@@ -12,7 +11,6 @@ sys.path.insert(0, str(ROOT / "engine"))
 import paths  # noqa: E402,F401
 
 from craft import edit, materials, music_pick as M, usage  # noqa: E402
-from gen import video  # noqa: E402
 
 
 def test_usage_thread_isolation():
@@ -161,128 +159,3 @@ def test_edit_assemble_batches_import_and_place(tmp_path, monkeypatch):
     ids = [ln["id"] for ln in scripts[0]]
     assert ids[:2] == ["timeline.place", "timeline.place"]
     assert "markers.add" in ids
-
-
-def test_video_run_reuses_route_flow_backend(tmp_path, monkeypatch):
-    monkeypatch.setattr(video, "ROOT", tmp_path)
-    monkeypatch.setattr(video, "approved_shots", lambda pid: {1, 2})
-    monkeypatch.setattr(video, "used", lambda pid, sb, s: 0)
-    monkeypatch.setattr(video, "attempts", lambda pid, n: [])
-    monkeypatch.setattr(video, "write_attempt", lambda *a, **kw: None)
-    monkeypatch.setattr(video, "plan_project_id", lambda pid: "proj-1")
-    monkeypatch.setattr(video.kfmod, "kdir", lambda pid: tmp_path / "kf")
-    monkeypatch.setattr(video.planmod, "load", lambda pid: (
-        tmp_path / "plan.json",
-        {"shots": [
-            {"n": 1, "gen_sec": 4, "kind": "motion"},
-            {"n": 2, "gen_sec": 4, "kind": "motion"},
-        ], "aspect": "9:16"},
-    ))
-    monkeypatch.setattr(video.planmod, "video_prompt", lambda sb, s: {"prompt": f"shot {s['n']}", "negative": ""})
-    monkeypatch.setattr(video, "style_refs", lambda *a, **kw: [])
-    monkeypatch.setattr(video, "settings", lambda: {
-        "backend": "gflow", "model": "veo_3_1_lite",
-        "credits": {"veo_3_1_lite": 10}, "max_attempts": 3, "timeout_sec": 60,
-    })
-
-    created = []
-
-    class FakeFlow:
-        name = "flow"
-        agent_only = False
-
-        def __init__(self):
-            self.closed = 0
-            self.credits_calls = 0
-            self.gen_calls = 0
-            created.append(self)
-
-        def available(self):
-            return True, ""
-
-        def credits(self):
-            self.credits_calls += 1
-            return 100
-
-        def generate(self, req, timeout):
-            assert self.closed == 0
-            self.gen_calls += 1
-            req.out.parent.mkdir(parents=True, exist_ok=True)
-            req.out.write_bytes(b"mp4")
-            return video.GenResult(True, req.out, req.model, "flow", raw={"flow_project_id": "proj-1"})
-
-        def close(self):
-            self.closed += 1
-
-    monkeypatch.setattr(video, "make_backend", lambda name, pid: FakeFlow())
-    res = video.run("p-reuse", None, None)
-
-    assert res["done"] == [1, 2]
-    assert res["stopped"] is None
-    assert len(created) == 1
-    assert created[0].credits_calls == 1
-    assert created[0].gen_calls == 2
-    assert created[0].closed == 1
-
-
-def test_flow_mcp_reuses_persistent_agent_worker(tmp_path, monkeypatch):
-    fm = video.FlowMCP(tmp_path / "out")
-    starts = 0
-    closed = 0
-    reqs = []
-
-    class FakeStdin:
-        def write(self, data: str):
-            reqs.append(json.loads(data))
-            out = Path(reqs[-1]["out"])
-            out.parent.mkdir(parents=True, exist_ok=True)
-            out.write_bytes(b"video-bytes")
-
-        def flush(self):
-            pass
-
-        def close(self):
-            pass
-
-    class FakeStdout:
-        def __init__(self):
-            self.idx = 0
-
-        def fileno(self):
-            return 0
-
-        def readline(self):
-            self.idx += 1
-            p = reqs[self.idx - 1]["out"]
-            return "FLUMA_AGENT_I2V " + json.dumps({"ok": True, "stage": "done", "path": p, "media_id": f"m{self.idx}"}) + "\n"
-
-    class FakeAgentProc:
-        def __init__(self):
-            self.stdin = FakeStdin()
-            self.stdout = FakeStdout()
-
-        def poll(self):
-            return None
-
-        def wait(self, timeout=None):
-            nonlocal closed
-            closed += 1
-            return 0
-
-    def fake_start():
-        nonlocal starts
-        if fm.agent_p is None:
-            starts += 1
-            fm.agent_p = FakeAgentProc()
-
-    monkeypatch.setattr(fm, "_start_agent", fake_start)
-    monkeypatch.setattr(video.select, "select", lambda r, w, x, t=None: (r, [], []))
-
-    img = tmp_path / "s01.png"; img.write_bytes(b"png")
-    r1 = fm._agent_i2v(video.GenRequest(1, "p1", img, None, 8, "9:16", "veo_3_1_lite", tmp_path / "1.mp4", project="pj"), 60)
-    r2 = fm._agent_i2v(video.GenRequest(2, "p2", img, None, 8, "9:16", "veo_3_1_lite", tmp_path / "2.mp4", project="pj"), 60)
-    assert r1.ok and r2.ok
-    assert starts == 1
-    assert len(reqs) == 2
-    fm.close()
-    assert closed == 1

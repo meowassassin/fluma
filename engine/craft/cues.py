@@ -38,9 +38,12 @@ def find(words: list[dict], word: str, end: bool = False, strict: bool = True) -
     """정확히 같은 낱말 → 없으면 가장 닮은 낱말(각본가가 '떠요'를 '뜹니다'로 고쳐도 따라간다, 2026-11-17: 낱말이 어긋나 콘티를 23번 고쳤다)"""
     import difflib
     k = _norm(word)
-    for w in words:
-        t = _norm(w["text"])
-        if k and t and (k in t or t in k):
+    for w in words:                       # 1) 같은 낱말
+        if k and _norm(w["text"]) == k:
+            return w["end"] if end else w["start"]
+    for w in words:                       # 2) 낱말을 품은 어절('6주' → '6주예요'). 어절이 낱말의 일부인 경우는 충분히 길 때만
+        t = _norm(w["text"])               #    2026-11-24: '이번에' 가 앞의 한 글자 어절 '이' 에 걸려 0.6초 일찍 움직였다
+        if k and t and (k in t or (t in k and len(t) >= max(2, 0.6 * len(k)))):
             return w["end"] if end else w["start"]
     best, score = None, 0.0
     for w in words:

@@ -24,14 +24,12 @@ export interface Voice {
   korean: boolean; words: boolean; speed: string; quality: string; size: string; voices?: { id: string; title: string; gender: string }[];
   install?: string; summary: string; available: boolean | null; icon: string | null;
 }
-/** 생성 · 음성 API 키(공급자 하나 = 키 하나) */
+/** 음성 · 스톡 API 키(공급자 하나 = 키 하나) */
 export interface GenKey { id: string; ready?: boolean; env: string; title: string; icon?: string | null; what: string; caps: string[]; keyHint: string; console: string; docs?: string; paid?: boolean; testable: boolean; hasKey: boolean; keyMasked: string; source: "env" | "saved" | "agent" | "env.local" | null }
 export interface Mem { id: string; type: string; scope: string; title: string; body: string; status: string; created?: string; provenance?: { menu?: string }; stats?: { recallCount?: number } }
 
 export const sapi = {
   agents: (s?: AbortSignal) => call<AgentsResp>("GET", "/api/agents", undefined, s),
-  gflowStatus: (s?: AbortSignal) => call<{ available: boolean; msg?: string }>("GET", "/api/gflow/status", undefined, s),
-  gflowLogin: () => call<{ ok: boolean; error?: string | null }>("POST", "/api/gflow/login"),
   voices: (s?: AbortSignal) => call<Voice[]>("GET", "/api/voices", undefined, s),
   previewVoice: (name: string, voice: string) => call<{ ok: boolean; url: string }>("POST", `/api/voices/${name}/preview`, { voice }),
   genKeys: (s?: AbortSignal) => call<GenKey[]>("GET", "/api/gen-keys", undefined, s),

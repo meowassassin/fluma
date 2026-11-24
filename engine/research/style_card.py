@@ -161,7 +161,7 @@ def write(name: str, vids: list[str], m: dict) -> Path:
     md = f"""# {name} — 화풍 시스템
 
 참고 쇼츠 {", ".join(vids)} 에서 잰 값(`engine/research/style_card.py`). 모든 그림이 이 계약을 읽는다 — 부품은 역할로만 색을 받는다.
-그림 · 캐릭터를 따오지 않았다. 숫자와 규칙만 가져왔다. 보편 규칙은 `engine/spec/rules/illustration/`.
+그림 · 캐릭터를 따오지 않았다. 숫자와 규칙만 가져왔다.
 
 ## 팔레트 (역할)
 | 역할 | 색 | 비고 |

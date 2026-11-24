@@ -10,14 +10,18 @@ export interface Scene {
   sfx?: string; music_cue?: string; engine?: string; template?: string;
   beat?: string; screen?: string; elements?: unknown[];
 }
+export interface UploadMeta { title?: string; titles?: string[]; description?: string; full?: string; hashtags?: string[]; tags?: string[]; by?: "auto" | "user"; hash?: string; why?: string }
+
 export interface Storyboard {
   id: string; version: number; title: string; topic?: string; format: Format | string;
   audience?: string | null; brand?: string | null; badge?: string | null; character?: string | null;
   engine?: string | null; template?: string | null; duration_sec: number;
   hook_number?: string | null; scenes: Scene[]; cta: string; caption?: string; hashtags?: string[]; sources?: string[];
+  /** 유튜브 업로드 정보(완성 뒤 engine/publish/metadata.py) — 화면 제목 title 과 별개 */
+  upload?: UploadMeta;
   constraints?: string[]; reference?: string[]; voice?: { engine?: string; id?: string | null } | null;
   direction?: Record<string, string>;
-  /** 의도 카드 — 사용자가 원하는 것(이 영상의 규칙). 확인 전엔 최종 렌더 · 유료 생성이 막힌다(engine/checks/gate.py) */
+  /** 의도 카드 — 사용자가 원하는 것(이 영상의 규칙). 확인 전엔 최종 렌더가 막힌다(engine/checks/gate.py) */
   intent?: { summary?: string; reference_use?: string; must?: string[]; must_not?: string[]; locked?: string[]; confirmed?: boolean };
 }
 
@@ -34,18 +38,19 @@ export interface EngineMeta {
   available: boolean | null; templates: TemplateMeta[]; icon?: string | null;
 }
 export interface SkillMeta { name: string; description: string; when?: string }
-export interface CharMeta { name: string; title: string; base: string; [k: string]: unknown }
-
 
 export interface Settings {
   model: string; effort: string; language: string; voice_engine: string; voice_id: string; voice_auto?: boolean; music_any_license?: boolean;
   agent?: Record<string, unknown>;
-  videogen?: { backend?: string; model?: string; max_attempts?: number; timeout_sec?: number };
-  imagegen?: { backend?: string; model?: string };
 }
 
 // ---------- 에이전트 ----------
-export interface ChatContext { menu?: "trends" | "character" | "studio" | "plan"; selection?: string; note?: string }
+export interface ChatContext { menu?: "trends" | "studio" | "plan"; selection?: string; note?: string; autopilot?: boolean; youtubeAccount?: { id: string; title: string } }
+/** 연결한 YouTube 채널(계정) — 비밀 값 없음 */
+export interface YtAccount { id: string; title: string; handle?: string | null; thumb?: string | null; subscribers?: number | null; videos?: number | null; connected_at?: string | null }
+export interface YtStatus { configured: boolean; connected: boolean; redirect: string; accounts: YtAccount[]; default: string | null; channel: YtAccount | null }
+/** 영상(프로젝트)마다 올릴 채널 — chosen: 직접 고른 것(없으면 기본을 따름), id/account: 실제로 쓸 것 */
+export interface YtProjectAccount { chosen: string | null; id: string | null; account: YtAccount | null }
 export interface MemoryRef { id: string; title: string; scope: string; type: string }
 export interface ChatTool { name: string; input: string; error?: boolean; id?: string; out?: string[]; t0?: number }
 export interface Todo { content: string; status: "pending" | "in_progress" | "completed"; activeForm?: string }
@@ -76,12 +81,6 @@ export interface Job {
   id: string; type: string; project: string | null; status: JobStatus; progress: number | null; stage?: string;
   started?: number | string | null; ended?: number | string | null; result?: { url?: string } | null; error?: string | null;
 }
-export type JobEvent =
-  | { type: "log"; line: string }
-  | { type: "progress"; progress: number | null; stage: string }
-  | { type: "done"; url?: string }
-  | { type: "failed"; error?: string }
-  | { type: "canceled" };
 
 // ---------- 파일 감시 ----------
 export interface FsEvent {

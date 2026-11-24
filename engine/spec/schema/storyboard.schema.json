@@ -353,7 +353,7 @@
         },
         "art": {
           "type": "object",
-          "description": "이 영상의 시각 언어: palette{bg, ink, accent} · rule · avoid[]"
+          "description": "이 영상의 시각 언어: palette{bg, ink, accent} · rule · avoid[] · style(형태 재료의 화풍: flat 평면 일러스트 · cel 셀 카툰 · sketch 연필 스케치 · clay 클레이 3D · vector 벡터 일러스트 · render 3D 렌더 — 최근 영상과 다르게)"
         },
         "color_bg": {
           "type": "string"
@@ -723,7 +723,7 @@
     },
     "concept": {
       "type": "object",
-      "description": "사용자가 고른 콘셉트(engine/story/concepts.py pick)"
+      "description": "이 영상의 콘셉트 — angle(각도) · breaks(이 주제 쇼츠가 다들 하는 것 중 깨는 것) · structure(장면 흐름 한 줄). 없거나 흐름이 최근 영상과 같으면 lint L66 · L67. concepts.py pick 이 채우기도 한다"
     },
     "credits": {
       "type": "object"
@@ -796,6 +796,17 @@
     "single_style": {
       "type": "boolean",
       "description": "사용자가 화면을 한 가지 스타일(예: 2D 애니메이션)로 통일해 달라고 한 영상 — 재료 종류 섞기 검사(L35)를 건너뛴다. 사용자 말이 있을 때만 켠다"
+    },
+    "locked_text": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "각본가가 다시 쓰지 않을 칸(s3.narration · s2.caption · title). 사람이 고친 칸은 자동으로도 잠긴다(skill_pass text_locks)"
+    },
+    "upload": {
+      "type": "object",
+      "description": "유튜브 업로드 정보(완성 뒤 engine/publish/metadata.py 가 만든다 — 화면 제목 title 과 별개): title(검색 · 추천용 제목) · titles(후보) · description(본문) · full(실제로 보내는 설명: 본문 + 출처 + 면책 + 해시태그) · hashtags · tags · by(auto|user — user 면 다시 만들지 않음) · hash"
     }
   },
   "$defs": {
@@ -1215,7 +1226,8 @@
                   "live",
                   "archive",
                   "art",
-                  "relic"
+                  "relic",
+                  "form"
                 ]
               },
               "camera": {
@@ -1251,7 +1263,7 @@
               },
               "style": {
                 "type": "string",
-                "description": "overlay: clean(기본) · hand"
+                "description": "overlay: clean(기본) · hand / form: flat · cel · sketch · clay · vector · render(없으면 direction.art.style)"
               },
               "beats": {
                 "type": "array",
@@ -1766,6 +1778,28 @@
               "args": {
                 "type": "object",
                 "description": "스크립트 재료(EffectCraft)가 읽는 바꿀 값 — 숫자를 코드에 박지 않고 여기에(knob.py 로 조정)"
+              },
+              "scene": {
+                "type": [
+                  "object",
+                  "string"
+                ],
+                "description": "form: 형태 데이터(부품 목록 — engine/craft/form/README.md) 또는 \"$FILE:…/sNN.form.json\""
+              },
+              "view": {
+                "type": "object",
+                "description": "form: 카메라 각도 {azimuth, elevation, fov, frame}"
+              },
+              "background": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "form: 바탕색(없으면 투명)"
+              },
+              "res": {
+                "type": "integer",
+                "description": "form: 출력 크기(기본 1080)"
               }
             }
           }
@@ -1831,6 +1865,63 @@
         "camera": {
           "type": "object",
           "description": "물리 카메라 — follow: [{t|at, x, y, zoom} | {t|at, body, material, zoom}], stiffness, damping (engine/craft/motion.py camera_follow_jsx)"
+        },
+        "features": {
+          "type": "array",
+          "description": "이 장면에 쓰려고 고른 Craft 앱 기능(craft_catalog.py search 결과의 id — 예: ec.stylize.glow · ec.generate.cclightsweep · layer.style.dropShadow). 2~3개. 장면 코드에서 K.fx 등으로 실제로 쓴다(lint T69)",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6
+        },
+        "bg": {
+          "description": "장면 바탕 — '#hex' 또는 [위색, 아래색]. 장면 코드 K.scene 의 바탕. 장소 · 물건 색에서, 이웃 장면과 다르게(화면 AI 티 V01 · V02)",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          ]
+        },
+        "carry": {
+          "type": "object",
+          "description": "전환 운반자 — 이 장면 → 다음 장면을 영상 모티프가 가로질러 날아가며 바꾼다(engine/craft/motion.py carry_jsx)",
+          "properties": {
+            "by": {
+              "type": "string"
+            },
+            "path": {
+              "type": "array"
+            },
+            "dur": {
+              "type": "number"
+            },
+            "size": {
+              "type": "number"
+            },
+            "reveal": {
+              "enum": [
+                "trail",
+                "none"
+              ]
+            },
+            "bob": {
+              "type": "number"
+            },
+            "bank": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "by"
+          ]
         }
       }
     },

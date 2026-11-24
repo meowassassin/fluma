@@ -29,7 +29,6 @@
 
 .page-loading, .page-error { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: var(--s8); }
 .err-code { display: block; margin-top: var(--s3); padding: var(--s2) var(--s3); background: var(--bg-2); border-radius: var(--r2); font: var(--fs-xs)/1.5 var(--mono); color: var(--tx-2); text-align: left; }
-.panel-error { padding: var(--s3); }
 
 /* ---------- 명령 팔레트 ---------- */
 .cmdk { margin: var(--s3) calc(-1 * var(--s6)) calc(-1 * var(--s6)); }
@@ -58,7 +57,6 @@
 .crumb b { color: var(--tx-1); font-weight: 600; }
 .rail-sep { width: 28px; height: 1px; background: var(--line-2); margin: 6px 0; }
 .rail-ic { position: relative; display: inline-grid; }
-.rail-dot { position: absolute; right: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--agent); box-shadow: 0 0 0 2px var(--bg-1); animation: pulse 1.2s ease-in-out infinite; }
 
 /* 레일은 줄어들지 않는다 — 최소 높이 아래로는 페이지가 스크롤 */
 .rail { overflow: hidden; }

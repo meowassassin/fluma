@@ -13,9 +13,10 @@ import re
 import sys
 from pathlib import Path
 
+FORM_STYLES = ("flat", "cel", "sketch", "clay", "vector", "render")   # engine/craft/form STYLES 와 같게(tests/test_lint_form_styles.py)
+
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
-FINAL = "--final" in sys.argv   # 렌더 직전 검사: 단계와 상관없이 화면 구성이 있어야 한다
 TOKENS = json.loads((ROOT / "engine" / "spec" / "tokens" / "default.json").read_text(encoding="utf-8"))
 LIM = TOKENS["limits"]
 # L14: 실측 음성이 장면보다 이 배수 넘게 길면 실패. assemble_audio 는 최대 1.25배까지 빠르게 하고 그 뒤는 자르므로,
@@ -123,7 +124,6 @@ def material_checks(sb: dict) -> list:
         if r.get("missing"):
             out.append(("L36", r.get("scene"), f"사용자 녹화가 필요: {r.get('ask')} → 편집기에 파일을 올려 달라고 부탁(이름에 '{r.get('id')}' 포함). 받기 전 초안은 이 재료 없이 렌더됨"))
     # 주석 오버레이는 대상 화면 위에 얹힐 뿐 새 화면이 아니다 — 종류 · 개수 · 전환 수에 세지 않는다
-    notes = [r for r in recs if not r.get("missing") and r.get("type") == "overlay"]
     recs = [r for r in recs if not r.get("missing") and r.get("type") != "overlay"]
     # 일부 장면만 렌더한 기록으로 영상 전체를 판단하지 않는다(재료는 렌더가 만든다 — 전체 기록이 모자라면 다음 전체 렌더 뒤에 본다)
     planned = sum(1 for sc in sb.get("scenes") or [] for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("type") not in ("text", "stat", "overlay"))
@@ -162,6 +162,20 @@ LONG_MAX_SEC, LONG_MAX_SCENES = 90, 12   # allow_long: 사용자가 길어도 �
 
 
 SPEECH_CPS = 5.2   # 실측(2026-11-17 Edge): 공백 뺀 글자 / 초, 장면 사이 쉼 포함 · 목소리 speed 1.0 기준
+ENGINE_CPS = {"edge": 5.2, "supertonic": 5.6}   # 음성 엔진마다 말 빠르기(공백 뺀 글자/초, 엔진 보정 포함) — 2026-11-19 Supertonic ×1.18 실측 5.6
+
+
+def voice_cps(sb: dict) -> float:
+    """이 콘티가 쓸 음성 엔진의 초당 글자 — 음성을 만들기 전에 길이를 어림한다(2026-11-20: 엔진을 모르고 5.2 로 어림해 음성 뒤에야 44초로 막힘)"""
+    eng = None
+    try:
+        sys.path.insert(0, str(ROOT / "engine" / "voice"))
+        import tts
+        eng = tts.resolve(sb)[0]
+    except Exception:  # noqa: BLE001 - 음성 설정을 못 읽으면 기본 빠르기
+        pass
+    speed = float((sb.get("voice") or {}).get("speed") or 1.0) or 1.0
+    return ENGINE_CPS.get(eng or "", SPEECH_CPS) * speed
 
 
 def scope_problems(sb: dict, estimate: bool = False) -> list:
@@ -176,9 +190,8 @@ def scope_problems(sb: dict, estimate: bool = False) -> list:
     if sb.get("allow_long"):          # 사용자가 길어도 된다고 한 영상(2026-11-17: 상한을 풀 칸이 없어 59초 대본이 막히고, 다시 45초로 줄이는 턴이 한 번 더 생겼다)
         mx, max_scenes = LONG_MAX_SEC, LONG_MAX_SCENES
     if estimate and any(x.get("narration") for x in scenes):
-        speed = float((sb.get("voice") or {}).get("speed") or 1.0) or 1.0
-        total = round(sum(len(str(x.get("narration") or "").replace(" ", "")) for x in scenes) / (SPEECH_CPS * speed), 1)
-        limit = mx * 1.1
+        total = round(sum(len(str(x.get("narration") or "").replace(" ", "")) for x in scenes) / voice_cps(sb), 1)
+        limit = mx * 1.03                                 # 엔진별 빠르기로 어림하니 여유를 줄인다(전엔 10% — 음성 뒤에 막힘)
     else:
         total = round(sum(float(x.get("sec") or 0) for x in scenes), 1) or float(sb.get("duration_sec") or 0)
         limit = mx
@@ -191,7 +204,7 @@ def scope_problems(sb: dict, estimate: bool = False) -> list:
     return out
 
 
-IMAGE_LIKE = {"chart", "doc_quote", "illustration", "icon", "photo", "screen", "web", "video", "stock", "meme", "image",
+IMAGE_LIKE = {"chart", "doc_quote", "illustration", "icon", "form", "photo", "screen", "web", "video", "stock", "meme", "image",
               "photo_grade", "document", "diagram", "ui_mock", "info_card", "template_card", "model3d", "drawing", "live"}   # 그림 · 영상 파일이 생기는 재료(주석을 얹을 수 있음)
 
 
@@ -279,6 +292,10 @@ def material_spec_checks(sb: dict) -> list:
                 mo = m.get("model")
                 if isinstance(mo, str) and mo and seen.get(mo) != "model3d":
                     out.append(("L39", i, f"{tag}: model {mo} 은 이 장면에서 도면보다 앞선 model3d 재료여야 함(다른 장면이면 model 에 형태 칸을 다시 쓴다)"))
+            elif t == "form":
+                need("scene", "src", what="형태 데이터(scene) 또는 그 JSON 파일(src)")
+                if m.get("style") and m["style"] not in FORM_STYLES:
+                    out.append(("L39", i, f"{tag}: style 은 {' · '.join(FORM_STYLES)} 중 하나"))
             elif t == "video" and m.get("in") is not None and m.get("out") is not None and float(m["out"]) <= float(m["in"]):
                 out.append(("L39", i, f"{tag}: out 이 in 보다 뒤여야 함"))
             if m.get("method"):                        # 같은 재료를 다른 앱으로(materials.methods)
@@ -328,11 +345,15 @@ def lint(sb: dict, recent_titles=None) -> list:
 
     scenes = sb.get("scenes", [])
 
-    # L02 길이 합계
+    # L02 길이 합계 — 음성을 아직 안 만든(대사가 바뀐) 장면이 있으면 권고(T02): 음성 단계가 sec · duration_sec 를 실측으로 다시 쓴다
+    #     2026-11-18: 11-17 제작에서 에이전트가 곧 덮어쓰일 sec 를 58번 · duration_sec 를 19번 손으로 맞췄다
     total = sum(s.get("sec", 0) for s in scenes)
     if abs(total - sb.get("duration_sec", 0)) > 1:
-        fails.append(("L02", None, f"장면 합계 {total}s != duration {sb.get('duration_sec')}s"))
-    for code, msg in scope_problems(sb):
+        provisional = any((x.get("narration") or "").strip() for x in scenes) and len(measured_scenes(sb)) < sum(1 for x in scenes if (x.get("narration") or "").strip())
+        fails.append(("T02" if provisional else "L02", None, f"장면 합계 {total}s != duration {sb.get('duration_sec')}s" + (" — 음성 단계가 실측으로 맞춘다(손대지 않는다)" if provisional else "")))
+    spoken = [k for k, x in enumerate(scenes) if (x.get("narration") or "").strip()]
+    voiced = measured_scenes(sb)
+    for code, msg in scope_problems(sb, estimate=bool(spoken) and not set(spoken) <= voiced):   # 음성 전이면 글자 수로 어림 — 음성을 만들기 전에 잡는다
         fails.append((code, None, msg))
 
     lo, hi = LIM["narration_chars_per_sec"]
@@ -358,10 +379,13 @@ def lint(sb: dict, recent_titles=None) -> list:
             cps = n_syl / sec
             lo_eff = 0 if (music_led or not nar) else lo     # 감성·무음 장면은 하한 없음, 상한만
             if not (lo_eff <= cps <= hi):
-                fails.append(("L04", i, f"음성 {n_syl}자/{sec}s = {cps:.1f}자/초 (허용 {lo_eff}~{hi}, 공백 제외)"))
+                # 나레이션이 있으면 sec 는 임시 값이다 — 음성 단계가 실측 길이로 다시 쓰고 L14 · L70 이 실제 값으로 본다(권고 T04, sec 를 손으로 맞추지 않는다)
+                fails.append(("T04" if nar else "L04", i, f"음성 {n_syl}자/{sec}s = {cps:.1f}자/초 (허용 {lo_eff}~{hi}, 공백 제외)" + (" — 음성 전 어림, 음성 단계가 sec 를 맞춘다" if nar else "")))
 
         # L05 훅 길이 — 레퍼런스 스타일 카드가 있으면 그 영상의 첫 컷 길이(+0.5초)까지 허용
         hook_max = max(LIM["hook_sec_max"], ref_first_shot(sb) + 0.5)
+        if s.get("role") == "hook" and nar.strip() and i not in measured:   # 음성 전: 대사 글자로 어림(+0.2초 쉼) — 음성을 만들기 전에 훅 길이를 잡는다
+            sec = round(len(nar.replace(" ", "")) / voice_cps(sb) + 0.2, 1)
         if s.get("role") == "hook" and sec > hook_max:
             # 시청자는 3초 안에 '화면 글자'로 무엇인지 안다 — 훅 제목이 뜨면 나레이션은 4.6초까지 권고로만
             # (2026-11-03: 3초를 맞추려 문장을 자르고 1.35배속 → '너무 빠르다')
@@ -428,7 +452,7 @@ def lint(sb: dict, recent_titles=None) -> list:
         hk = _keywords(hooks[0].get("caption", "") + " " + hooks[0].get("narration", ""))
         ok = _keywords(outros[0].get("caption", "") + " " + outros[0].get("narration", ""))
         if not (hk & ok):
-            fails.append(("L08", len(scenes) - 1, "outro가 hook과 이어지지 않음 (공통 핵심어 없음)"))
+            fails.append(("L08", len(scenes) - 1, f"outro가 hook과 이어지지 않음 (공통 핵심어 없음) — 마지막 장면 말 · 화면 글자에 훅의 낱말 하나를 그대로 다시 쓴다: {', '.join(sorted(hk)[:6])}"))
 
     # L10 최근 제목과 중복
     for t in recent_titles or []:
@@ -562,7 +586,6 @@ def lint(sb: dict, recent_titles=None) -> list:
     if polite and casual and min(polite, casual) >= 1 and not sb.get("tone_mix_ok"):
         fails.append(("L31", None, f"존댓말 {polite}문장 · 반말 {casual}문장이 섞임 — 레퍼런스 채널 말투 하나로(섞는 게 채널 스타일이면 tone_mix_ok: true)"))
 
-    sid = sb.get("id", "")
     # T16 디자인 방향: 영상마다 다른 화면이 나오도록 engine/story/direct.py --write 로 정한다 (권고)
     if not sb.get("direction"):
         fails.append(("T16", None, "디자인 방향(direction) 없음: python3 engine/story/direct.py data/storyboards/<id>.json --write"))
@@ -583,11 +606,39 @@ def lint(sb: dict, recent_titles=None) -> list:
     except ImportError:
         pass
 
+    fails += variety(sb)
+    fails += craft_depth(sb)
+    fails += file_refs(sb)
+    fails += [(c, i, m) for c, i, m in feature_plan(sb)]
+    fails += cue_check(sb)
     return fails
 
 
-FORMAL = ("습니다", "입니다", "합니다", "됩니다", "있습니다")
-CASUAL = ("고요", "는데", "거든요", "대요", "네요", "어요", "아요", "예요", "에요", "죠", "잖아요", "더라고요")
+def cue_check(sb: dict) -> list:
+    """L73 신호 낱말: 장면 코드 · 재료의 $CUE:낱말이 그 장면 대사에 있는가 — 렌더 중에야 '나레이션에 그 낱말이 없습니다'로 죽던 것을
+    대본을 쓰는 순간 잡는다(2026-11-20: 7편 중 3편이 렌더에서 이 오류). 음성 엔진과 같은 닮은꼴 맞춤(cues.find)을 쓴다"""
+    out = []
+    try:
+        from craft.cues import CUE, find
+    except Exception:  # noqa: BLE001
+        return out
+    for i, sc in enumerate(sb.get("scenes") or []):
+        nar = str(sc.get("narration") or "")
+        txt = json.dumps({k: v for k, v in sc.items() if k not in ("narration", "caption")}, ensure_ascii=False)
+        for ref in re.findall(r"\$FILE:([^\"\s]+)", txt):
+            try:
+                txt += (ROOT / ref).read_text("utf-8")
+            except OSError:
+                pass
+        words = [{"text": w, "start": 0.0, "end": 0.0} for w in nar.split()]
+        miss = []
+        for m in CUE.finditer(txt):
+            w = m.group(1).strip()
+            if w and w not in miss and (not words or find(words, w, strict=False) is None):
+                miss.append(w)
+        if miss:
+            out.append(("L73", i, f"신호 낱말 {', '.join(repr(w) for w in miss[:4])} 이(가) 대사에 없음 — 대사에 넣거나 장면 코드의 $CUE 를 대사에 있는 낱말로"))
+    return out
 
 
 def style_card_of(sb: dict) -> dict | None:
@@ -758,6 +809,162 @@ def audio_fit(sb: dict) -> list:
             cut = max(1, math.ceil(n * (1 - sec * 1.05 / real)))
             out.append(("L14", i, f"실측 음성 {real:.2f}s > 장면 {sec}s×{AUDIO_FIT_MAX} — 나레이션을 약 {cut}자 줄이거나 sec 를 늘리세요"))
     return out
+
+
+VARIETY_EXEMPT = ("ranking", "daily", "clip")      # 형식 자체가 같은 틀인 것(순위 · 매일 시세 · 클립 반응)
+
+
+def _recent_boards(sid: str, n: int = 6) -> list[dict]:
+    out = []
+    for f in sorted((ROOT / "data" / "storyboards").glob("*.json"), key=lambda x: -x.stat().st_mtime):
+        if f.stem == sid:
+            continue
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if d.get("variant_of"):
+            continue
+        out.append(d)
+        if len(out) >= n:
+            break
+    return out
+
+
+def flow_sig(sb: dict) -> str:
+    """장면 흐름 모양 — 연속된 같은 역할은 하나로(hook→item×5→outro = hook→item→outro)"""
+    sig = []
+    for s in sb.get("scenes") or []:
+        r = s.get("role") or "?"
+        if not sig or sig[-1] != r:
+            sig.append(r)
+    return "→".join(sig)
+
+
+def variety(sb: dict) -> list:
+    """영상마다 다르게(2026-11-19: 9편 중 6편이 hook→item×N→outro, 8편이 같은 빨강 · 기본 글꼴 — 사용자 '구조 · 화풍 · 구성이 다 비슷하다').
+    L66 흐름이 최근 영상 2편 이상과 같음 · L67 콘셉트(각도 · 깨는 것) 없음 · L68 아트 디렉션 없음 · T68 색 · 글꼴이 직전 영상과 같음"""
+    out = []
+    if sb.get("variant_of") or sb.get("format") in VARIETY_EXEMPT:
+        return out
+    recent = _recent_boards(str(sb.get("id") or ""))
+    sig = flow_sig(sb)
+    same = [d.get("id") for d in recent if flow_sig(d) == sig]
+    if len(same) >= 2 and len(sb.get("scenes") or []) >= 4:
+        out.append(("L66", None, f"장면 흐름이 최근 영상 {len(same)}편과 같다({sig}) — concept.structure 를 바꾼다(예: 사건 재구성 · 질문→실험→반전 · 저울 비교 · 시간 순 · 오해→진실). 역할 이름만 바꾸지 말고 장면이 하는 일을 바꾼다"))
+    c = sb.get("concept") if isinstance(sb.get("concept"), dict) else {}
+    miss = [k for k in ("angle", "breaks", "structure") if not str(c.get(k) or "").strip()]
+    if miss:
+        out.append(("L67", None, f"concept.{' · '.join(miss)} 없음 — angle(각도: 실제 사건 · 숫자 실험 · 오해 깨기 · 역사 · 대결 · 따라 하기 · 비유 · 시점 · 반전), "
+                                 "breaks(이 주제 쇼츠가 다들 하는 것 중 깨는 것 하나), structure(장면 흐름 한 줄)를 콘티에 적는다"))
+    try:
+        from craft.design import art_problems
+        ap = art_problems(sb)
+    except Exception:
+        ap = []
+    if ap:
+        out.append(("L68", None, " · ".join(ap) + " — direction.art 에 palette{bg, ink, accent} · rule(이 영상의 구도 원칙) · avoid 를 이 영상에 맞게 정한다(최근 영상과 다르게)"))
+    pa = ((sb.get("direction") or {}).get("art") or {}).get("palette") or {}
+    if recent and isinstance(pa, dict) and pa:
+        last = ((recent[0].get("direction") or {}).get("art") or {}).get("palette") or {}
+        d0 = sb.get("direction") or {}
+        if isinstance(last, dict) and pa.get("accent") and str(pa.get("accent")).lower() == str(last.get("accent") or "").lower() \
+                and str(pa.get("bg") or "").lower() == str(last.get("bg") or "").lower():
+            out.append(("T68", None, f"바탕 · 강조색이 직전 영상({recent[0].get('id')})과 같다 — 화풍이 반복돼 보인다"))
+        modes = [str((r.get("direction") or {}).get("mode") or "shorts") for r in recent[:3]]
+        if len(modes) == 3 and len(set(modes)) == 1 and str(d0.get("mode") or "shorts") == modes[0]:
+            out.append(("T68", None, f"연출 모드가 최근 3편과 같다({modes[0]}) — 주제에 맞으면 animation · comic · cinematic 도 고려(디자이너 스킬 0장)"))
+        st0 = ((d0.get("art") or {}).get("style"))
+        if st0 and st0 == (((recent[0].get("direction") or {}).get("art") or {}).get("style")):
+            out.append(("T68", None, f"형태 화풍(art.style)이 직전 영상과 같다({st0}) — flat · cel · sketch · clay · vector · render 중 바꿔 본다"))
+        if d0.get("font_title") and d0.get("font_title") == (recent[0].get("direction") or {}).get("font_title"):
+            out.append(("T68", None, f"제목 글꼴이 직전 영상과 같다({d0.get('font_title')})"))
+    return out
+
+
+NATIVE = re.compile(r"K\.fx\(|addProperty\(|applyPreset|applyBuiltinPreset|applyTextPreset|textPreset|camera\.|light\.|layer\.style")
+
+
+def _mats(sc: dict) -> list[dict]:
+    """장면 재료 — "$FILE:" 장면 코드 파일은 내용으로 펼쳐서 본다"""
+    from craft import scenefile
+    return [scenefile.inline_safe(m) for m in sc.get("materials") or [] if isinstance(m, dict)]
+
+
+def kit_only_scenes(sb: dict) -> list[int]:
+    """K 도형 · 글자만으로 그린 장면(앱 효과 · 프리셋 · 실제 자료 · 다른 앱이 하나도 없음) 번호"""
+    out = []
+    r3d = ((sb.get("direction") or {}).get("art") or {}).get("style") == "render"   # 3D 렌더 화풍: 장면 코드가 까는 그림이 렌더한 판 · 층(2026-11-23)
+    for i, sc in enumerate(sb.get("scenes") or []):
+        mats = _mats(sc)
+        if not mats:
+            continue
+        native = r3d and "K.image(" in json.dumps(mats, ensure_ascii=False)
+        for m in mats:
+            if m.get("type") != "craft" or (m.get("app") or "effectcraft") != "effectcraft":
+                native = True                            # 실제 자료(사진 · 화면 · 문서 …) · 다른 Craft 앱
+                break
+            for st in m.get("steps") or []:
+                sid_ = str((st or {}).get("id") or "")
+                code = json.dumps(st, ensure_ascii=False)
+                if sid_ not in ("script.run", "comp.new", "") or NATIVE.search(code):
+                    native = True
+                    break
+            if native:
+                break
+        if not native:
+            out.append(i)
+    return out
+
+
+
+AI_TELL_FX = ("glow", "lightsweep", "lensflare", "lens_flare", "shake")   # 화면 AI 티(engine/checks/visual_tell.py V03 · V04)
+def feature_plan(sb: dict) -> list:
+    """T69 — 장면마다 고른 앱 기능(scenes[].features)이 없거나, 고른 기능을 장면 코드에서 안 씀(권고). 빛번짐 같은 AI 티 효과는 빼고 센다"""
+    out = []
+    if sb.get("variant_of") or sb.get("format") in ("clip", "daily"):
+        return out
+    for i, sc in enumerate(sb.get("scenes") or []):
+        crafts = [m for m in _mats(sc) if m.get("type") == "craft"]
+        if not crafts:
+            continue
+        feats = [str(f) for f in sc.get("features") or [] if f and not any(b in str(f) for b in AI_TELL_FX)]
+        if not feats and sc.get("features"):
+            continue                                       # 고른 기능이 모두 AI 티 효과(빛번짐 등) — 화면 AI 티 검사(V03)가 빼라고 한다
+        if not feats:
+            out.append(("T69", i, "이 장면에 쓸 앱 기능을 고르지 않음 — craft_catalog.py search \"<하고 싶은 일>\" 로 2~3개 골라 scenes[].features 에 id 를 적고 장면 코드에서 쓴다"))
+            continue
+        code = json.dumps(crafts, ensure_ascii=False)
+        unused = [f for f in feats if f not in code]
+        if unused:
+            out.append(("T69", i, f"고른 기능을 장면 코드에서 안 씀: {', '.join(unused[:4])} — K.fx(L, '<id>', …) 또는 해당 앱 단계로 쓴다"))
+    return out
+
+
+def file_refs(sb: dict) -> list:
+    """L39 — "$FILE:" 장면 코드 파일이 없거나 저장소 밖"""
+    import json as _j
+    from craft import scenefile
+    out = []
+    for i, sc in enumerate(sb.get("scenes") or []):
+        for ref in re.findall(r'"(\$FILE:[^"]+)"', _j.dumps(sc.get("materials") or [], ensure_ascii=False)):
+            try:
+                scenefile.inline(ref)
+            except RuntimeError as e:
+                out.append(("L39", i, str(e)))
+    return out
+
+
+def craft_depth(sb: dict) -> list:
+    """L69 — 장면 대부분이 K 키트 도형 · 글자뿐(2026-11-19 실측: 9편이 EffectCraft 효과 0개 · 명령 9,152개 중 0.9% — 영상이 다 같은 납작한 카드로 보였다)"""
+    if sb.get("variant_of") or sb.get("format") in ("clip", "daily"):
+        return []
+    sc = [s for s in sb.get("scenes") or [] if s.get("materials")]
+    bare = kit_only_scenes(sb)
+    if len(sc) >= 3 and len(bare) > len(sc) * 0.5:
+        return [("L69", None, f"{len(bare)}/{len(sc)}장면이 K 도형 · 글자뿐({', '.join(str(i + 1) for i in bare[:8])}장면) — 장면마다 craft_catalog.py search 로 EffectCraft 효과 · 프리셋을 골라 "
+                              "K.fx(L, '<id>', {속성: 값}) 로 걸거나, 실제 자료(화면 · 문서 · 사진) · 다른 Craft 앱 재료를 넣는다. 절반 이상의 장면에 필요")]
+    return []
 
 
 def recent_titles(n=30):

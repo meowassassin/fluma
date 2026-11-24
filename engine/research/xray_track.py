@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 import tempfile
@@ -218,7 +217,6 @@ def main():
 
         say(0.08, "개체 잡는 중")
         sam = MobileSam()
-        seed = (int(a.x * W), int(a.y * H))
         m0 = seed_mask(sam, rgb[k0], [(a.x, a.y), *pts_arg(a.pos)], pts_arg(a.neg))
         if m0 is None:
             sys.exit("찍은 곳에서 개체를 찾지 못했습니다 — 개체 한가운데를 다시 찍어 주세요")

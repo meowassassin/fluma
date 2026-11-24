@@ -1,24 +1,32 @@
-/* 설정 → YouTube: 내 채널 연결(OAuth). 클라이언트 ID · 비밀은 서버가 ~/.shortsforge/youtube.json 에만 두고 화면으로 돌려주지 않는다.
+/* 설정 → YouTube: 내 채널 연결(OAuth) — 여러 채널을 더하고 기본 하나를 고른다. 클라이언트 ID · 비밀은 서버가 ~/.shortsforge/youtube.json 에만 두고 화면으로 돌려주지 않는다.
    연결하면 편집기에서 바로 올리고(공식 업로드 API), 올린 영상의 통계를 장면별로 본다 */
 import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Button, Tag } from "../../ui/kit";
+import { Button, Tag, Tip, confirmDialog, cx } from "../../ui/kit";
 import { Icon } from "../../ui/Icon";
 import { errMsg } from "../../lib/api";
 import { qc } from "../../lib/queries";
 import { t } from "../../lib/i18n";
 import { StatsView, type ChannelVideo } from "../studio/PublishView";
+import type { YtAccount, YtStatus } from "../../lib/types";
+import { YtAvatar, useYoutube } from "./ytAccounts";
+export { useYoutube } from "./ytAccounts";
 
-type Yt = { configured: boolean; connected: boolean; redirect: string; channel: { id: string; title: string; thumb?: string; subscribers?: number; videos?: number } | null };
-export const useYoutube = () => useQuery<Yt>({ queryKey: ["youtube"], staleTime: 30_000, queryFn: async ({ signal }) => (await fetch("/api/youtube", { signal })).json() });
+const post = async (url: string, method: string, body?: unknown) => {
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+  const j = await r.json(); if (!r.ok) throw new Error(j?.error?.message ?? `HTTP ${r.status}`);
+  qc.setQueryData(["youtube"], j); qc.invalidateQueries({ queryKey: ["yt-account"] }); qc.invalidateQueries({ queryKey: ["yt-proj"] }); qc.invalidateQueries({ queryKey: ["yt-videos"] });
+  return j as YtStatus;
+};
 
 export const YoutubeSec: React.FC = () => {
   const { data: y } = useYoutube();
-  const [id, setId] = useState(""), [secret, setSecret] = useState(""), [busy, setBusy] = useState(false);
+  const [id, setId] = useState(""), [secret, setSecret] = useState(""), [busy, setBusy] = useState(false), [showClient, setShowClient] = useState(false);
+  const [viewAcc, setViewAcc] = useState<string | null>(null);
   useEffect(() => {
     const q = new URLSearchParams(location.search);
-    if (q.get("connected")) { toast.success(t("YouTube 채널을 연결했어요")); qc.invalidateQueries({ queryKey: ["youtube"] }); history.replaceState(null, "", location.pathname); }
+    if (q.get("connected")) { toast.success(t("YouTube 채널을 연결했어요")); qc.invalidateQueries({ queryKey: ["youtube"] }); qc.invalidateQueries({ queryKey: ["yt-account"] }); history.replaceState(null, "", location.pathname); }
     if (q.get("error")) { toast.error(t("연결하지 못했어요"), { description: q.get("error") ?? "" }); history.replaceState(null, "", location.pathname); }
   }, []);
   const saveClient = async () => {
@@ -26,28 +34,45 @@ export const YoutubeSec: React.FC = () => {
     try {
       const r = await fetch("/api/youtube/client", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_id: id, client_secret: secret }) });
       const j = await r.json(); if (!r.ok) throw new Error(j?.error?.message ?? `HTTP ${r.status}`);
-      setSecret(""); qc.setQueryData(["youtube"], j); toast.success(t("클라이언트를 저장했어요 — 이제 '연결'을 누르세요"));
+      setSecret(""); setShowClient(false); qc.setQueryData(["youtube"], j); toast.success(t("클라이언트를 저장했어요 — 이제 '연결'을 누르세요"));
     } catch (e) { toast.error(t("저장하지 못했어요"), { description: errMsg(e) }); } finally { setBusy(false); }
   };
   const connect = () => { location.href = `/api/youtube/auth?back=${encodeURIComponent(`${location.origin}/settings/youtube`)}`; };
-  const disconnect = async () => { await fetch("/api/youtube", { method: "DELETE" }); qc.invalidateQueries({ queryKey: ["youtube"] }); toast(t("연결을 끊었어요")); };
+  const remove = async (a: YtAccount) => {
+    if (!(await confirmDialog({ title: t("'{n}' 연결을 끊을까요?", { n: a.title }), body: t("이 채널로 올리도록 고른 영상은 기본 채널로 올라가요."), ok: t("연결 끊기"), danger: true }))) return;
+    try { await post(`/api/youtube/${encodeURIComponent(a.id)}`, "DELETE"); toast(t("연결을 끊었어요")); } catch (e) { toast.error(t("끊지 못했어요"), { description: errMsg(e) }); }
+  };
+  const makeDefault = async (a: YtAccount) => { try { await post("/api/youtube/default", "POST", { id: a.id }); } catch (e) { toast.error(t("바꾸지 못했어요"), { description: errMsg(e) }); } };
   if (!y) return null;
   return (
     <div className="col yt-sec">
       <div className="set-h"><div><h2>{t("YouTube 채널")}</h2><p>{t("연결하면 편집기에서 바로 올리고, 올린 영상의 통계(이탈 곡선 · 유입 경로 · 시청자)를 장면별로 봅니다. 공식 API 만 씁니다.")}</p></div>
         {y.connected ? <Tag tone="ok">{t("연결됨")}</Tag> : y.configured ? <Tag tone="warn">{t("연결 전")}</Tag> : <Tag>{t("설정 필요")}</Tag>}</div>
 
-      {y.connected && y.channel && (
-        <div className="yt-ch">
-          {y.channel.thumb && <img src={y.channel.thumb} alt="" />}
-          <div><b>{y.channel.title}</b><span className="faint small">{t("구독자 {n} · 영상 {v}", { n: (y.channel.subscribers ?? 0).toLocaleString(), v: y.channel.videos ?? 0 })}</span></div>
-          <span className="grow" />
-          <Button variant="ghost" onClick={disconnect}>{t("연결 끊기")}</Button>
+      {y.connected && (
+        <div className="col yt-accs">
+          {y.accounts.map((a) => (
+            <div key={a.id} className={cx("yt-ch", a.id === y.default && "on")}>
+              <YtAvatar a={a} s={44} />
+              <div><b>{a.title}{a.handle && <span className="faint small"> {a.handle}</span>}</b>
+                <span className="faint small">{t("구독자 {n} · 영상 {v}", { n: (a.subscribers ?? 0).toLocaleString(), v: a.videos ?? 0 })}</span></div>
+              <span className="grow" />
+              {a.id === y.default ? <Tag tone="ok">{t("기본")}</Tag>
+                : <Tip label={t("영상마다 고르지 않으면 이 채널로 올려요")}><Button size="sm" variant="ghost" onClick={() => makeDefault(a)}>{t("기본으로")}</Button></Tip>}
+              <Button size="sm" variant={viewAcc === a.id || (!viewAcc && a.id === y.default) ? "secondary" : "ghost"} onClick={() => setViewAcc(a.id)}>{t("영상 보기")}</Button>
+              <Button size="sm" variant="ghost" onClick={() => remove(a)}>{t("연결 끊기")}</Button>
+            </div>
+          ))}
+          <div className="row gap">
+            <Button variant="secondary" icon="plus" disabled={!y.configured} onClick={connect}>{t("계정 추가")}</Button>
+            <span className="faint small">{t("다른 Google 계정이나 브랜드 채널을 골라 더할 수 있어요. 채팅창 · 게시 화면에서 영상마다 올릴 채널을 고릅니다.")}</span>
+          </div>
         </div>
       )}
-      {y.connected && <ChannelVideos />}
+      {y.connected && !showClient && <div><Button size="sm" variant="ghost" onClick={() => setShowClient(true)}>{t("OAuth 클라이언트 바꾸기")}</Button></div>}
+      {y.connected && <ChannelVideos key={viewAcc ?? y.default ?? ""} account={viewAcc && y.accounts.some((a) => a.id === viewAcc) ? viewAcc : y.default} />}
 
-      {!y.connected && (<>
+      {(!y.connected || showClient) && (<>
         <ol className="yt-steps">
           <li>{t("Google Cloud 콘솔에서 프로젝트를 만들고 'YouTube Data API v3' 와 'YouTube Analytics API' 를 사용 설정")} <a href="https://console.cloud.google.com/apis/library" target="_blank" rel="noreferrer"><Icon n="external" s={12} /></a></li>
           <li>{t("OAuth 동의 화면: 외부 · 테스트 모드, 테스트 사용자에 내 Google 계정 추가")}</li>
@@ -59,8 +84,9 @@ export const YoutubeSec: React.FC = () => {
           <label>{t("클라이언트 비밀")}<input type="password" value={secret} onChange={(e) => setSecret(e.target.value)} placeholder={y.configured ? t("저장됨 — 바꿀 때만 입력") : "GOCSPX-…"} autoComplete="off" /></label>
           <div className="row gap">
             <Button variant="secondary" disabled={!id || !secret} loading={busy} onClick={saveClient}>{t("저장")}</Button>
-            <Button variant="primary" icon="link" disabled={!y.configured} onClick={connect}>{t("YouTube 연결")}</Button>
+            {!y.connected && <Button variant="primary" icon="link" disabled={!y.configured} onClick={connect}>{t("YouTube 연결")}</Button>}
           </div>
+          {y.connected && <p className="faint small">{t("클라이언트를 바꾸면 연결한 채널은 모두 다시 연결해야 해요.")}</p>}
           <p className="faint small">{t("Google 검토를 받지 않은 앱으로 올린 영상은 YouTube 정책상 '비공개'로 고정될 수 있어요. 공개하려면 YouTube Studio 에서 바꾸거나 앱 검토를 받으세요.")}</p>
         </div>
       </>)}
@@ -69,9 +95,10 @@ export const YoutubeSec: React.FC = () => {
 };
 
 /** 내 채널 영상 — Fluma 밖에서 올린 것도. 누르면 그 영상의 통계(요약 · 이탈 곡선 · 유입 경로 · 일별 · 시청자) */
-const ChannelVideos: React.FC = () => {
-  const { data: vids, error } = useQuery<ChannelVideo[]>({ queryKey: ["yt-videos"], staleTime: 60_000,
-    queryFn: async ({ signal }) => { const r = await fetch("/api/youtube/videos", { signal }); const j = await r.json(); if (!r.ok) throw new Error(j?.error?.message ?? `HTTP ${r.status}`); return j; } });
+const ChannelVideos: React.FC<{ account: string | null }> = ({ account }) => {
+  const acc = account ? `?account=${encodeURIComponent(account)}` : "";
+  const { data: vids, error } = useQuery<ChannelVideo[]>({ queryKey: ["yt-videos", account], staleTime: 60_000,
+    queryFn: async ({ signal }) => { const r = await fetch(`/api/youtube/videos${acc}`, { signal }); const j = await r.json(); if (!r.ok) throw new Error(j?.error?.message ?? `HTTP ${r.status}`); return j; } });
   const [sel, setSel] = useState<ChannelVideo | null>(null);
   return (
     <div className="col">
@@ -82,7 +109,7 @@ const ChannelVideos: React.FC = () => {
           {v.thumb && <img src={v.thumb} alt="" referrerPolicy="no-referrer" />}
           <span><b>{v.title}</b><i>{new Date(v.published).toLocaleDateString()} · {t("조회 {n}", { n: v.views.toLocaleString() })} · {t("좋아요 {n}", { n: v.likes })} · {v.duration}{t("초")}</i></span>
         </button>))}</div>
-      {sel && <div className="yt-stats-box"><StatsView key={sel.videoId} src={`/api/youtube/videos/${sel.videoId}/stats`}
+      {sel && <div className="yt-stats-box"><StatsView key={sel.videoId} src={`/api/youtube/videos/${sel.videoId}/stats${acc}`}
         rec={{ videoId: sel.videoId, url: `https://youtube.com/shorts/${sel.videoId}`, uploaded_at: sel.published, privacy: sel.privacy, title: sel.title, file: "" }} /></div>}
     </div>
   );

@@ -4,6 +4,7 @@
 
 | 폴더 | 무엇 |
 |---|---|
+| `shotplans/` | 기획 기록 — 경로(material · clip) · 주제 · 이유 |
 | `storyboards/` | 콘티(영상 한 편의 정본) |
 | `compositions/<id>/` | 제작 파일 — Craft 재료 · EffectCraft · SoundCraft · FilmCraft 프로젝트 |
 | `audio/` | 나레이션 · 장면 타이밍 |
@@ -13,4 +14,4 @@
 | `workspace/` | 대화 · 렌더 캐시 · 기억 · 임시 파일 |
 | `queue.md` | 매일 작업 대기열 |
 
-Docker 는 이 폴더들을 볼륨으로 붙인다(`docker/docker-compose.yml`).
+Docker 는 이 폴더들 대부분을 볼륨으로 붙인다(`docker/docker-compose.yml`).

@@ -1,8 +1,8 @@
 # CADCraft 참고 (v0.17.0)
 
-**한 줄 요약**: AutoCAD 류 2D 제도 앱(순수 Rust, MIT/Apache-2.0, 저장소 `storytold/cadcraft`). 명령 451개(AutoCAD 명령 이름 그대로: `line` · `rectang` · `hatch` · `dimlinear` · `mleader` · `plot` …)를 헤드리스 CLI(`run --cmd`)와 MCP 로 부른다. 쇼츠에서는 **평면도 · 설계 도면 화면 재료(어두운 CAD 화면 또는 흰 종이 출력) · 치수가 붙은 설명 도면 · DWG/DXF 실제 파일 미리보기** 를 맡는다. 지금 Fluma 는 이 앱을 **전혀 쓰지 않는다**(craft.json `agent:false`, 부르는 곳 없음).
+**한 줄 요약**: AutoCAD 류 2D 제도 앱(순수 Rust, MIT/Apache-2.0, 저장소 `storytold/cadcraft`). 명령 451개(AutoCAD 명령 이름 그대로: `line` · `rectang` · `hatch` · `dimlinear` · `mleader` · `plot` …)를 헤드리스 CLI(`run --cmd`)와 MCP 로 부른다. 쇼츠에서는 **평면도 · 설계 도면 화면 재료(어두운 CAD 화면 또는 흰 종이 출력) · 치수가 붙은 설명 도면 · DWG/DXF 실제 파일 미리보기** 를 맡는다. Fluma 는 재료 어댑터(engine/craft/adapters/cadcraft.py — `drawing`)로 부른다(craft.json `agent:false` — 에이전트 MCP 로는 붙지 않음).
 
-- 실행 파일: `tools/crafts/cadcraft/app/cadcraft-0.17.0-linux-x86_64/bin/cadcraft-cli`
+- 실행 파일: `tools/crafts/cadcraft/app/cadcraft-<버전>-<플랫폼>/bin/cadcraft-cli`
   (에이전트는 `python3 engine/craft/crafts.py run cadcraft <인자…>` 로 부른다)
 
 ---

@@ -91,3 +91,16 @@ def run_main(script: str, fn) -> None:
         fail(script, stage="main", error=f"{type(e).__name__}: {e}")
     if isinstance(r, int) and r:
         sys.exit(r)
+
+
+def parse_block(out: str) -> dict:
+    """다른 명령의 출력 끝 결과 블록(FLUMA_…) → {"head": …, 키: [값, …]} (produce.py 와 같은 규칙)"""
+    import re
+    lines = (out or "").strip().split("\n")
+    at = max((i for i, ln in enumerate(lines) if ln.startswith("FLUMA_")), default=-1)
+    b: dict = {"head": lines[at]} if at >= 0 else {}
+    for ln in lines[at + 1:] if at >= 0 else []:
+        m = re.match(r"^([a-z_]+)=(.*)$", ln)
+        if m:
+            b.setdefault(m.group(1), []).append(m.group(2))
+    return b

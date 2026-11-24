@@ -1,0 +1,151 @@
+"""뼈대 캐릭터(engine/craft/form/skeleton.py) — 부품이 떨어지지 않음 · 발이 바닥 · 얼굴이 고개를 따라 돎"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import numpy as np
+
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
+sys.path.insert(0, str(ROOT / "engine"))
+from craft import form as F  # noqa: E402
+from craft.form import skeleton as K  # noqa: E402
+
+MATS = {k: {"color": "#888888"} for k in ("skin", "hair", "top", "bottom", "shoe", "eye", "mouth", "fur", "nose", "body", "beak")}
+POSES = [{}, {"spine": [6, -5, 10], "head": [8, 25, -10], "l_arm": [30, 20, 0], "l_elbow": 100, "r_arm": [-10, 150, 0], "r_elbow": 30,
+              "l_leg": [25, 5], "l_knee": 40, "r_leg": [-10, 3], "r_knee": 10, "lean": [3, 2]}]
+
+
+def scene(root, az=25):
+    return {"materials": MATS, "camera": {"azimuth": az, "elevation": 5, "fov": 30, "frame": 1.3}, "root": root}
+
+
+def test_humanoid_parts_connected_in_poses():
+    for pose in POSES:
+        for az in (0, 35, 90):
+            assert F.parts_apart(scene({"rig": "humanoid", "pose": pose}, az), res=240) == 0
+
+
+def test_quadruped_parts_connected_in_poses():
+    for pose in ({}, {"spine": [-6, 0], "neck": [15, 25], "head": [-10, 10, 12], "tail": [60, 15, 80], "fl": [35, 0], "fl_knee": 40, "br": [-20, 0], "br_knee": 30}):
+        for az in (0, 60, 90):
+            assert F.parts_apart(scene({"rig": "quadruped", "pose": pose}, az), res=240) == 0
+
+
+def test_feet_stay_on_ground_when_knees_bend():
+    J0 = K.joints({}, {"weight": 0})
+    J1 = K.joints({}, {"weight": 0, "l_knee": 50, "r_knee": 50, "l_leg": [30, 0], "r_leg": [30, 0]})
+    foot = J0["S"]["foot_h"] * J0["H"]
+    assert abs(min(J1["l_ankle"][1], J1["r_ankle"][1]) - foot) < 1e-9 and abs(J0["l_ankle"][1] - foot) < 1e-9
+    assert J1["head"][1] < J0["head"][1]                          # 무릎을 굽히면 몸이 내려온다
+
+
+def test_face_follows_head_turn():
+    J0 = K.joints({}, {"weight": 0}); J1 = K.joints({}, {"weight": 0, "head": [0, 40, 0]})
+    e0 = K._on_head(J0, 0.1, 0) - J0["head"]; e1 = K._on_head(J1, 0.1, 0) - J1["head"]
+    ang = np.degrees(np.arctan2(e1[0], e1[2]) - np.arctan2(e0[0], e0[2]))
+    assert abs(ang - 40) < 1e-6
+
+
+def test_bird_parts_connected_in_poses():
+    for pose in ({}, {"tilt": -10, "neck": [25, 20], "head": [-15, 10, 10], "wings": [70, 20], "tail": [30, 1], "l_leg": [20], "l_knee": 30}):
+        for az in (0, 70, 90):
+            assert F.parts_apart(scene({"rig": "bird", "pose": pose}, az), res=240) == 0
+
+
+def test_expressions_and_hair_stay_attached():
+    root = {"rig": "humanoid", "hands": "fingers", "face": {"smile": -1, "brow": 1, "eyelid": 0.5, "open": 0.6},
+            "hair": {"bangs": 1, "side": 1, "back": 0.8, "tail": 1, "bun": 1, "spikes": 5}, "pose": {"r_grip": 1, "l_spread": 20}}
+    for az in (0, 45, 150):
+        assert F.parts_apart(scene(root, az), res=240) == 0
+
+
+def test_anim_tracks_reach_inside_rig():
+    sc = scene({"rig": "humanoid", "name": "hero"})
+    sc["anim"] = {"dur": 1.0, "tracks": {"hero": {"pose.r_elbow": [[0, 10], [0.5, 90]], "face.smile": [[0, -1], [0.5, 1]]}}}
+    p = F.pose(sc, 0.5)
+    assert abs(p["root"]["pose"]["r_elbow"] - 90) < 1e-9 and abs(p["root"]["face"]["smile"] - 1) < 1e-9
+    assert abs(F.pose(sc, 0.0)["root"]["pose"]["r_elbow"] - 10) < 1e-9
+
+
+def test_joint_limits_clamp_pose():
+    P = K.clamp_pose({"l_knee": -40, "r_elbow": 200, "head": [0, 120, 0], "l_arm": [0, -40, 0]})
+    assert P["l_knee"] == 0 and P["r_elbow"] == 150 and P["head"][1] == 80 and P["l_arm"][1] == -15
+
+
+def test_ik_reaches_target_and_bends_forward():
+    J = K.joints({}, {}, {"l_foot": [0.08, 0.35, 0.25], "pelvis_y": 0.93}, ground=False)
+    assert np.linalg.norm(J["l_ankle"] - np.array([0.08, 0.35, 0.25])) < 1e-6
+    assert J["l_knee"][2] > (J["l_hip"][2] + J["l_ankle"][2]) / 2          # 무릎은 앞으로
+
+
+def test_walk_on_stairs_feet_on_treads_and_drag_prop_on_ground():
+    from craft.form import world as W
+    steps = [{"prim": "roundbox", "size": [0.6, 0.09 * (i + 1), 0.15], "r": 0.01, "pos": [0, 0.09 * (i + 1), 1.2 + 0.3 * i], "mat": "body"} for i in range(4)]
+    case = {"prim": "roundbox", "size": [0.15, 0.25, 0.08], "r": 0.02, "pos": [0, 0.25, 0], "mat": "beak"}
+    hero = {"rig": "humanoid", "move": {"path": [[0, 0], [0, 2.6]], "speed": 1.0}, "hold": {"r": {"prop": case, "grip": [0, 0.5, 0], "mode": "drag", "ground": [0, 0, 0]}}}
+    sc = {"materials": MATS, "root": {"op": "union", "children": steps + [hero]}}
+    g = W.Ground(sc)
+    assert abs(g(0, 1.2) - 0.18) < 0.01 and abs(g(0, 0.5)) < 1e-6
+    for t in (0.2, 1.1, 1.7, 2.3):
+        lo = W.locomotion(hero, t, g)
+        for side in ("l", "r"):
+            f = lo["feet"][side]
+            assert f[1] >= g(f[0], f[2]) + 0.06 - 1e-6            # 발은 늘 디딘 면 위(발 높이 이상)
+        parts, _ = W.place(hero, t, g)
+        assert len(parts) == 2
+    assert F.parts_apart({**scene({"op": "union", "children": steps + [hero]}, 80), "t": 1.5}, res=200) <= 1
+
+
+def test_look_at_camera_turns_head_and_focus_resolves_joint():
+    from craft.form import world as W
+    hero = {"rig": "humanoid", "name": "hero", "at": [0, 0], "facing": 0, "look": "camera"}
+    cam = {"azimuth": 80, "elevation": 0, "focus": "hero.pelvis", "focus_to": "hero.head", "focus_mix": 0.5}
+    sc = {"materials": MATS, "camera": cam, "root": {"op": "union", "children": [hero]}}
+    out = W.prepare(sc, 0.0)
+    J = K.joints({}, {})
+    f = out["camera"]["focus"]
+    assert isinstance(f, list) and abs(f[1] - (J["pelvis"][1] + J["head"][1]) / 2) < 0.05
+    g = W.Ground(sc)
+    _, wj = W.place(hero, 0.0, g, {}, cam)
+    _, w0 = W.place({**hero, "look_w": 0}, 0.0, g, {}, cam)
+    d1, d0 = wj["head"] - wj["neck"], w0["head"] - w0["neck"]
+    assert d1[0] > d0[0] + 0.005                                   # 고개가 카메라(+x) 쪽으로 돌았다
+
+
+def test_track_values_can_be_strings():
+    assert F._track_at([[0, "a.pelvis"], [1, "a.head"]], 0.5, 2.0) == "a.pelvis"
+    assert F._track_at([[0, "a.pelvis"], [1, "a.head"]], 1.5, 2.0) == "a.head"
+
+
+def test_floor_nodes_are_walkable_but_not_drawn():
+    from craft.form import world as W
+    floor = {"prim": "roundbox", "size": [1.0, 0.1, 1.0], "r": 0.01, "pos": [0, 0.1, 0], "mat": "body", "floor": True}
+    hero = {"rig": "humanoid", "name": "hero", "at": [0, 0]}
+    sc = {"materials": MATS, "root": {"op": "union", "children": [floor, hero]}}
+    out = W.prepare(sc, 0.0)
+    assert not any(isinstance(c, dict) and c.get("floor") for c in out["root"]["children"])
+    assert abs(W.Ground(sc)(0, 0) - 0.2) < 0.01                    # 딛는 높이에는 쓰인다
+
+
+def test_edge_cut_detects_cropped_shape():
+    from PIL import Image
+    im = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
+    assert F.edge_cut(im) == []
+    for x in range(60, 100):
+        for y in range(70, 80):
+            im.putpixel((x, y), (9, 9, 9, 255))
+    assert F.edge_cut(im) == ["오른쪽"]
+
+
+def test_weight_shift_and_two_segment_spine():
+    J = K.joints({}, {"weight": 1})
+    assert J["pelvis"][0] > 0.02                                   # 골반이 받치는 왼다리 쪽으로
+    assert J["l_hip"][1] > J["r_hip"][1]                           # 받치는 쪽 엉덩이가 올라간다
+    assert J["r_knee"][2] > J["l_knee"][2]                         # 쉬는 다리 무릎이 앞으로 굽는다
+    B = K.joints({}, {"weight": 0, "spine": [40, 0, 0]})
+    d1, d2 = B["mid"] - B["pelvis"], B["neck"] - B["mid"]           # 숙이면 허리 · 가슴 마디가 다른 각도로(곡선)
+    a1, a2 = np.degrees(np.arctan2(d1[2], d1[1])), np.degrees(np.arctan2(d2[2], d2[1]))
+    assert 10 < abs(a1) < abs(a2) < 45 and a1 * a2 > 0
+    W = K.joints({}, {"weight": 1}, ik={"l_foot": [0.08, 0.068, 0], "r_foot": [-0.08, 0.068, 0]})
+    assert W["pelvis"][0] > 0.02 and W["r_knee"][2] > W["l_knee"][2] + 0.01   # 발을 딛고 서 있어도: 골반이 옮겨 가고 쉬는 무릎이 굽는다
