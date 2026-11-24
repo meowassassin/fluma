@@ -452,7 +452,7 @@ def lint(sb: dict, recent_titles=None) -> list:
         hk = _keywords(hooks[0].get("caption", "") + " " + hooks[0].get("narration", ""))
         ok = _keywords(outros[0].get("caption", "") + " " + outros[0].get("narration", ""))
         if not (hk & ok):
-            fails.append(("L08", len(scenes) - 1, "outro가 hook과 이어지지 않음 (공통 핵심어 없음)"))
+            fails.append(("L08", len(scenes) - 1, f"outro가 hook과 이어지지 않음 (공통 핵심어 없음) — 마지막 장면 말 · 화면 글자에 훅의 낱말 하나를 그대로 다시 쓴다: {', '.join(sorted(hk)[:6])}"))
 
     # L10 최근 제목과 중복
     for t in recent_titles or []:
