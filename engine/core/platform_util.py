@@ -3,8 +3,10 @@
 venv_python(폴더)   : 가상환경 파이썬 (Windows 는 .venv\\Scripts\\python.exe)
 which(이름)         : PATH 에서 실행 파일 찾기 (Windows 의 .exe/.cmd 포함)
 OS                  : "linux" | "mac" | "windows"
+file_lock(경로)     : 한 번에 하나만(파일 잠금 — 운영체제마다 다른 방식)
 """
 import platform
+from contextlib import contextmanager
 import shutil
 import sys
 from pathlib import Path
@@ -46,3 +48,30 @@ def venv_tool(name: str) -> str:
             return str(f)
     return shutil.which(name) or name
 
+
+
+@contextmanager
+def file_lock(path):
+    """한 번에 하나만 — 파일 잠금(Linux · macOS fcntl, Windows msvcrt). 프로세스가 죽으면 운영체제가 푼다"""
+    with open(path, "a+") as f:
+        if OS == "windows":
+            import msvcrt
+            f.seek(0)
+            while True:
+                try:
+                    msvcrt.locking(f.fileno(), msvcrt.LK_LOCK, 1)        # 10초까지 기다리고 실패하면 OSError — 다시 기다린다
+                    break
+                except OSError:
+                    continue
+            try:
+                yield
+            finally:
+                f.seek(0)
+                msvcrt.locking(f.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
