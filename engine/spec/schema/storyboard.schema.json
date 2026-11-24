@@ -353,7 +353,7 @@
         },
         "art": {
           "type": "object",
-          "description": "이 영상의 시각 언어: palette{bg, ink, accent} · rule · avoid[] · style(형태 재료의 화풍: flat 평면 일러스트 · cel 셀 카툰 · sketch 연필 스케치 · clay 클레이 3D — 최근 영상과 다르게)"
+          "description": "이 영상의 시각 언어: palette{bg, ink, accent} · rule · avoid[] · style(형태 재료의 화풍: flat 평면 일러스트 · cel 셀 카툰 · sketch 연필 스케치 · clay 클레이 3D · vector 벡터 일러스트 · render 3D 렌더 — 최근 영상과 다르게)"
         },
         "color_bg": {
           "type": "string"
@@ -1263,7 +1263,7 @@
               },
               "style": {
                 "type": "string",
-                "description": "overlay: clean(기본) · hand / form: flat · cel · sketch · clay(없으면 direction.art.style)"
+                "description": "overlay: clean(기본) · hand / form: flat · cel · sketch · clay · vector · render(없으면 direction.art.style)"
               },
               "beats": {
                 "type": "array",

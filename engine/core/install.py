@@ -13,16 +13,10 @@
 성공하고 import 확인까지 끝나면 <폴더>/.installed 를 남긴다 (빈 가상환경을 '사용 가능'으로 보지 않게).
 """
 import argparse
-import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
-import tarfile
-import tempfile
-import urllib.request
-import zipfile
 from pathlib import Path
 
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)

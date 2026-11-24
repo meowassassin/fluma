@@ -15,7 +15,6 @@
 import importlib.util
 import json
 import os
-import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -69,13 +68,6 @@ def adapter(engine: str):
     sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
     return mod
-
-
-def engine_env(engine: str) -> dict:
-    """텔레메트리는 기본으로 끈다 (engine.json env)."""
-    env = {**os.environ, "DO_NOT_TRACK": "1"}
-    env.update(engine_meta(engine).get("env", {}))
-    return env
 
 
 # ---------- 토큰 ----------
@@ -210,21 +202,6 @@ def run(cmd: list, cwd: Path, env: dict | None = None, label: str = "", timeout:
     return r
 
 
-def copy_public(paths: list[str], dest: Path):
-    """콘티가 쓰는 data/public/ 자산을 엔진 작업 폴더로 복사 (엔진은 네트워크·외부 경로를 쓰지 않는다)."""
-    for rel in paths:
-        src = PUBLIC / rel
-        if src.exists():
-            d = dest / rel
-            d.parent.mkdir(parents=True, exist_ok=True)
-            if not d.exists() or d.stat().st_mtime < src.stat().st_mtime:
-                shutil.copy2(src, d)
-
-
-def used_assets(sb: dict) -> list[str]:
-    return [s["visual"]["asset"] for s in sb.get("scenes", []) if (s.get("visual") or {}).get("asset")]
-
-
 # ---------- 장면 단위 (장면마다 엔진 섞기) ----------
 def sub_job(job: Job, indices: list[int]) -> Job:
     """연속한 장면들만 담은 작업. 시간은 첫 장면을 0초로 당기고, 장면 index 는 원래 번호를 유지한다
@@ -282,51 +259,3 @@ if __name__ == "__main__":
 
 
 # ---------- HTML 이 아닌 엔진들이 함께 쓰는 도우미 ----------
-def job_data(job: Job) -> dict:
-    """엔진에 넘기는 입력 한 덩어리."""
-    return {"sb": job.sb, "tokens": job.tokens, "scenes": job.scenes, "captions": job.captions,
-            "duration": job.duration, "fps": job.fps, "width": job.width, "height": job.height,
-            "assets": [a for a in used_assets(job.sb) if (PUBLIC / a).exists()], "public": str(PUBLIC),
-            "fonts": str(ROOT / "engine" / "assets" / "fonts")}
-
-
-def write_job(job: Job) -> Path:
-    p = job.work / "job.json"
-    p.write_text(json.dumps(job_data(job), ensure_ascii=False, indent=1), encoding="utf-8")
-    return p
-
-
-def content_key(job: Job, extra: list[Path] = ()) -> str:
-    """콘티·토큰·템플릿 파일이 같으면 같은 키 → 초안 렌더 재사용."""
-    import hashlib
-    h = hashlib.sha1(json.dumps(job_data(job), sort_keys=True, ensure_ascii=False).encode())
-    tdir = edir(job.engine) / "templates" / job.template
-    for f in sorted(list(tdir.rglob("*")) + list(extra)):
-        if f.is_file():
-            h.update(f.read_bytes())
-    return h.hexdigest()[:12]
-
-
-def frames_from_video(video: Path, seconds: list[float], outdir: Path) -> list[Path]:
-    outdir.mkdir(parents=True, exist_ok=True)
-    out = []
-    for s in seconds:
-        p = outdir / f"at-{s:g}s.png"
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{max(0.0, s):.3f}", "-i", str(video), "-frames:v", "1", str(p)], check=True)
-        out.append(p)
-    return out
-
-
-def snapshot_via_draft(job: Job, seconds: list[float], render_fn) -> list[Path]:
-    """미리보기 수단이 없는 엔진: 초안을 렌더(내용이 같으면 재사용)해서 프레임을 뽑는다."""
-    key = content_key(job)
-    draft_dir = job.work.parent / f"{job.template}-snapdraft"
-    draft_dir.mkdir(parents=True, exist_ok=True)
-    video = draft_dir / f"{key}.mp4"
-    if not video.exists():
-        for old in draft_dir.glob("*.mp4"):
-            old.unlink()
-        dj = Job(**{**job.__dict__, "draft": True, "work": draft_dir})
-        src = render_fn(dj)
-        shutil.move(str(src), video)
-    return frames_from_video(video, seconds, job.work / "snaps")

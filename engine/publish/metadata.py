@@ -20,7 +20,6 @@ sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401
 from result import fail, ok  # noqa: E402
 
 TITLE_MAX = 45          # 쇼츠 피드 · 검색에서 잘리지 않는 길이(한국어)
-DESC_FIRST = 100        # 설명 첫 줄 — 검색 결과 · 추천 아래에 보이는 부분
 TAGS_CHARS = 450        # 유튜브 태그 합계 500자 한도(여유)
 
 RULES = """너는 한국어 유튜브 쇼츠의 검색 · 추천 최적화 담당이다. 영상 내용(아래)을 바탕으로 업로드 정보를 만든다.

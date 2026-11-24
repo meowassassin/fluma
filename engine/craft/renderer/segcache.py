@@ -134,8 +134,6 @@ def plan(proj: Path, fps: int, settings: dict) -> tuple[list[dict], int] | None:
     layers = k.get("layers") or []
     scene_starts = sorted({int(l.get("in_point") or 0) for l in layers if (l.get("source") or {}).get("type") == "Comp"})
     dur = int(k.get("duration") or 0)
-    tps = None
-    wa = k.get("work_area")
     # 틱/초: 프로젝트가 쓰는 시간 단위 — 길이(틱)를 프레임 수로 바꿀 때 필요. 30fps 한 프레임의 틱이 정수가 되는 단위다(실측 254016000000/초)
     tps = 254016000000
     total = round(dur / tps * fps)

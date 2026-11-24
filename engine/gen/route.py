@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401
 sys.path.insert(0, str(Path(__file__).parent))
-from result import fail, ok  # noqa: E402
+from result import ok  # noqa: E402
 
 def set_route(pid: str, route: str, why: str, storyboard: str | None, topic: str | None = None, by: str = "user") -> Path:
     import plan as planmod

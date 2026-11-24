@@ -112,7 +112,7 @@ def main() -> int:
     s = sub.add_parser("start"); s.add_argument("--topic"); s.add_argument("--local", action="store_true"); s.add_argument("--build", action="store_true")
     a = ap.parse_args()
     if not logged_in():
-        needs_input("fluma_agent", needs=["Claude Code 또는 Codex 로그인"], how="터미널에서 `claude` 를 실행해 /login (또는 `codex login`) — 한 번만. 끝나면 같은 명령을 다시")
+        needs_input("fluma_agent", needs=["Claude Code · Codex · Antigravity 중 하나 로그인"], how="터미널에서 `claude` 를 실행해 /login (또는 `codex login` · Antigravity 로그인) — 한 번만. 끝나면 같은 명령을 다시")
     already = up(timeout=3)
     if not already:
         docker = shutil.which("docker") and subprocess.run(["docker", "info"], capture_output=True).returncode == 0
@@ -127,7 +127,7 @@ def main() -> int:
             sid = first_video(a.topic)
         except (urllib.error.URLError, OSError) as e:
             fail("fluma_agent", stage="first video", error=str(e))
-        ok("fluma_agent", url=URL, video=sid, next=f"{URL} 을 열면 홈 대화에 기획이 진행 중입니다. 제작은 콘티를 확인한 뒤 '제작 시작'")
+        ok("fluma_agent", url=URL, video=sid, next=f"{URL} 을 열면 홈 대화에 기획이 진행 중입니다. 콘티 검사를 통과하면 바로 제작됩니다")
     ok("fluma_agent", url=URL, next=f"{URL} 을 열어 홈에 주제를 한 줄 적으세요")
 
 

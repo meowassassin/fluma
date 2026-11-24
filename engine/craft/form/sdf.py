@@ -43,7 +43,7 @@ def _rot(rx, ry, rz):
 
 def _xf(node):
     R = np.array(node["rotm"], float) if "rotm" in node else _rot(*node.get("rot", [0, 0, 0]))   # rotm: 회전 행렬(뼈대가 계산해 넣는다)
-    return np.eye(4) if False else (R, np.array(node.get("pos", [0, 0, 0]), float), float(node.get("scale", 1.0)))
+    return R, np.array(node.get("pos", [0, 0, 0]), float), float(node.get("scale", 1.0))
 
 
 def _compose(parent, child):
@@ -326,20 +326,6 @@ def sdf_eval(px, py, pz, codes, P, sd, sm):
                 d1 = nd
             sd[sp - 1] = d1; sm[sp - 1] = m1
     return sd[0], int(sm[0])
-
-
-def export_obj(scene, path, res=160, bounds=(-1.2, 1.2)):
-    """Marching cubes mesh export (for path tracers)."""
-    from skimage import measure
-    codes, P, _ = compile_scene(scene)
-    g = np.linspace(bounds[0], bounds[1], res)
-    vol = _grid(codes, P, g)
-    v, f, n, _ = measure.marching_cubes(vol, 0.0, spacing=(g[1] - g[0],) * 3)
-    v += bounds[0]
-    with open(path, "w") as fh:
-        for a in v: fh.write(f"v {a[0]:.5f} {a[1]:.5f} {a[2]:.5f}\n")
-        for a in f + 1: fh.write(f"f {a[0]} {a[1]} {a[2]}\n")
-    return len(v), len(f)
 
 
 @njit(cache=True)

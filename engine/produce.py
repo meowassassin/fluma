@@ -312,7 +312,6 @@ def main() -> int:
     ap.add_argument("--prep", action="store_true", help="대본만 먼저: 이해 관문(시청자 · 각본가) · 음악 · 목소리 · 음성까지 하고 멈춘다 — "
                     "에이전트가 그동안 재료(2D 장면)를 짜고, 끝나면 그냥 produce 를 다시 부른다(대본이 그대로면 대본 단계는 건너뜀)")
     ap.add_argument("--prep-status", action="store_true", help="뒤에서 돌린 --prep 결과만 본다(돌는 중 · 끝 · 막힘과 이유)")
-    ap.add_argument("--final", action="store_true", help="(예전 옵션 · 무시) 전체 제작 상한은 2026-11-19 없앴다")
     ap.add_argument("--bg", action="store_true", help="(--prep 과 함께) 뒤에서 돌리고 바로 돌아온다 — 기록은 data/workspace/tmp/<id>/prep.log")
     a = ap.parse_args()
     if a.fast:
@@ -323,7 +322,7 @@ def main() -> int:
 
     hard_skills = qm.hard_skills()
     use_draft = qm.use_draft_render() or (a.preview_only and not a.delivery)
-    # 렌더 뒤 화면 검토(review)는 --no-skills 에서도 돈다 — --no-skills 는 대본 단계(각본가 · 감독 · 디자이너)만 건너뛴다.
+    # 화면 검토(review, 렌더 전)는 --no-skills 에서도 돈다 — --no-skills 는 대본 단계(각본가 · 감독 · 디자이너)만 건너뛴다.
     # 2026-11-17: 빠르게 만들려고 --no-skills 로 돌리면 화면 검토까지 꺼져, 화면 밖으로 잘린 장면이 그대로 나갔다. 끄려면 --fast 또는 FLUMA_DEEP_REVIEW=0
     deep = qm.deep_review() and not a.fast
     sp = Path(a.storyboard)

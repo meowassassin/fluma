@@ -183,7 +183,6 @@ def render(plan: dict, out: Path, fps: int, gif: bool) -> Path:
     ff = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(fps), "-i", "-",
                            "-c:v", "libx264", "-preset", "medium", "-crf", "16", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(dst)], stdin=subprocess.PIPE)
     lang = plan.get("lang")
-    shots_frames: list[list[np.ndarray]] = []
     DIS = int(0.45 * fps)
     prev_tail = None
     with sync_playwright() as p:

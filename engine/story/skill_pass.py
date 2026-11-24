@@ -826,10 +826,6 @@ def _runs(sid: str, name: str, add: int = 0) -> int:
     return n
 
 
-def _writer_runs(sid: str, add: int = 0) -> int:
-    return _runs(sid, "writer", add)
-
-
 def produce_skill_steps(sbp: Path) -> list[str]:
     """produce 시작 시 skill_pass 에 돌릴 단계 — 기본 writer·director·designer 전부.
 
@@ -839,20 +835,6 @@ def produce_skill_steps(sbp: Path) -> list[str]:
     if os.environ.get("FLUMA_SKIP_SKILLS") == "1" or os.environ.get("FLUMA_PRODUCE_SKILLS") == "0":
         return []
     return ["writer", "director", "designer"]
-
-
-def pipeline_skills_ok(sbp: Path) -> bool:
-    """채팅(또는 방금 produce)에서 스킬이 이미 적용됐으면 produce 안에서 skill_pass all 을 생략한다."""
-    try:
-        sid = json.loads(sbp.read_text("utf-8"))["id"]
-        d = ROOT / "data" / "compositions" / sid / "skill_pass"
-        for name in _NEED:
-            f = d / f"{name}.json"
-            if not f.exists():
-                return False
-        return is_approved(sbp)
-    except (OSError, json.JSONDecodeError, KeyError):
-        return False
 
 
 def parallel_passes(names: list[str], sbp: Path, force: bool, issues: dict | None = None) -> list[dict]:

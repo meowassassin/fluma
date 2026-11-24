@@ -43,7 +43,6 @@ class Ground:
         if not self.ok:
             return 0.0
         y, step = top, 0.02
-        prev = None
         while y > -0.2:
             d = sdf.sdf_eval(x, y, z, self.codes, self.P, self.sd, self.sm)[0]
             if d < 0.002:
@@ -56,7 +55,6 @@ class Ground:
                         hi = mid
                 return max(0.0, lo)
             step = max(0.004, min(0.05, d * 0.9))
-            prev = y
             y -= step
         return 0.0
 

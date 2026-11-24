@@ -240,8 +240,6 @@ def render(scene, res=1080, ss=2, cam=None):
         march(codes, P, N, NH, eye, f, r, u, th, L, Lf, bc, br, out, asp, ground)
     t_march = time.time() - t1
     buf = {k: out[i] for i, k in enumerate(NAMES)}
-    hitm = buf["hit"] > 0
-    foot = hitm & (buf["py"] < 0.05)
     meta = dict(mats=mats, mat_table=sdf.material_table(scene), L=L, Lf=Lf, eye=eye, f=f, r=r, u=u, th=th,
                 res=res, ss=ss, lo=lo, hi=hi, aspect=asp,
                 foot_center=np.array([(lo[0] + hi[0]) / 2, (lo[2] + hi[2]) / 2]),

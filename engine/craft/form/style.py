@@ -70,7 +70,7 @@ class Ctx:
                 for v in n:
                     walk(v)
         walk(meta["scene"].get("root"))
-        L = np.asarray(meta["L"], np.float32); u = np.asarray(meta["u"], np.float32)
+        L = np.asarray(meta["L"], np.float32)
         nrm = np.stack([self.b["nx"], self.b["ny"], self.b["nz"]], -1)
         for role in ("skin", "hair"):
             ids = [i for i, m in enumerate(mats) if m in roles[role]]
@@ -125,14 +125,6 @@ class Ctx:
             inner[sl_a] |= e
         return sil.astype(np.uint8), (inner & ~sil).astype(np.uint8)
 
-    def ground_ellipse(self, scale=0.95, shift=0.25):
-        c = self.m["foot_center"]; a = self.m["foot_size"] * scale
-        L = self.m["L"]
-        cx, cz = c[0] - L[0] * shift, c[1] - L[2] * shift
-        gx, gz = self.b["gx"], self.b["gz"]
-        r = ((gx - cx) / a[0]) ** 2 + ((gz - cz) / a[1]) ** 2
-        return (~self.hit) & (r < 1.0) & (self.b["depth"] < 999)
-
     def finish(self, img):
         if img.shape[0] != self.hit.shape[0]:
             return (np.clip(img, 0, 1) * 255 + 0.5).astype(np.uint8)
@@ -158,7 +150,7 @@ def noise(N, cells, seed, octaves=1):
 
 # ------------------------------------------------------------------ FLAT
 def flat(c: Ctx, bg="#f4efe6"):
-    N = c.N; sc = c.ss
+    N = c.N
     bgc = hexrgb(bg)
     img = np.broadcast_to(bgc, (N, N, 3)).copy()
     g = c.b["gshadow"] * c.b["gao"]                    # 발밑 그림자만(타원 바닥판을 칠하던 것은 원판 무대처럼 보였다)
@@ -182,7 +174,7 @@ def flat(c: Ctx, bg="#f4efe6"):
 
 # ------------------------------------------------------------------ CEL
 def cel(c: Ctx, bg="#eaf2f7", ink="#2a1c14"):
-    N = c.N; sc = c.ss
+    N = c.N
     bgc = hexrgb(bg)
     img = np.broadcast_to(bgc, (N, N, 3)).copy()
     g = c.b["gshadow"] * c.b["gao"]
@@ -555,7 +547,7 @@ def _env(d, rough, E):
 def render_style(c: Ctx, bg="#f6f1ea"):
     m = c.m; sc = m["scene"]; mats = m["mats"]; smats = sc["materials"]
     H, W = c.hit.shape
-    eye = np.asarray(m["eye"], np.float32); f = np.asarray(m["f"], np.float32)
+    f = np.asarray(m["f"], np.float32)
     r = np.asarray(m["r"], np.float32); u = np.asarray(m["u"], np.float32)
     th = float(m["th"]); asp = float(m.get("aspect", 1.0)) if "aspect" in m else 1.0
     L = np.asarray(m["L"], np.float32)

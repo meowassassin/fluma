@@ -1,7 +1,7 @@
 """제작 품질 — 사용자에게 '모드'를 묻지 않는 단일 프로필.
 
   한 번에 납품 해상도로 렌더(초안 half 생략) · 콘티 보강 · direct 기록.
-  produce: writer·director·designer skill_pass + 렌더 뒤 review·refine 기본 ON.
+  produce: writer·director·designer skill_pass + 렌더 전 화면 검토(review) 기본 ON, refine 은 FLUMA_DEEP_REFINE=1 일 때만.
   끄기: FLUMA_PRODUCE_SKILLS=0 · FLUMA_SKIP_SKILLS=1 · FLUMA_DEEP_REVIEW=0 · produce --fast/--no-skills
 
 개발용만: FLUMA_MODE=draft(초안만)
@@ -25,29 +25,15 @@ def hard_skills() -> bool:
     return e == "1" if e is not None else False
 
 
-def delivery_render() -> bool:
-    """True = full Craft / ffmpeg 납품급(초안 half 아님)"""
-    if use_draft_render():
-        return False
-    e = _env("FLUMA_DELIVERY")
-    if e is not None:
-        return e != "0"
-    return True
-
-
 def skip_skill_pass() -> bool:
     return _env("FLUMA_SKIP_SKILLS") == "1"
 
 
 def deep_review() -> bool:
-    """렌더 뒤 skill_pass review — 기본 켬(refine 은 FLUMA_DEEP_REFINE=1 일 때만)."""
+    """skill_pass 화면 검토(review, 렌더 전 정지 화면) — 기본 켬(refine 은 FLUMA_DEEP_REFINE=1 일 때만)."""
     if _env("FLUMA_DEEP_REVIEW") == "0":
         return False
     return True
-
-
-def run_skill_pass() -> bool:
-    return not skip_skill_pass()
 
 
 def run_skill_pass_in_produce(*, skills_ok: bool = False) -> bool:
@@ -62,7 +48,3 @@ def run_skill_pass_in_produce(*, skills_ok: bool = False) -> bool:
 def skip_viewer_pass() -> bool:
     """시청자 시뮬(viewer) — 기본 켬. FLUMA_SKIP_VIEWER=1 로만 생략."""
     return _env("FLUMA_SKIP_VIEWER") == "1"
-
-
-def ffmpeg_delivery() -> bool:
-    return delivery_render()

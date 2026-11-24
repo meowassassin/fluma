@@ -19,7 +19,6 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
@@ -78,37 +77,6 @@ def _pick_frames(rid: str, k: int) -> list[Path]:
     if not out:
         out = sorted((d / "shots").glob("*.jpg"))[:k] if (d / "shots").exists() else []
     return [p for p in out if p.exists()]
-
-
-def _pick_clips(rid: str, k: int) -> list[Path]:
-    """분해해 둔 원본 영상(video.mp4)이 있으면 대표 샷 구간을 .mp4 클립으로 잘라 돌려주고, 없으면 _pick_frames 로 내린다"""
-    d = XRAY / rid
-    vid = d / "video.mp4"
-    if not vid.exists():
-        return _pick_frames(rid, k)
-    x = json.loads((d / "xray.json").read_text("utf-8")) if (d / "xray.json").exists() else {}
-    shots = [s for s in x.get("shots") or [] if s.get("end", 0) > s.get("start", 0)]
-    if not shots:
-        return [vid]
-    shots.sort(key=lambda s: -(float(s.get("end", 0)) - float(s.get("start", 0))))
-    pick = sorted(shots[:max(k * 2, k)], key=lambda s: float(s.get("start", 0)))
-    step = max(1, len(pick) // k) if pick else 1
-    cdir = d / "clips"
-    cdir.mkdir(parents=True, exist_ok=True)
-    out: list[Path] = []
-    for idx, s in enumerate(pick[::step][:k], start=1):
-        st = float(s.get("start", 0))
-        dur = min(6.0, max(1.0, float(s.get("end", st + 2)) - st))
-        cp = cdir / f"shot_{idx:02d}_{int(st * 10):04d}.mp4"
-        if not cp.exists():
-            subprocess.run(
-                ["ffmpeg", "-v", "error", "-y", "-ss", str(st), "-i", str(vid), "-t", str(dur), "-c:v", "libx264", "-pix_fmt", "yuv420p", "-an", str(cp)],
-                capture_output=True,
-                check=False,
-            )
-        if cp.exists():
-            out.append(cp)
-    return out or _pick_frames(rid, k)
 
 
 def set_anchor(sid: str, refs: list[str], words: str, per: int = 4) -> dict:
@@ -179,23 +147,22 @@ def main() -> int:
     m_ = sub.add_parser("match"); m_.add_argument("sid"); m_.add_argument("images", nargs="+")
     w_ = sub.add_parser("show"); w_.add_argument("sid")
     a = ap.parse_args()
-    if True:
-        if a.cmd == "set":
-            r = set_anchor(a.sid, a.refs, a.words, a.per)
-            print(json.dumps(r["rules"], ensure_ascii=False, indent=1))
-            print("```media\n" + "\n".join(f"{f} | 기준 {Path(f).name.split('-')[0]}" for f in r["frames"]) + "\n```")
-        elif a.cmd == "match":
-            m = match(a.sid, a.images)
-            if m is None:
-                print("기준점이 없습니다 — 먼저 anchor.py set"); return 10
-            print("\n".join(report(m)))
-            print(json.dumps(m, ensure_ascii=False, indent=1))
-        else:
-            an = get(json.loads(_sb_path(a.sid).read_text("utf-8")))
-            if not an:
-                print("기준점 없음"); return 10
-            print(json.dumps(an.get("rules"), ensure_ascii=False, indent=1))
-            print("```media\n" + "\n".join(f"{f} | 기준" for f in an.get("frames") or []) + "\n```")
+    if a.cmd == "set":
+        r = set_anchor(a.sid, a.refs, a.words, a.per)
+        print(json.dumps(r["rules"], ensure_ascii=False, indent=1))
+        print("```media\n" + "\n".join(f"{f} | 기준 {Path(f).name.split('-')[0]}" for f in r["frames"]) + "\n```")
+    elif a.cmd == "match":
+        m = match(a.sid, a.images)
+        if m is None:
+            print("기준점이 없습니다 — 먼저 anchor.py set"); return 10
+        print("\n".join(report(m)))
+        print(json.dumps(m, ensure_ascii=False, indent=1))
+    else:
+        an = get(json.loads(_sb_path(a.sid).read_text("utf-8")))
+        if not an:
+            print("기준점 없음"); return 10
+        print(json.dumps(an.get("rules"), ensure_ascii=False, indent=1))
+        print("```media\n" + "\n".join(f"{f} | 기준" for f in an.get("frames") or []) + "\n```")
     return 0
 
 

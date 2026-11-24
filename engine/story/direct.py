@@ -314,11 +314,6 @@ def colors(pick: dict, ref: dict | None, seed: int) -> dict:
     return {"color_bg": bg, "color_surface": surface, "color_text": text, "color_muted": muted, "color_accent": acc}
 
 
-# 화면 내내 고정 요소(위 제목 · 자막판 · 분할)가 있는 배치는 다른 엔진 장면과 이어지기 어렵다 → 엔진이 확실히 나은 장면만
-PERSISTENT = {"top-title", "left-editorial", "split-screen"}
-STRONG = {"chart", "diff", "code", "footage", "still"}
-
-
 def brief(sb: dict, res: dict, engines: list[str | None]) -> str:
     p = res["pick"]
     lines = ["# 디자인 방향 (direction)", f"영상: {sb.get('title', sb.get('id'))}", ""]
@@ -420,7 +415,6 @@ def main():
     ap.add_argument("storyboard")
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--reroll", type=int, nargs="?", const=1, default=0)
-    ap.add_argument("--no-cast", action="store_true", help="(예전 옵션 · 무시) 장면 단위 엔진 캐스팅은 없어졌다")
     a = ap.parse_args()
     path = Path(a.storyboard)
     sb = json.loads(path.read_text(encoding="utf-8"))

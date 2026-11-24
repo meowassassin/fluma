@@ -1,7 +1,6 @@
 """최적화 패치 회귀 · 동시성 · 세션 재사용 검증 테스트."""
 from __future__ import annotations
 
-import json
 import sys
 import threading
 import time

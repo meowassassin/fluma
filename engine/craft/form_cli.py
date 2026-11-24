@@ -2,9 +2,9 @@
 """형태(form) 도구 — 데이터로 빚은 형태를 화풍으로 그려 본다. 작성법: engine/craft/form/README.md
 
   python3 engine/craft/form_cli.py preview <형태.json> [--style cel] [--azimuth 35 --elevation 20]   # 작게(540) 빠르게 → 경로 출력, Read 로 본다
-  python3 engine/craft/form_cli.py render  <형태.json> --out <파일.png> [--style flat|cel|sketch|clay] [--bg "#hex"] [--res 1080]
+  python3 engine/craft/form_cli.py render  <형태.json> --out <파일.png> [--style flat|cel|sketch|clay|vector|render] [--bg "#hex"] [--res 1080]
   python3 engine/craft/form_cli.py anim    <형태.json> --out-dir data/compositions/<id>/forms/<이름>.anim [--style cel] [--res 720]   # 움직임(anim) 프레임 묶음 → …/f000.png
-  python3 engine/craft/form_cli.py styles                                                              # 네 화풍 한 장 비교(같은 형태)
+  python3 engine/craft/form_cli.py styles                                                              # 모든 화풍 한 장 비교(같은 형태)
 콘티에는 재료 {"type": "form", "scene": "$FILE:data/compositions/<id>/forms/<이름>.json", "style": (없으면 direction.art.style)} 로 넣는다.
 """
 from __future__ import annotations
@@ -64,7 +64,7 @@ def main() -> int:
         from PIL import Image
         TMP.mkdir(parents=True, exist_ok=True)
         tiles = [form.draw(sc, s, res=540, view=view, background="#f3efe6") for s in form.STYLES]
-        sheet = Image.new("RGB", (540 * 4, 540), "#f3efe6")
+        sheet = Image.new("RGB", (540 * len(tiles), 540), "#f3efe6")
         for i, im in enumerate(tiles):
             sheet.paste(im.convert("RGB"), (i * 540, 0))
         out = TMP / f"{name}.styles.png"; sheet.save(out)

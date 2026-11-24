@@ -358,7 +358,7 @@ class Generic:
             shutil.copyfile(cands[len(cands) // 2], self.sample)
         self.base = None
         try:
-            info = self._craft("base", [], self.work / "base.png")
+            self._craft("base", [], self.work / "base.png")
             self.base = self.work / "base.png" if (self.work / "base.png").exists() else None
         except Exception as e:  # noqa: BLE001
             print(f"[시험] 견본 렌더 실패(화면 비교 없이 진행): {str(e)[-200:]}")
@@ -376,7 +376,7 @@ class Generic:
         sid = re.sub(r"[^A-Za-z0-9_-]+", "_", row.get("_sid") or row["id"])
         out = d / f"{sid}.png"
         try:
-            info = self._craft(sid, [{"id": row["id"], "params": row.get("_p") or {}}], out)
+            self._craft(sid, [{"id": row["id"], "params": row.get("_p") or {}}], out)
         except Exception as e:  # noqa: BLE001
             t = re.sub(r"\s+", " ", str(e))
             return {"run": "timeout" if "시간 제한" in t else classify(1, t), "msg": t[-300:]}

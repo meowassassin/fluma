@@ -26,10 +26,6 @@ def rel(p: Path | str | None) -> str | None:
         return None
 
 
-def mtime(p: Path) -> int:
-    return int(p.stat().st_mtime) if p.exists() else 0
-
-
 def _j(p: Path):
     try:
         return json.loads(p.read_text("utf-8"))

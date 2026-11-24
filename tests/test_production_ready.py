@@ -40,7 +40,7 @@ def test_lint_cli_finishes_quickly(tmp_path, monkeypatch):
     p = tmp_path / "sb.json"
     p.write_text(json.dumps(sb, ensure_ascii=False), encoding="utf-8")
     t0 = time.perf_counter()
-    r = subprocess.run(
+    subprocess.run(
         [sys.executable, str(ROOT / "engine" / "checks" / "lint.py"), str(p)],
         cwd=ROOT,
         capture_output=True,

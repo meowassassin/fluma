@@ -67,10 +67,6 @@ def framing_of(sub: dict) -> str:
     return size + who
 
 
-def lens_of(framing: str) -> str:
-    return "85mm lens, shallow depth of field" if "close" in framing else "50mm lens" if "medium" in framing else "24mm wide lens"
-
-
 def look(sb: dict) -> dict:
     """레퍼런스 쇼츠들에서 잰 시각 지시 — 숫자에서 나온 말만(지어내지 않음)"""
     xs = xrays(sb)

@@ -26,7 +26,6 @@ sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401
 from result import fail, ok  # noqa: E402
 
 XRAY = ROOT / "data" / "public" / "trends" / "xray"
-NEEDS_REF = ("model3d", "illustration", "craft")     # 그 재료가 화면의 주인공 모양일 때 — 레퍼런스 콘티면 대조 권고
 
 
 def _d(sid: str) -> Path:

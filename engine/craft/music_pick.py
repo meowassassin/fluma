@@ -23,7 +23,6 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 import json
 import math
-import os
 import re
 import subprocess
 import sys

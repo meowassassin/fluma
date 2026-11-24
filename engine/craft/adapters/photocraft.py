@@ -38,20 +38,6 @@ def _cmd(args: list, cid: str, params: dict | None = None) -> None:
         args += ["--params", json.dumps(params, ensure_ascii=False)]
 
 
-def _results(stdout: str) -> dict:
-    """각 --cmd 결과 줄({"command","result"}) → {명령: [결과…]}"""
-    out: dict = {}
-    for line in stdout.splitlines():
-        line = line.strip()
-        if line.startswith("{"):
-            try:
-                r = json.loads(line)
-            except ValueError:
-                continue
-            out.setdefault(r.get("command"), []).append(r.get("result"))
-    return out
-
-
 def _size(P: str, f: Path, work: Path) -> tuple[int, int]:
     from ..materials import _run
     d = json.loads(_run([P, "info", f, "--compact"], work))

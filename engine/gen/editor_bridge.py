@@ -574,7 +574,6 @@ def convert(pid: str, write: bool = True) -> dict:
     # Craft 경로(2D 장면을 EffectCraft 로 렌더) — 장면에 video 재료가 없어 영상 트랙이 비고 편집기가 검은 화면만 보였다(2026-11-17).
     # 렌더 결과(data/out/<id>-craft-*.mp4, 부분 · 초안 렌더 제외)를 장면마다 잘라 영상 트랙에 올린다.
     # 그 렌더에는 자막 · 제목이 이미 그려져 있으므로, 편집기의 자막 · 제목 글자 층은 겹치지 않게 숨겨 둔다(타임라인에서 켜면 다시 보인다).
-    craft_baked = False
     if sb and sb.get("scenes") and not use_dub and not main_elements:
         outs = [p for p in (ROOT / "data" / "out").glob(f"{pid}-craft-*.mp4")
                 if not re.search(r"-s\d|-draft", p.stem[len(pid):])]
@@ -599,7 +598,6 @@ def convert(pid: str, write: bool = True) -> dict:
                     "sourceDuration": sec_to_ticks(vdur), "isSourceAudioEnabled": False, "hidden": False, "params": {},
                 })
                 at += d
-            craft_baked = True
             for el in text_elements + title_elements:
                 el["hidden"] = True
                 el["name"] = "(영상에 포함) " + str(el.get("name") or "")

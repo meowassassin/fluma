@@ -22,7 +22,6 @@ import hashlib
 import json
 import os
 import subprocess
-import sys
 import threading
 from pathlib import Path
 
@@ -613,18 +612,17 @@ def _code_deps(m: dict) -> list[str]:
                     return
                 code = f.read_text("utf-8", errors="ignore")
                 out.append(f"{o[6:]}:{hashlib.sha1(code.encode()).hexdigest()}")
-            if True:
-                for path in set(re.findall(r"['\"](/[^'\"\n]+)['\"]", code)):
-                    q = Path(path)
-                    try:
-                        if ROOT not in q.resolve().parents:
-                            continue
-                        if q.is_dir():
-                            out.append(f"{path}:" + "|".join(f"{x.name}:{x.stat().st_size}:{int(x.stat().st_mtime)}" for x in sorted(q.iterdir()) if x.is_file()))
-                        elif q.is_file():
-                            out.append(f"{path}:{_hash(q)}")
-                    except OSError:
-                        pass
+            for path in set(re.findall(r"['\"](/[^'\"\n]+)['\"]", code)):
+                q = Path(path)
+                try:
+                    if ROOT not in q.resolve().parents:
+                        continue
+                    if q.is_dir():
+                        out.append(f"{path}:" + "|".join(f"{x.name}:{x.stat().st_size}:{int(x.stat().st_mtime)}" for x in sorted(q.iterdir()) if x.is_file()))
+                    elif q.is_file():
+                        out.append(f"{path}:{_hash(q)}")
+                except OSError:
+                    pass
     walk(m)
     return out
 
@@ -632,7 +630,7 @@ def _code_deps(m: dict) -> list[str]:
 # ---------------------------------------------------------------- 디스패처
 def _build_one(task: dict, sb: dict, sid: str, base: Path, reg: dict, plug: dict, post: dict, adapters: dict) -> dict:
     from . import usage
-    n, sc, m, t = task["n"], task["sc"], task["m"], task["t"]
+    n, m, t = task["n"], task["m"], task["t"]
     d = base / f"s{n:02d}"
     d.mkdir(parents=True, exist_ok=True)
     out = d / f"{m['id']}.png"

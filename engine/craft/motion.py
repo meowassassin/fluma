@@ -444,12 +444,6 @@ BG_PRESET = {"concept": "blueprintGrid", "mythbust": "blueprintGrid", "fix": "bl
              "countdown": "blueprintGrid", "series": "blueprintGrid", "emotional": "bokehDrift", "ad": "pulseRings", "daily": "softGradientDrift"}
 
 
-def fmt_name(sb: dict) -> str:
-    """콘티 형식 — format 이 없으면 format 스킬 이름(format-ad 등)"""
-    f = str(sb.get("format") or sb.get("format_skill") or sb.get("skill") or "")
-    return f[7:] if f.startswith("format-") else f
-
-
 def bg_preset(sb: dict) -> str | None:
     """배경 프리셋 — 콘티 direction(사용자 · 레퍼런스) 만. 형식별 표(BG_PRESET)는 시안 후보일 뿐(design.proposals)"""
     return _design.resolve(sb)["bg_preset"]
@@ -478,11 +472,6 @@ def bg_tunes(preset: str, bg: list, pal: list) -> tuple[list, str | None, str | 
         cs = [_mix(bg, pal[k % len(pal)] if pal else bg, 0.12 if k % 2 else 0.05) for k in range(4)]
         return [[f"effects/#1/positionsColors/color{k + 1}", cs[k]] for k in range(4)], None, None
     return [], None, None
-
-
-# 글자 프리셋(엔진 내장 텍스트 애니메이터). 길이가 1.2~2초 고정이라 retimeKeys 로 줄인다
-TITLE_PRESET = "bounceInWords"
-SUB_PRESET = {"emotional": "fadeUpCharacters"}     # 형식별 자막 기본값 — 나머지는 지금의 짧은 '톡' 커지기(자막이 0.5초마다 바뀌어 단어 튀기기는 어지럽다)
 
 
 def is_over(rec: dict, mats: list[dict]) -> bool:
@@ -563,15 +552,6 @@ def adjust_jsx(mid: str, adj: dict, W: int, H: int) -> str:
             + " ".join(body) + " } })();")
 
 
-def _hex01(c, default):
-    if isinstance(c, list) and len(c) >= 3:
-        return [float(v) for v in c[:3]]
-    if isinstance(c, str) and re.fullmatch(r"#?[0-9a-fA-F]{6}", c.strip()):
-        h = c.strip().lstrip("#")
-        return [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
-    return default
-
-
 def spring_follow(targets: list, fps: int = 30, sec: float | None = None, stiffness: float = 60.0, damping: float = 0.75) -> list:
     """카메라를 목표에 스프링으로 매단다 — targets: [(초, x, y, 확대), …](그 시각부터 그 목표). 결과: 프레임마다 [x, y, 확대].
     stiffness: 단단함(클수록 빨리 붙음, 30~150) · damping: 1 이면 출렁임 없이 멈춤, 0.5 쯤이면 살짝 지나쳤다 돌아옴"""
@@ -610,8 +590,7 @@ def camera_follow_jsx(J, sc: dict, mats: list[dict], slots: dict, words: list[di
         t = float(e["t"]) if isinstance(e.get("t"), (int, float)) else (cue_time(e.get("at"), words, start, end) if e.get("at") else 0.0)
         marks.append((0.0 if t is None else t, e))
     marks.sort(key=lambda m: m[0])
-    for k, (t, e) in enumerate(marks):
-        t_next = marks[k + 1][0] if k + 1 < len(marks) else sec
+    for t, e in marks:
         z = float(e.get("zoom", 1.0))
         pts.append((t, float(e.get("x", 0.5)) * W, float(e.get("y", 0.5)) * H, z))
     if not pts:
@@ -688,7 +667,6 @@ def material_jsx(J, rec: dict, words: list[dict], start: float, end: float, sec:
             hb_ = max(14.0, hmax)
             tb = t0 + 0.15 + best * 0.35 + 0.75
             side = -1 if best == n - 1 and n > 1 else 1
-            bx_ = cxb + side * (bw / 2 + 20) - (0 if side > 0 else 0)
             J(f"var rb = txt(c, {js('Ratio' + tag)}, {js(rt)}, {js(font)}, 64, [0.07, 0.07, 0.09], null, 0, [{cxb - side * 0:.0f}, {base - hb_ * 0.5:.0f}]);")
             J(f"var rbb = fitBox(c, {js('RatioBox' + tag)}, {js('Ratio' + tag)}, [1, 0.84, 0.04], 40, 22, 40);")
             J(f"rb.property('Transform').property('Position').setValue([{cxb:.0f}, {base - hb_ * 0.5:.0f}]); var rbs = rb.property('Transform').property('Scale'); rbs.setValueAtTime({tb:.2f}, [0, 0]); rbs.setValueAtTime({tb + 0.14:.2f}, [118, 118]); rbs.setValueAtTime({tb + 0.24:.2f}, [100, 100]);")

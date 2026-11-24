@@ -13,9 +13,10 @@ import re
 import sys
 from pathlib import Path
 
+FORM_STYLES = ("flat", "cel", "sketch", "clay", "vector", "render")   # engine/craft/form STYLES 와 같게(tests/test_lint_form_styles.py)
+
 ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())  # 저장소 루트(engine/paths.py 가 있는 곳)
 sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401  engine 아래 묶음들을 import 경로에
-FINAL = "--final" in sys.argv   # 렌더 직전 검사: 단계와 상관없이 화면 구성이 있어야 한다
 TOKENS = json.loads((ROOT / "engine" / "spec" / "tokens" / "default.json").read_text(encoding="utf-8"))
 LIM = TOKENS["limits"]
 # L14: 실측 음성이 장면보다 이 배수 넘게 길면 실패. assemble_audio 는 최대 1.25배까지 빠르게 하고 그 뒤는 자르므로,
@@ -123,7 +124,6 @@ def material_checks(sb: dict) -> list:
         if r.get("missing"):
             out.append(("L36", r.get("scene"), f"사용자 녹화가 필요: {r.get('ask')} → 편집기에 파일을 올려 달라고 부탁(이름에 '{r.get('id')}' 포함). 받기 전 초안은 이 재료 없이 렌더됨"))
     # 주석 오버레이는 대상 화면 위에 얹힐 뿐 새 화면이 아니다 — 종류 · 개수 · 전환 수에 세지 않는다
-    notes = [r for r in recs if not r.get("missing") and r.get("type") == "overlay"]
     recs = [r for r in recs if not r.get("missing") and r.get("type") != "overlay"]
     # 일부 장면만 렌더한 기록으로 영상 전체를 판단하지 않는다(재료는 렌더가 만든다 — 전체 기록이 모자라면 다음 전체 렌더 뒤에 본다)
     planned = sum(1 for sc in sb.get("scenes") or [] for m in sc.get("materials") or [] if isinstance(m, dict) and m.get("type") not in ("text", "stat", "overlay"))
@@ -294,8 +294,8 @@ def material_spec_checks(sb: dict) -> list:
                     out.append(("L39", i, f"{tag}: model {mo} 은 이 장면에서 도면보다 앞선 model3d 재료여야 함(다른 장면이면 model 에 형태 칸을 다시 쓴다)"))
             elif t == "form":
                 need("scene", "src", what="형태 데이터(scene) 또는 그 JSON 파일(src)")
-                if m.get("style") and m["style"] not in ("flat", "cel", "sketch", "clay"):
-                    out.append(("L39", i, f"{tag}: style 은 flat · cel · sketch · clay 중 하나"))
+                if m.get("style") and m["style"] not in FORM_STYLES:
+                    out.append(("L39", i, f"{tag}: style 은 {' · '.join(FORM_STYLES)} 중 하나"))
             elif t == "video" and m.get("in") is not None and m.get("out") is not None and float(m["out"]) <= float(m["in"]):
                 out.append(("L39", i, f"{tag}: out 이 in 보다 뒤여야 함"))
             if m.get("method"):                        # 같은 재료를 다른 앱으로(materials.methods)
@@ -586,7 +586,6 @@ def lint(sb: dict, recent_titles=None) -> list:
     if polite and casual and min(polite, casual) >= 1 and not sb.get("tone_mix_ok"):
         fails.append(("L31", None, f"존댓말 {polite}문장 · 반말 {casual}문장이 섞임 — 레퍼런스 채널 말투 하나로(섞는 게 채널 스타일이면 tone_mix_ok: true)"))
 
-    sid = sb.get("id", "")
     # T16 디자인 방향: 영상마다 다른 화면이 나오도록 engine/story/direct.py --write 로 정한다 (권고)
     if not sb.get("direction"):
         fails.append(("T16", None, "디자인 방향(direction) 없음: python3 engine/story/direct.py data/storyboards/<id>.json --write"))
@@ -640,10 +639,6 @@ def cue_check(sb: dict) -> list:
         if miss:
             out.append(("L73", i, f"신호 낱말 {', '.join(repr(w) for w in miss[:4])} 이(가) 대사에 없음 — 대사에 넣거나 장면 코드의 $CUE 를 대사에 있는 낱말로"))
     return out
-
-
-FORMAL = ("습니다", "입니다", "합니다", "됩니다", "있습니다")
-CASUAL = ("고요", "는데", "거든요", "대요", "네요", "어요", "아요", "예요", "에요", "죠", "잖아요", "더라고요")
 
 
 def style_card_of(sb: dict) -> dict | None:
@@ -881,7 +876,7 @@ def variety(sb: dict) -> list:
             out.append(("T68", None, f"연출 모드가 최근 3편과 같다({modes[0]}) — 주제에 맞으면 animation · comic · cinematic 도 고려(디자이너 스킬 0장)"))
         st0 = ((d0.get("art") or {}).get("style"))
         if st0 and st0 == (((recent[0].get("direction") or {}).get("art") or {}).get("style")):
-            out.append(("T68", None, f"형태 화풍(art.style)이 직전 영상과 같다({st0}) — flat · cel · sketch · clay 중 바꿔 본다"))
+            out.append(("T68", None, f"형태 화풍(art.style)이 직전 영상과 같다({st0}) — flat · cel · sketch · clay · vector · render 중 바꿔 본다"))
         if d0.get("font_title") and d0.get("font_title") == (recent[0].get("direction") or {}).get("font_title"):
             out.append(("T68", None, f"제목 글꼴이 직전 영상과 같다({d0.get('font_title')})"))
     return out
