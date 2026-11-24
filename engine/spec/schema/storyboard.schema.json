@@ -552,7 +552,7 @@
         },
         "confirmed": {
           "type": "boolean",
-          "description": "사용자가 의도 카드를 확인했는지(gate.py intent 로만 켠다)"
+          "description": "예전 승인 표시 — 지금은 읽지 않는다(승인 관문 제거, 2026-11-24)"
         },
         "ban": {
           "type": "array",

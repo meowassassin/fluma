@@ -169,7 +169,31 @@ def _api_rows(ids: list[str]) -> list[dict]:
              "views": int((v.get("statistics") or {}).get("viewCount") or 0), "published": v["snippet"].get("publishedAt", "")[:10]} for v in d.get("items") or []]
 
 
+_SLOCK = __import__("threading").Lock()
+SEARCH_TTL = 12 * 3600
+
+
 def search(q: str, n: int = 8, recent: bool = False) -> list[dict]:
+    """유튜브 영상 검색 — 12시간 안에 같은 검색을 했으면 그 결과(2026-11-24: 첫 음악 고르기가 검색 수십 번으로 최대 156초)"""
+    import hashlib
+    key = hashlib.sha1(f"{q}|{n}|{int(recent)}|{bool(_yt_key())}".encode()).hexdigest()[:16]
+    cf = CACHE / "search" / f"{key}.json"
+    try:
+        if time.time() - cf.stat().st_mtime < SEARCH_TTL:
+            return json.loads(cf.read_text("utf-8"))
+    except (OSError, ValueError):
+        pass
+    rows = _search(q, n, recent)
+    if rows:
+        with _SLOCK:
+            cf.parent.mkdir(parents=True, exist_ok=True)
+            tmp = cf.with_suffix(f".{__import__('os').getpid()}.tmp")
+            tmp.write_text(json.dumps(rows, ensure_ascii=False), "utf-8")
+            tmp.replace(cf)
+    return rows
+
+
+def _search(q: str, n: int = 8, recent: bool = False) -> list[dict]:
     """유튜브 영상 검색 — Data API 키가 있으면 API(최근 1년 · 조회수 순), 없으면 웹(yt-dlp 검색)"""
     if _yt_key():
         try:
@@ -180,8 +204,12 @@ def search(q: str, n: int = 8, recent: bool = False) -> list[dict]:
         except Exception as e:  # noqa: BLE001
             print(f"[음악] Data API 실패 → 웹 검색: {str(e)[:80]}", file=sys.stderr)
     from platform_util import venv_tool
-    r = subprocess.run([venv_tool("yt-dlp"), "--flat-playlist", "--no-warnings", "--print", "%(id)s\t%(title)s\t%(duration)s\t%(channel)s\t%(view_count)s",
-                        f"ytsearch{n}:{q}"], capture_output=True, text=True, timeout=90)
+    try:
+        r = subprocess.run([venv_tool("yt-dlp"), "--flat-playlist", "--no-warnings", "--print", "%(id)s\t%(title)s\t%(duration)s\t%(channel)s\t%(view_count)s",
+                            f"ytsearch{n}:{q}"], capture_output=True, text=True, timeout=60)
+    except (subprocess.TimeoutExpired, OSError) as e:        # 검색 하나가 막혀도 다른 후보로 고른다
+        print(f"[음악] 검색 실패({q[:40]}): {type(e).__name__}", file=sys.stderr)
+        return []
     out = []
     for ln in r.stdout.splitlines():
         p = ln.split("\t")
@@ -273,13 +301,31 @@ def fetch(vid: str) -> Path | None:
     if out.exists():
         return out
     from platform_util import venv_tool
-    r = subprocess.run([venv_tool("yt-dlp"), "-q", "--no-warnings", "-f", "bestaudio", "-x", "--audio-format", "m4a", "--download-sections", "*0-150",
-                        "-o", str(CACHE / f"{vid}.%(ext)s"), f"https://www.youtube.com/watch?v={vid}"], capture_output=True, text=True, timeout=180)
+    try:
+        r = subprocess.run([venv_tool("yt-dlp"), "-q", "--no-warnings", "-f", "bestaudio", "-x", "--audio-format", "m4a", "--download-sections", "*0-150",
+                            "-o", str(CACHE / f"{vid}.%(ext)s"), f"https://www.youtube.com/watch?v={vid}"], capture_output=True, text=True, timeout=180)
+    except (subprocess.TimeoutExpired, OSError):
+        return None
     return out if out.exists() and r.returncode == 0 else None
 
 
 def measure(f: Path, need: float) -> dict:
-    """박자 · 가장 힘 있는 구간의 시작(박에 맞춤)"""
+    """박자 · 가장 힘 있는 구간의 시작(박에 맞춤) — 같은 곡 · 같은 길이는 잰 값을 다시 쓴다"""
+    mf = f.with_suffix(f".measure-{round(need, 1)}.json")
+    try:
+        if mf.stat().st_mtime >= f.stat().st_mtime:
+            return json.loads(mf.read_text("utf-8"))
+    except (OSError, ValueError):
+        pass
+    out = _measure(f, need)
+    try:
+        mf.write_text(json.dumps(out), "utf-8")
+    except OSError:
+        pass
+    return out
+
+
+def _measure(f: Path, need: float) -> dict:
     import numpy as np
     from shorts_xray import load_audio, stft_mag, tempo_beats
     sr, hop = 22050, 512

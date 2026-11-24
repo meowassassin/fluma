@@ -5,6 +5,7 @@ python style.py out/duck_scene_passes.npz [flat cel sketch clay] [--tag duck]
 """
 import os, colorsys
 import numpy as np, cv2
+from numba import njit, prange
 
 _H = os.path.dirname(os.path.abspath(__file__))
 
@@ -495,53 +496,96 @@ def draw_strokes(c: Ctx, img):
 # 재질 칸: kind(plastic · metal · liquid · fuzz · wood · matte) · rough(0~1, 없으면 1-gloss) · bump(굴곡 세기) · bump_scale(굴곡 촘촘함)
 # 장면 칸: env {sky, horizon, ground, key, key_power, rim} · floor {color, color2, texture: "wood"|"plain", scale} · camera {dof, focus}
 
+@njit(cache=True, fastmath=False)
+def _h3s(ix, iy, iz):
+    n = (ix * 73856093) ^ (iy * 19349663) ^ (iz * 83492791)
+    n = (n ^ (n >> 13)) * 1274126177
+    return np.float32((n ^ (n >> 16)) & 0xFFFF) / np.float32(65535.0)
+
+
+@njit(cache=True, fastmath=False, parallel=True)
+def _fbm3_nb(x, y, z, oct):
+    out = np.empty(x.size, np.float32)
+    for i in prange(x.size):
+        a, t, fq, acc = 1.0, 0.0, 1.0, 0.0
+        for _ in range(oct):
+            X, Y, Z = x[i] * fq, y[i] * fq, z[i] * fq
+            fx0, fy0, fz0 = np.floor(X), np.floor(Y), np.floor(Z)
+            fx, fy, fz = X - fx0, Y - fy0, Z - fz0
+            ux, uy, uz = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy), fz * fz * (3 - 2 * fz)
+            ix, iy, iz = np.int64(fx0), np.int64(fy0), np.int64(fz0)
+            v = 0.0
+            for dx in range(2):
+                wx = ux if dx else 1 - ux
+                for dy in range(2):
+                    wy = uy if dy else 1 - uy
+                    for dz in range(2):
+                        wz = uz if dz else 1 - uz
+                        v += wx * wy * wz * _h3s(ix + dx, iy + dy, iz + dz)
+            acc += a * v; t += a; a *= 0.5; fq *= 2.03
+        out[i] = acc / t
+    return out
+
+
+def fbm3(x, y, z, oct=3):
+    """3D 값 노이즈 여러 겹(0~1) — 표면 위치에 붙는 무늬라 카메라 · 자세가 바뀌어도 무늬가 미끄러지지 않는다.
+    numba 로 화소마다 한 번에(2026-11-24: numpy 판은 3D 렌더 판 한 장에서 3초)"""
+    x, y, z = np.broadcast_arrays(np.asarray(x, np.float64), np.asarray(y, np.float64), np.asarray(z, np.float64))
+    shp = x.shape
+    return _fbm3_nb(np.ascontiguousarray(x).ravel(), np.ascontiguousarray(y).ravel(), np.ascontiguousarray(z).ravel(), int(oct)).reshape(shp)
+
+
 def _h3(ix, iy, iz):
     n = (ix * 73856093) ^ (iy * 19349663) ^ (iz * 83492791)
     n = (n ^ (n >> 13)) * 1274126177
     return ((n ^ (n >> 16)) & 0xFFFF).astype(np.float32) / 65535.0
 
 
-def vnoise3(x, y, z):
-    """3D 값 노이즈(0~1) — 표면 위치에 붙는 무늬라 카메라 · 자세가 바뀌어도 무늬가 미끄러지지 않는다"""
-    ix, iy, iz = np.floor(x), np.floor(y), np.floor(z)
-    fx, fy, fz = x - ix, y - iy, z - iz
-    ux, uy, uz = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy), fz * fz * (3 - 2 * fz)
-    ix, iy, iz = ix.astype(np.int64), iy.astype(np.int64), iz.astype(np.int64)
-    acc = 0
-    for dx in (0, 1):
-        for dy in (0, 1):
-            for dz in (0, 1):
-                w = (ux if dx else 1 - ux) * (uy if dy else 1 - uy) * (uz if dz else 1 - uz)
-                acc = acc + w * _h3(ix + dx, iy + dy, iz + dz)
-    return acc
-
-
-def fbm3(x, y, z, oct=3):
-    a, t, f, out = 1.0, 0.0, 1.0, 0
-    for _ in range(oct):
-        out = out + a * vnoise3(x * f, y * f, z * f); t += a; a *= 0.5; f *= 2.03
-    return out / t
-
-
 def _lin(h):
     return np.power(hexrgb(h), 2.2).astype(np.float32)
 
 
+@njit(cache=True, fastmath=False, parallel=True)
+def _env_nb(d, rough, sky, hor, gnd, Lb, Cb, edge):
+    n = d.shape[0]
+    out = np.empty((n, 3), np.float32)
+    for i in prange(n):
+        y = d[i, 1]
+        r = rough[i]
+        if y >= 0:
+            t = min(max(y / 0.7, 0.0), 1.0) ** 0.8
+            c0, c1, c2 = hor[0] + (sky[0] - hor[0]) * t, hor[1] + (sky[1] - hor[1]) * t, hor[2] + (sky[2] - hor[2]) * t
+        else:
+            t = min(max(-y / 0.35, 0.0), 1.0)
+            c0, c1, c2 = hor[0] * 0.7 + (gnd[0] - hor[0] * 0.7) * t, hor[1] * 0.7 + (gnd[1] - hor[1] * 0.7) * t, hor[2] * 0.7 + (gnd[2] - hor[2] * 0.7) * t
+        w = 0.015 + 0.35 * r ** 1.5
+        k = (1 - 0.75 * r) * (1 + 3 * (1 - r)) * 0.25
+        for j in range(Lb.shape[0]):
+            c = d[i, 0] * Lb[j, 0] + d[i, 1] * Lb[j, 1] + d[i, 2] * Lb[j, 2]
+            bx = min(max((c - edge[j] + w) / (2 * w), 0.0), 1.0)
+            bx = bx * bx * (3 - 2 * bx) * k
+            c0 += Cb[j, 0] * bx; c1 += Cb[j, 1] * bx; c2 += Cb[j, 2] * bx
+        out[i, 0] = c0; out[i, 1] = c1; out[i, 2] = c2
+    return out
+
+
 def _env(d, rough, E):
-    """주변 빛(선형 RGB) — d: 방향(n,3), rough: (n,) 0~1(거칠수록 조명판 가장자리가 퍼지고 약해진다)"""
-    y = d[:, 1:2]
-    up = E["horizon"] + (E["sky"] - E["horizon"]) * np.clip(y / 0.7, 0, 1) ** 0.8
-    dn = E["horizon"] * 0.7 + (E["ground"] - E["horizon"] * 0.7) * np.clip(-y / 0.35, 0, 1)
-    col = np.where(y >= 0, up, dn)
-    r = rough[:, None]
-    for L, colr, size in E["boxes"]:
-        c = d @ L
-        edge = np.cos(np.radians(size))
-        w = 0.015 + 0.35 * r[:, 0] ** 1.5
-        box = np.clip((c - edge + w) / (2 * w), 0, 1)
-        box = box * box * (3 - 2 * box)
-        col = col + colr * (box * (1 - 0.75 * r[:, 0]))[:, None] * (1 + 3 * (1 - r[:, 0]))[:, None] * 0.25
-    return col
+    """주변 빛(선형 RGB) — d: 방향(n,3), rough: (n,) 0~1(거칠수록 조명판 가장자리가 퍼지고 약해진다). 하늘 · 지평선 · 바닥 색 + 큰 조명판(softbox)"""
+    f32 = lambda v: np.ascontiguousarray(np.asarray(v, np.float32))  # noqa: E731
+    Lb = f32([b[0] for b in E["boxes"]]).reshape(-1, 3)
+    Cb = f32([b[1] for b in E["boxes"]]).reshape(-1, 3)
+    edge = f32([np.cos(np.radians(b[2])) for b in E["boxes"]])
+    return _env_nb(f32(d).reshape(-1, 3), f32(rough).ravel(), f32(E["sky"]), f32(E["horizon"]), f32(E["ground"]), Lb, Cb, edge)
+
+
+def _blur(img, sigma):
+    """큰 흐림은 줄인 그림에서(초점 흐림 · 번짐 — 결과가 어차피 부드러워 차이가 안 보인다, 2026-11-24: 판 한 장에서 흐림 여섯 번이 가장 컸다)"""
+    if sigma < 6:
+        return cv2.GaussianBlur(img, (0, 0), sigma)
+    k = int(min(8, sigma // 3))
+    H, W = img.shape[:2]
+    small = cv2.resize(img, (max(1, W // k), max(1, H // k)), interpolation=cv2.INTER_AREA)
+    return cv2.resize(cv2.GaussianBlur(small, (0, 0), sigma / k), (W, H), interpolation=cv2.INTER_LINEAR)
 
 
 def render_style(c: Ctx, bg="#f6f1ea"):
@@ -706,7 +750,7 @@ def render_style(c: Ctx, bg="#f6f1ea"):
         dd = np.nan_to_num(np.abs(1 / np.maximum(np.nan_to_num(dep, nan=1e3), 1e-3) - 1 / fd) * fd, nan=1.0)
         coc = np.clip(dd * dof * 2.2, 0, 1)
         levels = [0, 2.5, 6, 12]
-        bl = [img] + [cv2.GaussianBlur(img, (0, 0), s * W / 1080) for s in levels[1:]]
+        bl = [img] + [_blur(img, s * W / 1080) for s in levels[1:]]
         x = coc * (len(levels) - 1)
         out = np.zeros_like(img)
         for k in range(len(levels)):
@@ -717,7 +761,7 @@ def render_style(c: Ctx, bg="#f6f1ea"):
     tone = lambda x: np.power(np.clip((x * (a * x + b_)) / (x * (c2 * x + d) + e2), 0, 1), 1 / 2.2)  # noqa: E731
     if full:
         bright = np.clip(img - 0.9, 0, None)
-        img = tone(img + cv2.GaussianBlur(bright, (0, 0), 18 * W / 1080) * 0.5)
+        img = tone(img + _blur(bright, 18 * W / 1080) * 0.5)
     else:                                                  # 층: 형태 화소만 톤(번짐은 바탕으로 새어 투명도를 틀어서 뺀다)
         img[h] = tone(img[h])
         # 투명 배경으로 뽑을 때: 형태 밖은 받은 바탕 그대로(바닥 그림자만) — 톤 매핑이 바탕색을 바꾸면 투명도가 틀어진다

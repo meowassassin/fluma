@@ -47,7 +47,8 @@ def from_review(sid: str) -> list[dict]:
             continue
         kind = str(x.get("kind") or "")
         msg = f"{kind + ': ' if kind else ''}{x['what']}" + (f" → {x['fix']}" if x.get("fix") else "")
-        out.append(issue("D21", x.get("scene"), msg + (" (지난 검토 — 지금 그림으로 다시 보지 못함)" if stale else ""), block=not stale and any(k in kind for k in REVIEW_BLOCK_KINDS)))
+        st = stale or bool(x.get("stale"))              # 장면별: 그림이 바뀌었는데 상한으로 다시 못 본 문제만 권고로
+        out.append(issue("D21", x.get("scene"), msg + (" (지난 검토 — 지금 그림으로 다시 보지 못함)" if st else ""), block=not st and any(k in kind for k in REVIEW_BLOCK_KINDS)))
     return out
 
 

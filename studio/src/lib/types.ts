@@ -21,7 +21,7 @@ export interface Storyboard {
   upload?: UploadMeta;
   constraints?: string[]; reference?: string[]; voice?: { engine?: string; id?: string | null } | null;
   direction?: Record<string, string>;
-  /** 의도 카드 — 사용자가 원하는 것(이 영상의 규칙). 확인 전엔 최종 렌더가 막힌다(engine/checks/gate.py) */
+  /** 의도 카드 — 사용자가 원하는 것(이 영상의 규칙) */
   intent?: { summary?: string; reference_use?: string; must?: string[]; must_not?: string[]; locked?: string[]; confirmed?: boolean };
 }
 

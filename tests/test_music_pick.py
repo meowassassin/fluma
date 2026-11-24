@@ -53,3 +53,15 @@ def test_voice_auto_uses_storyboard_voice(monkeypatch):
     assert tts.resolve({"voice": {"engine": "supertonic", "id": "F2", "source": "auto"}}) == ("supertonic", "F2")
     monkeypatch.setattr(tts, "_settings", lambda: {"voice_engine": "edge", "voice_id": "", "voice_auto": False})
     assert tts.resolve({"voice": {"engine": "supertonic", "id": "F2", "source": "auto"}})[0] == "edge"
+
+
+def test_search_results_are_cached(tmp_path, monkeypatch):
+    import music_pick as mp
+    calls = []
+    monkeypatch.setattr(mp, "CACHE", tmp_path)
+    monkeypatch.setattr(mp, "_search", lambda q, n=8, recent=False: calls.append(q) or [{"id": "x", "title": q, "sec": 100, "by": "a", "views": 1}])
+    a = mp.search("calm lofi", 5)
+    b = mp.search("calm lofi", 5)
+    assert a == b and len(calls) == 1
+    mp.search("calm lofi", 5, recent=True)
+    assert len(calls) == 2

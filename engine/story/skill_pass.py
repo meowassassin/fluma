@@ -969,7 +969,15 @@ def run_pass(name: str, sbp: Path, force: bool, issues: list[str] | None = None,
     cap = pass_max(name)
     if pre is None and _runs(sid, name) >= cap:
         if name in ("review", "viewer") and rec_p.exists():   # 그림 · 대본이 바뀌었는데 다시 못 봤다 — 지난 검토는 막음이 아니라 권고로(D21 · 이해 관문, 2026-11-19: 상한 뒤 옛 판정이 고친 대본을 계속 막음)
-            r0 = json.loads(rec_p.read_text("utf-8")); r0["stale"] = True
+            r0 = json.loads(rec_p.read_text("utf-8"))
+            same = set(_REVIEW_CTX.get("same") or []) if name == "review" and _REVIEW_CTX.get("digests") else None
+            if same is None:
+                r0["stale"] = True
+            else:                                      # 그림이 지난 검토 그대로인 장면의 문제는 분명히 안 풀렸다 — 그것만 계속 막는다(2026-11-24)
+                r0.pop("stale", None)
+                for x in r0.get("problems") or []:
+                    if isinstance(x, dict):
+                        x["stale"] = x.get("scene") not in same
             rec_p.write_text(json.dumps(r0, ensure_ascii=False, indent=1), "utf-8")
         _log_skill_timing(sid, name, time.perf_counter() - t_pass, skipped=True, capped=True)
         return {"pass": name, "skipped": f"{name} 상한({cap}회/영상) — 남은 문제는 에이전트가 직접 고친다"}

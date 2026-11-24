@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """파이프라인 6단계 — 렌더링 → 유튜브 업로드 → 영상 분석 → (기존 트렌드 분석을 거쳐) 1단계 입력.
 
-  python3 engine/gen/publish.py final <plan id>                       # 최종 렌더(engine/render.py — 초안 아님)
+  python3 engine/gen/publish.py final <plan id>                       # 최종본: 편집기 내보내기 → 막음 없는 produce 결과 → 없을 때만 engine/render.py
   python3 engine/gen/publish.py upload <plan id> [--privacy private|unlisted|public] [--publish-at ISO]
         # 사용자가 명시적으로 올리라고 할 때만. engine/publish/upload_youtube.py(채널별 중복 업로드 방지).
         # 채널 = 이 영상에 고른 것(data/compositions/<id>/youtube.account.json) → 없으면 설정의 기본 계정
@@ -77,6 +77,13 @@ def final(pid: str) -> str:
     sbp = ROOT / "data" / "storyboards" / f"{pid}.json"
     if not sbp.exists():
         fail("publish", stage="final", error="콘티가 없다 — storyboard · produce(실제 자료) 또는 dub.py build(클립)부터")
+    # 막음 없이 끝난 produce 결과가 콘티보다 새것이면 그것이 완성본 — 다시 렌더하지 않는다(2026-11-24: 같은 영상을 한 번 더 그려 수 분을 썼다)
+    import quality_gate
+    qp = quality_gate.path(pid)
+    if qp.exists():
+        v = ROOT / (json.loads(qp.read_text("utf-8")).get("video") or "")
+        if v.is_file() and v.stat().st_mtime >= sbp.stat().st_mtime:
+            return str(v.relative_to(ROOT))
     r = subprocess.run([sys.executable, "engine/render.py", str(sbp.relative_to(ROOT))], cwd=ROOT, capture_output=True, text=True, timeout=5400)
     b = parse_block(r.stdout)
     if r.returncode or b.get("head") != "FLUMA_RESULT":

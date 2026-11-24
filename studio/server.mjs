@@ -494,20 +494,6 @@ app.put("/api/trends/picks/:vid", ah(async (req, res) => {
   res.json({ ok: true, pick: await next });
 }));
 
-// ---------- 제작 관문 (engine/checks/gate.py) — 의도 카드 확인 · 시안(장면 1~3) 승인. 최종 렌더 · 유료 생성 전에 필요 ----------
-app.get("/api/projects/:id/gate", ah(async (req, res) => {
-  const id = checkId(req.params.id);
-  const r = await py(["engine/checks/gate.py", "status", id], { timeout: 30e3 });
-  const v = lastJson(r); if (!v) throw new HttpError(500, "gate", tail(r.err || r.out)); res.json(v);
-}));
-app.post("/api/projects/:id/gate/:kind", ah(async (req, res) => {
-  const id = checkId(req.params.id); const kind = req.params.kind;
-  if (!["intent", "draft"].includes(kind)) throw bad("확인할 대상이 올바르지 않습니다");
-  const r = await py(["engine/checks/gate.py", kind, id, "--by", "button"], { timeout: 30e3 });
-  if (r.code !== 0) throw new HttpError(422, "gate", tail(r.err || r.out).split("\n").pop() || "확인하지 못했습니다");
-  logEffort(ROOT, id, "approve", kind);
-  res.json(lastJson(r) || { ok: true });   // 콘티 intent.confirmed 가 바뀌면 파일 감시가 화면에 알린다
-}));
 
 // ---------- 자막 · 글자 편집(engine/gen/subs.py) — 사람 화면과 에이전트가 같은 값을 고친다(엔진은 Craft 하나) ----------
 app.get("/api/projects/:id/subs", ah(async (req, res) => {

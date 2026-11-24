@@ -89,18 +89,6 @@ def design_gate(a, sb: dict, sb_path: Path) -> None:
         print(f"[관문] {msg}")
 
 
-def gate_check(a, sid: str):
-    """제작 관문(engine/checks/gate.py): 전체 최종 렌더는 사용자가 의도 카드와 시안(장면 1~3)을 확인한 뒤에만"""
-    if a.build or a.draft or a.scenes:
-        return
-    g = subprocess.run([sys.executable, str(ROOT / "engine" / "checks" / "gate.py"), "check", sid, "--for", "render"], capture_output=True, text=True)
-    if g.returncode != 0:   # 의도 카드 · 시안 승인을 기다리지 않는다(알리기만) — 막으려면 FLUMA_STRICT_GATE=1
-        msg = g.stderr.strip() or f"제작 관문 — python3 engine/checks/gate.py status {sid}"
-        if os.environ.get("FLUMA_STRICT_GATE"):
-            sys.exit(msg)
-        print(f"[관문] {msg.splitlines()[-1] if msg else ''} — 승인 없이 진행")
-
-
 def density(sb: dict, sb_path: Path, video: Path):
     """초안 전체를 사람 편집 기준(engine/spec/presets/density.json)과 견준다 → data/workspace/render/<id>/density.json (lint L28 · 최종 렌더 관문이 읽는다)"""
     import hashlib
@@ -208,7 +196,6 @@ def main():
 
     sb = json.loads(sb_path.read_text(encoding="utf-8"))
     mixed = a.engines or (not a.engine and any(s.get("engine") for s in sb["scenes"]))
-    gate_check(a, sb["id"])
     design_gate(a, sb, sb_path)
     if mixed and not a.build:
         return render_mix(a, sb_path)

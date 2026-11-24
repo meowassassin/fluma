@@ -78,23 +78,6 @@ def test_channel_sentences_split_on_punctuation():
     assert [s["text"] for s in out] == ["첫 문장입니다.", "둘째 문장이고요."]
 
 
-# ---------- 관문: 의도 · 시안 해시 ----------
-def test_gate_draft_hash_ignores_narration_but_not_screen():
-    import gate
-    sb = {"scenes": [{"narration": "가", "visual": {"kind": "x"}, "screen": "짤"}, {"narration": "나"}, {"narration": "다"}]}
-    h0 = gate.draft_hash(sb)
-    sb["scenes"][0]["narration"] = "어미만 바꿈"
-    assert gate.draft_hash(sb) == h0
-    sb["scenes"][0]["screen"] = "실제 화면"
-    assert gate.draft_hash(sb) != h0
-
-
-def test_gate_intent_hash_needs_summary():
-    import gate
-    assert gate.intent_hash({}) is None
-    assert gate.intent_hash({"intent": {"summary": "누구에게 무엇을"}})
-
-
 # ---------- 검사: 채널과 화면 구성 비교 ----------
 def test_structure_tells_flags_article_heavy_script(monkeypatch):
     import lint
