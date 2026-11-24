@@ -92,7 +92,12 @@ def test_model3d_still_with_logo(tmp_path):
 @app_tc
 def test_model3d_turntable_mp4(tmp_path):
     m = {"id": "m2", "type": "model3d", "shape": "puck", "turntable": True, "sec": 1, "fps": 12, "width": 180, "height": 320}
-    info = sc.model3d(m, tmp_path / "m2.png", tmp_path)
+    try:
+        info = sc.model3d(m, tmp_path / "m2.png", tmp_path)
+    except RuntimeError as e:
+        if "no GPU adapter" in str(e):                   # 회전 영상은 TextureCraft 뷰포트(GPU)로 그린다 — GPU 없는 CI 러너
+            pytest.skip("GPU 없음")
+        raise
     assert info["file_suffix"] == ".mp4" and info["as"] == "video" and info["frames"] == 12
     assert (tmp_path / "m2.mp4").stat().st_size > 1000 and (tmp_path / "m2.png").exists()
 

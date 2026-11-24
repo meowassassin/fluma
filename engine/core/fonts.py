@@ -5,7 +5,7 @@ EffectCraft 는 EFFECTCRAFT_FONT_DIRS(두 폴더)를 보고, 다른 Craft 앱은
 
   python3 engine/core/fonts.py list [--use title|subs|caption|body]   # 글꼴 · 분위기 · 쓰임 · 받았는지
   python3 engine/core/fonts.py fetch <PS 이름 …>                      # 미리 받기(보통은 필요 없음 — 렌더가 쓰는 글꼴만 그때 받는다)
-  python3 engine/core/fonts.py                                        # 사용자 글꼴 폴더에 설치(받은 것 포함)
+  python3 engine/core/fonts.py                                        # 사용자 글꼴 폴더에 설치(받은 것 포함 · 없으면 Noto Sans CJK KR 도 받는다)
 """
 from __future__ import annotations
 
@@ -19,7 +19,16 @@ import sys as _sys  # noqa: E402
 _sys.path.insert(0, str(ROOT / "engine")); import paths  # noqa: E402,F401 — HTTPS 인증서(독립 빌드 파이썬은 CA 경로가 없다, 2026-11-20 위키미디어 검색 실패)
 EXT = ROOT / "tools" / "fonts"
 CATALOG = SRC / "catalog.json"
-DST = Path.home() / ".local" / "share" / "fonts" / "fluma"
+import os as _os  # noqa: E402
+_OS = "windows" if _sys.platform.startswith("win") else "mac" if _sys.platform == "darwin" else "linux"
+DST = (Path(_os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "Microsoft" / "Windows" / "Fonts" if _OS == "windows"
+       else Path.home() / "Library" / "Fonts" / "Fluma" if _OS == "mac" else Path.home() / ".local" / "share" / "fonts" / "fluma")   # 운영체제마다 사용자 글꼴 폴더
+# Craft 앱(Design · Vector · Deck · Photo · Fig · Texture)의 한글 글꼴 — 시스템 글꼴 이름 'Noto Sans CJK KR' 로 찾는다(OFL, 굵기별 약 16MB).
+# 2026-11-24: 설치가 이 글꼴을 깔지 않아, 글꼴이 없는 macOS · Windows · CI 에서 글자 단계가 'no font family' 로 멈췄다
+NOTO_CJK = "Noto Sans CJK KR"
+NOTO_URL = "https://github.com/notofonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansCJKkr-{w}.otf"
+NOTO_WEIGHTS = ("Regular", "Medium", "Bold", "Black")
+NOTO_LICENSE = "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/LICENSE"
 FILES = ("GowunBatang-Bold", "GowunBatang-Regular", "BlackHanSans-Regular", "NanumPenScript-Regular", "SongMyung-Regular", "Gugi-Regular")
 
 
@@ -92,14 +101,66 @@ def ensure(names) -> None:
         fetch(need)
 
 
+def has_system_font(family: str = NOTO_CJK) -> bool:
+    """시스템이 이 글꼴 이름을 아는가(fc-list 가 없으면 Fluma 가 깐 파일로 판단)"""
+    if shutil.which("fc-list"):
+        r = subprocess.run(["fc-list", family, "family"], capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip():
+            return True
+    return all((DST / f"NotoSansCJKkr-{w}.otf").exists() for w in NOTO_WEIGHTS)
+
+
+def fetch_noto_cjk() -> list[Path]:
+    """Noto Sans CJK KR 굵기별 OTF 를 tools/fonts 에 받는다(이미 있으면 그대로)"""
+    import urllib.request
+    EXT.mkdir(parents=True, exist_ok=True)
+    (EXT / "licenses").mkdir(exist_ok=True)
+    out = []
+    for w in NOTO_WEIGHTS:
+        f = EXT / f"NotoSansCJKkr-{w}.otf"
+        if not f.exists():
+            tmp = f.with_suffix(".otf.part")
+            try:
+                urllib.request.urlretrieve(NOTO_URL.format(w=w), tmp)
+                tmp.replace(f)
+            except OSError as e:
+                tmp.unlink(missing_ok=True)
+                print(f"[글꼴] {NOTO_CJK} {w} 받기 실패: {e}")
+                continue
+        out.append(f)
+    lic = EXT / "licenses" / "OFL-notosanscjk.txt"
+    if out and not lic.exists():
+        try:
+            urllib.request.urlretrieve(NOTO_LICENSE, lic)
+        except OSError:
+            pass
+    return out
+
+
+def _register_windows(path: Path) -> None:
+    """Windows 사용자 글꼴 등록(HKCU) — 폴더에 복사만 하면 앱이 못 찾는다"""
+    import winreg
+    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows NT\CurrentVersion\Fonts", 0, winreg.KEY_SET_VALUE)
+    with key:
+        winreg.SetValueEx(key, f"{path.stem} (OpenType)", 0, winreg.REG_SZ, str(path))
+
+
 def install(dst: Path = DST) -> int:
+    """디자인 글꼴 + (시스템에 없으면) Noto Sans CJK KR 을 사용자 글꼴 폴더에 설치 → 새로 깐 개수"""
     dst.mkdir(parents=True, exist_ok=True)
     n = 0
     files = [SRC / f"{f}.ttf" for f in FILES] + sorted(EXT.glob("*.ttf"))
+    if not has_system_font():
+        files += fetch_noto_cjk()
     for s_ in files:
         d = dst / s_.name
         if s_.exists() and (not d.exists() or d.stat().st_size != s_.stat().st_size):
             shutil.copyfile(s_, d)
+            if _OS == "windows":
+                try:
+                    _register_windows(d)
+                except OSError as e:
+                    print(f"[글꼴] {d.name} 등록 실패: {e}")
             n += 1
     if n and shutil.which("fc-cache"):
         subprocess.run(["fc-cache", "-f", str(dst)], capture_output=True)

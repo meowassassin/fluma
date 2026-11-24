@@ -64,6 +64,9 @@ def checks() -> list[tuple[str, bool, str]]:
     ok_chr = vpy().exists() and subprocess.run([str(vpy()), "-c", "from playwright.sync_api import sync_playwright as s\nwith s() as p: p.chromium.launch().close()"], capture_output=True, timeout=120).returncode == 0
     out.append(("Chromium(렌더 · 미리보기)", ok_chr, "playwright install chromium"))
     out.append(("웹 앱 npm 패키지", (ROOT / "studio" / "node_modules").exists(), "studio/ 에서 npm install"))
+    sys.path.insert(0, str(ROOT / "engine" / "core"))
+    import fonts
+    out.append(("한글 글꼴(Craft 앱)", fonts.has_system_font(), fonts.NOTO_CJK if fonts.has_system_font() else "없음 — --fix 가 받는다(약 64MB)"))
     return out
 
 

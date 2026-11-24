@@ -16,7 +16,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-ROOT = next(p for p in Path(__file__).resolve().parents if (p / "engine" / "paths.py").exists())
 
 
 def _hex(rgb) -> str:
@@ -113,7 +112,8 @@ def draw(ctx, out: Path, bg: str | None = None, ink: str = "#2a1c14", line: floa
     with tempfile.TemporaryDirectory() as td:
         sp = Path(td) / "steps.json"
         sp.write_text(json.dumps(steps), "utf-8")
-        cli = next((ROOT / "tools" / "crafts" / "vectorcraft" / "app").glob("vectorcraft-*/bin/vectorcraft-cli"))
+        from craft.materials import cli as craft_cli                     # 설치 기록(installed.json)의 실행 파일 — 운영체제마다 경로가 다르다(macOS .app · Windows .exe)
+        cli = craft_cli("vectorcraft")
         r = subprocess.run([str(cli), "run", "--commands", str(sp), "--export", str(out), "--export", str(out.with_suffix(".vectorcraft")), "--scale", "1"],
                            capture_output=True, text=True, timeout=300, env={**os.environ, "VECTORCRAFT_NO_PREFS": "1"})
         if r.returncode != 0 or not out.exists():

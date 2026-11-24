@@ -74,7 +74,7 @@ def cli(app: str) -> Path | None:
         p = ROOT / json.loads(f.read_text("utf-8")).get("cli", "")
         if p.is_file():
             return p
-    found = sorted(TOOLS.glob(f"{app}/**/bin/{app}-cli"))
+    found = sorted(TOOLS.glob(f"{app}/**/{app}-cli")) + sorted(TOOLS.glob(f"{app}/**/{app}-cli.exe"))
     return found[0] if found else None
 
 

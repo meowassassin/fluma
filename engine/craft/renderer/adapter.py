@@ -61,11 +61,10 @@ def paths(job):
 def build(job) -> Path:
     """프로젝트를 만들거나(입력이 바뀌었을 때) 사람이 고친 것을 그대로 둔다 → .ecproj 경로.
     같은 영상의 빌드는 한 번에 하나(produce 렌더 · 정지 화면 · 미리보기가 동시에 프로젝트를 쓰면 반쯤 쓴 파일이 남았다, 2026-11-24)"""
-    import fcntl
+    from platform_util import file_lock
     _, _, man_p = paths(job)
     man_p.parent.mkdir(parents=True, exist_ok=True)
-    with open(man_p.with_suffix(".lock"), "w") as lk:
-        fcntl.flock(lk, fcntl.LOCK_EX)
+    with file_lock(man_p.with_suffix(".lock")):
         return _build(job)
 
 

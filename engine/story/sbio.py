@@ -11,7 +11,6 @@
 from __future__ import annotations
 
 import copy
-import fcntl
 import json
 import os
 from pathlib import Path
@@ -55,8 +54,8 @@ def _same_ids(a: list, b: list) -> bool:
 def save(path: Path, base: dict, mine: dict, indent: int = 2) -> dict:
     """base → mine 의 변경만 지금 파일에 얹어 쓴다. 쓴 결과를 돌려준다."""
     path = Path(path)
-    with open(str(path) + ".lock", "w") as lk:
-        fcntl.flock(lk, fcntl.LOCK_EX)
+    from platform_util import file_lock
+    with file_lock(str(path) + ".lock"):
         try:
             theirs = load(path)
         except (OSError, ValueError):
