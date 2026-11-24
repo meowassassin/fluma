@@ -2,8 +2,8 @@
 
 **한 줄 요약**: Premiere 같은 비선형 편집기(Rust, MIT/Apache-2.0). 명령 716개가 전부 `filmcraft-cli` 로 헤드리스에서 돈다. Fluma 에서는 조립 · 마무리 단계를 맡는다: 컷 · 줌 · 자막 · 소리 균형 · 색 · 최종 내보내기. 사람이 나중에 `.fcproj` 를 열어 조금 고친다.
 
-- CLI: `tools/crafts/filmcraft/app/filmcraft-0.17.0-linux-x86_64/bin/filmcraft-cli`(아래에서는 `$FC`)
-- 웹 빌드: `tools/crafts/filmcraft/web/filmcraft-web-0.17.0`(사람이 편집할 때 쓴다. 브라우저 wasm)
+- CLI: `tools/crafts/filmcraft/app/filmcraft-<버전>-<플랫폼>/bin/filmcraft-cli`(아래에서는 `$FC`)
+- 웹 빌드: `tools/crafts/filmcraft/web/filmcraft-web-<버전>`(사람이 편집할 때 쓴다. 브라우저 wasm)
 
 ## 지금 Fluma 가 쓰는 범위
 

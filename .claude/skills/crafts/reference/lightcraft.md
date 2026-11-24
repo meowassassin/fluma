@@ -2,7 +2,7 @@
 
 > 한 줄 요약: Lightroom 류 사진 보정기 · RAW 현상기(Rust). 노출 · 톤 · 색 · 컬러 그레이딩 · 그레인 · 비네트 · 프리셋 41개 · 프로필 22개 · 로컬 마스크(방사형 · 선형 · 붓) · 잡티 지우기 · 자르기 · 워터마크를 **명령 380개 + 현상 슬라이더(controls)** 로 창 없이 쓴다. 쇼츠에선 "직접 찍은 사진 · 현장 스틸을 한 영상 안에서 같은 색감으로 맞추는 곳"(감성 · 광고 형식). 원본은 안 건드리고 설정만 바꿔 내보낸다(비파괴).
 
-- CLI: `tools/crafts/lightcraft/app/lightcraft-0.18.0-linux-x86_64/bin/lightcraft-cli` (아래 `$L`)
+- CLI: `tools/crafts/lightcraft/app/lightcraft-<버전>-<플랫폼>/bin/lightcraft-cli` (아래 `$L`)
 - 명령 · 슬라이더 원본: 같은 폴더 `commands.json`(`$L commands --json`), `controls.txt`(`$L controls`)
 
 ## 지금 Fluma 에서 쓰는 곳
@@ -30,7 +30,7 @@
 ## 기본 형태
 
 ```sh
-L=tools/crafts/lightcraft/app/lightcraft-0.18.0-linux-x86_64/bin/lightcraft-cli
+L=$(echo tools/crafts/lightcraft/app/*/bin/lightcraft-cli)
 $L render in.jpg -o out.png --preset lc.warm-film --set light.exposure=0.3 --size 1920
 $L run --import /abs/in.jpg develop.auto app.export path=/abs/out.jpg longEdge=1920
 $L controls        # 슬라이더 id · 범위 · 기본값

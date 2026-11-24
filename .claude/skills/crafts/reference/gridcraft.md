@@ -2,8 +2,8 @@
 
 **한 줄 요약**: Excel 같은 스프레드시트(Rust, MIT/Apache-2.0). 명령 372개 + 함수 515개가 `gridcraft-cli` 로 헤드리스에서 돈다. Fluma 에서는 **숫자 근거**를 맡는다: 원자료 읽기 · 계산(비율 · 합계 · 순위) · 정렬 · 피벗 집계. 그림(차트)은 그리지 않고 숫자만 넘긴다. 사람이 나중에 `.xlsx` 를 열어 숫자를 확인 · 수정한다.
 
-- CLI: `tools/crafts/gridcraft/app/gridcraft-0.16.0-linux-x86_64/bin/gridcraft-cli`(아래에서는 `$GC`)
-- 웹 빌드: `tools/crafts/gridcraft/web/gridcraft-web-0.16.0`
+- CLI: `tools/crafts/gridcraft/app/gridcraft-<버전>-<플랫폼>/bin/gridcraft-cli`(아래에서는 `$GC`)
+- 웹 빌드: `tools/crafts/gridcraft/web/gridcraft-web-<버전>`
 
 ## 지금 Fluma 가 쓰는 범위
 

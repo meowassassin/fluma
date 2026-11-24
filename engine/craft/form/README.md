@@ -1,6 +1,6 @@
 # 형태(form) 작성법
 
-형태는 **데이터로 빚는다** — 기본 도형을 놓고 녹여 붙이거나(smooth_union) 깎아 낸다(subtract). 화풍(flat · cel · sketch · clay)은 형태와 따로, 영상 아트 디렉션(`direction.art.style`)이 정한다. 영상마다 새로 빚는다(부품을 쌓아 두지 않는다).
+형태는 **데이터로 빚는다** — 기본 도형을 놓고 녹여 붙이거나(smooth_union) 깎아 낸다(subtract). 화풍(flat · cel · sketch · clay · vector · render)은 형태와 따로, 재료 `style` 또는 영상 아트 디렉션(`direction.art.style`)이 정한다. 영상마다 새로 빚는다(부품을 쌓아 두지 않는다).
 
 ## 좌표
 y 가 위, 바닥은 y = 0, 정면은 +z. 단위는 대략 "물체 높이 ≈ 1". 카메라는 자동으로 맞춘다.
@@ -19,7 +19,7 @@ y 가 위, 바닥은 y = 0, 정면은 +z. 단위는 대략 "물체 높이 ≈ 1"
 ## 빚는 순서
 1. 큰 덩어리(몸통) → 붙는 덩어리(머리 · 손잡이)를 `smooth_union` 으로(이음매 없이) → 작은 부품(눈 · 부리)은 `union`.
 2. `python3 engine/craft/form_cli.py preview <형태.json>` — 540 크기로 약 1~2초. Read 로 보고 비례 · 위치를 고친다(2~3번).
-3. `python3 engine/craft/form_cli.py styles <형태.json>` — 네 화풍을 한 장으로 비교(필요할 때만).
+3. `python3 engine/craft/form_cli.py styles <형태.json>` — 화풍을 한 장으로 비교(필요할 때만). 한 장만 크게: `form_cli.py render <형태.json> --out <파일.png> --style <화풍> [--bg "#hex"] [--res 1080]`.
 4. 콘티: `{"type": "form", "scene": "$FILE:data/compositions/<id>/forms/<이름>.json", "view": {"azimuth": 30}}` — 장면마다 각도만 바꿔 같은 형태를 다시 쓴다.
 
 예: `examples/duck.json`(고무 오리) · `examples/mug.json`(머그). 그대로 복사하지 말고 비례 · 재질 쓰는 법만 본다.
@@ -44,7 +44,6 @@ y 가 위, 바닥은 y = 0, 정면은 +z. 단위는 대략 "물체 높이 ≈ 1"
 - 손: `"hands": "mitten"`(손바닥 + 엄지, 기본) · `"fingers"`(다섯 손가락) — 자세 `l_grip`/`r_grip`(0 펴기 … 1 주먹) · `l_spread`/`r_spread`(벌림 °)
 - 클로즈업: 카메라 `"focus": [x, y, z], "radius": r` — 그 점을 가운데에 반지름만큼만(얼굴 · 손). 머리 위치는 `skeleton.joints(size, pose)["head"]`
 - 움직임: `anim.tracks` 에서 뼈대 안쪽 값을 점 경로로 — `{"hero": {"pose.r_elbow": [[0, 15], [0.5, 70]], "face.eyelid": [[0.7, 0], [0.8, 1], [0.9, 0]]}}`(노드 `"name": "hero"`)
-사람은 그리지 않는다(실제 자료만 — 사람 형태는 빚지 않는다).
 
 ## 캐릭터는 움직인다 (2026-11-20 — 정지 그림 한 장으로 쓰지 않는다)
 부품에 `name` 을 붙이고 `anim` 에 시간별 값을 적으면 프레임 묶음으로 그려 장면에서 반복 재생한다(12fps · 1~2초 · 약 13초/18장).
@@ -93,3 +92,13 @@ y 가 위, 바닥은 y = 0, 정면은 +z. 단위는 대략 "물체 높이 ≈ 1"
 - 트랙 값에 `{"osc": [기준, 진폭, 횟수/초, 위상]}` — 날갯짓 · 꼬리 흔들기 · 숨쉬기처럼 빠르게 되풀이되는 움직임(값이 목록이면 칸마다). 반복 길이(dur)×횟수가 정수면 이음매 없이 돈다.
 - 공중에 뜬 것은 장면에 `"ground": false`(땅 그림자 없음).
 - 이런 형태 anim 을 콘티 장면의 `carry`(감독 스킬 다섯 기둥 · 모티프)로 쓰면 다음 장면으로 날아가며 화면을 바꾼다(engine/craft/motion.py carry_jsx).
+
+## 3D 렌더 화풍 — `render` (2026-11-23)
+그림 화풍 대신 재질 · 주변 빛으로 3D 렌더처럼 그린다. 형태 · 뼈대 · 움직임은 그대로 쓰고, 재질과 장면 칸만 더한다.
+- 재질 `kind`: `plastic`(기본) · `metal` · `liquid` · `glass` · `fuzz`(털 · 솜) · `wood` · `matte`. `rough`(0 매끈 … 1 거침, 없으면 1 − gloss) · `bump`(표면 굴곡 세기) · `bump_scale`(굴곡 촘촘함). 액체 · 유리 · 금속은 굴곡 없이 매끈하다.
+- 빛 `env`: `sky` · `horizon` · `ground`(주변 색) · `key` · `key_power`(주광) · `fill` · `rim`(뒤에서 오는 빛) · `bokeh`(먼 배경 빛 망울 수) · `bokeh_colors` · `seed`.
+- 판(plate) — 배경까지 그린 한 장: 장면에 `"backdrop": true`(또는 `camera.aspect`). 바닥은 `floor`: `color` · `color2` · `texture`(`wood`) · `scale` · `reflect`(비침). 초점 흐림 `camera.dof`(판 기본 0.6) · `focus_depth`.
+- 층(layer) — 같은 카메라로 형태만 투명하게: `"layer": true`(배경 없음, 초점 흐림 0). 바닥이 아닌 곳에 얹을 층은 `"shadow": false`(바닥 그림자 없음). 판 위에 따로 움직일 인물 · 소품을 이렇게 뽑는다.
+- 카메라: `focus` · `radius` · `azimuth` · `elevation` · `fov` · `aspect`(세로 ÷ 가로 — 9:16 화면이면 1920/1080). 결과는 폭 `res` px, 높이 `res × aspect`.
+- 화면 좌표: `craft.form.render.project(scene, [[x, y, z], …], res)` 가 3D 점을 판의 px 로 바꾼다(`camera.focus` 가 있어야 함). 글자 · 2D 층 · 장면 코드 `K.image` 자리를 판과 맞출 때 쓴다.
+- 흐름: 한 세계(같은 빛 · 바닥 · 재질)를 정하고 장면마다 카메라와 소품만 바꿔 판 한 장 + 층 몇 장을 그린 뒤, 장면 코드(`scenes/sNN.jsx`)에서 판을 깔고 층을 `K.image` 로 얹어 움직인다. 렌더 정보는 `data/workspace/cache/form/` 에 캐시된다(최대 `FLUMA_FORM_CACHE_GB`, 기본 12GB — 넘으면 오래 안 쓴 것부터 지움).

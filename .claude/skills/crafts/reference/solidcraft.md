@@ -1,8 +1,8 @@
 # SolidCraft 참고 (v0.30.1)
 
-**한 줄 요약**: Fusion/SolidWorks 류 파라메트릭 3D CAD(순수 Rust, MIT/Apache-2.0, 저장소 `tangency-labs/solidcraft`). 명령 570개를 전부 헤드리스 CLI(`run` · `snapshot` · `render` · `exec`)와 MCP 로 부를 수 있다. 쇼츠에서는 **제품 · 부품 3D 화면(스케치 → 돌출 → 모깎기가 쌓이는 과정) · 분해도 애니메이션 PNG 프레임 · 한글 각인 · 단면 보기 · 실사풍 제품 렌더** 를 맡는다. 지금 Fluma 는 이 앱을 **전혀 쓰지 않는다**(craft.json `agent:false`, 스크립트 · 스킬에서 부르는 곳 없음).
+**한 줄 요약**: Fusion/SolidWorks 류 파라메트릭 3D CAD(순수 Rust, MIT/Apache-2.0, 저장소 `tangency-labs/solidcraft`). 명령 570개를 전부 헤드리스 CLI(`run` · `snapshot` · `render` · `exec`)와 MCP 로 부를 수 있다. 쇼츠에서는 **제품 · 부품 3D 화면(스케치 → 돌출 → 모깎기가 쌓이는 과정) · 분해도 애니메이션 PNG 프레임 · 한글 각인 · 단면 보기 · 실사풍 제품 렌더** 를 맡는다. Fluma 는 재료 어댑터(engine/craft/adapters/solidcraft.py — `model3d` · `drawing`)로 부른다(craft.json `agent:false` — 에이전트 MCP 로는 붙지 않음).
 
-- 실행 파일: `tools/crafts/solidcraft/app/solidcraft-0.30.1-linux-x86_64/bin/solidcraft-cli`
+- 실행 파일: `tools/crafts/solidcraft/app/solidcraft-<버전>-<플랫폼>/bin/solidcraft-cli`
   (에이전트는 `python3 engine/craft/crafts.py run solidcraft <인자…>` 로 부른다. 직접 경로를 부르면 승인에 걸린다)
 
 ---

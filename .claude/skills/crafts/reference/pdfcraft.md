@@ -2,8 +2,8 @@
 
 **한 줄 요약**: Acrobat 같은 PDF 앱(Rust, MIT/Apache-2.0). 자동화 도구 183개와 CLI 하위 명령이 모두 헤드리스에서 돈다. Fluma 에서는 **근거 화면**을 맡는다: 논문 · 보고서 · 공문의 문장 찾기 → 진짜 형광펜 · 빨간 박스 → 필요한 부분만 잘라 고해상도 렌더. 화면 캡처에서 글자 위치 찾기(OCR)도 된다.
 
-- CLI: `tools/crafts/pdfcraft/app/pdfcraft-0.18.0-linux-x86_64/bin/pdfcraft-cli`(아래에서는 `$PC`)
-- 웹 빌드: `tools/crafts/pdfcraft/web/pdfcraft-web-0.18.0`
+- CLI: `tools/crafts/pdfcraft/app/pdfcraft-<버전>-<플랫폼>/bin/pdfcraft-cli`(아래에서는 `$PC`)
+- 웹 빌드: `tools/crafts/pdfcraft/web/pdfcraft-web-<버전>`
 
 ## 지금 Fluma 가 쓰는 범위
 

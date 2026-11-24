@@ -6,9 +6,6 @@ Numbers on screen are real analysis results (channel cards of a talk-led tech ch
 | File | What |
 |---|---|
 | `fluma-intro-draft-s1-3.mp4` | "Fluma — one link, that channel's grammar" — draft of scenes 1–3 (540×960) |
-| `fluma-intro.mp4` | final 1080×1920 (rendered after the intent / draft gate is confirmed) |
 
-Source: `data/storyboards/2026-11-02-fluma-demo-01.json` · `data/compositions/2026-11-02-fluma-demo-01/scene.js`
 Voice: Typecast (commercial use per plan terms).
-
-To render the final: open the project in Fluma, confirm **의도(intent)** and **시안(draft)** in the top bar, then **렌더**.
+The full 1080×1920 version has not been rendered yet; it was made with an earlier engine, so it would be rebuilt with the current pipeline rather than re-rendered.

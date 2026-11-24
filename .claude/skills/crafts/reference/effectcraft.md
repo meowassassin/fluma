@@ -3,8 +3,8 @@
 **한 줄 요약**: After Effects 류 합성 · 모션 그래픽 앱(Rust, MIT/Apache-2.0). 명령 743개 · 효과 308개 · 내장 프리셋 76개 · 템플릿 8개.
 모든 메뉴 동작이 `명령 id + JSON params` 이고, CLI · JSX 스크립트 · MCP 어디서 불러도 같은 명령이 돈다. Fluma 에서는 **장면 움직임 단계**(콘티 → `.ecproj` → 무음 mp4)를 맡는다.
 
-- CLI: `tools/crafts/effectcraft/app/effectcraft-0.21.0-linux-x86_64/bin/effectcraft-cli` (아래 `$EC`)
-- 글꼴: 저장소 글꼴은 설치하지 않고 `EFFECTCRAFT_FONT_DIRS=<repo>/public/fonts` 로 넘긴다(어댑터 `_env()` 가 이미 그렇게 함). 이 변수가 없으면 `text.fonts {"query":"pretendard"}` 결과가 0개.
+- CLI: `tools/crafts/effectcraft/app/effectcraft-<버전>-<플랫폼>/bin/effectcraft-cli` (아래 `$EC`)
+- 글꼴: 저장소 글꼴은 설치하지 않고 `EFFECTCRAFT_FONT_DIRS`(engine/core/fonts.py 의 저장소 글꼴 + 받은 글꼴)로 넘긴다(렌더러 · 어댑터가 이미 그렇게 함). 이 변수가 없으면 `text.fonts {"query":"pretendard"}` 결과가 0개.
 
 ---
 
@@ -229,7 +229,7 @@ $EC render --template vs.ectemplate --values vals.json --out out.mp4 --format h2
 
 ## 5. 빠른 확인 명령
 ```sh
-EC=tools/crafts/effectcraft/app/effectcraft-0.21.0-linux-x86_64/bin/effectcraft-cli
+EC=$(echo tools/crafts/effectcraft/app/*/bin/effectcraft-cli)
 export EFFECTCRAFT_FONT_DIRS=$PWD/public/fonts
 $EC commands --filter preset --empty            # 명령 찾기
 $EC exec --list --schemas --json --empty        # 모든 명령 + JSON Schema

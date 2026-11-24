@@ -24,9 +24,9 @@ Read `data/public/trends/channels/<channel>/channel.md` top to bottom. The **for
 - *screen kinds* (time ratio): real UI, article, person, footage, product, food, meme, illustration, text card, chart,
   game, 3D. Show the subject itself; keep article captures to the channel's share.
 
-## 2. Confirm intent before producing
+## 2. Intent card
 
-Write an intent card (summary · what to take from the reference · must · must_not) and get the user's OK. Every later
+Write an intent card (summary · what to take from the reference · must · must_not), show it to the user and carry on. Every later
 correction becomes one more `must` / `must_not` line — not a memory.
 
 ## 3. Storyboard
@@ -46,7 +46,7 @@ python3 engine/voice/voice_match.py verify data/storyboards/<id>.json   # measur
 ## 5. Check and gate
 
 `python3 engine/checks/lint.py data/storyboards/<id>.json` (T21 screen mix · L21 article-heavy · T24 narration on music-led · T19
-tone drift). Render scenes 1–3 as a draft, let the user approve (`engine/checks/gate.py draft`), then the final render or any
-paid generation.
+tone drift). Then `python3 engine/produce.py data/storyboards/<id>.json` — it stops before rendering if the pre-render review or the
+quality gate finds blocking problems; fix them all and run it once more.
 
 For tone-only edits use `engine/story/tone_edit.py` — it refuses changes to content words.

@@ -2,7 +2,7 @@
 
 **한 줄 요약**: Illustrator 류 벡터 앱(순수 Rust, MIT/Apache-2.0). 명령은 911개이고 전부 헤드리스 CLI(`run`)와 MCP 로 부를 수 있다. 쇼츠에서는 **제목 카드 · 실제 화면 위 주석(화살표 · 박스) · 데이터 템플릿 일괄 생산 · 사진/스틸을 평면 그림으로 바꾸는 트레이스 · 아이콘 배지 · 레이어별 PNG** 를 맡는다. 지금 Fluma 는 이 중 `convert`(SVG → PNG/.vectorcraft) 하나만 쓴다.
 
-- 실행 파일: `tools/crafts/vectorcraft/app/vectorcraft-0.21.0-linux-x86_64/bin/vectorcraft-cli`
+- 실행 파일: `tools/crafts/vectorcraft/app/vectorcraft-<버전>-<플랫폼>/bin/vectorcraft-cli`
   (에이전트는 `python3 engine/craft/crafts.py run vectorcraft <인자…>` 로 부른다)
 
 ---

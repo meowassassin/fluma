@@ -2,7 +2,7 @@
 
 **한 줄 요약**: Figma 류 UI 디자인 앱. 헤드리스 `figcraft-cli run` 에 JSON 명령 스크립트를 넣으면 프레임 · 텍스트 · 이미지 · 오토레이아웃 · 그림자를 만들고, `export` 로 프레임/레이어 단위 PNG 를 뽑는다. 쇼츠에서는 **앱 · 웹 화면 목업(ui_mock)**, **실제 스크린샷을 폰 프레임에 넣은 장면**, **1080×1920 카드 여러 장 일괄 생성(data.fill)** 에 쓴다.
 
-- 실행 파일: `tools/crafts/figcraft/app/figcraft-0.15.0-linux-x86_64/bin/figcraft-cli` (installed.json 의 `cli`)
+- 실행 파일: `tools/crafts/figcraft/app/figcraft-<버전>-<플랫폼>/bin/figcraft-cli` (installed.json 의 `cli`)
 - 명령 수: 635개 (`figcraft-cli commands --json`)
 - 지금 Fluma 사용: **없음**. `engine/craft/apps/figcraft/craft.json` 에 `provides: ui_mock` 만 적혀 있고 `engine/craft/materials.py` 의 `ADAPTERS` 에 ui_mock 어댑터가 없다. `agent: false` 라 MCP 로도 기본은 안 붙는다(`studio/crafts.mjs` mcpServers).
 
@@ -29,7 +29,7 @@
 ## 기본 사용법
 
 ```sh
-F=tools/crafts/figcraft/app/figcraft-0.15.0-linux-x86_64/bin/figcraft-cli
+F=$(echo tools/crafts/figcraft/app/*/bin/figcraft-cli)
 $F run script.json [--in base.figcraft] --out result.figcraft   # 한 줄에 한 JSON 결과
 $F export result.figcraft -o out.png --node "Shorts" --scale 1  # 레이어 이름 또는 id
 $F export result.figcraft -o outdir/ --scale 2                   # 최상위 프레임마다 <이름>.png

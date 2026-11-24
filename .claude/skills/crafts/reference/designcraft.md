@@ -2,8 +2,8 @@
 
 **한 줄 요약**: InDesign 같은 지면 레이아웃 앱(Rust, MIT/Apache-2.0). 명령 547개가 모두 `designcraft-cli` 로 헤드리스에서 돈다. Fluma 에서는 **정지 지면**을 맡는다: 썸네일 · 카드뉴스 · 정보 카드 · 수식 카드 · 데이터로 여러 장 찍어 내기. 결과는 PNG(장면 재료)와 `.designcraft`(사람이 나중에 열어 고침).
 
-- CLI: `tools/crafts/designcraft/app/designcraft-0.17.0-linux-x86_64/bin/designcraft-cli`(아래에서는 `$DC`)
-- 웹 빌드: `tools/crafts/designcraft/web/designcraft-web-0.17.0`(사람이 편집할 때. 웹에는 제어 채널이 없다)
+- CLI: `tools/crafts/designcraft/app/designcraft-<버전>-<플랫폼>/bin/designcraft-cli`(아래에서는 `$DC`)
+- 웹 빌드: `tools/crafts/designcraft/web/designcraft-web-<버전>`(사람이 편집할 때. 웹에는 제어 채널이 없다)
 
 ## 지금 Fluma 가 쓰는 범위
 

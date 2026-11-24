@@ -2,7 +2,7 @@
 
 > 한 줄 요약: Word 류 문서 앱. docx · odt · rtf · html · md · txt 를 읽고 쓰며, 창 없이 문서를 만들고 고쳐 **페이지를 PNG/PDF 로 렌더**한다. 쇼츠에선 "실제 문서 화면"(약관 · 공지 · 대본 · 변경 내역)을 9:16 그대로 그려 장면 재료로 쓰는 게 핵심이다.
 
-- CLI: `tools/crafts/wordcraft/app/wordcraft-0.15.0-linux-x86_64/bin/wordcraft-cli`
+- CLI: `tools/crafts/wordcraft/app/wordcraft-<버전>-<플랫폼>/bin/wordcraft-cli`
 - `WORDCRAFT_REGION=ko-KR` 를 주면 기계마다 같은 결과(종이 기본값이 지역을 따라감). 페이지 크기는 아래처럼 직접 정하는 게 확실.
 
 ## 지금 Fluma 에서 쓰는 곳
@@ -29,7 +29,7 @@
 ## 기본 형태
 
 ```sh
-W=tools/crafts/wordcraft/app/wordcraft-0.15.0-linux-x86_64/bin/wordcraft-cli
+W=$(echo tools/crafts/wordcraft/app/*/bin/wordcraft-cli)
 export WORDCRAFT_REGION=ko-KR
 $W run --script s.json --print                 # JSON 스크립트(아래). --print 면 명령마다 결과 줄
 $W run --file a.docx --cmd 'id={json}' --cmd ... --save b.docx [--author 이름] [--print]

@@ -29,7 +29,7 @@
    | 짤 · 반응(커뮤니티 인기글) | `python3 engine/capture/meme.py search --query "<주제어>"` → `meme.py fetch <id> <이름> <밈 id>` | `meme` · `src: data/public/elements/<id>/<이름>` (권리는 사용자 판단 — 고른 것을 보여 주고 확인) |
    | 사이트를 실제로 쓰는 장면 | `python3 engine/capture/webrec.py run <id> data/compositions/<id>/web/<이름>.json` — 계획에 **`"mobile": true`**(폰 화면), 동작마다 `label`("1. 주소 넣기") | `web` · `src: data/public/elements/<id>/<이름>` — 세로 화면 가득 + 단계 꼬리표. `hold` 초, 쿠키 안내 등은 `crop: [x, y, w, h]` 로 잘라낸다(동의 버튼은 누르지 않는다) |
    | 서비스 · 브랜드 로고 | `python3 engine/capture/icons.py fetch <id> <이름>` | `icon` · `src: data/compositions/<id>/<이름>.svg` (흰 타일 위) |
-   | 인물 | 퍼온 클립(`clip.py`) · 자료 사진(`relic`) · 스톡 · 짤, 그림 영상이면 실제 자료/벡터 | `video` · `photo` · `stock` · `meme` · `art` |
+   | 인물 | 퍼온 클립(`clip.py`) · 자료 사진(`relic`) · 스톡 · 짤, 또는 형태로 빚은 인물(`"person": true`) | `video` · `photo` · `stock` · `meme` · `form` |
    | 사용자만 찍을 수 있는 화면 | `screen` + `ask` | 아래 L36 |
    그다음 장면마다 말하는 것을 **눈으로 증명하는 것**을 고른다.
    | 장면이 말하는 것 | 재료 | 만드는 앱(엔진이 고름) |
@@ -37,7 +37,8 @@
    | 핵심 숫자 하나(훅 · 결론) | `stat` — `value`("+8.4%"), `label`(무엇의 숫자인지, 한국어, 짧게), `source`(설명란용 — 화면엔 안 씀), `cue`. **카드가 아니라 덧씌우기**: 그 장면의 바탕 재료(캡처 · 화면 · 차트) 위에 화면을 어둡게 하고 큰 숫자. 그래서 바탕 재료가 꼭 같이 있어야 한다 | 엔진 |
    | 숫자 여러 개 비교 | `chart` — 원자료는 `data/compositions/<id>/src/*.csv`. `percent: true` 는 **합계 대비 비율로 바꾸기**(값이 이미 % 면 쓰지 말 것). 가장 큰 값이 노란색 | GridCraft |
    | 논문 · 보고서 · 기사 근거 | `doc_quote` — `pdf` + `find`(그 문장). 진짜 PDF 형광펜(`mark`: highlight · box · both) · 문장 주변만 잘라 1080 폭 · `redact`(email · phone) | PdfCraft |
-   | 인물 · 캐릭터 · 사물 그림 | `illustration` · `art` — 실제 자료/벡터 | VectorCraft |
+   | 사물 · 동물 · 캐릭터 · 사람 그림 | `form` — 도형을 녹여 붙인 형태 데이터(`scene` · 화풍 `style`, engine/craft/form/README.md) | 형태 도구 |
+| 아이콘 · 단순 도형(SVG) | `illustration` | VectorCraft |
    | 사용자 사진 · 캡처 | `photo` — 기사 · 캡처 한 장을 화면 카드로 세울 때 `frame: "card"` + `title` · `highlight`([x,y,w,h]) · `clean`(로고 · 워터마크 지우기). `cutout` 누끼는 단순 배경만 | PhotoCraft |
    | 실제 화면 녹화 · 영상 | `screen` · `video` — 웹 녹화 `src`. **자동 브라우저로 못 찍는 화면**(로그인 · 측정 결과 · 앱)은 `ask`("무엇을 · 몇 초")만 적는다 → 사용자에게 부탁(아래 L36) | 그대로 |
    | 실제 화면의 짚을 곳(버튼 · 줄 · 숫자) | `overlay` — `target`(같은 장면 앞 재료) + `marks`[{kind: box·arrow·label, box(0~1), text, cue}]. 효과(번쩍임 · 큰 배지) 대신 주석 | VectorCraft |
@@ -75,7 +76,7 @@
    제작 파일: `data/compositions/<id>/craft/` (`motion/*.ecproj` · `audio/*.scraft` · `edit/*.fcproj` · `materials/`). 사람이 Craft 에서 고친 파일은 해시로 알아채 덮어쓰지 않는다(재료: .vectorcraft · 카드 .psd · .fcproj · .sc · .dxf).
    조립 결과: `edit/<id>.thumb.png`(훅 장면 썸네일 후보) · `edit/<id>.markers.csv`(장면 마커) — produce 결과 media 에 같이 나온다. 소리는 SoundCraft 가 -14 LUFS 로 맞추고(craft.json audio.lufs) FilmCraft 는 다시 정규화하지 않는다.
 5. **확인**: `python3 engine/core/still.py data/storyboards/<id>.json <초> …` → PNG 를 Read 로 직접 본다. 글자 겹침 · 잘림 · 빈 화면 · 재료가 말과 맞는지. 고칠 게 있으면 재료 · 콘티를 고치고 4로.
-6. **최종 렌더는 사용자가 '좋아 · 완성'이라고 할 때 에이전트가 바로** — `python3 engine/render.py data/storyboards/<id>.json`. 버튼을 누르라고 안내하지 않고, 관문(gate.py) 기록 · 시안 다시 만들기도 없다.
+6. **막음 없이 끝난 produce 가 완성본**이다 — 따로 최종 렌더를 돌리지 않는다. 편집기(/veditor/<id>)로 넘겼으면 편집기 내보내기가 최종본(publish 스킬). 버튼을 누르라고 안내하지 않는다.
 
 ## 디자인 방향(기다리지 않는다)
 1. `python3 engine/story/direct.py data/storyboards/<id>.json --write` — 레퍼런스 X-ray 에서 잰 값만 방향에 채운다(근거가 없으면 효과 없음).

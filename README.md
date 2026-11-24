@@ -22,7 +22,7 @@
 ## What is Fluma
 
 A local agent workspace for vertical short-form video (YouTube Shorts, Reels, TikTok).
-You talk to the **Claude Code or Codex** you already use. The agent studies Shorts that work, then turns **real material** — web screens, documents, data, photos, sourced clips, stock footage — into a video with open-source creative apps.
+You talk to the **Claude Code, Codex or Antigravity** you already use. The agent studies Shorts that work, then turns **real material** — web screens, documents, data, photos, sourced clips, stock footage — into a video with open-source creative apps.
 It uses no image or video generation model (no generation bill), and everything it makes stays an editable project file. Scenes that never happened are staged with drawings, diagrams, memes or metaphors instead of fake footage.
 
 ## Why Fluma
@@ -46,14 +46,14 @@ That is the niche Fluma is built for.
 - **Prices, news, daily videos** — data cards filled into a template every day (`format-daily`)
 - **Evidence and documents** — highlights and zooms on the original PDF (PDFCraft)
 - **Mood pieces and ads** — real photos or store footage with short lines (`format-emotional`, `format-ad`)
-- **2D graphics and illustration** — drawings, diagrams and charts the agent draws itself in VectorCraft
+- **Characters, objects and diagrams** — characters, animals and props built from shape data (`form`) and drawn flat, cel, sketch, clay, vector or as a 3D render with real materials; diagrams and charts in VectorCraft and EffectCraft
 
 
 ## What it costs
 
 | You need | Cost |
 |---|---|
-| Agent | The Claude Code or Codex login you already have (or an API key) |
+| Agent | The Claude Code, Codex or Antigravity login you already have (or an API key) |
 | Voice | Free engines by default (Edge TTS, six local TTS engines); paid voices with your own Typecast or ElevenLabs key (Settings → Media → Voice) |
 | Footage | Sourced clips (credited automatically), free Pexels and Pixabay keys, reference photos |
 | Music | Finds the trending song Shorts in the same niche actually use, to attach from the Shorts editor's library at upload (licensed by YouTube) |
@@ -76,7 +76,7 @@ That is the niche Fluma is built for.
 - 🎞️ **Pick the feel** — the agent proposes 2–4 looks (documentary, dreamy, film …) and renders them side by side on the same scenes (`feel.py`). The chosen look is applied to all real footage.
 - 🎬 **Director and writer skills** — before writing, the agent fixes five anchors (emotion, motif, anchor object, break, final image) and a rhythm ladder; every shot gets one focal point, a reason for each zoom, and three concrete details. Hooks are written as three parts (visual, first line, on-screen text) and AI-sounding copy is blocked (adapted from smixs/visual-skills, screenwriting-skills, marketingskills).
 - ♻️ **Reuse editing** — automatic clip-moment picking (`clip.py --best`), subject-tracking vertical reframing (`reframe.py`), trending-song finder (`trend_music.py`), upload guide (`upload_guide.py`).
-- 🎨 **You pick the look; effects need a reason** — the first scenes render as 2–3 design options side by side. Background motion, transitions and text animation stay off unless a reference or you ask for them.
+- 🎨 **Effects need a reason** — the agent sets the design from the references and tells you in one line; ask and it renders 2–3 design options side by side. Background motion, transitions and text animation stay off unless a reference or you ask for them.
 - 🎲 **No two videos alike** — search every command, effect and preset (`craft_catalog.py`), proven recipes, overlap checks against recent videos (`V41–V45`).
 - ⏱️ **Built for the Shorts feed** — every render is measured for a blank first frame, no change in the first second, long stalls and speech gaps (`L32`, `T32–T34`).
 - 📈 **Real numbers feed the next video** — connect your channel with official OAuth to see views, average percentage viewed, traffic sources and **per-scene** retention.
@@ -116,8 +116,8 @@ flowchart LR
 | Materials | `engine/craft/materials.py` + `engine/craft/adapters/<app>.py` | one adapter per Craft app; `type: craft` runs any command list |
 | Variety | `engine/craft/craft_catalog.py`, `craft_variety.py`, `.claude/skills/crafts/` | 9,000+ features searchable, recipes, repetition checks, usage per video |
 | Motion · sound · edit | `engine/craft/motion.py`, `audio.py`, `edit.py` | EffectCraft comps, SoundCraft mix, FilmCraft assembly |
-| One command | `engine/produce.py` | voice → lint → materials · draft → still frame per scene |
-| Checks | `engine/checks/` | first second · freezes · pauses · cut density; intent & draft gates |
+| One command | `engine/produce.py` | voice → lint → materials → pre-render still review → one render at delivery size → quality gate |
+| Checks | `engine/checks/` | first second · freezes · pauses · cut density; visual AI-tell and quality gate (blocks stop the upload) |
 | Publish & learn | `engine/publish/`, `studio/youtube.mjs` | OAuth, resumable upload, Analytics mapped to scenes |
 
 ## The editor
@@ -126,14 +126,14 @@ An IDE-style workspace: an **Explorer** tree of what the video is made of — *E
 
 <table>
 <tr>
-<td width="50%"><img src="docs/assets/screens/settings-agent.webp" alt="Models and providers" /><br/><sub><b>Models · Providers</b> — your local Claude Code / Codex CLI, or any API key.</sub></td>
+<td width="50%"><img src="docs/assets/screens/settings-agent.webp" alt="Models and providers" /><br/><sub><b>Models · Providers</b> — your local Claude Code / Codex / Antigravity CLI, or any API key.</sub></td>
 <td width="50%"><img src="docs/assets/screens/settings-voice.webp" alt="Media settings" /><br/><sub><b>Media</b> — free and paid voice engines, render engines.</sub></td>
 </tr>
 </table>
 
 ## The Craft apps
 
-Fluma drives the open-source **Craft** desktop/web apps (by [storytold](https://github.com/storytold), MIT / Apache-2.0) through their CLIs and MCP servers. They are **not bundled** — install the ones you want (about 1.7 GB download for all 16):
+Fluma drives the open-source **Craft** desktop/web apps (by [storytold](https://github.com/storytold), MIT / Apache-2.0) through their CLIs and MCP servers. They are **not bundled** — install the ones you want (about 1.6 GB download for all 16):
 
 ```bash
 python3 engine/craft/crafts.py plan all        # what would be downloaded, no download
@@ -186,11 +186,14 @@ npm --prefix studio run dev                     # → http://localhost:4311
 |---|---|
 | `plan` | plans a video in chat; studies reference Shorts before writing |
 | `storyboard` | writes the storyboard JSON: format, research, scenes, materials, lint loop |
-| `produce` | Craft pipeline: voice → scene materials → lint → draft render → still-frame check |
+| `produce` | Craft pipeline: voice → scene materials → lint → pre-render review → render → quality gate |
 | `crafts` | which Craft app and feature to use for a scene; catalog search, recipes, variety rules |
 | `research` | collects facts with source URLs; fewer than five sources → the topic is dropped |
 | `trends` | finds Shorts by topic or hashtag for the Trends screen |
-| `voice` · `scene-edit` · `character` | narration fitting, one-scene edits, lip-synced mascot |
+| `director` · `writer` · `designer` | structure and shots; hooks and lines; layout, type and color |
+| `voice` · `scene-edit` | narration fitting, one-scene edits |
+| `asset-edit` | re-edit one sourced clip: memes, reactions, dubbed captions |
+| `publish` | final cut → upload (only when you ask) → analytics fed back into planning |
 | `refine` | polish each scene after the draft (try → compare before/after → keep) |
 | `format-*` | ready formats: compare, daily price, ad, emotional, ranking, clip reaction |
 
@@ -199,15 +202,18 @@ npm --prefix studio run dev                     # → http://localhost:4311
 ```text
 fluma/
 ├─ engine/                 Python production engine
-│  ├─ produce.py           one command: storyboard → voice → lint → draft → stills
-│  ├─ produce.py · render.py · doctor.py · fluma_agent.py · mcp_server.py
+│  ├─ produce.py           one command: storyboard → voice → lint → review → render → quality gate
+│  ├─ render.py · doctor.py · fluma_agent.py · mcp_server.py
 │  ├─ craft/               Craft pipeline — materials · motion · audio · edit · design.py (effects per video) · adapters/<app>.py
 │  │  ├─ apps/             the 16 Craft apps (craft.json each)
 │  │  ├─ renderer/         render-engine entry (engine.json · adapter)
+│  │  ├─ form/             shapes built from data (SDF) — styles, rigs, 3D render look
 │  │  └─ craft_catalog.py · craft_variety.py · crafts.py
 │  ├─ voice/               TTS · audio assembly · voice matching · engines/<voice> · sfx
 │  ├─ research/            trends · Shorts X-ray · reference style & channel cards
 │  ├─ capture/             web / terminal recording · demo runs · sourced clips · vertical reframing · memes · stock · icons
+│  ├─ gen/                 plan record · route · clip dubbing · editor bridge · publish
+│  ├─ look/                frame sheets the agent looks at · anchors
 │  ├─ story/               storyboard helpers — concepts · feel (feel.py) · design drafts (directions.py) · variants · tone edit
 │  ├─ checks/              lint · tempo · edit density · gates
 │  ├─ publish/             YouTube upload

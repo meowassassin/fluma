@@ -2,7 +2,7 @@
 
 > 한 줄 요약: Pro Tools 류 DAW. 나레이션 · 효과음 · 배경음악을 트랙으로 놓고 플러그인 · 자동화 · 센드를 걸어 `.scraft` 세션과 믹스 WAV 를 만든다. 창 없이 `soundcraft-cli run/script` 로 전부 된다. 바운스 결과에 **LUFS · true peak 가 같이 나온다**.
 
-- CLI: `tools/crafts/soundcraft/app/soundcraft-0.17.0-linux-x86_64/bin/soundcraft-cli`
+- CLI: `tools/crafts/soundcraft/app/soundcraft-<버전>-<플랫폼>/bin/soundcraft-cli`
 - 늘 `SOUNDCRAFT_NO_PREFS=1` 을 준다(설정 · 로그 파일 안 씀).
 
 ## 지금 Fluma 에서 쓰는 곳
@@ -35,7 +35,7 @@
 ## 기본 형태
 
 ```sh
-S=tools/crafts/soundcraft/app/soundcraft-0.17.0-linux-x86_64/bin/soundcraft-cli
+S=$(echo tools/crafts/soundcraft/app/*/bin/soundcraft-cli)
 export SOUNDCRAFT_NO_PREFS=1
 $S run --cmd 'track.new={"kind":"audio","format":"stereo","name":"Voice"}' \
        --cmd 'file.import_audio={"path":"/abs/voice.wav","track":"Voice","at":0,"new_tracks":false}' \

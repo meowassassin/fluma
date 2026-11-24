@@ -13,7 +13,7 @@ Fluma 는 로컬에서 돕니다: 웹 스튜디오(Node) + 파이썬 파이프�
 | 내 컴퓨터에 바로 설치 | [설치](#2-설치) — `doctor.py --fix` | 약 10분 + 내려받기 |
 | Fluma 자체를 고치기 | 설치 후 `npm --prefix studio run dev` 와 [시험](#확인--문제-해결) | — |
 
-어느 쪽이든 에이전트가 필요합니다: 내 컴퓨터에 로그인된 **Claude Code** 나 **Codex**(Docker 도 그 로그인을 그대로 씀),
+어느 쪽이든 에이전트가 필요합니다: 내 컴퓨터에 로그인된 **Claude Code** · **Codex** · **Antigravity**(Docker 는 Claude Code · Codex 로그인을 그대로 씀),
 또는 API 키(Anthropic · OpenAI · Gemini · 로컬 Ollama)를 **설정 → 모델 · 공급자**에 넣습니다.
 
 ### 컴퓨터 사양
@@ -35,7 +35,7 @@ Fluma 는 로컬에서 돕니다: 웹 스튜디오(Node) + 파이썬 파이프�
 | Node.js | 20+ | [nodejs.org](https://nodejs.org) |
 | ffmpeg | 최근 버전 | `sudo apt install ffmpeg` · `sudo dnf install ffmpeg` · `brew install ffmpeg` · `winget install ffmpeg` |
 
-에이전트도 필요합니다: 로그인된 **Claude Code** 또는 **Codex** CLI, 또는 API 키(Anthropic · OpenAI ·
+에이전트도 필요합니다: 로그인된 **Claude Code** · **Codex** · **Antigravity** CLI, 또는 API 키(Anthropic · OpenAI ·
 Gemini · 로컬 Ollama) — 나중에 **설정 → 모델 · 공급자**에 넣습니다.
 
 ## 2. 설치
@@ -46,7 +46,7 @@ python3 engine/doctor.py --fix
 ```
 
 이 명령 하나로 **전부** 설치합니다: `.venv` 와 파이썬 패키지 전체(`requirements-full.txt`), Chromium, 오픈소스
-[Craft 앱](https://github.com/storytold)(MIT / Apache-2.0) 16개 전부(약 1.4GB, SHA256SUMS 로 검증해 `tools/crafts/` 에),
+[Craft 앱](https://github.com/storytold)(MIT / Apache-2.0) 16개 전부(약 1.6GB, SHA256SUMS 로 검증해 `tools/crafts/` 에),
 분석 · 누끼 모델, npm 패키지. Node · ffmpeg 는 설치 방법만 *알려 주며* 관리자 권한이 필요 없습니다.
 
 용량이 부족하면 `python3 engine/doctor.py --fix --profile lite --core` 로 최소만(핵심 Craft 앱 7개, 모델 없음) 설치합니다.
@@ -60,8 +60,8 @@ npm --prefix studio run dev     # API 127.0.0.1:4310, 스튜디오 http://localh
 
 '화면 패키지가 없습니다'가 나오면 2단계(`doctor.py --fix`)를 건너뛴 것입니다 — `npm --prefix studio install` 을 한 번 실행하고 다시 시작하세요. Windows · macOS · Linux 같은 명령입니다.
 
-스튜디오의 홈에서 주제를 적고 대화로 기획합니다. 콘티가 괜찮으면 **제작 시작** — 에이전트가 레퍼런스 쇼츠를 분석하고
-장면을 만들어 초안을 렌더합니다. 편집기 왼쪽 탐색기에 영상이 무엇으로 이루어졌는지 나오고, 고칠 것은 오른쪽 에이전트에게 말합니다.
+스튜디오의 홈에서 주제를 적고 대화로 기획합니다. 에이전트가 레퍼런스 쇼츠를 분석하고, 콘티가 검사를 통과하면 바로
+장면을 만들어 렌더합니다(에이전트 패널의 **자동 진행**을 켜면 단계마다 추천안을 골라 완성까지 갑니다). 편집기 왼쪽 탐색기에 영상이 무엇으로 이루어졌는지 나오고, 고칠 것은 오른쪽 에이전트에게 말합니다.
 
 ### 파일은 어디에
 

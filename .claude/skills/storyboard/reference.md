@@ -27,6 +27,7 @@
 | chart | labels · values 또는 csv/xlsx(+range) · percent · kind(bar·line·pie) · title | GridCraft(데이터 · 계산) → 움직임 단계가 화풍 팔레트로 그림 |
 | doc_quote | pdf · find(찾을 문장) | PdfCraft(문장 위치 + 페이지) → 확대 · 형광펜 |
 | illustration | src(.svg — 아이콘 · 단순 도형) · place | VectorCraft |
+| form | scene(형태 JSON — 보통 `"$FILE:data/compositions/<id>/forms/<이름>.json"`) 또는 src · view{azimuth, elevation} · style(없으면 direction.art.style) · person(사람이면 true) | 형태 도구(engine/craft/form/README.md) — 투명 PNG, anim 이 있으면 반복 프레임 |
 | photo | src · cutout | PhotoCraft(누끼) |
 | screen · video · image | src | 그대로 |
 | web | src(data/public/elements/<id>/<이름> — webrec.py · termrec.py 녹화) · holds(상태별 초) · start(나레이션 없을 때 시작 초) | 그대로(실제 화면) |

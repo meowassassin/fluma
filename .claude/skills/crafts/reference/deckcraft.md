@@ -2,7 +2,7 @@
 
 **한 줄 요약**: PowerPoint 류 발표 앱. 헤드리스 `deckcraft-cli run --cmd-file` 로 슬라이드를 만들고 `render` 로 PNG 를 뽑는다. 슬라이드 크기를 **540×960pt(= scale 2 에서 1080×1920 px)** 로 바꾸면 9:16 쇼츠 화면이 바로 나온다. 쇼츠에서는 **SmartArt 도식(단계 · 순환 · 피라미드 · 벤 등 45종)**, **비교 표**, **전환 효과 프레임(render-transition)** 이 쓸모 있다.
 
-- 실행 파일: `tools/crafts/deckcraft/app/deckcraft-0.15.0-linux-x86_64/bin/deckcraft-cli`
+- 실행 파일: `tools/crafts/deckcraft/app/deckcraft-<버전>-<플랫폼>/bin/deckcraft-cli`
 - 명령 수: 약 330개 (`deckcraft-cli commands`, JSON 출력 옵션은 없음 — 한 줄에 `id — 이름: {params}`)
 - 지금 Fluma 사용: **없음**. `engine/craft/apps/deckcraft/craft.json` 에 `provides: diagram (pdf → png)` 만 있고 `engine/craft/materials.py` 에 diagram 어댑터가 없다. `agent: false` 라 MCP 도 기본 꺼짐. (그리고 PDF 를 거칠 필요 없다 — `render` 가 PNG 를 직접 낸다.)
 
@@ -29,7 +29,7 @@
 ## 기본 사용법
 
 ```sh
-D=tools/crafts/deckcraft/app/deckcraft-0.15.0-linux-x86_64/bin/deckcraft-cli
+D=$(echo tools/crafts/deckcraft/app/*/bin/deckcraft-cli)
 $D run --cmd-file cmds.txt --print --save out.deckcraft   # 한 줄에 '명령id={JSON}'
 $D render out.deckcraft --all out_png/                     # slide-01.png … (기본 scale 2)
 $D render out.deckcraft --slide 0 --transparent s0.png     # 배경 빼고(겹치기용)

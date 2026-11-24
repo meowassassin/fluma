@@ -2,7 +2,7 @@
 
 > 한 줄 요약: Photoshop 류 이미지 편집기(Rust). 레이어 · 마스크 · 조정 레이어 · 레이어 스타일 · 글자 · 도형 · 필터 · PSD 를 **명령 954개**로 전부 창 없이 쓴다. 쇼츠에선 "실제 화면(캡처 · 기사 · 사진)을 9:16 장면 카드로 다듬는 곳" — 자르기 · 배경 흐림 채우기 · 스포트라이트 · 강조 박스 · 제목 글자 · 워터마크 지우기 · 레이어별 PNG 내보내기 · 데이터 세트(CSV)로 같은 틀 여러 장.
 
-- CLI: `tools/crafts/photocraft/app/photocraft-0.20.1-linux-x86_64/bin/photocraft-cli` (아래 `$P`)
+- CLI: `tools/crafts/photocraft/app/photocraft-<버전>-<플랫폼>/bin/photocraft-cli` (아래 `$P`)
 - 명령 목록 원본: 같은 폴더 `commands.json`(`$P commands --json`), 하나만 보기: `$P commands --json --filter type.create`
 
 ## 지금 Fluma 에서 쓰는 곳
@@ -34,7 +34,7 @@
 ## 기본 형태
 
 ```sh
-P=tools/crafts/photocraft/app/photocraft-0.20.1-linux-x86_64/bin/photocraft-cli
+P=$(echo tools/crafts/photocraft/app/*/bin/photocraft-cli)
 $P run in.jpg --cmd ID --params '{JSON}' --cmd ID2 --out out.png   # 파일 열고 → 명령 → 저장
 $P run --new '{"width":1080,"height":1920,"background":"#111418"}' --cmd ... --out card.psd
 $P info file.psd --compact            # 크기 · 레이어 트리(id · 이름 · bounds) JSON

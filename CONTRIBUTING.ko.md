@@ -15,7 +15,7 @@ Fluma 는 Apache-2.0 이라 상업용이든 아니든 내 프로젝트에 자유
 
 | 아이디어 | 위치 |
 |---|---|
-| 다른 Craft 앱(또는 아무 툴)을 재료 만드는 곳으로 연결 | `engine/craft/apps/<앱>/craft.json`(`provides`) + `engine/craft/materials.py` 의 어댑터 |
+| 다른 Craft 앱(또는 아무 툴)을 재료 만드는 곳으로 연결 | `engine/craft/apps/<앱>/craft.json`(`provides`) + 어댑터 `engine/craft/adapters/<앱>.py` |
 | 재료 종류별 움직임 개선 | `engine/craft/motion.py`(`material_jsx`) |
 | 새 음성 엔진 | `engine/voice/engines/<이름>/` — `voice.json` + `adapter.py` |
 | 좋아하는 쇼츠에서 잰 형식 프리셋 | `engine/research/ref_channel.py` → `engine/research/format_presets.py build` |
@@ -30,7 +30,7 @@ Fluma 는 Apache-2.0 이라 상업용이든 아니든 내 프로젝트에 자유
 
 ```bash
 python -m pytest tests
-npx tsc --noEmit -p web
+npm --prefix studio run typecheck
 ```
 
 실패하는데 이유를 모르겠으면 그냥 보내고 그렇다고 적어 주세요. 같이 찾아봐요.
