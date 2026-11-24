@@ -689,6 +689,11 @@ def r_lightcraft(ctx: Ctx, steps):
 
 def r_pdfcraft(ctx: Ctx, steps):
     ed = ctx.work / f"{ctx.id}.pdf"
+    try:                                                 # PDFCraft 는 --root 밖 파일을 못 연다 — 저장소 · 작업 폴더를 함께 담는 폴더
+        root, out = os.path.commonpath([str(ROOT), str(ctx.work.resolve())]), ed
+    except ValueError:                                   # Windows: 작업 폴더가 다른 드라이브(C: 임시 · D: 저장소) → 저장소 안에 저장하고 옮긴다
+        root, out = str(ROOT), ROOT / "data" / "workspace" / "tmp" / f"pdfcraft-{os.getpid()}-{ctx.id}.pdf"
+        out.parent.mkdir(parents=True, exist_ok=True)
     src = _opened(ctx)
     seq = []
     if src:
@@ -697,13 +702,9 @@ def r_pdfcraft(ctx: Ctx, steps):
         seq.append({"tool": "doc_create", "args": dict(ctx.m["new"])})
     ctx.offset = len(seq)
     seq += [{"tool": s["id"], "args": s["params"]} for s in steps]
-    seq.append({"tool": "doc_save", "args": {"doc": int(ctx.ex.get("doc", 1)), "path": str(ed)}})
+    seq.append({"tool": "doc_save", "args": {"doc": int(ctx.ex.get("doc", 1)), "path": str(out)}})
     f = ctx.dir / "steps.json"
     f.write_text(json.dumps(seq, ensure_ascii=False, indent=1), "utf-8")
-    try:
-        root = os.path.commonpath([str(ROOT), str(ctx.work.resolve())])
-    except ValueError:                                   # Windows: 작업 폴더가 다른 드라이브(C: 임시 폴더 · D: 저장소)
-        root = ctx.work.resolve().anchor
     so = ctx.run([ctx.cli, "run", "--script", f, "--report", "--root", root], "run")
     try:
         rep = json.loads(so[so.index("{"):])
@@ -714,6 +715,9 @@ def r_pdfcraft(ctx: Ctx, steps):
                 raise RuntimeError(f"pdfcraft: {n + 1}번째 명령 {sid} 실패 — {_short(json.dumps(st.get('error') or st.get('result'), ensure_ascii=False))}")
     except ValueError:
         pass
+    if out != ed and out.exists():
+        import shutil
+        shutil.move(str(out), str(ed))
     if not ed.exists():
         raise RuntimeError("pdfcraft: 결과 PDF 를 저장하지 못했습니다(doc_save)")
     png = ctx.dir / "export.png"
