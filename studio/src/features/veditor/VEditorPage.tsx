@@ -5,14 +5,12 @@
    - AI 에이전트: 타임라인 우측에 AgentDock 도킹 (Cmd+J 로 열기/닫기 토글) */
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   VideoEditor,
   EditorCore,
   mediaTimeToSeconds,
-  mediaTimeFromSeconds,
   type EditorExtraPanel,
-  type TimelineElement,
 } from "../../vendor/artcraft/video-editor/src";
 import { createFlumaAdapters, flumaMediaUrl, flumaToast } from "./adapters/fluma-adapters";
 import { createCraftEffectProvider } from "./craftFx";

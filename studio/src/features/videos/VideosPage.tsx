@@ -7,7 +7,7 @@ import { api, errMsg } from "../../lib/api";
 import { t } from "../../lib/i18n";
 import { qc, qk } from "../../lib/queries";
 import { useUi } from "../../lib/ui";
-import { ago } from "../home/HomePage";
+import { ago } from "../../ui/engines";
 import { Icon } from "../../ui/Icon";
 import { Button, EmptyState, Segmented, confirmDialog } from "../../ui/kit";
 import { PipelineGraph, StateIcon } from "./PipelineGraph";

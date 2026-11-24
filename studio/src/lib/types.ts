@@ -38,8 +38,6 @@ export interface EngineMeta {
   available: boolean | null; templates: TemplateMeta[]; icon?: string | null;
 }
 export interface SkillMeta { name: string; description: string; when?: string }
-export interface CharMeta { name: string; title: string; base: string; [k: string]: unknown }
-
 
 export interface Settings {
   model: string; effort: string; language: string; voice_engine: string; voice_id: string; voice_auto?: boolean; music_any_license?: boolean;
@@ -83,12 +81,6 @@ export interface Job {
   id: string; type: string; project: string | null; status: JobStatus; progress: number | null; stage?: string;
   started?: number | string | null; ended?: number | string | null; result?: { url?: string } | null; error?: string | null;
 }
-export type JobEvent =
-  | { type: "log"; line: string }
-  | { type: "progress"; progress: number | null; stage: string }
-  | { type: "done"; url?: string }
-  | { type: "failed"; error?: string }
-  | { type: "canceled" };
 
 // ---------- 파일 감시 ----------
 export interface FsEvent {

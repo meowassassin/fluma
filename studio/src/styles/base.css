@@ -16,7 +16,6 @@ img { display: block; max-width: 100%; }
 h1, h2, h3, h4, p { margin: 0; }
 ul, ol { margin: 0; padding: 0; list-style: none; }
 .num, .mono { font-family: var(--mono); font-feature-settings: "tnum"; letter-spacing: 0; }
-.tnum { font-feature-settings: "tnum"; }
 
 /* 키보드 초점: 모든 조작 요소에 같은 고리 */
 :focus { outline: none; }
@@ -57,7 +56,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline-offs
 }
 @keyframes fshadow { 0%, 100% { transform: scale(1.1); opacity: 0.55; } 50% { transform: scale(0.55); opacity: 0.25; } }
 @media (prefers-reduced-motion: reduce) { .fbounce-g, .fbounce-sh { animation: none; } }
-@keyframes pulse { 50% { opacity: 0.45; } }
 @keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
 @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 

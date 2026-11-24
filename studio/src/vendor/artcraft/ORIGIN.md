@@ -11,25 +11,20 @@ Fluma 변경은 소스에서 `fluma:` 주석(또는 `/* fluma */`)으로 표시�
 | common | @storyteller/common | libs/common |
 | icons | @storyteller/icons | libs/icons |
 | api-enums | @storyteller/api-enums | libs/api-enums |
-| keybinds | @storyteller/keybinds | libs/components/keybinds |
 | button | @storyteller/ui-button | libs/components/button |
 | tooltip | @storyteller/ui-tooltip | libs/components/tooltip |
 | popover | @storyteller/ui-popover | libs/components/popover |
 | modal | @storyteller/ui-modal | libs/components/modal |
 | button-icon-select | @storyteller/ui-button-icon-select | libs/components/button-icon-select |
 | input | @storyteller/ui-input | libs/components/input |
-| loading | @storyteller/ui-loading | libs/components/loading |
 | loading-spinner | @storyteller/ui-loading-spinner | libs/components/loading-spinner |
 | close-button | @storyteller/ui-close-button | libs/components/close-button |
 | checkbox | @storyteller/ui-checkbox | libs/components/checkbox |
 | label | @storyteller/ui-label | libs/components/label |
 | tab-selector | @storyteller/ui-tab-selector | libs/components/tab-selector |
 | badge | @storyteller/ui-badge | libs/components/badge |
-| button-icon | @storyteller/ui-button-icon | libs/components/button-icon |
-| button-dropdown | @storyteller/ui-button-dropdown | libs/components/button-dropdown |
 | slider-v2 | @storyteller/ui-sliderv2 | libs/components/slider-v2 |
 | select | @storyteller/ui-select | libs/components/select |
-| action-reminder-modal | @storyteller/ui-action-reminder-modal | libs/components/action-reminder-modal |
 
 `common/src/lib/assets/images/checkerboard.png` 는 저장소 안 MIT/Apache 자산(사운드 · 밈 · 스카이박스 · vmd · 캐릭터 gif 같은 별도 권리 자산은 가져오지 않음).
 
@@ -43,13 +38,6 @@ Fluma 변경은 소스에서 `fluma:` 주석(또는 `/* fluma */`)으로 표시�
 |---|---|---|
 | @storyteller/model-list | Model, ImageModel, CommonAspectRatio/Resolution/Quality, ModelCreator, ModelTag, FAMILY_ORDER, getModelFamilyName, getCreatorDisplayName, SizeIconOption, SizeOption, ModelConfig, ModelInfo, IMAGE_MODELS, IMAGE_MODELS_BY_ID, getCreatorIcon/getCreatorListIcon | 클래스 파일은 원본 그대로 복사(ImageModel 의 잘못된 `src/index.js` import 만 수정), 목록은 Fluma(Nano Banana Pro · Nano Banana — Antigravity). 아이콘은 null(브랜드 로고 미사용) |
 | @storyteller/ui-model-selector | ModelPage, ModelList, useClassyModelSelectorStore, useSelectedModel/ImageModel/ProviderForModel, getSelectedImageModel, getSelectedProviderForModel, defaultModelForPage, useCanvas2d/Stage3d/TextToImage/ImageEditorPageModelList, ClassyModelSelector | 스토어 API 동일(zustand). 목록 = Fluma 목록. ClassyModelSelector = ui-popover PopoverMenu(richList) — 공급자 선택 없음 |
-| @storyteller/ui-pricing-modal | useCostBreakdownModalStore, CostCalculatorButton(+Props) | 스토어 모양 동일, 버튼은 아무것도 그리지 않음(크레딧 없음) |
-| @storyteller/ui-gallery-modal | GalleryItem, DragGhost(+State, 원본 그대로), gallery* 신호들, IMAGE_DROP_EVENT, emitImageDrop, onImageDrop, removeImageDropListener | 창 이벤트 드롭 버스 · 신호만. 갤러리 모달 자체는 없음 — Fluma 자산 브라우저가 emitImageDrop 으로 보냄 |
-| @storyteller/ui-help-menu | HelpMenuButton(+Props), TutorialItem | 아무것도 그리지 않음 |
-| @storyteller/ui-promptbox | RefImage, Prompt2DStore, usePrompt2DStore/usePromptStore, UploadImageFn, PromptBox2D(+Props), AspectRatioIcon, AutoIcon | 스토어 원본 그대로. PromptBox2D = Fluma 톤 최소 입력창(textarea + 생성 → onGenerateClick). AspectRatioIcon 원본 그대로 |
-| @storyteller/api | ApiResponse, UploadMediaFn, UploadImageMedia, ApiManager, PromptsApi(pollJobSession, uploadSceneSnapshot), ARTCRAFT_CLOUD_DISABLED | 모든 호출이 `Error("ArtCraft cloud not used in Fluma: <name>")` |
-| @storyteller/tauri-api | Provider(type), useImageModels(→Fluma 목록), useVideoModels(→[]), invokeTauri(throw) | 현재 닫힘 안에서 직접 import 없음 — 잘못 끌려오면 크게 실패 |
-| @storyteller/tauri-utils | IsDesktopApp(→false), FetchProxy(→fetch) | 브라우저 전용 |
 
 ## 원본에서 바꾼 곳 (Fluma 톤 · 빌드)
 - popover/src/lib/popover.tsx: `NodeJS.Timeout` → `ReturnType<typeof setTimeout>` (studio tsconfig 는 node 타입을 싣지 않음); 패널 머리 mono 대문자 라벨 → Fluma 라벨.

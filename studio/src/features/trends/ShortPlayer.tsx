@@ -1,6 +1,6 @@
 /* 앱 안 쇼츠 재생 — 분해한 쇼츠는 받아 둔 영상(<video>)으로, 아니면 유튜브 임베드(youtube-nocookie)로. 유튜브로 나가지 않는다.
    소리 켜고 끄기는 임베드를 다시 불러오지 않고 IFrame API 메시지로 */
-import React, { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { t } from "../../lib/i18n";
 
 export interface ShortPlayerProps { vid: string; muted?: boolean; mini?: boolean; local?: boolean; controls?: boolean; autoPlay?: boolean; loop?: boolean; onTime?: (t: number) => void; onBlocked?: () => void }

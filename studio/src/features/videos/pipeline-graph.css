@@ -90,7 +90,6 @@
 .pgx-btn:disabled { opacity: .45; cursor: default; }
 .pgx-btn.is-primary { background: #238636; border-color: #2ea043; color: #fff; }
 .pgx-btn.is-primary:hover:not(:disabled) { background: #2ea043; }
-.pgx-btn.is-xs { height: 22px; padding: 0 8px; font-size: 11px; }
 .pgx-preview { width: 150px; aspect-ratio: 9 / 16; border-radius: 8px; background: #000; }
 .pgx-shots { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; font-size: 12.5px; }
 .pgx-shots li { display: flex; gap: 8px; align-items: center; }

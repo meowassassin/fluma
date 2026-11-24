@@ -42,4 +42,3 @@ export function t(ko: string, vars?: Record<string, string | number>): string {
 
 /** 에이전트 답변 언어(설정 language 값) */
 export const agentLang = (l: Lang) => LANGS.find((x) => x.value === l)!.agent;
-export const langOfAgent = (a?: string): Lang | null => (LANGS.find((x) => x.agent === a)?.value ?? null);

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Icon } from "../../ui/Icon";
 import { FlumaBounce, FlumaStrain, FlumaGlyph } from "../../ui/BrandIcons";
 import { Button, IconButton, Menu, Spinner, Switch, Tip, composing, confirmDialog, cx } from "../../ui/kit";
-import { connect, doing, resetSession, sendMessage, stopAgent, unqueueMessage, useSession, TOOL_KO, type LiveTurn } from "../../lib/agent";
+import { connect, doing, resetSession, sendMessage, stopAgent, unqueueMessage, useSession, type LiveTurn } from "../../lib/agent";
 import { api, errMsg } from "../../lib/api";
 import { AttachChips, AttachMenu, attachNote, useAttachments } from "./attachments";
 import { qc, qk, useActiveAgents, useProjects, useSkills } from "../../lib/queries";

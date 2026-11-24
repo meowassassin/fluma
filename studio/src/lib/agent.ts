@@ -27,7 +27,6 @@ export const useAgentStore = create<AgentState>((set) => ({
   }),
 }));
 export const useSession = (id: string) => useAgentStore((s) => s.sessions[id] ?? blank);
-export const useAgentBusy = (id: string) => useAgentStore((s) => !!s.sessions[id]?.live);
 
 function apply(cur: LiveTurn | null, ev: AgentEvent): LiveTurn | null {
   // 시작 시각은 서버 기준 — 화면을 옮겨 다시 붙으면 서버가 지난 이벤트를 다시 보내는데, 그때 시계가 0초로 돌아가지 않게

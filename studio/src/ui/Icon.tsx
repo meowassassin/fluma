@@ -130,8 +130,3 @@ export const FlumaMark: React.FC<{ s?: number }> = ({ s = 18 }) => (
   <img src={s > 40 ? flumaIcon192 : flumaIcon64} width={s} height={s} alt="" aria-hidden draggable={false} style={{ display: "block" }} />
 );
 
-/** 9:16 썸네일 자리: 룩 색으로 그린 자리 표시 (실제 정지 화면이 있으면 그것) */
-export const Poster: React.FC<{ url?: string | null; bg?: string; accent?: string; title?: string }> = ({ url, bg = "#252526", accent = "#5850f8", title }) => (
-  url ? <img className="poster" src={url} alt="" />
-    : <div className="poster ph" style={{ background: `radial-gradient(120% 70% at 30% 20%, ${accent}33, transparent 60%), ${bg}` }}>{title && <span>{title}</span>}</div>
-);

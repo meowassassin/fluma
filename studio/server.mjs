@@ -34,7 +34,6 @@ const OUT = path.join(ROOT, "data", "out");
 const PUBLIC = path.join(ROOT, "data", "public");
 const RENDER_WORK = path.join(ROOT, "data", "workspace", "render");
 const SESS = path.join(ROOT, "data", "workspace", "sessions");
-const QUEUE = path.join(ROOT, "data", "queue.md");
 const PORT = Number(process.env.PORT || 4310);
 
 // 하위 프로세스(python3, claude)가 저장소 .venv 의 파이썬을 쓰도록
@@ -270,7 +269,6 @@ app.get("/api/engines", ah(async (_req, res) => {
   const [list, avail] = [await engineList() || [], await engineAvail(0)];
   res.json(list.map((e) => ({ ...e, available: avail ? !!avail[e.name] : null, icon: iconUrl(e.name) })));
 }));
-app.get("/api/templates", ah(async (_req, res) => res.json((await engineList() || []).flatMap((e) => e.templates))));
 app.use("/api/engine-icons", express.static(path.join(ROOT, "studio", "public", "engine-icons"), { maxAge: "1d" }));
 app.use("/fonts", express.static(path.join(ROOT, "studio", "public", "fonts"), { maxAge: "7d" }));
 
@@ -1437,9 +1435,8 @@ app.delete("/api/jobs/:id", (req, res) => {
   const j = jobs.get(req.params.id); if (!j) return sendError(res, 404, "not_found", "작업이 없습니다");
   res.json({ ok: jobs.cancel(j.id), job: jobs.pub(j) });
 });
-const jobStream = (req, res) => { const j = jobs.get(req.params.id || req.params.jobId); if (!j) return sendError(res, 404, "not_found", "작업이 없습니다"); jobs.stream(j, req, res); };
+const jobStream = (req, res) => { const j = jobs.get(req.params.id); if (!j) return sendError(res, 404, "not_found", "작업이 없습니다"); jobs.stream(j, req, res); };
 app.get("/api/jobs/:id/events", jobStream);
-app.get("/api/render/:jobId/events", jobStream);   // 예전 주소
 app.use("/api/out", express.static(OUT));
 
 // ---------- 렌더 영상 내려받기 — 편집기 '내려받기' 버튼. Docker 에서도 명령 없이 영상을 내 컴퓨터로(2026-11-05) ----------
@@ -1469,36 +1466,6 @@ app.get("/api/projects/:id/renders/:name/download", ah(async (req, res) => {
   const tag = name.slice(id.length).replace(/\.mp4$/, "").replace(/-craft-Scenes/, "").replace(/^-/, "");
   const nice = `${title}${tag ? ` (${tag})` : ""}.mp4`.replace(/[\\/:*?"<>|\n\r]+/g, " ").slice(0, 150);
   res.download(f, nice);
-}));
-
-// ---------- 유튜브 업로드 ----------
-app.post("/api/upload", ah(async (req, res) => {
-  const { id, mp4, privacy = "private", publishAt } = req.body || {};
-  checkId(id);
-  const name = String(mp4 || "").replace(/^\/?(api\/)?out\//, "").replace(/\?.*$/, "");
-  if (!/^[A-Za-z0-9가-힣_.-]+\.mp4$/.test(name) || name.includes("..")) throw bad("data/out/ 폴더의 mp4 파일 이름만 올릴 수 있습니다", "bad_file");
-  const file = within(OUT, name); if (!existsSync(file)) throw notFound("렌더 파일이 없습니다");
-  if (!["private", "unlisted", "public"].includes(privacy)) throw bad("공개 범위가 올바르지 않습니다");
-  const args = ["engine/publish/upload_youtube.py", `data/storyboards/${id}.json`, file, "--privacy", privacy];
-  const acc = req.body?.account ? ytId(req.body.account) : await projAccount(id);
-  if (acc) args.push("--account", acc);
-  if (publishAt) { if (!/^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})?$/.test(String(publishAt))) throw bad("예약 시각 형식이 올바르지 않습니다"); args.push("--publish-at", String(publishAt)); }
-  const r = await py(args, { timeout: 15 * 60e3, signal: requestSignal(req, res) });
-  if (r.canceled) return;
-  if (r.code !== 0) { console.error("[upload]", tail(r.err || r.out, 12)); throw new HttpError(500, "upload_failed", "유튜브에 올리지 못했습니다", tail(r.err || r.out, 3)); }
-  const url = (r.out.match(/https:\/\/(?:www\.)?youtu(?:\.be|be\.com)\/\S+/) || [])[0] || null;
-  res.json({ ok: true, url });
-}));
-
-// ---------- 시세 템플릿 채우기 ----------
-app.post("/api/fill", ah(async (req, res) => {
-  const { template, data } = req.body || {};
-  if (!template || !data || typeof template !== "string" || typeof data !== "string") throw bad("template, data 가 필요합니다");
-  const tpl = path.relative(ROOT, within(ROOT, template)), dat = path.relative(ROOT, within(ROOT, data));
-  const r = await py(["engine/story/fill_template.py", tpl, dat], { timeout: 60e3 });
-  if (r.code !== 0) throw new HttpError(500, "fill_failed", "템플릿을 채우지 못했습니다", tail(r.err || r.out, 3));
-  const saved = r.out.match(/저장:\s+(.*?\.json)/);
-  res.json({ ok: true, id: saved ? path.basename(saved[1], ".json") : null });
 }));
 
 // ---------- 채팅 (에이전트) ----------
@@ -1870,10 +1837,6 @@ app.get("/api/characters", ah(async (_req, res) => {
   res.json(out);
 }));
 app.use("/api/charfiles", express.static(path.join(ROOT, "data", "characters")));
-
-// ---------- 대기열 (data/queue.md) ----------
-app.get("/api/queue", ah(async (_req, res) => { res.type("text/plain").send(existsSync(QUEUE) ? await fs.readFile(QUEUE, "utf8") : ""); }));
-app.put("/api/queue", express.text({ type: "*/*", limit: "1mb" }), ah(async (req, res) => { await atomicWrite(QUEUE, typeof req.body === "string" ? req.body : ""); res.json({ ok: true }); }));
 
 // ---------- 파일 감시 → /api/events ----------
 // 종류: storyboard · composition · overrides · audio · elements · uploads · renders · engines · skills · trends · characters · memory · settings

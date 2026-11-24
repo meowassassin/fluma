@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Icon } from "../../ui/Icon";
 import { EngineIcon, modelIconSrc } from "../../ui/EngineIcon";
-import { Button, EmptyState, Field, Popover, Segmented, Select, Skeleton, Spinner, Switch, Tag, confirmDialog, cx } from "../../ui/kit";
+import { Button, EmptyState, Field, Segmented, Select, Skeleton, Spinner, Switch, Tag, confirmDialog, cx } from "../../ui/kit";
 import { api, errMsg } from "../../lib/api";
 import { qc, qk, useEngines, useSettings } from "../../lib/queries";
 import type { EngineMeta, Settings } from "../../lib/types";
@@ -25,8 +25,6 @@ const SCOPE: Record<string, string> = { global: "공통", trends: "트렌드", b
 const AGENT_ICON: Record<string, string> = { claude: "agent-claude", codex: "agent-codex", antigravity: "antigravity", cursor: "agent-cursor" };
 /** 에이전트 카드 모델 선택 기본값(빈 값일 때 modelIconSrc 용) */
 const AGENT_MODEL_FALLBACK: Record<string, string> = { claude: "claude", codex: "gpt", antigravity: "gemini", cursor: "composer" };
-const commTone = (c: string) => (c.startsWith("가능") ? "ok" : c.startsWith("불가") ? "danger" : "warn") as "ok" | "danger" | "warn";
-const availTag = (a: boolean | null | undefined, off = "설치 필요") => a === null || a === undefined ? <Tag>{t("확인 중")}</Tag> : a ? <Tag tone="ok">{t("사용 가능")}</Tag> : <Tag tone="warn">{t(off)}</Tag>;
 /** 번역문의 {이름} 자리에 JSX 를 끼운다(굵은 글씨 등) */
 const rich = (s: string, parts: Record<string, React.ReactNode>): React.ReactNode =>
   s.split(/\{(\w+)\}/).map((x, i) => (i % 2 ? <React.Fragment key={i}>{parts[x] ?? `{${x}}`}</React.Fragment> : x));
@@ -228,35 +226,6 @@ const LangSwitch: React.FC<{ s: Settings }> = ({ s }) => {
   return <Segmented aria-label={t("언어")} size="sm" value={lang} onChange={pick} options={LANGS.map((x) => ({ value: x.value, label: x.label }))} />;
 };
 
-/* ---------- 렌더 · 요소 엔진 ---------- */
-const ROLE_TXT: Record<string, string> = { craft: "장면 합성 · 소리 · 조립(모든 장면)" };
-const RenderSec: React.FC<{ engines: EngineMeta[] }> = ({ engines }) => {
-  const order = ["craft"];
-  const list = [...engines].sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
-  const [sel, setSel] = useState<string | null>(null);
-  if (!list.length) return <><Head t={t("렌더 엔진")} d={t("불러오는 중")} /><Skeleton h={120} /></>;
-  const e = list.find((x) => x.name === sel) ?? list[0];
-  return <>
-    <Head t={t("렌더 엔진")} d={t("모든 장면은 Craft 파이프라인(EffectCraft 움직임 → SoundCraft 소리 → FilmCraft 조립)이 만듭니다. 장면 재료를 만드는 앱은 Craft 앱 화면에서 관리합니다.")}
-      right={<Button size="sm" variant="ghost" icon="render" onClick={() => sapi.refreshRegistry().then(() => toast(t("엔진 상태를 다시 확인하는 중이에요"))).catch((er) => toast.error(errMsg(er)))}>{t("상태 다시 확인")}</Button>} />
-    <div className="gk-chips" role="tablist" aria-label={t("렌더 엔진")}>
-      {list.map((x) => (
-        <button key={x.name} role="tab" aria-selected={x.name === e.name} className={cx("gk-chip", x.name === e.name && "on")} onClick={() => setSel(x.name)}>
-          {x.icon ? <img className="gk-ic" src={x.icon} alt="" /> : <Icon n="engine" s={14} />}{x.title ?? x.name}
-          <i className={cx("gk-dot", x.available && "ok")} aria-label={x.available ? t("사용 가능") : t("설치 필요")} />
-        </button>))}
-    </div>
-    <div className="gk-card" role="tabpanel" aria-label={e.title ?? e.name}>
-      <div className="gk-card-h">
-        <EngineIcon id={e.name} src={e.icon} title={e.title ?? e.name} size={40} />
-        <div className="gk-t"><b>{e.title ?? e.name}</b><small>{t(ROLE_TXT[e.name] ?? "렌더 엔진")} · {e.summary ? t(e.summary) : ""}</small></div>
-        <span className="gk-caps">{e.available ? t("사용 가능") : e.available === false ? t("설치 필요") : t("확인 중")}</span>
-      </div>
-      <p className="gk-facts">{e.license ? t("라이선스 {name}", { name: e.license }) : ""} · {t("제작 파일을 앱에서 열어 고칠 수 있음")}</p>
-      {e.available === false && <InstallButton kind="engines" name={e.name} title={e.title ?? e.name} note={e.install} onDone={() => qc.invalidateQueries({ queryKey: qk.engines })} />}
-    </div>
-  </>;
-};
 
 /* ---------- API 키(음성 · 스톡 영상) ---------- */
 /** 음성 · 스톡 영상 API 키 — open-design 의 Media providers 구성을 따름(REA 로 실행 화면 확인, 2026-11-02):

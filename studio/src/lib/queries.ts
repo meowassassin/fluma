@@ -1,7 +1,7 @@
 /* 서버 데이터 = React Query 캐시 하나. 파일 감시 이벤트(/api/events)는 해당 키만 무효화한다
    (예전처럼 전역 tick 을 올려 앱 전체를 다시 그리지 않는다). 내가 쓴 파일의 메아리(client === CLIENT_ID)는 무시. */
 import { QueryClient, useQuery } from "@tanstack/react-query";
-import { useEffect, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { api, CLIENT_ID } from "./api";
 import type { FsEvent, LintItem } from "./types";
 
@@ -35,9 +35,6 @@ const setConn = (c: Conn) => { if (c !== conn) { conn = c; connSubs.forEach((f) 
 export const useConnection = () => useSyncExternalStore((f) => { connSubs.add(f); return () => connSubs.delete(f); }, () => conn);
 
 /* ---------- 파일 감시 → 캐시 무효화 ---------- */
-const fsSubs = new Set<(e: FsEvent) => void>();
-export const onFsEvent = (f: (e: FsEvent) => void) => { fsSubs.add(f); return () => { fsSubs.delete(f); }; };
-
 let started = false;
 export function startEvents() {
   if (started) return; started = true;
@@ -75,7 +72,6 @@ export function startEvents() {
         case "registry": { const n = (ev as { name?: string }).name; if (n) qc.invalidateQueries({ queryKey: [n] }); break; }
         case "job": { qc.invalidateQueries({ queryKey: ["renders-running"] }); qc.invalidateQueries({ queryKey: ["bgjobs"] }); const j = (ev as { job?: { project?: string } }).job; if (j?.project) qc.invalidateQueries({ queryKey: qk.jobs(j.project) }); break; }
       }
-      fsSubs.forEach((f) => f(ev));
     };
   };
   open();
@@ -89,30 +85,9 @@ export const useStoryboard = (id: string | null) => useQuery({
   queryFn: ({ signal }) => api.storyboard(id!, signal),
   retry: (n, e) => (e as { status?: number })?.status !== 404 && n < 1,
 });
-export const useLint = (id: string | null, enabled = true) => useQuery({
-  queryKey: qk.lint(id ?? "_"), enabled: !!id && enabled, staleTime: Infinity, queryFn: ({ signal }) => api.lint(id!, signal),
-});
-export const useOverrides = (id: string | null) => useQuery({
-  queryKey: qk.overrides(id ?? "_"), enabled: !!id, staleTime: Infinity,
-  queryFn: async ({ signal }) => (await api.overrides(id!, signal).catch(() => ({}))) as Record<string, Ovr>,
-});
-export const useHasAudio = (id: string | null) => useQuery({
-  queryKey: qk.audio(id ?? "_"), enabled: !!id, staleTime: Infinity,
-  queryFn: async ({ signal }) => { const r = await fetch(`/api/public/audio/${id}.wav`, { method: "HEAD", signal }); return r.ok ? r.headers.get("last-modified") ?? "1" : null; },
-});
 export const useEngines = () => useQuery({ queryKey: qk.engines, queryFn: ({ signal }) => api.engines(signal), staleTime: 5 * 60_000 });
 export const useSkills = () => useQuery({ queryKey: qk.skills, queryFn: ({ signal }) => api.skills(signal), staleTime: 5 * 60_000 });
-export const useCharacters = () => useQuery({ queryKey: qk.characters, queryFn: ({ signal }) => api.characters(signal), staleTime: 5 * 60_000 });
 export const useSettings = () => useQuery({ queryKey: qk.settings, queryFn: async ({ signal }) => (await api.settings(signal)).settings });
-export const useElements = (id: string | null) => useQuery({ queryKey: qk.elements(id ?? "_"), enabled: !!id, queryFn: ({ signal }) => api.elements(id!, signal) });
-export const useUploads = (id: string | null) => useQuery({ queryKey: qk.uploads(id ?? "_"), enabled: !!id, queryFn: ({ signal }) => api.uploads(id!, signal) });
-
-/** 손 수정 값 (compositions/<id>/overrides.json) — 렌더에 그대로 들어간다 */
-export type Kf = { t: number; dx?: number; dy?: number; scale?: number; rot?: number; opacity?: number };
-export type Ovr = { dx?: number; dy?: number; scale?: number; rot?: number; opacity?: number; color?: string; fill?: string; text?: string; hidden?: boolean; kf?: Kf[] };
-
-/** 마운트 동안 이벤트 연결을 보장 */
-export const useEventsBoot = () => useEffect(() => { startEvents(); }, []);
 
 /** 지금 일하는 에이전트 대화들(서버 기준). 시작 · 끝은 이벤트로 바로, 진행 중 도구 이름은 4초마다 */
 export interface ActiveAgent { id: string; user: string; startedAt: number; tool: { name: string; input: string } | null; stopping: boolean; skill: string | null; waiting?: number | null }

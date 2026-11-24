@@ -1,6 +1,6 @@
 // YouTube 연결 · 업로드 · 통계 — 공식 API 만(OAuth 2.0). 채널(계정) 여러 개 · 기본 하나. 토큰은 키와 같이 ~/.shortsforge/youtube.json(0600)에만 두고 화면 · 에이전트로 보내지 않는다.
 // 사용자가 Google Cloud 에서 만든 OAuth 클라이언트(웹 애플리케이션, 리디렉션 URI = http://127.0.0.1:4310/api/youtube/callback)를 설정 화면에 넣고 '연결'을 누른다.
-import { promises as fs, existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, chmodSync, statSync, createReadStream } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, chmodSync, statSync, createReadStream } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { randomUUID } from "node:crypto";

@@ -8,7 +8,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Icon } from "../../ui/Icon";
 import { FlumaBounce, FlumaStrain } from "../../ui/BrandIcons";
-import { Button, EmptyState, IconButton, Kbd, Segmented, Skeleton, Tip, confirmDialog, cx } from "../../ui/kit";
+import { Button, EmptyState, IconButton, Kbd, Segmented, Skeleton, confirmDialog, cx } from "../../ui/kit";
 import { fmtViews } from "../../ui/engines";
 import { qc, qk } from "../../lib/queries";
 import { typing, useUi } from "../../lib/ui";

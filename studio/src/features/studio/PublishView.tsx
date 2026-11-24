@@ -1,18 +1,13 @@
-/* 게시 · 성과 — 올리기(공식 업로드 API) 와 올린 뒤의 통계. 이탈 곡선을 콘티 장면에 겹쳐 '어느 장면에서 넘겼나'를 본다.
+/* 성과 — 올린 뒤의 통계. 이탈 곡선을 콘티 장면에 겹쳐 '어느 장면에서 넘겼나'를 본다.
    분석 API 는 보통 1~2일 늦게 채워진다(실시간 숫자는 데이터 API). '시청 vs 스와이프'는 API 에 없어 Studio 링크로 */
 import React, { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { Button, Tag, cx } from "../../ui/kit";
+import { Button, cx } from "../../ui/kit";
 import { Icon } from "../../ui/Icon";
 import { errMsg } from "../../lib/api";
 import { t } from "../../lib/i18n";
-import type { Storyboard, YtAccount } from "../../lib/types";
-import { YtAvatar, setProjectYtAccount } from "../settings/ytAccounts";
 
 type Rec = { videoId: string; url: string; uploaded_at: string; privacy: string; title: string; file: string; account?: string };
-type Info = { connected: boolean; channel: YtAccount | null; accounts: YtAccount[]; default: string | null; account: string | null; record: Rec | null; file: { name: string; draft: boolean; size: number } | null };
 type Rep = { cols: string[]; rows: (string | number)[][]; error?: string };
 type Stats = { none?: boolean; at: string; record: Rec; summary: Rep; retention: Rep; traffic: Rep; daily: Rep; demo: Rep; duration: number;
   live: { statistics?: Record<string, string>; status?: { privacyStatus?: string; uploadStatus?: string } } | null;
@@ -23,65 +18,6 @@ const sec = (v: unknown) => (v == null ? "—" : `${Math.round(Number(v) * 10) /
 const pct = (v: unknown) => (v == null ? "—" : `${Math.round(Number(v) * 10) / 10}%`);
 const row = (r: Rep) => Object.fromEntries((r.cols || []).map((c, i) => [c, r.rows?.[0]?.[i]]));
 const TRAFFIC: Record<string, string> = { SHORTS: "쇼츠 피드", YT_SEARCH: "YouTube 검색", SUBSCRIBER: "구독 피드", BROWSE: "홈 · 탐색", RELATED_VIDEO: "추천 영상", EXT_URL: "외부", NOTIFICATION: "알림", YT_CHANNEL: "채널 페이지", PLAYLIST: "재생목록", NO_LINK_OTHER: "직접 · 기타", HASHTAGS: "해시태그", SOUND_PAGE: "사운드 페이지", YT_OTHER_PAGE: "기타 YouTube" };
-
-export const PublishView: React.FC<{ projectId: string; sb: Storyboard }> = ({ projectId, sb }) => {
-  const { data: info, refetch } = useQuery<Info>({ queryKey: ["yt-proj", projectId], refetchInterval: 4000,
-    queryFn: async ({ signal }) => (await fetch(`/api/projects/${projectId}/youtube`, { signal })).json() });
-  if (!info) return <div className="einfo faint">{t("불러오는 중…")}</div>;
-  if (!info.connected) return (
-    <div className="einfo"><h3><Icon n="video" s={18} />{t("YouTube 연결이 필요해요")}</h3>
-      <p className="faint">{t("연결하면 여기서 바로 올리고, 올린 뒤 장면별 이탈 · 유입 경로 · 시청자 통계를 봅니다.")}</p>
-      <div><Link className="btn btn-primary" to="/settings/youtube">{t("설정 → YouTube 에서 연결")}</Link></div></div>);
-  return info.record ? <StatsView src={`/api/projects/${projectId}/youtube/stats`} rec={info.record} /> : <UploadForm projectId={projectId} sb={sb} info={info} onDone={() => refetch()} />;
-};
-
-const UploadForm: React.FC<{ projectId: string; sb: Storyboard; info: Info; onDone: () => void }> = ({ projectId, sb, info, onDone }) => {
-  // 완성 뒤 자동으로 만든 업로드 정보(콘티 upload)로 미리 채운다 — 고쳐서 올릴 수 있다
-  const up = sb.upload;
-  const [title, setTitle] = useState(up?.title ?? sb.title ?? "");
-  const [desc, setDesc] = useState(up?.full ?? up?.description ?? ""), [tags, setTags] = useState((up?.tags ?? []).join(", ")), [privacy, setPrivacy] = useState("private"), [busy, setBusy] = useState(false);
-  const go = async () => {
-    setBusy(true);
-    try {
-      const r = await fetch(`/api/projects/${projectId}/youtube/upload`, { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description: desc, tags: tags.split(/[,\s#]+/).filter(Boolean), privacy, account: info.account }) });
-      const j = await r.json(); if (!r.ok) throw new Error(j?.error?.message ?? `HTTP ${r.status}`);
-      toast.success(t("업로드를 시작했어요"), { description: t("끝나면 여기서 통계를 볼 수 있어요") });
-      onDone();
-    } catch (e) { toast.error(t("올리지 못했어요"), { description: errMsg(e) }); } finally { setBusy(false); }
-  };
-  return (
-    <div className="einfo pub">
-      <h3><Icon n="upload" s={18} />{t("YouTube 에 올리기")}</h3>
-      <AccountPick projectId={projectId} info={info} onDone={onDone} />
-      <LinkExisting projectId={projectId} account={info.account} onDone={onDone} />
-      {!info.file ? <p className="faint">{t("올릴 영상이 없어요 — 먼저 렌더해 주세요")}</p> : <>
-        <p className="faint small">{t("파일")}: {info.file.name}{info.file.draft && <> · <Tag tone="warn">{t("초안")}</Tag> {t("최종 렌더가 없어 초안을 올립니다")}</>}</p>
-        <label>{t("제목")}<input value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} /></label>
-        <label>{t("설명")}<textarea rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder={t("출처 · 해시태그(#쇼츠 등 3개 정도)")} /></label>
-        <label>{t("태그(쉼표로)")}<input value={tags} onChange={(e) => setTags(e.target.value)} /></label>
-        <label>{t("공개 범위")}<select value={privacy} onChange={(e) => setPrivacy(e.target.value)}>
-          <option value="private">{t("비공개")}</option><option value="unlisted">{t("일부 공개")}</option><option value="public">{t("공개")}</option></select></label>
-        <div><Button variant="primary" icon="upload" loading={busy} disabled={!title.trim()} onClick={go}>{t("올리기")}</Button></div>
-      </>}
-    </div>
-  );
-};
-
-/** 올릴 채널 — 채팅창의 채널 고르기와 같은 값(영상마다 저장) */
-const AccountPick: React.FC<{ projectId: string; info: Info; onDone: () => void }> = ({ projectId, info, onDone }) => {
-  const cur = info.accounts.find((a) => a.id === info.account) ?? null;
-  const pick = async (id: string) => { try { await setProjectYtAccount(projectId, id); onDone(); } catch (e) { toast.error(t("채널을 바꾸지 못했어요"), { description: errMsg(e) }); } };
-  return (
-    <label className="yt-acc-pick">{t("올릴 채널")}
-      <span className="row gap"><YtAvatar a={cur} s={22} />
-        <select value={info.account ?? ""} onChange={(e) => pick(e.target.value)} disabled={info.accounts.length < 2}>
-          {info.accounts.map((a) => <option key={a.id} value={a.id}>{a.title}{a.id === info.default ? ` (${t("기본")})` : ""}</option>)}
-        </select>
-        <Link className="faint small" to="/settings/youtube">{t("채널 추가 · 관리")}</Link></span>
-    </label>
-  );
-};
 
 /** 통계 대시보드 — 콘티에 연결된 영상(장면별 이탈 포함) 또는 채널의 아무 영상(src 로 받을 주소만 다름) */
 export const StatsView: React.FC<{ src: string; rec: Rec }> = ({ src, rec }) => {
@@ -170,25 +106,6 @@ const Retention: React.FC<{ s?: Stats }> = ({ s }) => {
       <polyline points={rel} fill="none" stroke="var(--tx-3)" strokeWidth="1" strokeDasharray="4 3" />
       <polyline points={line} fill="none" stroke="var(--brand)" strokeWidth="2.2" />
     </svg>
-  );
-};
-
-/** 이미 채널에 올린 영상을 이 콘티와 연결 — 그 영상의 이탈 곡선이 이 콘티의 장면에 겹친다 */
-const LinkExisting: React.FC<{ projectId: string; account: string | null; onDone: () => void }> = ({ projectId, account, onDone }) => {
-  const [open, setOpen] = useState(false);
-  const { data: vids } = useQuery<ChannelVideo[]>({ queryKey: ["yt-videos", account], enabled: open,
-    queryFn: async ({ signal }) => { const r = await fetch(`/api/youtube/videos${account ? `?account=${encodeURIComponent(account)}` : ""}`, { signal }); const j = await r.json(); if (!r.ok) throw new Error(j?.error?.message ?? `HTTP ${r.status}`); return j; } });
-  const link = async (videoId: string) => {
-    const r = await fetch(`/api/projects/${projectId}/youtube/link`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ videoId, account }) });
-    const j = await r.json(); if (!r.ok) { toast.error(t("연결하지 못했어요"), { description: j?.error?.message }); return; }
-    toast.success(t("이 영상과 연결했어요")); onDone();
-  };
-  return (
-    <div className="pub-link">
-      <button className="link-btn" onClick={() => setOpen((v) => !v)}><Icon n="link" s={13} />{t("이미 올린 영상이면 연결하기")}</button>
-      {open && <div className="yt-vids">{!vids ? <span className="faint small">{t("불러오는 중…")}</span> : vids.map((v) => (
-        <button key={v.videoId} className="yt-vid" onClick={() => link(v.videoId)}>{v.thumb && <img src={v.thumb} alt="" referrerPolicy="no-referrer" />}<span><b>{v.title}</b><i>{new Date(v.published).toLocaleDateString()} · {t("조회 {n}", { n: v.views.toLocaleString() })}</i></span></button>))}</div>}
-    </div>
   );
 };
 export type ChannelVideo = { videoId: string; title: string; published: string; thumb?: string; duration: number; privacy: string; views: number; likes: number; comments: number };

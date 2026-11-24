@@ -132,20 +132,6 @@ const Graph: React.FC<{
   );
 };
 
-/* ---------- 세로 목록(편집기 옆 패널) ---------- */
-const List: React.FC<{ steps: Step[]; sel: string | null; onSel: (k: string) => void }> = ({ steps, sel, onSel }) => (
-  <ol className="pgx-list">
-    {[...steps].sort((a, b) => a.col - b.col || a.row - b.row).map((s) => (
-      <li key={s.key}>
-        <button type="button" className={`pgx-li s-${s.state} ${sel === s.key ? "is-sel" : ""}`} title={tipOf(s)} onClick={() => onSel(s.key)}>
-          <StateIcon s={s.state} />
-          <span className="pgx-name">{s.name}</span>
-          <span className="pgx-models">{s.models.slice(0, 3).map((m, i) => <ModelIcon key={i} m={m} size={18} spin={s.state === "running" && i === 0} />)}</span>
-        </button>
-      </li>
-    ))}
-  </ol>
-);
 
 export interface PipelineGraphProps { id: string; variant?: "full" | "panel"; orientation?: "horizontal" | "vertical"; onOpenEditor?: () => void }
 
