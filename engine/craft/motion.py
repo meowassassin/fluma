@@ -1391,6 +1391,8 @@ def build_jsx(sb: dict, captions: list[dict], scenes: list[dict], out_project: P
         # 장면 코드가 화면 전체를 자기 바탕으로 덮는 장면이면 바탕 장식(빛 · 질감 · 프리셋)은 그 아래에 가려 보이지 않는다 —
         # 2026-11-21 측정: 가려진 질감 노이즈 130ms + 빛 블러 65ms 를 프레임마다 계산(30초 렌더 226초의 큰 몫). 그림은 같고 계산만 뺀다
         _covered = any(owns_frame(m, W, H) for m in sc.get("materials") or [] if isinstance(m, dict))
+        if _covered:      # 2026-11-24 bench: 가려진 바탕 단색 합성이 프레임마다 약 35ms(한 프레임 135ms 의 4분의 1) — 장면 코드가 K.scene 바탕으로 화면을 덮으면 끈다
+            J("bgL.enabled = false;")
         if (DZ["bg_motion"] or bgp) and not _covered:   # 배경 움직임 — 방향이 정했을 때만(기본은 단색)
             dress = f"dressBg(c, bgL, {start:.3f}, {js(bg_top)}, {js(bg_bot)}, {js(glow_a)}, {js(glow_b)});"
             if bgp:   # 형식별 내장 배경 프리셋(색은 콘티 바탕 · 팔레트로) — 안 되면 예전 그라데이션 + 빛

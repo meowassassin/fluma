@@ -159,13 +159,16 @@ def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
     segs, total = p
     cache = paths(job)[0] / "segcache"
     cache.mkdir(parents=True, exist_ok=True)
-    t0, made = time.time(), 0
+    t0 = time.time()
+    todo = []
     for s in segs:
         f = cache / f"{s['key']}.mp4"
         s["file"] = f
-        if f.exists() and f.stat().st_size > 1000:
-            continue
-        tmp = f.with_suffix(".part.mp4")
+        if not (f.exists() and f.stat().st_size > 1000):
+            todo.append(s)
+
+    def one(s):
+        f = s["file"]; tmp = f.with_suffix(f".part{os.getpid()}.mp4")
         run([_cli(), "render", "--project", proj, "--comp", "Main", "--out", tmp, "--format", "h264", "--audio", "off", "--fps", str(job.fps),
              # 렌더는 start ≤ k/fps < end 인 프레임 k 를 그린다 — 경계를 반 프레임 당겨야 소수 반올림에 흔들리지 않는다(실측: 6.666667 이 200번째 프레임을 빼먹음)
              "--start", f"{max(0.0, (s['f0'] - 0.5) / job.fps):.6f}", "--end", f"{(s['f1'] - 0.5) / job.fps:.6f}", *extra], cwd=job.work, env=_env(), label="effectcraft render(구간)", timeout=1800)
@@ -173,7 +176,20 @@ def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
             tmp.unlink(missing_ok=True)
             return False
         tmp.replace(f)
-        made += 1
+        return True
+    # 바뀐 구간을 함께 그린다 — 렌더 하나가 CPU 약 2.7코어 · 메모리 약 3.7GB(1080×1920, 2026-11-24 실측)라 남은 메모리만큼(최대 3)
+    try:
+        avail = int(next(ln.split()[1] for ln in open("/proc/meminfo") if ln.startswith("MemAvailable"))) / (1 << 20)
+    except (OSError, StopIteration, ValueError):
+        avail = 4.0
+    per = 2.0 if extra else 4.2
+    jobs = max(1, min(int(os.environ.get("FLUMA_SEG_JOBS", "3")), int(avail // per), len(todo), max(1, (os.cpu_count() or 4) // 3)))
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=jobs) as ex:
+        okk = list(ex.map(one, todo))
+    if not all(okk):
+        return False
+    made = len(todo)
     lst = job.work / "segments.txt"
     lst.write_text("".join(f"file '{s['file'].as_posix()}'\n" for s in segs), "utf-8")
     tmp_out = out.with_suffix(".cat.mp4")
@@ -182,7 +198,7 @@ def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
         tmp_out.unlink(missing_ok=True)
         return False
     shutil.move(str(tmp_out), out)
-    print(f"[craft] 구간 렌더: {len(segs)}구간 중 {made}구간만 새로 그림({time.time() - t0:.1f}초)", file=sys.stderr)
+    print(f"[craft] 구간 렌더: {len(segs)}구간 중 {made}구간만 새로 그림 · 동시 {jobs}({time.time() - t0:.1f}초)", file=sys.stderr)
     # 오래된 구간 파일 정리(이번에 안 쓴 것 중 하루 지난 것)
     keep = {s["file"].name for s in segs}
     for f in cache.glob("*.mp4"):
