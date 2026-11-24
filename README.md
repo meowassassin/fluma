@@ -171,7 +171,7 @@ Requirements: Python 3.10+, Node.js 20+, ffmpeg. Details and troubleshooting: [Q
 
 ```bash
 git clone https://github.com/meowassassin/fluma && cd fluma
-python3 engine/doctor.py --fix              # everything: Python packages · all 16 Craft apps · models · npm
+python3 engine/doctor.py --fix              # everything: Python packages · all 16 Craft apps · models · npm · Korean font for Craft apps
 npm --prefix studio run dev                     # → http://localhost:4311
 ```
 

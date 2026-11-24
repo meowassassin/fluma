@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -81,7 +82,8 @@ def cli(app: str) -> Path | None:
 def _sh(args: list, timeout: int = 90) -> str:
     try:
         r = subprocess.run([str(a) for a in args], capture_output=True, text=True, timeout=timeout, cwd=str(ROOT),
-                           env={"PATH": "/usr/bin:/bin", "HOME": str(Path.home()), "DO_NOT_TRACK": "1", "SOUNDCRAFT_NO_PREFS": "1", "VECTORCRAFT_NO_PREFS": "1"})
+                           env={**(dict(os.environ) if os.name == "nt" else {"PATH": "/usr/bin:/bin", "HOME": str(Path.home())}),   # 윈도우 실행 파일은 SystemRoot 등이 없으면 못 뜬다
+                                "DO_NOT_TRACK": "1", "SOUNDCRAFT_NO_PREFS": "1", "VECTORCRAFT_NO_PREFS": "1"})
         return r.stdout
     except (subprocess.TimeoutExpired, OSError):
         return ""

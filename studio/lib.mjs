@@ -62,6 +62,10 @@ export async function readJson(file, fallback = null) {
 /** 프로세스 그룹째 끈다 (python → chrome · ffmpeg 자식까지). SIGTERM 뒤 5초 지나면 SIGKILL */
 export function killTree(child) {
   if (!child || child.exitCode != null || child.signalCode != null) return;
+  if (process.platform === "win32") {            // 윈도우엔 프로세스 그룹 신호가 없다 — taskkill /T 로 자식까지
+    try { spawn("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true }).on("error", () => child.kill()); } catch { try { child.kill(); } catch { /* 이미 끝남 */ } }
+    return;
+  }
   const sig = (s) => { try { process.kill(-child.pid, s); } catch { try { child.kill(s); } catch { /* 이미 끝남 */ } } };
   sig("SIGTERM");
   const t = setTimeout(() => sig("SIGKILL"), 5000); t.unref();

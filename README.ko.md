@@ -171,7 +171,7 @@ python3 engine/craft/crafts.py install all     # 또는 골라서: install effec
 
 ```bash
 git clone https://github.com/meowassassin/fluma && cd fluma
-python3 engine/doctor.py --fix              # 전부: 파이썬 패키지 · Craft 앱 16개 · 모델 · npm
+python3 engine/doctor.py --fix              # 전부: 파이썬 패키지 · Craft 앱 16개 · 모델 · npm · Craft 앱용 한글 글꼴
 npm --prefix studio run dev                     # → http://localhost:4311
 ```
 

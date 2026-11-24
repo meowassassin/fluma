@@ -67,7 +67,10 @@ def step(name: str, cmd: list[str], timeout: int = 3600) -> subprocess.Completed
         out, err = pr.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:
         try:
-            os.killpg(pr.pid, signal.SIGTERM); time.sleep(3); os.killpg(pr.pid, signal.SIGKILL)
+            if os.name == "nt":                         # 윈도우엔 프로세스 그룹 신호가 없다 — 자식까지 taskkill /T
+                subprocess.run(["taskkill", "/pid", str(pr.pid), "/T", "/F"], capture_output=True)
+            else:
+                os.killpg(pr.pid, signal.SIGTERM); time.sleep(3); os.killpg(pr.pid, signal.SIGKILL)
         except OSError:
             pass
         pr.communicate()

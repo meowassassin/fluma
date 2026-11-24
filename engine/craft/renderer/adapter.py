@@ -177,10 +177,8 @@ def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
         tmp.replace(f)
         return True
     # 바뀐 구간을 함께 그린다 — 렌더 하나가 CPU 약 2.7코어 · 메모리 약 3.7GB(1080×1920, 2026-11-24 실측)라 남은 메모리만큼(최대 3)
-    try:
-        avail = int(next(ln.split()[1] for ln in open("/proc/meminfo") if ln.startswith("MemAvailable"))) / (1 << 20)
-    except (OSError, StopIteration, ValueError):
-        avail = 4.0
+    from platform_util import mem_available_gb
+    avail = mem_available_gb()
     per = 2.0 if extra else 4.2
     jobs = max(1, min(int(os.environ.get("FLUMA_SEG_JOBS", "3")), int(avail // per), len(todo), max(1, (os.cpu_count() or 4) // 3)))
     from concurrent.futures import ThreadPoolExecutor

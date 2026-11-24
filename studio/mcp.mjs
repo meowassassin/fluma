@@ -7,6 +7,7 @@ import { spawn } from "node:child_process";
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { killTree } from "./lib.mjs";
 
 const DIR = path.join(os.homedir(), ".shortsforge");
 export const MCP_FILE = path.join(DIR, "mcp.json");
@@ -109,7 +110,7 @@ function testStdio(s, env) {
     try { child = spawn(s.command, s.args ?? [], { env: { ...env, ...(s.env ?? {}) }, stdio: ["pipe", "pipe", "pipe"], detached: process.platform !== "win32" }); }
     catch (e) { resolve({ ok: false, error: String(e.message || e) }); return; }
     let buf = "", err = "", server = null, done = false;
-    const finish = (r) => { if (done) return; done = true; clearTimeout(t); try { process.kill(-child.pid, "SIGTERM"); } catch { try { child.kill(); } catch { /* 끝남 */ } } resolve(r); };
+    const finish = (r) => { if (done) return; done = true; clearTimeout(t); killTree(child); resolve(r); };
     const t = setTimeout(() => finish({ ok: false, error: server ? "도구 목록 응답이 없습니다(20초)" : `응답이 없습니다(20초)${err ? ` — ${err.trim().split("\n").slice(-2).join(" ")}` : ""}` }), 20000);
     child.on("error", (e) => finish({ ok: false, error: e.code === "ENOENT" ? `명령을 찾을 수 없습니다: ${s.command}` : String(e.message || e) }));
     child.on("close", (code) => finish({ ok: false, error: `서버가 끝났습니다(코드 ${code})${err ? ` — ${err.trim().split("\n").slice(-2).join(" ")}` : ""}` }));

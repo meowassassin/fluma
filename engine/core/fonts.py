@@ -22,7 +22,7 @@ CATALOG = SRC / "catalog.json"
 import os as _os  # noqa: E402
 _OS = "windows" if _sys.platform.startswith("win") else "mac" if _sys.platform == "darwin" else "linux"
 DST = (Path(_os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "Microsoft" / "Windows" / "Fonts" if _OS == "windows"
-       else Path.home() / "Library" / "Fonts" / "Fluma" if _OS == "mac" else Path.home() / ".local" / "share" / "fonts" / "fluma")   # 운영체제마다 사용자 글꼴 폴더
+       else Path.home() / "Library" / "Fonts" if _OS == "mac" else Path.home() / ".local" / "share" / "fonts" / "fluma")   # 운영체제마다 사용자 글꼴 폴더
 # Craft 앱(Design · Vector · Deck · Photo · Fig · Texture)의 한글 글꼴 — 시스템 글꼴 이름 'Noto Sans CJK KR' 로 찾는다(OFL, 굵기별 약 16MB).
 # 2026-11-24: 설치가 이 글꼴을 깔지 않아, 글꼴이 없는 macOS · Windows · CI 에서 글자 단계가 'no font family' 로 멈췄다
 NOTO_CJK = "Noto Sans CJK KR"

@@ -47,7 +47,7 @@ python3 engine/doctor.py --fix
 
 이 명령 하나로 **전부** 설치합니다: `.venv` 와 파이썬 패키지 전체(`requirements-full.txt`), Chromium, 오픈소스
 [Craft 앱](https://github.com/storytold)(MIT / Apache-2.0) 16개 전부(약 1.6GB, SHA256SUMS 로 검증해 `tools/crafts/` 에),
-분석 · 누끼 모델, npm 패키지. Node · ffmpeg 는 설치 방법만 *알려 주며* 관리자 권한이 필요 없습니다.
+분석 · 누끼 모델, npm 패키지, 시스템에 없으면 Craft 앱이 쓰는 한글 글꼴(Noto Sans CJK KR, 약 64MB — 사용자 글꼴 폴더). Node · ffmpeg 는 설치 방법만 *알려 주며* 관리자 권한이 필요 없습니다.
 
 용량이 부족하면 `python3 engine/doctor.py --fix --profile lite --core` 로 최소만(핵심 Craft 앱 7개, 모델 없음) 설치합니다.
 빠진 것은 처음 쓰는 순간 자동으로 설치됩니다.

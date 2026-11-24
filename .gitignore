@@ -9,7 +9,6 @@ data/*
 !data/characters/**
 !data/workspace/
 data/workspace/*
-!data/workspace/presets.json
 .env
 __pycache__/
 engine/*/renderer/node_modules/

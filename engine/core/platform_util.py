@@ -75,3 +75,17 @@ def file_lock(path):
                 yield
             finally:
                 fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def mem_available_gb(default: float = 4.0) -> float:
+    """지금 쓸 수 있는 메모리(GB) — Linux /proc/meminfo, 그 밖(macOS · Windows)은 psutil, 둘 다 안 되면 default"""
+    try:
+        with open("/proc/meminfo") as f:
+            return int(next(ln.split()[1] for ln in f if ln.startswith("MemAvailable"))) / (1 << 20)
+    except (OSError, StopIteration, ValueError):
+        pass
+    try:
+        import psutil
+        return psutil.virtual_memory().available / (1 << 30)
+    except Exception:  # noqa: BLE001 — psutil 없음 · 권한
+        return default

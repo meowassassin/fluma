@@ -22,10 +22,7 @@ data/*
 !data/queue.md
 !data/characters/
 !data/characters/.gitkeep
-!data/characters/Pin/
-!data/characters/Pin/**
 !data/workspace/
 data/workspace/*
-!data/workspace/presets.json
 tools/crafts
 tools/toolchains

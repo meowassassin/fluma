@@ -47,7 +47,8 @@ python3 engine/doctor.py --fix
 
 That one command installs **everything**: `.venv` with all Python packages (`requirements-full.txt`), Chromium,
 all 16 open-source [Craft apps](https://github.com/storytold) (MIT / Apache-2.0, about 1.6 GB, checked against their
-SHA256SUMS into `tools/crafts/`), the analysis and background-removal models, and the npm packages. It only *tells*
+SHA256SUMS into `tools/crafts/`), the analysis and background-removal models, the npm packages, and — if the system lacks it — the Korean font the Craft apps use
+(Noto Sans CJK KR, about 64 MB, into your user font folder). It only *tells*
 you how to install Node / ffmpeg — it does not need admin rights.
 
 Short on disk? `python3 engine/doctor.py --fix --profile lite --core` installs the minimum (7 core Craft apps, no
