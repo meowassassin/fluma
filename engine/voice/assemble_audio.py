@@ -425,7 +425,7 @@ def main():
         try:
             parts, cont = synth_all(prov, vid, style, vopts)
             break
-        except (RuntimeError, OSError) as e:
+        except Exception as e:  # noqa: BLE001 - 2026-11-24: Edge 음성 403 은 aiohttp 예외(WSServerHandshakeError)라 넘어가지 못하고 제작이 죽었다 — 어떤 실패든 다음 엔진으로
             tried.append(prov)
             nxt = next((e2 for e2 in FALLBACK_ORDER if e2 not in tried and tts_available(e2)), None)
             print(f"[음성] {prov} 합성 실패: {str(e)[:200]}", file=sys.stderr)

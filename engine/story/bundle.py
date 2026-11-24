@@ -108,6 +108,14 @@ def normalize(sb: dict) -> list[str]:
                     yield from flat(x.context)
         for e in flat(jsonschema.Draft202012Validator(schema).iter_errors(sb)):
             path = list(e.absolute_path)
+            if e.validator == "additionalProperties" and isinstance(e.instance, dict):   # 형식에 없는 칸(reference_why 등) — 엔진이 읽지 않으니 빼고 알린다(2026-11-24: lint 실패 37건 중 다수)
+                allowed = set((e.schema or {}).get("properties") or {})
+                extra = [k for k in list(e.instance) if k not in allowed and not any(__import__("re").match(pt, k) for pt in ((e.schema or {}).get("patternProperties") or {}))]
+                for k in extra:
+                    e.instance.pop(k, None); notes.append(f"{'/'.join(map(str, path)) or '(맨 위)'}: 형식에 없는 칸 '{k}' 뺌"); changed = True
+                if extra:
+                    break
+                continue
             if not path:
                 continue
             parent = sb

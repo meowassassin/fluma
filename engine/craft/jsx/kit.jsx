@@ -9,7 +9,12 @@ var K = (function () {
   // 키프레임이 있는 속성에 setValue → 시작 값(0초 키)으로. 2026-11-21: 장면 코드가 K.appear 뒤에 Opacity.setValue 를 불러 빌드가 멈추는 일이
   // 되풀이됐다(실전 1 · 2 · 꿀벌 시험). 뜻은 같다 — '처음 상태'를 정하는 것
   try { (function () { var t = C.layers.addNull(); var pr = Object.getPrototypeOf(t.property('Transform').property('Opacity')); t.remove();
-    if (pr && !pr.__fluma_sv) { var sv = pr.setValue; pr.setValue = function (v) { if (this.numKeys > 0) return this.setValueAtTime(0, v); return sv.call(this, v); }; pr.__fluma_sv = true; } })(); } catch (e) {}
+    // 2026-11-24: 색 속성에 '#ffcc00' 글자를 그대로 넣어 'value must be an array of 3 or 4 numbers' 로 빌드가 멈췄다(장면 코드 오류 6건 중 5건) — 글자 색은 배열로 바꿔 받는다
+    function cv(v) { if (typeof v === 'string' && /^#?[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/.test(v)) { var h = v.replace('#', ''); if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2); return [parseInt(h.substr(0, 2), 16) / 255, parseInt(h.substr(2, 2), 16) / 255, parseInt(h.substr(4, 2), 16) / 255]; } return v; }
+    if (pr && !pr.__fluma_sv) { var sv = pr.setValue, sva = pr.setValueAtTime;
+      pr.setValue = function (v) { v = cv(v); if (this.numKeys > 0) return this.setValueAtTime(0, v); return sv.call(this, v); };
+      if (sva) pr.setValueAtTime = function (t, v) { return sva.call(this, t, cv(v)); };
+      pr.__fluma_sv = true; } })(); } catch (e) {}
   function hx(h) { if (h instanceof Array) return h; h = String(h).replace('#', ''); if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2); return [parseInt(h.substr(0, 2), 16) / 255, parseInt(h.substr(2, 2), 16) / 255, parseInt(h.substr(4, 2), 16) / 255]; }
   function T(l) { return l.property('Transform'); }
   function ease(prop, infl) { var e = new KeyframeEase(0, infl || 75); for (var k = 1; k <= prop.numKeys; k++) { var a = []; var n = (prop.value && prop.value.length) || 1; for (var d = 0; d < n; d++) a.push(e); try { prop.setTemporalEaseAtKey(k, a, a); } catch (x) {} } }
