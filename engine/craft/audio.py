@@ -437,7 +437,11 @@ def mix(sb: dict, dur: float, out_dir: Path | None = None) -> tuple[Path, Path] 
                 bounce = b2
             print(f"[소리] 라우드니스 {first:.1f} → {bounce['lufs']:.1f} LUFS · true peak {bounce.get('true_peak_db', 0):.1f} dBTP"
                   + ("" if target != SFX_ONLY_LUFS else " (효과음만 — 조금 낮은 목표)"))
-            au = {"file": os.path.relpath(session, ROOT), "hash": _sha(session), "app": "soundcraft"}
+            try:
+                rel = os.path.relpath(session, ROOT)
+            except ValueError:                           # Windows: 다른 드라이브 — 절대 경로로 남긴다
+                rel = str(session)
+            au = {"file": rel, "hash": _sha(session), "app": "soundcraft"}
     except subprocess.TimeoutExpired:
         print(f"{fail} (시간 초과)")
         return None

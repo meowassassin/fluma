@@ -44,8 +44,17 @@ class Mcp:
     def __init__(self, args: list, cwd: Path, timeout: int = 120):
         import os
         self.p = subprocess.Popen([str(a) for a in args], cwd=str(cwd), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                  stderr=subprocess.DEVNULL, text=True, env={**os.environ, "DO_NOT_TRACK": "1"})
+                                  stderr=subprocess.DEVNULL, text=True, encoding="utf-8", env={**os.environ, "DO_NOT_TRACK": "1"})
         self.n, self.timeout = 0, timeout
+        import queue
+        import threading
+        self._lines: queue.Queue = queue.Queue()          # 읽기 스레드 — select 는 Windows 에서 파이프를 못 기다린다(WinError 10038, 2026-11-24)
+
+        def _pump():
+            for ln in self.p.stdout:
+                self._lines.put(ln)
+            self._lines.put("")
+        threading.Thread(target=_pump, daemon=True).start()
         self._rpc("initialize", {"protocolVersion": "2024-11-05", "capabilities": {}, "clientInfo": {"name": "fluma", "version": "1"}})
         self._send({"jsonrpc": "2.0", "method": "notifications/initialized"})
 
@@ -54,14 +63,14 @@ class Mcp:
         self.p.stdin.flush()
 
     def _rpc(self, method, params):
-        import select
+        import queue
         self.n += 1
         self._send({"jsonrpc": "2.0", "id": self.n, "method": method, "params": params})
         while True:
-            ready, _, _ = select.select([self.p.stdout], [], [], self.timeout)
-            if not ready:
-                raise RuntimeError(f"MCP 응답 없음({method})")
-            line = self.p.stdout.readline()
+            try:
+                line = self._lines.get(timeout=self.timeout)
+            except queue.Empty:
+                raise RuntimeError(f"MCP 응답 없음({method})") from None
             if not line:
                 raise RuntimeError(f"MCP 서버가 끝났습니다({method})")
             try:

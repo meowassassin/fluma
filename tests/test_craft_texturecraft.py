@@ -90,7 +90,12 @@ def test_shot_on_builtin_mesh(tmp_path):
     Image = pytest.importorskip("PIL.Image")
     obj = tmp_path / "box.obj"
     obj.write_text(CUBE.split("o Body2")[0] + "f 1 4 3 2\nf 5 6 7 8\nf 2 3 7 6\nf 3 4 8 7\nf 4 1 5 8\n", "utf-8")
-    info = tc.shot(obj, tmp_path / "s.png", tmp_path, {"material": "#ef4444", "logo": "가", "width": 180, "height": 320, "samples": 0})
+    try:
+        info = tc.shot(obj, tmp_path / "s.png", tmp_path, {"material": "#ef4444", "logo": "가", "width": 180, "height": 320, "samples": 0})
+    except RuntimeError as e:
+        if "no GPU adapter" in str(e):                   # 뷰포트 렌더는 GPU — GPU 없는 CI 러너
+            pytest.skip("GPU 없음")
+        raise
     assert info["as"] == "image" and info["texture_sets"] == ["Body1", "Stage"]
     with Image.open(tmp_path / "s.png") as im:
         assert im.size == (180, 320)

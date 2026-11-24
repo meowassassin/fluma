@@ -700,7 +700,10 @@ def r_pdfcraft(ctx: Ctx, steps):
     seq.append({"tool": "doc_save", "args": {"doc": int(ctx.ex.get("doc", 1)), "path": str(ed)}})
     f = ctx.dir / "steps.json"
     f.write_text(json.dumps(seq, ensure_ascii=False, indent=1), "utf-8")
-    root = os.path.commonpath([str(ROOT), str(ctx.work.resolve())])
+    try:
+        root = os.path.commonpath([str(ROOT), str(ctx.work.resolve())])
+    except ValueError:                                   # Windows: 작업 폴더가 다른 드라이브(C: 임시 폴더 · D: 저장소)
+        root = ctx.work.resolve().anchor
     so = ctx.run([ctx.cli, "run", "--script", f, "--report", "--root", root], "run")
     try:
         rep = json.loads(so[so.index("{"):])
