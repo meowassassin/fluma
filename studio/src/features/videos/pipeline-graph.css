@@ -51,7 +51,7 @@
 /* 모델 아이콘 */
 .pgx-mi { position: relative; display: inline-grid; place-items: center; flex: none; }
 .pgx-mi .eicon { border-radius: 4px; }
-.pgx-mi.is-dark .eicon.img { background: #26262c; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
+.pgx-mi.is-dark .eicon.img { background: #1e1e20; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
 .pgx-mi.is-planned { opacity: .4; filter: grayscale(.6); }
 .pgx-unk { display: inline-grid; place-items: center; border-radius: 4px; border: 1px dashed var(--line-3); color: var(--tx-4); font: 700 11px var(--mono); }
 .pgx-tile { display: block; border-radius: 4px; object-fit: cover; }

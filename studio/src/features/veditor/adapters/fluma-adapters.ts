@@ -395,8 +395,8 @@ export function createFlumaAssetGallery(
             b.textContent = g;
             const active = g === activeGroup;
             b.style.cssText = `height:26px;padding:0 10px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid ${
-              active ? "#df1f2b" : "#2c2c35"
-            };background:${active ? "rgba(223,31,43,0.2)" : "#1c1c22"};color:${active ? "#fff" : "#aaa"};`;
+              active ? "#df1f2b" : "#303034"
+            };background:${active ? "rgba(223,31,43,0.2)" : "#1e1e20"};color:${active ? "#fff" : "#aaa"};`;
             b.onclick = () => {
               activeGroup = g;
               renderTabs();

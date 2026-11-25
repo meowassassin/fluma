@@ -16,11 +16,11 @@
 .rail-b.on { background: var(--bg-3); color: var(--tx-1); }
 .rail-b.disabled { opacity: 0.4; cursor: default; }
 .rail-b.disabled:hover { background: none; color: var(--tx-3); }
-/* 켜진 메뉴: 뒤 카드가 로고 보라 */
+/* 켜진 메뉴: 뒤 면이 브랜드 빨강 */
 .rail-b .ri .ri-b { opacity: 0.36; }
 .rail-b.on .ri .ri-b { fill: var(--primary); opacity: 1; }
 /* 에이전트(회색 로고): 늘 회색. 마우스를 올리거나 창이 열려 있으면 한 단계 밝게 (맨 위 컬러 로고와 겹치지 않게) */
-.rail-b:hover, .rail-b.on { --glyph-front: #e2e2e2; --glyph-back: #8a8a92; --glyph-fold: #5a5a60; }
+.rail-b:hover, .rail-b.on { --glyph-front: #f1efed; --glyph-back: #8a8580; --glyph-fold: #b9b4af; }
 
 .conn-banner {
   display: flex; align-items: center; gap: var(--s2); padding: 8px var(--s4); background: var(--warn-soft); color: #ffd28a;

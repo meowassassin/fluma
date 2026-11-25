@@ -1,9 +1,10 @@
-import React, { useId } from "react";
+import React from "react";
 import genexSymbol from "../assets/brand/genex-symbol.svg";
+import { GENEX_BACK, GENEX_PARTS, GENEX_VIEWBOX } from "./genexPaths";
 import genexLogoWhite from "../assets/brand/genex-logo-h-white.svg";
 
-/** 로고 언어 아이콘 (24 격자, 둥근 끝 선). 로고처럼 기울어진 '뒤 카드'(옅은 면)를 깔 수 있는 아이콘은 b 로 준다.
- *  이모지 · 글자 아이콘을 쓰지 않는다. 뒤 카드 색은 .ri-b (base.css) — 켜진 메뉴에서는 로고 보라. */
+/** 선 아이콘 (24 격자, 둥근 끝 선). 옅은 '뒤 면'을 깔 수 있는 아이콘은 b 로 준다.
+ *  이모지 · 글자 아이콘을 쓰지 않는다. 뒤 면 색은 .ri-b (base.css) — 켜진 메뉴에서는 브랜드 빨강. */
 type Card = [x: number, y: number, w: number, h: number, r: number, rot: number];
 type Def = { d: string; b?: Card; fill?: boolean; sw?: number };
 
@@ -97,19 +98,12 @@ const D: Record<string, Def> = {
 D.studio = D.film;
 D.keys = D.keyboard;
 
-/** 로고를 한 색으로: 뒤 카드(옅게) + 앞 카드(진하게, 눈은 뚫림). 에이전트 · 브랜드 자리에 쓴다 */
-const MonoGlyph: React.FC<{ s: number; className?: string }> = ({ s, className }) => {
-  const id = useId().replace(/:/g, "");
-  return (
-    <svg className={`ic ${className ?? ""}`} width={s} height={s} viewBox="0 0 24 24" aria-hidden>
-      <defs><mask id={`m${id}`}><rect width="24" height="24" fill="#fff" />
-        <rect x="14.6" y="10.7" width="1.3" height="3.1" rx=".65" fill="#000" transform="rotate(-6 15.25 12.25)" />
-        <rect x="16.9" y="10.55" width="1.3" height="3.1" rx=".65" fill="#000" transform="rotate(-6 17.55 12.1)" /></mask></defs>
-      <rect className="ri-b" x="3.6" y="7.6" width="11" height="13" rx="2.9" fill="currentColor" transform="rotate(-32 9.1 14.1)" />
-      <rect x="8.7" y="4.6" width="11.6" height="12.6" rx="2.9" fill="currentColor" mask={`url(#m${id})`} transform="rotate(36 14.5 10.9)" />
-    </svg>
-  );
-};
+/** 로고(DN GENEX 재생 화살)를 한 색으로: 뒤쪽 조각은 옅게(.ri-b), 앞쪽은 진하게. 에이전트 · 브랜드 자리에 쓴다 */
+const MonoGlyph: React.FC<{ s: number; className?: string }> = ({ s, className }) => (
+  <svg className={`ic ${className ?? ""}`} width={s} height={s} viewBox={GENEX_VIEWBOX} aria-hidden>
+    {GENEX_PARTS.map((d, i) => <path key={i} d={d} className={GENEX_BACK.has(i) ? "ri-b" : undefined} fill="currentColor" />)}
+  </svg>
+);
 
 export const Icon: React.FC<{ n: string; s?: number; className?: string }> = ({ n, s = 16, className }) => {
   if (n === "agent" || n === "brand") return <MonoGlyph s={s} className={className} />;

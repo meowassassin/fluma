@@ -39,7 +39,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline-offs
 .flip { transform: scaleX(-1); }
 
 @keyframes spin { to { transform: rotate(360deg); } }
-/* 로고 언어 아이콘의 뒤 카드: 옅은 면 */
+/* 아이콘의 뒤 면: 옅은 면 */
 .ic .ri-b { fill: currentColor; stroke: none; opacity: 0.32; transition: fill var(--t-fast), opacity var(--t-fast); }
 .ibtn.on .ic .ri-b, .tab.on .ic .ri-b { fill: var(--primary); opacity: 0.9; }
 /* 답하는 중 — 재생 화살이 앞으로 살짝 나아갔다 돌아오고, 빛줄기가 심볼 위를 왼쪽 → 오른쪽으로 지나간다(DN GENEX, 2026-11-25) */

@@ -9,11 +9,11 @@
 .btn-sm { height: 30px; padding: 0 11px; font-size: var(--fs-sm); border-radius: var(--r2); }
 .btn-lg { height: 40px; padding: 0 var(--s4); font-size: var(--fs-md); }
 .btn-block { width: 100%; }
-/* 로고 버튼: 글자 대신 로고(기울어진 카드 두 장). 누르면 카드가 살짝 더 기운다 */
+/* 로고 버튼: 글자 대신 DN GENEX 심볼. 올리면 화살이 앞으로 살짝 나아간다 */
 .glyph-btn { width: 32px; height: 28px; padding: 0; justify-content: center; border-radius: var(--r3); }
 .glyph-btn-lg { width: 52px; height: 40px; border-radius: var(--r4); }
 .glyph-btn svg { transition: transform var(--t-mid) var(--ease); }
-.glyph-btn:hover:not(:disabled) svg { transform: rotate(-8deg) scale(1.08); }
+.glyph-btn:hover:not(:disabled) svg { transform: translateX(2px) scale(1.06); }
 .btn:disabled { opacity: 0.45; }
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }

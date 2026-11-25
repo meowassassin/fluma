@@ -205,7 +205,7 @@ export const VEditorPage: React.FC = () => {
           <div style={{ fontSize: "1.05rem" }}>{failed}</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" onClick={() => setAttempt((n) => n + 1)} style={{ height: 32, padding: "0 14px", borderRadius: 8, border: 0, background: "var(--primary-grad)", color: "#fff", cursor: "pointer" }}>{t("다시 시도")}</button>
-            <a href="/videos" style={{ height: 32, lineHeight: "32px", padding: "0 14px", borderRadius: 8, background: "#2d2d2d", color: "#eee", textDecoration: "none" }}>{t("영상 목록")}</a>
+            <a href="/videos" style={{ height: 32, lineHeight: "32px", padding: "0 14px", borderRadius: 8, background: "#1e1e20", color: "#f1efed", textDecoration: "none" }}>{t("영상 목록")}</a>
           </div>
         </div>
       </div>

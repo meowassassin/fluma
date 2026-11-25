@@ -41,17 +41,17 @@
 :where(.ac-root, .ve-root) { font-family: var(--font); color: hsl(var(--foreground)); }
 /* ArtCraft 원본의 --st-* 변수(임의값 클래스 border-[var(--st-divider)] 등이 직접 쓴다) — 두 범위 공통 */
 :is(.ac-root, .ve-root) {
-  --st-bg: #1e1e1e;
-  --st-panel: #252526;
-  --st-panel-border: #3c3c3c;
-  --st-modal: #252526;
-  --st-controls: #2d2d2d;
+  --st-bg: #0f0f10;
+  --st-panel: #161617;
+  --st-panel-border: #303034;
+  --st-modal: #161617;
+  --st-controls: #1e1e20;
   --st-controls-rgb: 45 45 45;
-  --st-controls-border: #3c3c3c;
+  --st-controls-border: #303034;
   --st-sunken: #181818;
-  --st-fg: #e2e2e2;
+  --st-fg: #f1efed;
   --st-fg-rgb: 226 226 226;
-  --st-divider: #3c3c3c;
+  --st-divider: #303034;
   --st-badge-alpha: 0.4;
   --st-gallery-vignette-alpha: 0.4;
   --st-photo-tint-rgb: 0 0 0;
