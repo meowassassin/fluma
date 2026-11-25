@@ -23,6 +23,8 @@
   exit:  {"on" | "at_sec", "name": fade | cut | drop_out}
   motion: drift | float | pulse | spin | sway
   emph: [{"on": 낱말, "do": scale | tint | underline | circle | dim_others, "color": 토큰}]
+  marks: [{"box": [x, y, 폭, 높이], "style": "box|highlight|underline", "on": 낱말}]   # 그림(캡처) 안 한 구역에 강조 — 비율 0~1, preview 를 보고
+  zoom: {"box": [x, y, 폭, 높이], "on": 낱말}       # 그 낱말에 그 구역으로 확대(강조도 같이 따라감)
   fx: [{"id": "ec.blur.gaussian", "Blurriness": [14, 0]}, …]   # EffectCraft 카탈로그 전체. [a, b] = 들어올 때 a→b, [[초, 값], …] = 요소 시작 기준 키
   children: [요소, …]   (kind=group — 함께 움직이는 묶음, 자리는 묶음 기준)
 안전 영역(엔진이 보장): 위 화면 글자 띠 y<260 · 아래 자막 띠 y>1250 · 오른쪽 버튼 띠 x>950 에는 backdrop 말고 두지 않는다.
@@ -112,6 +114,20 @@ def validate(design: dict, where: str = "") -> list[str]:
             for j, m in enumerate(e.get("emph") or []):
                 if not isinstance(m, dict) or m.get("do") not in EMPHS or not m.get("on"):
                     out.append(f"{q}.emph[{j}]: {{on: 낱말, do: {sorted(EMPHS)}}}")
+            for key in ("marks",):
+                for j, m in enumerate(e.get(key) or []):
+                    b = m.get("box") if isinstance(m, dict) else None
+                    if not (isinstance(b, list) and len(b) == 4 and all(isinstance(v, (int, float)) and 0 <= v <= 1 for v in b)):
+                        out.append(f"{q}.marks[{j}].box: [x, y, 폭, 높이] — 그림 안 비율 0~1(preview 그림을 보고)")
+                    elif m.get("style", "box") not in ("box", "highlight", "underline"):
+                        out.append(f"{q}.marks[{j}].style: box | highlight | underline")
+            if (e.get("marks") or e.get("zoom")) and k not in ("image", "capture", "form", "icon"):
+                out.append(f"{q}: marks · zoom 은 그림(capture · image · form · icon)에만")
+            z = e.get("zoom")
+            if z is not None:
+                b = z.get("box") if isinstance(z, dict) else None
+                if not (isinstance(b, list) and len(b) == 4 and all(isinstance(v, (int, float)) and 0 <= v <= 1 for v in b) and b[2] > 0 and b[3] > 0):
+                    out.append(f"{q}.zoom: {{box: [x, y, 폭, 높이](0~1), on: 낱말}}")
             for j, f in enumerate(e.get("fx") or []):
                 if not isinstance(f, dict) or not isinstance(f.get("id"), str):
                     out.append(f"{q}.fx[{j}]: {{id: 카탈로그 id, 속성: 값}}")
@@ -525,10 +541,47 @@ def _emit(ctx: _Ctx, e: dict, v: str) -> None:
         L(f"var {v} = K.image({_js(str(p))}, {cx - ox * f:.0f}, {cy - oy * f:.0f}, {e.get('_scale', 100)});")
         if st.get("round") or st.get("frame"):
             L(f"K.fx({v}, 'ec.perspective.dropshadow', {{'Opacity': 18}});")
+        if e.get("marks") or e.get("zoom"):
+            _marks_zoom(ctx, e, v, cx, cy, w, h, cx - ox * f, cy - oy * f, e.get("_scale", 100))
     elif k == "code":
         L(f"var {v} = (function(box){{ var cx=box[0], cy=box[1], w=box[2], h=box[3];\n{e['code']}\n}})([{cx:.0f}, {cy:.0f}, {w:.0f}, {h:.0f}]);")
     if op is not None and k != "code":
         L(f"K.O({v}).setValue({float(op)});")
+
+
+def _marks_zoom(ctx: _Ctx, e: dict, v: str, cx: float, cy: float, w: float, h: float, px: float, py: float, sc: float) -> None:
+    """그림 안 구역 강조 · 확대. 확대는 그림의 위치 · 크기 키를 바꾸고, 강조는 같은 변환을 계산해 따라 움직인다(부모로 묶지 않는다)"""
+    L = ctx.lines.append
+    t0 = _time(ctx, e)
+    z = e.get("zoom")
+    k, tz, shift = 1.0, None, (0.0, 0.0)
+    if z:
+        zx, zy, zw, zh = z["box"]
+        rcx, rcy = cx - w / 2 + (zx + zw / 2) * w, cy - h / 2 + (zy + zh / 2) * h      # 화면에서 그 구역의 가운데
+        k = max(1.0, min(3.5, (SAFE[2] - SAFE[0]) / max(1.0, zw * w), (SAFE[3] - SAFE[1]) * 0.75 / max(1.0, zh * h)))
+        T = ((SAFE[0] + SAFE[2]) / 2, (SAFE[1] + SAFE[3]) / 2)
+        shift = (T[0] - (cx + k * (rcx - cx)), T[1] - (cy + k * (rcy - cy)))          # 확대 뒤 그림 가운데가 옮겨 갈 만큼
+        tz = f"$CUE:{z['on']}" if z.get("on") else f"({t0} + 0.6)"
+        L(f"(function(){{var p=K.P({v}), s=K.S({v}); p.setValueAtTime({tz}, [{px:.0f}, {py:.0f}]); p.setValueAtTime({tz}+0.6, [{px + shift[0] + (k - 1) * (px - cx):.0f}, {py + shift[1] + (k - 1) * (py - cy):.0f}]);"
+          f" s.setValueAtTime({tz}, [{sc}, {sc}]); s.setValueAtTime({tz}+0.6, [{sc * k:.2f}, {sc * k:.2f}]); K.ease(p, 70); K.ease(s, 70);}})();")
+    for j, m in enumerate(e.get("marks") or []):
+        mx, my, mw, mh = m["box"]
+        style = m.get("style", "box")
+        col = ctx.color(m.get("color"), "accent")
+        lx, ly = cx - w / 2 + (mx + mw / 2) * w, cy - h / 2 + (my + mh / 2) * h      # 확대 전 자리
+        bw, bh = mw * w, mh * h
+        tm = f"$CUE:{m['on']}" if m.get("on") else (f"({tz}+0.65)" if tz else f"({t0} + 0.4)")
+        mv = f"{v}_m{j}"
+        if style == "highlight":
+            L(f"var {mv} = K.shape('rect', {lx:.0f}, {ly:.0f}, {bw:.0f}, {bh:.0f}, {{fill:{_js(col)}}}); K.O({mv}).setValue(0); K.O({mv}).setValueAtTime({tm}, 0); K.O({mv}).setValueAtTime({tm}+0.2, 38);")
+        elif style == "underline":
+            L(f"var {mv} = K.shape('rect', {lx:.0f}, {ly + bh / 2:.0f}, {bw:.0f}, 6, {{fill:{_js(col)}}}); K.appear({mv}, {tm}, 0); (function(){{var s=K.S({mv}); s.setValueAtTime({tm}, [0,100]); s.setValueAtTime({tm}+0.3, [100,100]);}})();")
+        else:
+            L(f"var {mv} = K.shape('rect', {lx:.0f}, {ly:.0f}, {bw + 16:.0f}, {bh + 16:.0f}, {{stroke:{_js(col)}, strokeW:6, round:6}}); K.appear({mv}, {tm}, 0); K.draw({mv}, {tm}, 0.4);")
+        if z:                                           # 확대와 같은 변환으로 따라간다
+            nx, ny = cx + k * (lx - cx) + shift[0], cy + k * (ly - cy) + shift[1]
+            L(f"(function(){{var p=K.P({mv}), s=K.S({mv}); p.setValueAtTime({tz}, [{lx:.0f}, {ly:.0f}]); p.setValueAtTime({tz}+0.6, [{nx:.0f}, {ny:.0f}]);"
+              f" s.setValueAtTime({tz}, [100, 100]); s.setValueAtTime({tz}+0.6, [{100 * k:.1f}, {100 * k:.1f}]); K.ease(p, 70); K.ease(s, 70);}})();")
 
 
 def compile_scene(design: dict, sb: dict, n: int) -> str:

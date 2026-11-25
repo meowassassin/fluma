@@ -46,7 +46,7 @@ VID = re.compile(r"(?:shorts/|v=|youtu\.be/)?([A-Za-z0-9_-]{11})")
 
 INSTRUCTIONS = """Fluma makes vertical short videos (YouTube Shorts) from real material. You (the agent) make the judgement calls; Fluma computes, measures and enforces the quality gate.
 Workflow: project_status(project) tells you the state and `next` (what to do and which tool). Long work (produce, reference analysis) starts a job: call the *_start tool, then job_wait(job_id) repeatedly until status is done/error/needs_input — do not poll with shell sleeps. A job keeps running even if this server restarts.
-Making a video — default flow, four calls: plan_submit (script + assets) → design_submit (direction + every scene in the design language) → design_patch only for scenes that need it → finish (review → final render → quality gate). Do not read engine code or example files; the tools return the rules and errors field by field. Look only at the small preview images.
+Making a video — default flow, four calls. Judge the structure first (hook type, a job per scene — show with examples, situations and demos, never a slideshow of definitions): plan_submit (structure + script + assets) → design_submit (direction + every scene in the design language) → design_patch only for scenes that need it → finish (review → final render → quality gate). Do not read engine code or example files; the tools return the rules and errors field by field. Look only at the small preview images.
 Step tools (for scene-by-scene work with a person; judgement is yours, Fluma never calls another LLM): storyboard_get → write/fix with storyboard_patch (use the writer · director · designer prompts) → lint until pass → prep_start (music, voice, audio → scene lengths) → scene_build_start / scene_still to look while you work → review_frames, look at every still, review_submit(problems) → render_start(mode="final") → quality_gate. Fix only changed scenes; render the whole video once at the end.
 Rules: a video with remaining quality-gate blocks is not finished and must not be uploaded. Never waive a block on your own — waive needs the user's own words. Reply to the user in Korean."""
 
@@ -80,10 +80,11 @@ TOOLS: dict[str, dict] = {
                                     "description": "agent(기본): 판단은 당신이, 엔진은 LLM 을 부르지 않음 · engine: 예전처럼 엔진이 Claude 를 불러 스킬 단계를 돎(느림)"}},
                          ["project"]),
     # ---------- 굵은 도구(기본 흐름 — 판단 지점 넷, 순서는 서버가) ----------
-    "plan_submit": _rw("Step 1 of the default flow. Submit the script (title, format, audience, scenes[{role, narration, caption, screen}], research.facts with sources) "
+    "plan_submit": _rw("Step 1 of the default flow. Decide the structure BEFORE writing lines: concept{angle, structure}, hook{options: 3 × {type, line} with different openings, pick, why}, "
+                       "and a job per scene. " + flow.DIRECTION_CARD + " Then submit the script (title, format, audience, concept, hook, scenes[{role, job, narration, caption, screen}], research.facts with sources) "
                        "and optionally the assets to make (web captures, terminal recordings, icons, forms). The server checks it at once, reviews it in the background, "
                        "and starts voice + asset jobs right away. Returns the confirmed script and the scene design language card. Then design without waiting.",
-                       {"project": PID, "script": {"type": "object", "description": "{title, format, audience, scenes: [{role, narration, caption, screen}], research: {facts: [{claim, value, source}]}, concepts_order?, cta?}"},
+                       {"project": PID, "script": {"type": "object", "description": "{title, format, audience, concept: {angle, structure}, hook: {options: [{type, line}×3], pick, why}, scenes: [{role, job, narration, caption, screen}], research: {facts: [{claim, value, source}]}, concepts_order?, cta?}"},
                         "assets": {"type": "array", "items": {"type": "object"}, "description": flow.ASSET_FORMAT}},
                        ["project", "script"]),
     "assets_start": _rw("Start (or redo) the asset job alone — web captures, terminal recordings, icons, forms. " + flow.ASSET_FORMAT,

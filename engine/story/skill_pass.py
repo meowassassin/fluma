@@ -196,14 +196,17 @@ def converge(sid: str, name: str, patch: dict, list_key: str, is_blocking) -> di
 
 def viewer_io(sb: dict, sbp: Path) -> tuple[str, str]:
     """시청자 시뮬레이션 — 콘티의 대상 시청자가 장면 순서대로 따라가며 이해가 끊기는 곳을 짚는다(2026-11-11: 개념을 설명 없이 던져 '이해가 안 된다')"""
-    fmt = ('{"known_before": ["시청자가 이미 아는 것"], "issues": [{"scene": 번호, "kind": "처음 보는 말|설명 없는 숫자|흐름 끊김|왜?|넘김", "what": "걸린 말 · 화면", '
+    fmt = ('{"known_before": ["시청자가 이미 아는 것"], "issues": [{"scene": 번호, "kind": "처음 보는 말|설명 없는 숫자|흐름 끊김|왜?|넘김|도입 약함|슬라이드 쇼", "what": "걸린 말 · 화면", '
            '"fix_by": "writer(대사로 풀림)|story(장면을 더하거나 순서를 바꿔야 함)", "how": "어떻게 풀면 되나"}], "understood": "끝까지 본 뒤 내가 이해한 한 줄", "score": 0~10}')
     v = view(sb)
     seq = [{"n": x["n"], "말": x["narration"], "화면 글자": x["caption"], "화면": [m.get("what") or m.get("type") for m in x["materials"]]} for x in v["scenes"]]
     p = (f"# 너는 이 사람이다\n{sb.get('audience') or '이 주제를 처음 보는 일반인'} — 이 주제를 따로 공부한 적은 없다. 쇼츠를 넘기다 이 영상을 처음 본다.\n\n"
          f"# 장면 순서대로 보이는 것(소리 · 화면 글자 · 화면)\n{json.dumps(seq, ensure_ascii=False)}\n\n"
          "할 일: 한 장면씩 차례로 본다. 그 시점까지 나온 것만 안다고 치고, 처음 보는 낱말 · 무엇의 숫자인지 모르는 숫자 · 앞 장면과 이어지지 않는 점프 · '그래서 왜?'가 드는 곳 · 넘기고 싶은 곳을 모두 적는다. "
-         "작가 편을 들지 말고 진짜 처음 보는 사람처럼 냉정하게. 다 보고 나서 내가 이해한 한 줄과 이해도 점수를 준다.")
+         "작가 편을 들지 말고 진짜 처음 보는 사람처럼 냉정하게. "
+         "또 첫 장면에서 엄지가 멈췄는지 본다 — 예시 · 질문 · 상황 · 증거 없이 정의 · 설명으로 시작하면 kind '도입 약함'(fix_by story). "
+         "장면들이 설명 · 정의만 차례로 넘기는 슬라이드 같으면(보여 주는 예시 · 상황 · 반전이 없음) kind '슬라이드 쇼'(fix_by story, how 에 어느 장면을 예시 · 상황으로 바꿀지). "
+         "다 보고 나서 내가 이해한 한 줄과 이해도 점수를 준다.")
     base = baseline(sb["id"], "viewer")
     if base:
         p += _verify_block(base, "verify")

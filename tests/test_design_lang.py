@@ -95,3 +95,34 @@ def test_flow_fixes_from_first_real_run():
     finally:
         import shutil
         shutil.rmtree(ROOT / "data" / "compositions" / "2099-01-05-x-01", ignore_errors=True)
+
+
+def test_review_tool_failure_is_not_a_script_block():
+    sys.path.insert(0, str(ROOT / "engine" / "mcp"))
+    import fluma_flow as fl
+    assert fl._review_tool_failed('claude 실패: "is_error":true,"api_error_status":429')
+    assert fl._review_tool_failed("대본 검토가 결과 없이 끝남(기록: …)")
+    assert not fl._review_tool_failed("처음 보는 시청자가 이해하지 못함(점수 6, 2건)")
+
+
+def test_plan_structure_checks():
+    """구성 검사 — 정의문으로 여는 슬라이드 쇼를 대본 전에 돌려보낸다(2026-11-25 Opus 실측)"""
+    sys.path.insert(0, str(ROOT / "engine" / "mcp"))
+    import fluma_flow as fl
+    good = {"concept": {"angle": "a", "structure": "s"},
+            "hook": {"options": [{"type": "질문", "line": "왜?"}, {"type": "예시", "line": "주소창에 :80"}, {"type": "상황", "line": "새벽 3시"}], "pick": 1, "why": "화면으로 보임"},
+            "scenes": [{"job": "예시"}, {"job": "질문"}, {"job": "증거"}, {"job": "비유"}, {"job": "반전"}, {"job": "맺음"}]}
+    assert fl._check_plan(good) == []
+    slide = {**good, "scenes": [{"job": "설명"}, {"job": "설명"}, {"job": "설명"}, {"job": "증거"}, {"job": "설명"}]}
+    j = " | ".join(fl._check_plan(slide))
+    assert "첫 장면" in j and "슬라이드 쇼" in j and "연달아" in j and "하나도 없음" in j
+    same = {**good, "hook": {"options": [{"type": "질문", "line": "a"}] * 3, "pick": 0, "why": "x"}}
+    assert any("모두 같음" in e for e in fl._check_plan(same))
+
+
+def test_marks_and_zoom_compile():
+    d = {"els": [{"id": "c", "kind": "box", "size": {"w": 400, "h": 300}, "marks": [{"box": [0, 0, 1, 1]}]}]}
+    assert any("그림(capture" in e for e in dl.validate(d))
+    d2 = {"els": [{"id": "c", "kind": "capture", "src": "capture:x", "marks": [{"box": [0.1, 0.2, 2, 0.1]}], "zoom": {"box": [0, 0, 0, 0]}}]}
+    j = " | ".join(dl.validate(d2))
+    assert "marks[0].box" in j and "zoom" in j

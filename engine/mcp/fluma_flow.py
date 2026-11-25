@@ -66,13 +66,70 @@ def language_card() -> str:
 
 
 # ---------------- ① 대본 ----------------
+HOOK_TYPES = ["질문", "예시", "상황", "증거 먼저", "전후 대비", "믿음 뒤집기", "숫자 주장", "궁금증 간격", "두 선택지", "고백"]
+JOBS = ["질문", "예시", "상황", "시연", "증거", "비교", "비유", "반전", "답", "설명", "맺음"]
+OPEN_JOBS = {"질문", "예시", "상황", "증거", "반전", "시연"}
+SHOW_JOBS = {"예시", "상황", "시연", "비유", "비교"}
+DIRECTION_CARD = (
+    "구성부터(감독 · 작가 기준, 2026-11-25): 대본을 쓰기 전에 각도 · 구조를 정하고 훅 후보 3개를 서로 다른 여는 방식으로 쓴 뒤 고른다. "
+    "여는 방식: " + " · ".join(HOOK_TYPES) + " — 정의 · 설명으로 시작하지 않는다(엄지가 멈출 이유가 없다). "
+    "장면마다 할 일(job) 하나: " + " · ".join(JOBS) + ". 설명만 잇는 슬라이드 쇼 금지 — 예시 · 상황 · 시연 · 비유로 보여 주고, 앞 장면이 남긴 궁금증에 다음 장면이 답한다(질문 → 답, 기대 → 뒤집기). "
+    "다섯 기둥(감정 · 모티프 · 기준 물건 · 꺾임 · 끝 그림)이 장면을 잇고, 장면마다 보는 사람의 눈이 갈 곳은 하나 — 글자 · 카드가 아니라 물건 · 화면 · 상황이 주인공.")
+
+
+def _check_plan(script: dict) -> list[str]:
+    """구성 검사 — 훅 · 장면 할 일이 슬라이드 쇼가 되지 않게. 2026-11-25 Opus 실측: 정의문 훅 + 설명 · 카드만 이어 '슬라이드 쇼 같다'"""
+    out = []
+    c = script.get("concept") or {}
+    for k in ("angle", "structure"):
+        if not str(c.get(k) or "").strip():
+            out.append(f"script.concept.{k}: 필요함 — 대본보다 먼저 정한다")
+    h = script.get("hook") or {}
+    opts = h.get("options") or []
+    if len(opts) < 3:
+        out.append("script.hook.options: 훅 후보 3개 [{type, line}] — 서로 다른 여는 방식으로")
+    else:
+        bad = [i for i, o in enumerate(opts) if not isinstance(o, dict) or o.get("type") not in HOOK_TYPES or not str(o.get("line") or "").strip()]
+        out += [f"script.hook.options[{i}]: {{type: {' | '.join(HOOK_TYPES)}, line: 첫 말}}" for i in bad]
+        if not bad and len({o["type"] for o in opts}) < 2:
+            out.append("script.hook.options: 여는 방식이 모두 같음 — 서로 다른 방식 2개 이상")
+    if not isinstance(h.get("pick"), int) or not 0 <= h.get("pick", -1) < len(opts):
+        out.append("script.hook.pick: 고른 후보 번호(0부터)")
+    if not str(h.get("why") or "").strip():
+        out.append("script.hook.why: 고른 이유 한 줄")
+    jobs = [s.get("job") for s in script.get("scenes") or []]
+    bad = [i + 1 for i, j in enumerate(jobs) if j not in JOBS]
+    if bad:
+        return out + [f"script.scenes[{i}].job: {' | '.join(JOBS)} 중 하나" for i in bad]
+    if jobs and jobs[0] not in OPEN_JOBS:
+        out.append(f"script.scenes[1].job: 첫 장면이 '{jobs[0]}' — 첫 장면은 {' · '.join(sorted(OPEN_JOBS))} 중 하나(설명 · 정의로 열지 않는다)")
+    n_exp = sum(1 for j in jobs if j == "설명")
+    if n_exp > max(1, int(len(jobs) * 0.4)):
+        out.append(f"script.scenes[].job: 설명 {n_exp}/{len(jobs)}장면 — 슬라이드 쇼가 된다. 예시 · 상황 · 시연 · 비유 · 비교로 보여 준다")
+    for i in range(1, len(jobs)):
+        if jobs[i] == jobs[i - 1] == "설명":
+            out.append(f"script.scenes[{i}~{i + 1}].job: 설명이 연달아 — 사이에 예시 · 질문 · 반전을")
+            break
+    if not SHOW_JOBS & set(jobs[1:]):
+        out.append("script.scenes[].job: 본문에 예시 · 상황 · 시연 · 비유 · 비교가 하나도 없음")
+    return out
+
+
 def plan_submit(pid: str, script: dict, assets: list | None = None) -> dict:
     if not isinstance(script, dict) or not script.get("scenes"):
-        raise ValueError("script 는 {title, format, audience, scenes: [{role, narration, caption, screen}], research?: {facts}}")
+        raise ValueError("script 는 {title, format, audience, concept{angle, structure}, hook{options[3], pick, why}, scenes: [{role, job, narration, caption, screen}], research?: {facts}}")
+    bad = _check_plan(script)
+    if bad:
+        raise ValueError(f"구성 오류 {len(bad)}건 — 대본보다 구성을 먼저 고친다: " + " · ".join(bad[:12]) + " | " + DIRECTION_CARD)
     tmp = ROOT / "data" / "workspace" / "tmp" / pid
     tmp.mkdir(parents=True, exist_ok=True)
+    (ROOT / "data" / "compositions" / pid / "skill_pass").mkdir(parents=True, exist_ok=True)
+    (ROOT / "data" / "compositions" / pid / "skill_pass" / "plan_card.json").write_text(
+        json.dumps({"concept": script.get("concept"), "hook": script.get("hook"), "jobs": [s.get("job") for s in script["scenes"]]}, ensure_ascii=False, indent=1), "utf-8")
+    plain = {k: v for k, v in script.items() if k not in ("hook",)}
+    plain["scenes"] = [{k: v for k, v in s.items() if k != "job"} for s in script["scenes"]]
     f = tmp / "script.json"
-    f.write_text(json.dumps({**script, "id": pid}, ensure_ascii=False), "utf-8")
+    f.write_text(json.dumps({**plain, "id": pid}, ensure_ascii=False), "utf-8")
     r = subprocess.run([PY, "engine/story/bundle.py", "script", str(f.relative_to(ROOT))], cwd=ROOT, capture_output=True, text=True, timeout=180,
                        env={**os.environ, "FLUMA_NO_KIT": "1"})
     if r.returncode != 0:
@@ -128,14 +185,20 @@ def _write_words(pid: str, sb_path: Path, ssb: dict, script: dict) -> None:
     scenes = [{"role": x.get("role"), "sec": round(max(1.5, len(str(x.get("narration") or "").replace(" ", "")) / cps + 0.4), 1),
                "caption": x.get("caption") or "", "narration": x.get("narration") or "", "visual": {"kind": "text"}}
               for x in ssb["scenes"]]
+    jobs = [s.get("job") for s in script.get("scenes") or []]
+    for s, j in zip(scenes, jobs):
+        if j:
+            s["beat"] = j
     if sb_path.exists():
         base = sbio.load(sb_path)
         mine = copy.deepcopy(base)
         mine["title"] = ssb.get("title") or mine.get("title")
+        if script.get("concept"):
+            mine["concept"] = {**(mine.get("concept") or {}), **script["concept"]}
         old = mine.get("scenes") or []
         if len(old) == len(scenes):
             for o, n in zip(old, scenes):
-                o.update(role=n["role"], caption=n["caption"], narration=n["narration"])
+                o.update(role=n["role"], caption=n["caption"], narration=n["narration"], **({"beat": n["beat"]} if n.get("beat") else {}))
         else:
             mine["scenes"] = scenes
         sbio.save(sb_path, base, mine)
@@ -145,9 +208,16 @@ def _write_words(pid: str, sb_path: Path, ssb: dict, script: dict) -> None:
           "duration_sec": round(sum(s["sec"] for s in scenes)), "cta": script.get("cta") or (scenes[-1]["caption"] or ssb.get("title")),
           **({"reference": plan["reference"]} if isinstance(plan.get("reference"), list) else {}),
           **({"concepts_order": script["concepts_order"]} if script.get("concepts_order") else {}),
+          **({"concept": script["concept"]} if script.get("concept") else {}),
           "sources": ssb.get("sources") or [], "scenes": scenes}
     sb_path.parent.mkdir(parents=True, exist_ok=True)
     sb_path.write_text(json.dumps(sb, ensure_ascii=False, indent=2) + "\n", "utf-8")
+
+
+def _review_tool_failed(reason: str) -> bool:
+    """검토가 '대본이 나빠서'가 아니라 검토를 못 해서 실패했나 — LLM 호출 오류 · 한도 · 시간 초과 · 결과 없음"""
+    r = reason.lower()
+    return any(k in r for k in ("claude 실패", "is_error", "api_error", "hit your", "limit", "rate", "timeout", "시간 초과", "결과 없이 끝남", "25분 안에"))
 
 
 def assets_status(pid: str) -> dict:
@@ -168,7 +238,7 @@ def _check_video(v: dict) -> list[str]:
     c = v.get("concept") or {}
     for k in ("angle", "breaks", "structure"):
         if not str(c.get(k) or "").strip():
-            out.append(f"video.concept.{k}: 필요함(영상마다 새로)")
+            out.append(f"video.concept.{k}: 필요함(영상마다 새로 — angle · structure 는 plan_submit 에 낸 것을 그대로)")
     a = v.get("art") or {}
     pal = a.get("palette") or {}
     for k in ("bg", "ink", "accent"):
@@ -474,11 +544,19 @@ def _submit(pid: str, video: dict | None, scenes, budget: float, partial: bool):
                 errs.append(f"scenes[{n}].design: {e}")
     if errs:
         raise ValueError(f"설계 오류 {len(errs)}건 — 그 칸만 고쳐 다시: " + " · ".join(errs[:20]))
+    if blocked and _review_tool_failed(blocked.get("reason") or ""):   # 검토 도구(LLM 호출) 자체가 실패 — 대본 문제가 아니다
+        changed = _apply(pid, video, sm)
+        return {"saved_scenes": changed, "script_review_failed": str(blocked.get("reason"))[:300],
+                "next": "대본 검토 도구가 실패했다(사용량 한도 · 네트워크 등 — 대본 문제 아님). 대사를 고치지 말고 같은 대본 그대로 plan_submit 을 다시 부른 뒤 "
+                        "design_patch(scenes={}) 로 이어 간다(설계는 저장됨). 다시 실패하면 사용자에게 알린다"}
     if blocked:                                          # 대본 검토가 막았다 — 설계는 저장해 두고(대본만 고치면 그대로 쓴다) 이유를 돌려준다
         changed = _apply(pid, video, sm)
         return {"saved_scenes": changed, "script_blocked": blocked,
                 "next": "막힌 이유대로 대사만 고쳐 plan_submit(장면 수가 같으면 설계는 그대로 남는다) → design_patch(scenes={}) 로 이어 간다"
                         "(낱말이 바뀐 장면은 서버가 같은 자리 낱말로 옮긴다)"}
+    var = _variety(pid, sm) if any("design" in s for s in sm.values()) else []
+    if var:
+        raise ValueError(f"화면 다양성 {len(var)}건 — 그 장면 설계만 바꿔 다시: " + " · ".join(var))
     bad, moved = _check_cues(pid, sm)                    # 음성이 끝났으면 말에 맞출 낱말을 지금 대조한다(빌드에서 멈추지 않게)
     if bad:
         raise ValueError(f"말 낱말(on) 오류 {len(bad)}건 — 그 칸만 들리는 낱말로 고쳐 다시: " + " · ".join(bad[:20]))
@@ -499,7 +577,66 @@ def _submit(pid: str, video: dict | None, scenes, budget: float, partial: bool):
 
 
 def design_submit(pid: str, video: dict, scenes: list, budget: float = 280):
+    cur = _current_video(pid)                            # plan_submit 에 낸 구성(각도 · 구조)은 다시 쓰지 않아도 된다
+    video = {**video, "concept": {**(cur.get("concept") or {}), **((video or {}).get("concept") or {})}}
     return _submit(pid, video, scenes, budget, partial=False)
+
+
+PLAIN = {"text", "tag", "box", "circle", "ring", "line", "arrow"}
+
+
+def _kinds(d: dict) -> set:
+    out = set()
+
+    def walk(els):
+        for e in els or []:
+            out.add(e.get("kind"))
+            walk(e.get("children"))
+    walk(d.get("els"))
+    return out
+
+
+def _bg_key(d: dict, pal: dict) -> tuple[str, float]:
+    bg = d.get("bg") or "bg"
+    first = bg[0] if isinstance(bg, list) else bg
+    hx = pal.get(first, first) if isinstance(first, str) else "#000000"
+    try:
+        r, g, b = (int(str(hx).lstrip("#")[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    except ValueError:
+        lum = 0.5
+    return (str(bg), lum)
+
+
+def _variety(pid: str, sm: dict[int, dict]) -> list[str]:
+    """화면 다양성 — 글자 · 상자만인 장면, 같은 바탕 반복, 어두운 바탕 비율(screen_rules 와 같은 기준, 2026-11-25 Opus 실측: 5/7 장면이 같은 남색 · 상자 + 글자)"""
+    sb = json.loads((ROOT / "data" / "storyboards" / f"{pid}.json").read_text("utf-8"))
+    n = len(sb.get("scenes") or [])
+    designs = {}
+    for i in range(1, n + 1):
+        d = (sm.get(i) or {}).get("design")
+        if d is None and dl.design_path(pid, i).exists():
+            d = json.loads(dl.design_path(pid, i).read_text("utf-8"))
+        if d:
+            designs[i] = d
+    if len(designs) < max(3, n - 1):
+        return []
+    out = []
+    plain = [i for i, d in designs.items() if _kinds(d) <= PLAIN and sb["scenes"][i - 1].get("role") not in ("outro", "cta")]
+    cap = max(1, int(n * 0.3))
+    if len(plain) > cap:
+        out.append(f"화면: 글자 · 상자만인 장면 {len(plain)}/{n}({', '.join(map(str, plain))}장면) — {cap}개까지. 주인공을 물건 · 화면 · 상황으로: "
+                   "form(사물 · 인물) · capture(+ marks 강조 · zoom 확대) · icon · image · code(직접 연출)")
+    pal = dl._palette(sb)
+    keys = [_bg_key(d, pal) for d in designs.values()]
+    from collections import Counter
+    top, cnt = Counter(k for k, _ in keys).most_common(1)[0]
+    if cnt > max(2, n // 2):
+        out.append(f"화면: 같은 바탕 {top} 이 {cnt}/{n}장면 — 이야기의 장이 바뀌면 바탕을 바꾼다({min(4, n)}가지 이상)")
+    dark = sum(1 for _, l in keys if l < 0.2)
+    if dark > max(1, n // 2):
+        out.append(f"화면: 어두운 바탕 {dark}/{n}장면 — 절반 이하로(장면의 장소 · 물건 색에서)")
+    return out
 
 
 def design_patch(pid: str, scenes: dict | None = None, video: dict | None = None, budget: float = 280):
