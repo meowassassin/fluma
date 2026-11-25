@@ -5,11 +5,6 @@
   <img src="docs/assets/genex-logo-h-black.svg" width="420" alt="DN GENEX" />
 </picture>
 
-<br/><br/>
-
-<img src="docs/assets/genex-mark.gif" width="120" alt="DN GENEX 심볼" />
-
-
 # DN GENEX
 
 **생성 모델 없이 만드는 유튜브 쇼츠 — 이미 있는 2D 그래픽 · 이미지 · 영상을 편집자처럼, 감독처럼 다시 엮습니다. 화면은 완전 로컬입니다.**
@@ -153,6 +148,8 @@ flowchart LR
 ## 편집기
 
 VS Code 같은 작업 공간입니다. 왼쪽 **탐색기**는 영상이 무엇으로 이루어졌는지(편집 · 미리보기, 소리, 그래픽, 그림, 사진, 데이터, 게시 · 성과)를 보여 주고, 가운데는 고른 항목의 **결과물**(완성 영상 · 믹스 · 장면 그래픽 · 그림 · 표 · 통계)을 보여 줍니다. 수정은 오른쪽 에이전트에게 말로 — 고른 항목이 에이전트에게 함께 갑니다. 편집 탭 · 경로 표시줄 · 상태 표시줄, 탐색기 폭 조절과 접기(`Ctrl+B`).
+
+<p align="center"><img src="docs/assets/screens/editor.webp" alt="DN GENEX 편집기" width="880" /></p>
 
 <table>
 <tr>

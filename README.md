@@ -5,11 +5,6 @@
   <img src="docs/assets/genex-logo-h-black.svg" width="420" alt="DN GENEX" />
 </picture>
 
-<br/><br/>
-
-<img src="docs/assets/genex-mark.gif" width="120" alt="DN GENEX symbol" />
-
-
 # DN GENEX
 
 **YouTube Shorts without generative models — DN GENEX re-edits 2D graphics, images and footage that already exist, the way an editor and a director would. Every frame is made locally.**
@@ -153,6 +148,8 @@ flowchart LR
 ## The editor
 
 An IDE-style workspace: an **Explorer** tree of what the video is made of — *Edit · Preview*, *Sound* (narration · music), *Graphics*, *Illustrations*, *Photos*, *Data*, *Publish · Results* — and an editor area that shows the **result** of the selected item (the cut, the mix, the scene graphics, the drawing, the table, the stats). Changes go through the agent panel on the right; the selected item is passed to the agent as context. Editor tabs, breadcrumbs, a status bar and a resizable explorer (`Ctrl+B`).
+
+<p align="center"><img src="docs/assets/screens/editor.webp" alt="DN GENEX editor" width="880" /></p>
 
 <table>
 <tr>
