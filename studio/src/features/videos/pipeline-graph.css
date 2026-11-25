@@ -1,5 +1,5 @@
 /* 파이프라인 뷰 — GitHub Actions 워크플로 그래프 스타일(PipelineGraph.tsx). 글자 최소: 상태 아이콘 · 단계 이름 · 모델 아이콘 */
-.pgx { --ok: #3fb950; --run: #d29922; --err: #f85149; --wait: #d29922; --todo: #6e7681;
+.pgx { --ok: #3fb950; --run: #f37322; --err: #f85149; --wait: #d29922; --todo: #6e7681;
   display: flex; flex-direction: column; gap: 10px; min-width: 0; color: var(--tx-2); font-size: 13px; }
 .pgx-loading, .pgx-err { display: flex; justify-content: center; padding: 28px 0; color: var(--tx-3); }
 .pgx-err { color: #ff9a9d; }

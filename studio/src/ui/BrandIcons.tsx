@@ -1,7 +1,7 @@
 /* DN GENEX 로고(앞으로 겹쳐 나아가는 재생 화살 — 빨강 → 주황 그라데이션)로 만든 아이콘.
  * - FlumaGlyph: 로고 심볼을 SVG 로 옮긴 것(원본 경로 그대로). tone 으로 색만 바꾼다 (원래 그라데이션 · 회색 · 주 행동 버튼 위 흰색).
  * - RailIcon: 왼쪽 메뉴 아이콘 (Icon 과 같은 선 언어). 켜진 메뉴는 뒤 면이 브랜드 빨강으로 바뀐다(shell.css).
- * - FlumaBounce: 에이전트 진행 표시 — 로고가 통통 튄다. (이름은 코드 호환을 위해 그대로) */
+ * - FlumaBounce: 답하는 중 — 화살이 앞으로 나아갔다 돌아오고 빛줄기가 지나간다(base.css). (이름은 코드 호환을 위해 그대로) */
 import React, { useId } from "react";
 import { Icon } from "./Icon";
 import { t } from "../lib/i18n";
@@ -49,8 +49,7 @@ export const FlumaGlyph: React.FC<{ s?: number; tone?: Tone; className?: string 
 /** 왼쪽 메뉴 아이콘 = 같은 로고 언어 아이콘(Icon)을 크게 */
 export const RailIcon: React.FC<{ n: string; s?: number }> = ({ n, s = 22 }) => <Icon n={n} s={s} className="ri" />;
 
-/** 에이전트가 일하는 중: 로고가 통통 튄다 (바닥에서 찌그러지고 · 떠오르며 기울고 · 그림자가 작아짐).
- *  움직임 줄이기 설정이면 멈춘 로고만 보인다. */
+/** 답하는 중: 화살이 앞으로 살짝 나아갔다 돌아오고, 빛줄기가 심볼 위를 지나간다(base.css fnudge · fshine). 움직임 줄이기면 멈춘 심볼만 */
 export const FlumaBounce: React.FC<{ s?: number; tone?: Tone; label?: string; className?: string }> = ({ s = 16, tone = "color", label = t("에이전트 작업 중"), className }) => (
   <span className={`fbounce ${className ?? ""}`} style={{ width: s, height: s }} role="status" aria-label={label}>
     <i className="fbounce-sh" />
@@ -58,8 +57,7 @@ export const FlumaBounce: React.FC<{ s?: number; tone?: Tone; label?: string; cl
   </span>
 );
 
-/** 영상 제작 중(음성 · 화면 · 렌더): 로고가 무거운 걸 미는 것처럼 낮게 웅크렸다 버티고, 바들바들 떨고, 땀방울이 튄다.
- *  대화(답 쓰는 중)는 FlumaBounce(통통), 제작은 이것(끙끙) */
+/** 제작 중(음성 · 화면 · 렌더): 빨리 감기 — 앞으로 힘 있게 밀려 나가고 뒤로 그라데이션 속도선이 흐른다(base.css fff · fstreak) */
 export const FlumaStrain: React.FC<{ s?: number; tone?: Tone; label?: string; className?: string }> = ({ s = 16, tone = "color", label = t("영상 만드는 중"), className }) => (
   <span className={`fstrain ${className ?? ""}`} style={{ width: s, height: s }} role="status" aria-label={label}>
     <i className="fstrain-sh" />
