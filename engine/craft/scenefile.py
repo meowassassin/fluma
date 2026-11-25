@@ -24,8 +24,14 @@ def _read(ref: str) -> str:
 
 
 def inline(x):
-    """dict · list · str 안의 "$FILE:경로" 값을 파일 내용으로 바꾼 사본"""
+    """dict · list · str 안의 "$FILE:경로" 값을 파일 내용으로, "$DESIGN:경로" 는 장면 설계를 컴파일한 K 코드로 바꾼 사본(2026-11-25)"""
     if isinstance(x, str):
+        if x.startswith("$DESIGN:"):
+            from craft import design_lang
+            try:
+                return design_lang.compile_ref(x)
+            except ValueError as e:                    # 설계 오류는 실행 오류로(재료 단계가 이유와 함께 멈춘다)
+                raise RuntimeError(str(e)) from e
         return _read(x) if x.startswith(PREFIX) else x
     if isinstance(x, dict):
         return {k: inline(v) for k, v in x.items()}

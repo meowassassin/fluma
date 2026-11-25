@@ -35,9 +35,27 @@ def _cli() -> Path:
     return ROOT / rel
 
 
-def _env() -> dict:
+def _env(lean: bool = False) -> dict:
     # 저장소의 글꼴(Pretendard 등)을 시스템에 설치하지 않고 넘긴다
-    return {**os.environ, "DO_NOT_TRACK": "1", "EFFECTCRAFT_FONT_DIRS": __import__("fonts").font_dirs()}
+    e = {**os.environ, "DO_NOT_TRACK": "1", "EFFECTCRAFT_FONT_DIRS": __import__("fonts").font_dirs()}
+    if lean:                                   # 한 번에 한 프레임씩(동시에 여러 프레임을 들고 있지 않게) — 시간은 약 10% 늘고 메모리는 약 1GB 준다
+        e.setdefault("EFFECTCRAFT_CPU_INFLIGHT", "1")
+    return e
+
+
+# 구간 렌더를 '작은 캐시'로(2026-11-25 실측). EffectCraft 기본 설정은 편집 앱용 캐시(레이어 1GB · 자료 1GB · 미리보기 3GB)를 잡아
+# 한 번 그리고 끝나는 렌더가 3초 구간에 2.75GB 를 썼다. 같은 실행 안에서 캐시를 줄이고 렌더 대기열로 그리면 1.2GB ·
+# 결과는 바이트까지 같다(md5 동일). 설정 파일은 CLI 가 읽지 않아 prefs.set → renderQueue 를 한 번의 run 으로 부른다. 끄려면 FLUMA_EC_LEAN=0
+LEAN = os.environ.get("FLUMA_EC_LEAN", "1") != "0"
+LEAN_CACHE = {"memory.layerCacheMb": 128, "memory.mediaCacheMb": 128, "memory.previewCacheMb": 0}
+
+
+def _lean_commands(out: Path, start: float, end: float, fps: int, draft: bool) -> list[dict]:
+    add = {"comp": "Main", "format": "h264", "output": str(out), "timeSpan": "custom", "start": round(start, 6), "end": round(end, 6),
+           "frameRate": fps, "audio": "off", **({"resolution": "half", "quality": "draft"} if draft else {})}
+    return [{"command": "prefs.set", "params": {"values": LEAN_CACHE}},
+            {"command": "renderQueue.add", "params": add},
+            {"command": "renderQueue.render", "params": {"wait": True}}]
 
 
 def available():
@@ -138,6 +156,15 @@ def render(job) -> Path:
     return out
 
 
+def _profile(job, rec: dict) -> None:
+    """렌더 안쪽 기록 — data/workspace/results/render-profile.jsonl(구간마다 초 · 최대 메모리, 동시 수, 이어 붙이기)"""
+    import time
+    f = ROOT / "data" / "workspace" / "results" / "render-profile.jsonl"
+    f.parent.mkdir(parents=True, exist_ok=True)
+    with f.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"id": job.sb.get("id"), "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "stage": "segments", **rec}, ensure_ascii=False) + "\n")
+
+
 def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
     """장면 구간마다 열쇠로 캐시하고 바뀐 구간만 그린 뒤 이어 붙인다(engine/craft/renderer/segcache.py)"""
     import shutil
@@ -166,11 +193,26 @@ def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
         if not (f.exists() and f.stat().st_size > 1000):
             todo.append(s)
 
+    prof = []
+
     def one(s):
         f = s["file"]; tmp = f.with_suffix(f".part{os.getpid()}.mp4")
-        run([_cli(), "render", "--project", proj, "--comp", "Main", "--out", tmp, "--format", "h264", "--audio", "off", "--fps", str(job.fps),
-             # 렌더는 start ≤ k/fps < end 인 프레임 k 를 그린다 — 경계를 반 프레임 당겨야 소수 반올림에 흔들리지 않는다(실측: 6.666667 이 200번째 프레임을 빼먹음)
-             "--start", f"{max(0.0, (s['f0'] - 0.5) / job.fps):.6f}", "--end", f"{(s['f1'] - 0.5) / job.fps:.6f}", *extra], cwd=job.work, env=_env(), label="effectcraft render(구간)", timeout=1800)
+        st: dict = {}
+        # 렌더는 start ≤ k/fps < end 인 프레임 k 를 그린다 — 경계를 반 프레임 당겨야 소수 반올림에 흔들리지 않는다(실측: 6.666667 이 200번째 프레임을 빼먹음)
+        t0_, t1_ = max(0.0, (s["f0"] - 0.5) / job.fps), (s["f1"] - 0.5) / job.fps
+        if LEAN:
+            cf = job.work / f"seg-{s['key']}.json"
+            cf.write_text(json.dumps(_lean_commands(tmp, t0_, t1_, job.fps, bool(extra))), "utf-8")
+            try:
+                run([_cli(), "run", "--commands", cf, "--project", proj], cwd=job.work, env=_env(lean=True), label="effectcraft render(구간)", timeout=1800, stats=st)
+            except SystemExit as e:
+                print(f"[craft] 작은 캐시 렌더 실패 — 기본 렌더로: {str(e)[:160]}", file=sys.stderr)
+                tmp.unlink(missing_ok=True)
+            cf.unlink(missing_ok=True)
+        if not (tmp.exists() and frames(tmp) == s["f1"] - s["f0"]):
+            run([_cli(), "render", "--project", proj, "--comp", "Main", "--out", tmp, "--format", "h264", "--audio", "off", "--fps", str(job.fps),
+                 "--start", f"{t0_:.6f}", "--end", f"{t1_:.6f}", *extra], cwd=job.work, env=_env(), label="effectcraft render(구간)", timeout=1800, stats=st)
+        prof.append({"f0": s["f0"], "f1": s["f1"], "lean": LEAN, **st})
         if not tmp.exists() or frames(tmp) != s["f1"] - s["f0"]:
             tmp.unlink(missing_ok=True)
             return False
@@ -179,7 +221,7 @@ def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
     # 바뀐 구간을 함께 그린다 — 렌더 하나가 CPU 약 2.7코어 · 메모리 약 3.7GB(1080×1920, 2026-11-24 실측)라 남은 메모리만큼(최대 3)
     from platform_util import mem_available_gb
     avail = mem_available_gb()
-    per = 2.0 if extra else 4.2
+    per = (0.9 if extra else 1.5) if LEAN else (2.0 if extra else 4.2)   # 작은 캐시: 1080×1920 구간 최대 약 1.2GB(2026-11-25 실측)
     jobs = max(1, min(int(os.environ.get("FLUMA_SEG_JOBS", "3")), int(avail // per), len(todo), max(1, (os.cpu_count() or 4) // 3)))
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=jobs) as ex:
@@ -187,6 +229,7 @@ def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
     if not all(okk):
         return False
     made = len(todo)
+    t_cat = time.time()
     lst = job.work / "segments.txt"
     lst.write_text("".join(f"file '{s['file'].as_posix()}'\n" for s in segs), "utf-8")
     tmp_out = out.with_suffix(".cat.mp4")
@@ -195,6 +238,9 @@ def _render_segments(job, proj: Path, out: Path, extra: list[str]) -> bool:
         tmp_out.unlink(missing_ok=True)
         return False
     shutil.move(str(tmp_out), out)
+    _profile(job, {"segments": len(segs), "rendered": made, "jobs": jobs, "avail_gb": round(avail, 1), "draft": bool(extra),
+                   "render_sec": round(t_cat - t0, 1), "concat_sec": round(time.time() - t_cat, 1),
+                   "peak_mb_max": max((x.get("peak_mb", 0) for x in prof), default=0), "segs": sorted(prof, key=lambda x: x["f0"])})
     print(f"[craft] 구간 렌더: {len(segs)}구간 중 {made}구간만 새로 그림 · 동시 {jobs}({time.time() - t0:.1f}초)", file=sys.stderr)
     # 오래된 구간 파일 정리(이번에 안 쓴 것 중 하루 지난 것)
     keep = {s["file"].name for s in segs}

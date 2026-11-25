@@ -112,6 +112,12 @@ def measure(sid: str) -> dict:
         out.update(craft_features(sid, sbj))
     except (OSError, ValueError, ImportError):
         out.update(flow=None, kit_only=None, accent=None)
+    rp = [x for x in _jsonl(WS / "results" / "render-profile.jsonl", sid)]   # 렌더 안쪽(2026-11-25~)
+    full = [x for x in rp if x.get("stage") == "render" and not x.get("draft") and not x.get("scenes")]
+    segs = [x for x in rp if x.get("stage") == "segments" and not x.get("draft")]
+    out["render_inside"] = ({"draw_sec": full[-1]["draw_sec"], "finish_sec": full[-1]["finish_sec"], "checks_sec": full[-1]["checks_sec"],
+                             **({"seg_jobs": segs[-1]["jobs"], "seg_rendered": f"{segs[-1]['rendered']}/{segs[-1]['segments']}", "seg_peak_mb": segs[-1]["peak_mb_max"]} if segs else {})}
+                            if full else None)
     out["pass"] = {k: (out[k] <= v) for k, v in LIMITS.items()} | {"finished": out["finished"], "no_waiver": out["waived"] == 0}
     out["ok"] = all(out["pass"].values())
     return out
@@ -134,6 +140,10 @@ def main() -> int:
         print(f"  품질 관문: 막음 {r['block']} · 권고 {r['advise']} · 면제 {r['waived']}")
         print(f"  다양성: 흐름 {r.get('flow')} · K 키트만 쓴 장면 {r.get('kit_only')} · 강조색 {r.get('accent')}")
         print(f"  Craft 깊이: 고유 기능 {r.get('features')}개 · 에이전트가 직접 고른 기능 {r.get('chosen')}개")
+        ri = r.get("render_inside")
+        if ri:
+            print(f"  렌더 안쪽(마지막 완성): 그리기 {ri['draw_sec']}초 · 마무리(소리 · 인코딩) {ri['finish_sec']}초 · 검사 {ri['checks_sec']}초"
+                  + (f" · 구간 {ri['seg_rendered']} 새로 · 동시 {ri['seg_jobs']} · 구간 최대 메모리 {ri['seg_peak_mb']}MB" if "seg_jobs" in ri else ""))
         print("  기준: " + " · ".join(f"{k} {'✓' if v else '✗'}" for k, v in r["pass"].items()))
     streak = 0
     for r in rows:

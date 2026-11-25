@@ -8,6 +8,10 @@ order: 2
 엔진은 Craft 하나(콘티 `engine: "craft"`). 화면은 장면마다 **무엇이 보여야 하는지(재료)** 를 정하는 일이다 — 좌표 · 툴 이름은 쓰지 않는다.
 재료 종류표 · 소리 · 디자인 방향 · 검사 코드 · 하지 말 것은 **`.claude/skills/produce/reference.md`** — 막히거나 처음 쓰는 재료일 때만 읽는다.
 
+## Fluma MCP 도구가 있으면 — 새 영상은 네 번 부른다(기본 — 2026-11-25)
+`plan_submit`(대본 + 사실 + 만들 재료: 캡처 · 아이콘 · 형태) → 기다리지 말고 `design_submit`(영상 방향 + **모든 장면을 설계 언어로** — 규칙은 plan_submit 결과의 language) → 돌아온 정지 화면을 보고 고칠 장면만 `design_patch` → `finish`(검토 → 완성 렌더 → 관문). 틀린 칸은 저장 전에 칸별로 돌아온다 — 그 칸만 고쳐 다시. 대본 검토가 막으면(`script_blocked`) 설계는 저장돼 있으니 대사만 고쳐 `plan_submit` → `design_patch(scenes={})`. 재료를 더 만들 때는 `assets_start`(형식은 도구 설명). 엔진 코드 · 예시 · 다른 영상 파일 · 원본 크기 그림을 읽지 않는다(그림은 preview 만). 좌표가 꼭 필요한 요소만 설계의 `kind: "code"`(K 코드).
+**한 장면씩 다듬을 때**(사람과 대화) — 판단은 **네가**, 엔진은 LLM 을 부르지 않는다. 순서: `project_status` → `storyboard_get` → 고치기 `storyboard_patch`(writer · director · designer prompt 대로) → `lint` 통과 → `prep_start`(음성 → 장면 길이) → 재료를 넣고 `scene_build_start` · `scene_still` 로 보며 다듬기 → `review_frames` 로 **모든 장면** 정지 화면을 보고 `review_submit(problems)` → `render_start(mode="final")` → `quality_gate`. 작업은 `job_wait` 로 기다린다(셸 sleep · tail 금지). 막음은 고치고, 면제는 사용자 말이 있을 때만 `waive`. 아래 셸 명령은 MCP 가 없을 때.
+
 ## 속도 규칙(2026-11-11 실측: 턴 47번에 콘티 Edit 340번 · 엔진 소스 Read 30번이 시간 대부분)
 - 콘티는 **한 번에 Write** 로 쓴다. 칸 하나씩 Edit 를 이어 붙이지 않는다. 쓴 뒤 lint 한 번 → 걸린 것을 모아 한 번에 고친다.
 - 초안 뒤 고치기는 Edit 대신 `knob.py set`(여러 값을 한 줄에).

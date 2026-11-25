@@ -27,6 +27,21 @@ PURPLE = 0.55        # D14: 채도 있는 화소 중 보라 비율
 DARK = 32            # D15: 평균 밝기
 
 
+RATIOS = (0.15, 0.3, 0.5, 0.7, 0.88)
+
+
+def windows(sb: dict, k: float = 1.0) -> list[tuple[int, float, float, list[float]]]:
+    """잴 창(장면 번호 · 시작 · 길이 · 잴 시각들). 원테이크처럼 긴 장면은 창으로 나눈다 — 가운데 한 장으로는 장면을 대표하지 못한다"""
+    out, t = [], 0.0
+    for i, s in enumerate([float(x.get("sec") or 0) for x in sb.get("scenes") or []], 1):
+        n = max(1, round(s * k / 5))
+        for _ in range(n):
+            d = s * k / n
+            out.append((i, t, d, [t + d * r for r in RATIOS]))
+            t += d
+    return out
+
+
 def _frames(video: Path, sb: dict):
     import cv2
     cap = cv2.VideoCapture(str(video))
@@ -34,21 +49,27 @@ def _frames(video: Path, sb: dict):
     total = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps
     secs = [float(s.get("sec") or 0) for s in sb.get("scenes") or []]
     k = total / (sum(secs) or total)                     # 형식 최소 길이 등으로 늘어난 만큼 맞춘다
-    out, t = [], 0.0
-    long_ = []
-    for s in secs:                                       # 원테이크처럼 긴 장면은 창으로 나눈다 — 가운데 한 장으로는 장면을 대표하지 못한다
-        n = max(1, round(s * k / 5))
-        long_ += [s * k / n] * n
-    for d in long_:
+    out = []
+    for sc, t, d, ts in windows(sb, k):
         fs = []
-        for r in (0.15, 0.3, 0.5, 0.7, 0.88):
-            cap.set(cv2.CAP_PROP_POS_MSEC, (t + d * r) * 1000)
+        for x in ts:
+            cap.set(cv2.CAP_PROP_POS_MSEC, x * 1000)
             ok, f = cap.read()
             if ok:
                 fs.append(cv2.resize(f, (270, 480), interpolation=cv2.INTER_AREA))
-        out.append((t, d, fs))
-        t += d
+        out.append((sc, t, d, fs))
     cap.release()
+    return out
+
+
+def still_frames(sb: dict, paths: list[Path]):
+    """정지 화면(렌더 전, windows(sb) 시각 순서대로 찍은 PNG)으로 같은 창을 만든다 — 렌더 전에 같은 기준으로 미리 잰다"""
+    import cv2
+    it = iter(paths)
+    out = []
+    for sc, t, d, ts in windows(sb):
+        fs = [cv2.resize(cv2.imread(str(next(it))), (270, 480), interpolation=cv2.INTER_AREA) for _ in ts]
+        out.append((sc, t, d, fs))
     return out
 
 
@@ -62,10 +83,14 @@ def flat_share(g):
 
 
 def measure(video: Path, sb: dict) -> list:
+    return measure_frames(_frames(video, sb))
+
+
+def measure_frames(frames) -> list:
     import cv2
     import numpy as np
     rows, edges, sat_hue, lums = [], [], [], []
-    for i, (t, d, fs) in enumerate(_frames(video, sb), 1):
+    for i, t, d, fs in frames:
         if not fs:
             continue
         gs = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY) for f in fs]
@@ -95,7 +120,7 @@ def measure(video: Path, sb: dict) -> list:
         if r["box"] < SMALL:
             out.append(("D12", r["scene"], f"작은 주인공 — 내용 상자가 화면의 {r['box'] * 100:.0f}%"))
     for (a, x), (b, y) in zip(edges, edges[1:]):
-        if x.std() and y.std():
+        if a != b and x.std() and y.std():               # 같은 장면의 창끼리는 비교하지 않는다(이어진 '장면'의 구도)
             c = float(np.corrcoef(x, y)[0, 1])
             if c > SAME:
                 out.append(("D13", b, f"같은 구도 — {a}장면과 윤곽 상관 {c:.2f}"))
@@ -112,6 +137,10 @@ def measure(video: Path, sb: dict) -> list:
 
 def findings(video: Path, sb: dict) -> list:
     return [x for x in measure(video, sb) if "code" in x]
+
+
+def findings_frames(frames) -> list:
+    return [x for x in measure_frames(frames) if "code" in x]
 
 
 def main() -> int:

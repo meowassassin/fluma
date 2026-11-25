@@ -189,10 +189,26 @@ def template_meta(job: Job) -> dict:
     return next(t for t in list_templates(job.engine) if t["name"] == job.template)
 
 
-def run(cmd: list, cwd: Path, env: dict | None = None, label: str = "", timeout: int = 1800) -> subprocess.CompletedProcess:
-    """엔진 실행. 일부 엔진은 오류에서 종료하지 않고 멈추므로 시간 제한을 둔다."""
+def run(cmd: list, cwd: Path, env: dict | None = None, label: str = "", timeout: int = 1800, stats: dict | None = None) -> subprocess.CompletedProcess:
+    """엔진 실행. 일부 엔진은 오류에서 종료하지 않고 멈추므로 시간 제한을 둔다.
+    stats 를 주면 걸린 초(sec) · 자식까지 합친 최대 메모리(peak_mb)를 채운다(렌더 안쪽 기록, 2026-11-25)"""
+    import time as _time
+    t0 = _time.perf_counter()
     try:
-        r = subprocess.run([str(c) for c in cmd], cwd=str(cwd), env=env, text=True, capture_output=True, timeout=timeout)
+        if stats is None:
+            r = subprocess.run([str(c) for c in cmd], cwd=str(cwd), env=env, text=True, capture_output=True, timeout=timeout)
+        else:
+            from detach import PeakMem
+            p = subprocess.Popen([str(c) for c in cmd], cwd=str(cwd), env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            with PeakMem(p.pid) as pm:
+                try:
+                    out, err = p.communicate(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    p.kill()
+                    out, err = p.communicate()
+                    raise subprocess.TimeoutExpired(cmd, timeout, out, err)
+            stats.update(sec=round(_time.perf_counter() - t0, 1), peak_mb=round(pm.peak_mb))
+            r = subprocess.CompletedProcess(cmd, p.returncode, out, err)
     except subprocess.TimeoutExpired as e:
         tail = ((e.stdout or "")[-1500:] if isinstance(e.stdout, str) else "") + ((e.stderr or "")[-1500:] if isinstance(e.stderr, str) else "")
         raise SystemExit(f"[{label or cmd[0]} 시간 초과 {timeout}s]\n{tail}")

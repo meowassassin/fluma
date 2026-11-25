@@ -123,6 +123,10 @@ const RUN_RULES = `## 명령 실행 · 결과
 
 export function createAgent({ ROOT, env, onState = () => {} }) {
   const PY = pythonCmd(ROOT);
+  // Fluma 자체 MCP 서버(engine/mcp_server.py) — 끄려면 FLUMA_AGENT_FLUMA_MCP=0
+  // job_wait 를 길게(렌더 한 번을 호출 한두 번으로) — 런타임의 MCP 도구 시간 제한을 그보다 길게 함께 준다(Claude: MCP_TOOL_TIMEOUT · Codex: tool_timeout_sec)
+  const FLUMA_WAIT_MAX = 290;
+  const flumaServer = () => (process.env.FLUMA_AGENT_FLUMA_MCP === "0" ? {} : { fluma: { type: "stdio", command: PY, args: [path.join(ROOT, "engine", "mcp_server.py"), "--wait-max", String(FLUMA_WAIT_MAX)] } });
   const SESS = path.join(ROOT, "data", "workspace", "sessions");
   const runs = new Map();      // project -> run
   const autoTimers = new Map();   // 자동 이어가기 예약 (멈추면 · 새 메시지면 취소)
@@ -205,6 +209,10 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const parts = [];
     parts.push(readIf(path.join(ROOT, "studio", "agent", "system.md")) ?? "");
     parts.push(STYLE_RULES, MEMORY_RULES, SETUP_RULES, SHOW_RULES, TALK_RULES, RUN_RULES);
+    // Fluma MCP(engine/mcp_server.py) — Claude Code · Codex 에 항상 붙는다(2026-11-24 MCP 전환). 판단은 에이전트, 엔진은 계산 · 관문
+    if (process.env.FLUMA_AGENT_FLUMA_MCP !== "0") parts.push("## Fluma 도구 (MCP: mcp__fluma)\n" +
+      "제작 · 확인은 셸 명령보다 이 도구를 먼저 쓴다: project_status(다음 할 일) → storyboard_get / storyboard_patch → lint → prep_start → scene_build_start · scene_still → " +
+      "review_frames(모든 장면을 보고) → review_submit → render_start(mode=final) → quality_gate. 오래 걸리는 것은 job_wait 로 기다린다. 스킬 지침은 Fluma prompt 로도 받을 수 있다.");
     // 붙어 있는 Craft 앱(MCP) — 실제 자료(material) · 클립(clip) 경로에서 활용
     const cr = createCrafts(ROOT).list().filter((c) => c.agentOn && c.installed?.cli);
     if (cr.length) parts.push(`## 제작 도구 (Craft 앱, MCP: ${cr.map((c) => `mcp__${c.name}`).join(" · ")})\n` +
@@ -399,7 +407,7 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const lines = ["<FLUMA_CONTEXT>", `화면: ${MENU_LABEL[menu] || menu}${menu === "studio" ? ` · 프로젝트 ${project}` : ""}`];
     if (context?.selection) lines.push(`선택: ${String(context.selection).slice(0, 600)}`);
     if (context?.note) lines.push(String(context.note).slice(0, 600));
-    if (context?.autopilot) lines.push("진행 방식: 자동 진행(사용자가 켬) — 선택지를 띄우지 말고 추천안을 스스로 골라 한 줄로 알린 뒤 다음 단계로 간다(경로는 route.py --by default). 영상 완성(품질 관문 막음 0)까지 이어서 한다. 사람만 할 수 있는 것(업로드 · 녹화 · API 키 · 로그인)만 묻는다. 단계를 마칠 때마다(① 기획 기록 · prepare.py ② bundle.py 검사 통과 ③ 제작 · 관문) 한 줄 보고로 턴을 끝낸다 — 다음 단계는 새 대화에서 파일(기획 기록 · prepare.json · 콘티)을 읽고 이어 간다. 막음 0 으로 완성되면 정지 화면을 한 번 보고, 큰 문제(글자 잘림 · 빈 화면 · 틀린 사실 · 깨진 장면)만 모아 한 번에 고쳐 마지막 제작 한 번 — 그 뒤엔 더 다듬지 않고 끝낸다(엔진도 막는다). 고칠 곳이 여럿이면 Edit 를 한 응답에 나란히 보낸다(한 칸 고치고 검사 · 렌더 반복 금지).");
+    if (context?.autopilot) lines.push("진행 방식: 자동 진행(사용자가 켬) — 선택지를 띄우지 말고 추천안을 스스로 골라 한 줄로 알린 뒤 다음 단계로 간다(경로는 route.py --by default). 영상 완성(품질 관문 막음 0)까지 이어서 한다. 사람만 할 수 있는 것(업로드 · 녹화 · API 키 · 로그인)만 묻는다. 기획 기록 · prepare.py 를 마치면 한 줄 보고로 턴을 끝낸다. 제작은 Fluma 도구 네 번으로 한 대화에서 끝낸다: plan_submit → design_submit → (고칠 장면만) design_patch → finish. 막음 0 으로 완성되면 정지 화면을 한 번 보고, 큰 문제(글자 잘림 · 빈 화면 · 틀린 사실 · 깨진 장면)만 모아 한 번에 고쳐 마지막 제작 한 번 — 그 뒤엔 더 다듬지 않고 끝낸다(엔진도 막는다). 고칠 곳이 여럿이면 Edit 를 한 응답에 나란히 보낸다(한 칸 고치고 검사 · 렌더 반복 금지).");
     // 이 영상을 올릴 YouTube 채널(채팅창에서 고름) — 이름만. 토큰은 서버 밖으로 나오지 않는다
     if (context?.youtubeAccount?.title && !project.startsWith("_")) lines.push(`유튜브 계정: ${String(context.youtubeAccount.title).replace(/\s+/g, " ").slice(0, 80)} (업로드는 이 계정으로 — publish.py upload 가 이 영상의 선택을 따른다)`);
     lines.push(`임시 폴더: ${tmp}/`);
@@ -528,6 +536,8 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       if (rtPre === "cursor") {
         first = !s.cursorSession;
       } else if (rtPre === "codex") {
+        // 자동 진행의 다음 단계는 새 스레드로(Claude 와 같은 이유 — 앞 단계 도구 출력을 다시 읽지 않게)
+        if (pilot && s.codexThread && !project.startsWith("_")) { s.codexThread = null; rotated = true; }
         first = !s.codexThread;
       } else if (rtPre === "antigravity") {
         first = !s.agyConversation;
@@ -575,8 +585,8 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
       const body = `${message}\n\n${ctx.text}`;
       bin = process.env.SF_CODEX_BIN || "codex";
       // Craft 앱 MCP 도 Codex 에 — Claude Code 와 같은 도구(2026-11-12: 전엔 Codex 만 셸 명령으로만 Craft 를 썼다)
-      const cmcp = mcpRunConfig(createCrafts(ROOT).mcpServers());
-      args = codexArgs({ cwd: ROOT, threadId: thread, model: model || rt.model, effort: rt.effort, codexConfig: [...(rt.codexConfig ?? []), ...codexArgsFor(cmcp?.servers)], prompt: thread ? body : codexPrompt(sys + "\n\n" + "답변 언어: " + (LANG_LINE[cfg.language] || LANG_LINE.korean), body) });
+      const cmcp = mcpRunConfig({ ...flumaServer(), ...createCrafts(ROOT).mcpServers() });
+      args = codexArgs({ cwd: ROOT, threadId: thread, model: model || rt.model, effort: rt.effort, codexConfig: [...(rt.codexConfig ?? []), ...codexArgsFor(cmcp?.servers), ...(cmcp?.servers?.fluma ? [`mcp_servers.fluma.tool_timeout_sec=${FLUMA_WAIT_MAX + 40}`] : [])], prompt: thread ? body : codexPrompt(sys + "\n\n" + "답변 언어: " + (LANG_LINE[cfg.language] || LANG_LINE.korean), body) });
       stdio = ["ignore", "pipe", "pipe"];
     } else if (rt.runtime === "cursor") {
       const conv = sess.cursorSession || null;
@@ -600,12 +610,14 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
         "--tools", "Read,Edit,Write,Bash,Glob,Grep,WebSearch,WebFetch,TodoWrite", "--disable-slash-commands"];
       // 사용자가 설정에서 켠 MCP 서버: 그 서버의 도구를 모두 허용(mcp__<이름>)
       // 2026-11-24: 세션 39개에서 mcp__* 호출 0번(Craft 는 CLI crafts.py run 으로 쓴다) — 다듬기(refine) 스킬일 때만 붙인다. 서버 4개를 매 턴 띄우는 시간도 준다
-      const mcp = (skill === "refine" || process.env.FLUMA_AGENT_MCP === "1") ? mcpRunConfig(createCrafts(ROOT).mcpServers()) : null;
+      // Fluma MCP 는 항상(제작 · 확인의 기본 경로), Craft 앱 MCP 는 다듬기(refine)일 때만
+      const crafts = (skill === "refine" || process.env.FLUMA_AGENT_MCP === "1") ? createCrafts(ROOT).mcpServers() : {};
+      const mcp = mcpRunConfig({ ...flumaServer(), ...crafts });
       if (mcp) {
         args.push("--mcp-config", mcp.file); args.splice(args.indexOf("--disallowedTools"), 0, ...mcp.tools);
         // Craft 앱의 '전체 명령 목록' 도구는 막는다 — 결과가 크고, 한 턴에 10번씩 다시 불렀다(2026-11-17 sjedqou).
         // 명령 찾기는 로컬 카탈로그(python3 engine/craft/craft_catalog.py search "<하고 싶은 일>") · 하나 자세히는 describe_command
-        args.splice(args.indexOf("--disallowedTools") + 1, 0, ...mcp.names.flatMap((n) => [`mcp__${n}__command_list`, `mcp__${n}__list_commands`]));
+        args.splice(args.indexOf("--disallowedTools") + 1, 0, ...mcp.names.filter((n) => n !== "fluma").flatMap((n) => [`mcp__${n}__command_list`, `mcp__${n}__list_commands`]));
       }
       const m = model || rt.model || process.env.SF_AGENT_MODEL;
       if (m) args.push("--model", m);
@@ -621,8 +633,9 @@ export function createAgent({ ROOT, env, onState = () => {} }) {
     const safe = agentEnv(env, rt);   // 로그인 모드: 구독 대신 API 과금으로 바뀌게 하는 환경 변수는 지운다(runtimes.mjs)
     if (safe.dropped.length) console.warn(`[agent] 로그인 모드라 결제 경로를 바꾸는 환경 변수를 넘기지 않음: ${safe.dropped.join(", ")}`);
     // FLUMA_AGENT_*: 엔진 스크립트가 '누가 만들었나'를 결과 파일에 적는다(파이프라인 뷰는 설정이 아니라 이 기록을 보여 준다)
-    const child = spawn(st.cmd, args, { cwd: ROOT, env: { ...safe.env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1", ...rt.env,
-      FLUMA_API: `http://127.0.0.1:${process.env.PORT || 4310}`, FLUMA_PROJECT: project, ...(context?.autopilot ? { FLUMA_AUTOPILOT: "1" } : {}),   // engine/core/batch.py(일괄 제작)가 서버에 요청할 때
+    // FLUMA_TURN: 턴마다 새 값 — 자동 진행 단계 경계(engine/mcp/fluma_stage.py)
+    const child = spawn(st.cmd, args, { cwd: ROOT, env: { ...safe.env, CLAUDE_CODE_DISABLE_AUTO_MEMORY: "1", MCP_TOOL_TIMEOUT: String((FLUMA_WAIT_MAX + 40) * 1000), ...rt.env,
+      FLUMA_API: `http://127.0.0.1:${process.env.PORT || 4310}`, FLUMA_PROJECT: project, FLUMA_TURN: randomUUID(), ...(context?.autopilot ? { FLUMA_AUTOPILOT: "1" } : {}),   // engine/core/batch.py(일괄 제작)가 서버에 요청할 때
       FLUMA_AGENT_RUNTIME: rt.runtime || "", FLUMA_AGENT_MODEL: (rt.runtime === "claude" ? (model || rt.model || process.env.SF_AGENT_MODEL) : rt.model) || "" }, stdio, shell: st.shell, detached: process.platform !== "win32" });
     const run = { project, live: true, child, events: [], clients: clientsOf(project), stdinOpen: rt.runtime === "claude", text: "", tools: [], todos: null, startedAt: Date.now(), runtime: rt.label, skill: skill || null };
     runs.set(project, run);

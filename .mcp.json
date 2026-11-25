@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "fluma": {
+      "command": "python3",
+      "args": ["engine/mcp_server.py"]
+    }
+  }
+}

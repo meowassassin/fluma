@@ -9,6 +9,7 @@
 import express from "express";
 import compression from "compression";
 import { promises as fs, existsSync, readFileSync, statSync, watch, createWriteStream } from "node:fs";
+import * as fsSync from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { Transform } from "node:stream";
 import path from "node:path";
@@ -744,7 +745,7 @@ app.get("/api/pipeline/:id/live", ah(async (req, res) => {
   const st = (p) => { try { return Math.round(statSync(p).mtimeMs); } catch { return 0; } };
   res.json({
     at: Date.now(),
-    jobs: jobs.list({ project: id }).map((j) => ({ id: j.id, type: j.type, label: j.label, status: j.status, progress: j.progress, stage: j.stage, started: j.started, ended: j.ended, error: j.error })),
+    jobs: [...jobs.list({ project: id }), ...mcpJobs({ project: id })].map((j) => ({ id: j.id, type: j.type, label: j.label, status: j.status, progress: j.progress, stage: j.stage, started: j.started, ended: j.ended, error: j.error })),
     agent: { busy: !!act, waiting: act?.waiting ?? null, tool: act?.tool?.name ?? null, skill: act?.skill ?? null, runtime: rt?.runtime ?? null, model: rt?.model || null, label: rt?.label ?? null },
     models: { voice: s.voice_engine || "edge" },
     editor: { project: st(path.join(ed, "project.json")), exported: st(path.join(ed, "exported.mp4")) },
@@ -1411,16 +1412,47 @@ app.post("/api/render", ah(async (req, res) => {
   const j = renderJob(id, req.body);
   res.status(202).json({ jobId: j.id, job: jobs.pub(j) });
 }));
+// ---------- MCP 작업(engine/mcp_server.py 가 띄운 것, data/workspace/jobs/<id>/job.json) — 화면에도 같은 작업 목록으로 ----------
+// 에이전트가 MCP 로 제작 · 렌더하면 스튜디오 작업 표시에 그대로 보인다(id 앞에 'mcp:'). 취소도 같은 대기열 함수로
+const MCP_JOBS = path.join(ROOT, "data", "workspace", "jobs");
+const MCP_STATUS = { queued: "queued", waiting: "queued", running: "running", done: "done", error: "failed", needs_input: "failed", canceled: "canceled" };
+const MCP_TYPE = { produce: "render", render: "render", build: "generate", prep: "generate", reference: "xray" };
+const msOf = (t) => (t ? new Date(t).getTime() : null);
+function mcpJobs({ project, type } = {}) {
+  let names = [];
+  try { names = existsSync(MCP_JOBS) ? fsSync.readdirSync(MCP_JOBS) : []; } catch { return []; }
+  const out = [];
+  for (const n of names) {
+    if (n.startsWith("_")) continue;
+    let j; try { j = JSON.parse(readFileSync(path.join(MCP_JOBS, n, "job.json"), "utf8")); } catch { continue; }
+    const pub = { id: `mcp:${j.id}`, type: MCP_TYPE[j.kind] || "generate", project: j.project ?? null, label: j.label, status: MCP_STATUS[j.status] || j.status,
+      progress: j.progress ?? null, stage: j.waiting_for || j.stage || null, created: msOf(j.created), started: msOf(j.started), ended: msOf(j.ended),
+      result: j.result ?? null, error: j.error ?? null, detail: null, via: "mcp" };
+    if (project && pub.project !== project) continue;
+    if (type && pub.type !== type) continue;
+    out.push(pub);
+  }
+  return out.sort((a, b) => (b.created ?? 0) - (a.created ?? 0)).slice(0, 30);
+}
 app.get("/api/jobs", (req, res) => {
   const project = req.query.project ? String(req.query.project) : undefined;
   if (project && !isId(project)) return sendError(res, 400, "bad_id", "올바르지 않은 id 입니다");
-  res.json(jobs.list({ project, type: req.query.type ? String(req.query.type) : undefined }));
+  const type = req.query.type ? String(req.query.type) : undefined;
+  res.json([...jobs.list({ project, type }), ...mcpJobs({ project, type })]);
 });
-app.get("/api/jobs/:id", (req, res) => { const j = jobs.get(req.params.id); if (!j) return sendError(res, 404, "not_found", "작업이 없습니다"); res.json(jobs.pub(j)); });
-app.delete("/api/jobs/:id", (req, res) => {
+app.get("/api/jobs/:id", (req, res) => {
+  if (req.params.id.startsWith("mcp:")) { const j = mcpJobs().find((x) => x.id === req.params.id); return j ? res.json(j) : sendError(res, 404, "not_found", "작업이 없습니다"); }
+  const j = jobs.get(req.params.id); if (!j) return sendError(res, 404, "not_found", "작업이 없습니다"); res.json(jobs.pub(j));
+});
+app.delete("/api/jobs/:id", ah(async (req, res) => {
+  if (req.params.id.startsWith("mcp:")) {
+    const jid = req.params.id.slice(4); if (!/^[A-Za-z0-9_-]{6,40}$/.test(jid)) return sendError(res, 400, "bad_id", "올바르지 않은 id 입니다");
+    const r = await py(["-c", "import sys; sys.path.insert(0,'engine/mcp'); import fluma_jobs as J; J.cancel(sys.argv[1])", jid]);
+    return res.json({ ok: r.code === 0, job: mcpJobs().find((x) => x.id === req.params.id) ?? null });
+  }
   const j = jobs.get(req.params.id); if (!j) return sendError(res, 404, "not_found", "작업이 없습니다");
   res.json({ ok: jobs.cancel(j.id), job: jobs.pub(j) });
-});
+}));
 const jobStream = (req, res) => { const j = jobs.get(req.params.id); if (!j) return sendError(res, 404, "not_found", "작업이 없습니다"); jobs.stream(j, req, res); };
 app.get("/api/jobs/:id/events", jobStream);
 app.use("/api/out", express.static(OUT));

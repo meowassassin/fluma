@@ -835,8 +835,16 @@ def build(sb: dict, indices: list[int] | None = None) -> list[dict]:
             tk = wave[0]
             results[tk["idx"]] = _build_one(tk, sb, sid, base, reg, plug, post, adapters)
         else:
-            with ThreadPoolExecutor(max_workers=min(4, len(wave))) as ex:
-                futs = [(tk, ex.submit(_build_one, tk, sb, sid, base, reg, plug, post, adapters)) for tk in wave]
+            # 형태(form) 그림은 장면 하나에 수 GB(2160×3840 버퍼 + 화풍 중간 배열) — 동시에 하나만 하고,
+            # 나머지(Craft 앱 CLI · 캡처)는 남은 메모리만큼 병렬(1.5GB 당 하나, 최대 4) — 2026-11-24 MCP 전환 · 메모리 설계
+            from platform_util import mem_available_gb
+            heavy = [tk for tk in wave if tk["t"] == "form"]
+            light = [tk for tk in wave if tk["t"] != "form"]
+            n_par = max(1, min(4, len(light), int(mem_available_gb(default=6) // 1.5)))
+            with ThreadPoolExecutor(max_workers=n_par + (1 if heavy else 0)) as ex:
+                futs = [(tk, ex.submit(_build_one, tk, sb, sid, base, reg, plug, post, adapters)) for tk in light]
+                for tk in heavy:                     # 가벼운 것들과 겹쳐 돌되 형태끼리는 차례로
+                    results[tk["idx"]] = _build_one(tk, sb, sid, base, reg, plug, post, adapters)
                 for tk, fut in futs:
                     results[tk["idx"]] = fut.result()
         done_ids = {tk["idx"] for tk in wave}

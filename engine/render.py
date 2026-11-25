@@ -214,12 +214,16 @@ def main():
     if a.build:
         print(eng.build(job))
         return
+    import time as _tm
+    _t = {"t0": _tm.perf_counter()}
     silent = eng.render(job)
+    _t["render"] = _tm.perf_counter()
     meta = template_meta(job)
     out = Path(a.out) if a.out else OUT / f"{job.sb['id']}-{job.engine}-{job.template}{tag}{'-draft' if a.draft else ''}.mp4"
     kw = {"offset": offset, "scenes": ix} if a.scenes else {}
     if not (job.engine == "craft" and not a.scenes and craft_finish(job, Path(silent), out)):
         finish(silent, job.sb, out, burn_captions=meta.get("captions", "finish") != "self", tokens=job.tokens, **kw)
+    _t["finish"] = _tm.perf_counter()
     print(f"[완료] {out}")
     if a.draft and not a.scenes and not os.environ.get("FLUMA_PREVIZ"):   # 미리 보기는 편집 밀도를 재지 않는다(자리표시 카드라)
         density(job.sb, sb_path, out)
@@ -235,6 +239,15 @@ def main():
                 print(f"   {'✗' if code.startswith('L') else '△'} {code} {msg}")
         except Exception as e:   # 검사 실패가 렌더를 막지 않게
             print(f"[템포] 검사하지 못함: {e}")
+    _t["checks"] = _tm.perf_counter()
+    try:                                              # 렌더 안쪽 단계별 초(장면 그리기 · 마무리[소리 · 인코딩] · 템포 검사) — 2026-11-25
+        _f = ROOT / "data" / "workspace" / "results" / "render-profile.jsonl"
+        with _f.open("a", encoding="utf-8") as _fh:
+            _fh.write(json.dumps({"id": job.sb["id"], "at": _tm.strftime("%Y-%m-%dT%H:%M:%S"), "stage": "render", "draft": a.draft, "scenes": a.scenes,
+                                  "draw_sec": round(_t["render"] - _t["t0"], 1), "finish_sec": round(_t["finish"] - _t["render"], 1),
+                                  "checks_sec": round(_t["checks"] - _t["finish"], 1)}, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
     if a.draft and not a.scenes and not os.environ.get("FLUMA_PREVIZ"):   # 초안은 숫자 검사로 끝내지 말고 눈으로 본다(engine/look — 에이전트가 직접 · 유료 보기 API 없음)
         print(f"[보기] 초안을 프레임 모음으로 본다: python3 engine/look/look.py sheet {Path(out).resolve().relative_to(ROOT) if Path(out).resolve().is_relative_to(ROOT) else out}"
               f"  (기록이 남는 비평: python3 engine/look/look.py critique {job.sb['id']})")

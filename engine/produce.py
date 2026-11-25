@@ -31,6 +31,7 @@ from result import fail, needs_input, ok, running  # noqa: E402
 
 PY = sys.executable
 TIMES: dict[str, float] = {}
+MEM: dict[str, int] = {}       # 단계별 최대 메모리(MB, 자식 프로세스 포함)
 
 
 PROG: dict = {}
@@ -63,9 +64,14 @@ def step(name: str, cmd: list[str], timeout: int = 3600) -> subprocess.Completed
     # 도는 동안 콘티 · review.json 을 덮어쓸 수 있었고, produce 는 결과 블록 없이 traceback 으로 끝났다
     import signal
     pr = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    from detach import PeakMem
+    pm = PeakMem(pr.pid).__enter__()                   # 단계별 최대 메모리(자식 포함) — 어디서 메모리를 먹는지 보려고(2026-11-24)
     try:
         out, err = pr.communicate(timeout=timeout)
+        pm.__exit__()
+        MEM[name] = max(MEM.get(name, 0), round(pm.peak_mb))
     except subprocess.TimeoutExpired:
+        pm.__exit__()
         try:
             if os.name == "nt":                         # 윈도우엔 프로세스 그룹 신호가 없다 — 자식까지 taskkill /T
                 subprocess.run(["taskkill", "/pid", str(pr.pid), "/T", "/F"], capture_output=True)
@@ -80,7 +86,7 @@ def step(name: str, cmd: list[str], timeout: int = 3600) -> subprocess.Completed
     r = subprocess.CompletedProcess(cmd, pr.returncode, out, err)
     TIMES[name] = round(time.time() - t0, 1)
     progress(None)
-    print(f"[제작] {name} {TIMES[name]}초 · 종료 {r.returncode}", flush=True)
+    print(f"[제작] {name} {TIMES[name]}초 · 최대 메모리 {MEM.get(name, 0)}MB · 종료 {r.returncode}", flush=True)
     if name.startswith("skills"):
         for ln in (r.stdout or "").splitlines():
             m = re.match(r"^\[스킬 타이밍\] (\S+) ([\d.]+)초", ln.strip())
@@ -141,7 +147,7 @@ def save_times(sid: str) -> None:
         p = ROOT / "data" / "workspace" / "results" / "produce-timings.jsonl"
         p.parent.mkdir(parents=True, exist_ok=True)
         with p.open("a", encoding="utf-8") as f:
-            f.write(json.dumps({"id": sid, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), **TIMES}, ensure_ascii=False) + "\n")
+            f.write(json.dumps({"id": sid, "at": time.strftime("%Y-%m-%dT%H:%M:%S"), **TIMES, "mem_mb": dict(MEM)}, ensure_ascii=False) + "\n")
     except OSError:
         pass
 
@@ -199,35 +205,9 @@ _FINAL = ("FLUMA_RESULT", "FLUMA_ERROR", "FLUMA_NEEDS_INPUT")
 
 
 def _spawn_detached(cmd: list[str], log: Path, env: dict) -> int:
-    """부모와 완전히 끊긴 프로세스로 띄우고 pid 를 돌려준다(기록은 log 로).
-    2026-11-17: 새 세션(start_new_session)으로만 떼면 여전히 부모의 자식이라, 에이전트 Bash 시간 제한이 자식까지 줄줄이 끄면서
-    렌더 도중 결과 없이 죽었다. POSIX 는 두 번 갈라(double fork) 고아로 만들어 init 아래로 보낸다. Windows 는 분리 실행 플래그"""
-    if os.name != "posix":
-        flags = getattr(subprocess, "DETACHED_PROCESS", 0x8) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x200)
-        with log.open("w") as lf:
-            return subprocess.Popen(cmd, cwd=ROOT, stdout=lf, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, env=env, creationflags=flags).pid
-    r, w = os.pipe()
-    mid = os.fork()
-    if mid == 0:                                    # 중간 프로세스: 새 세션을 만들고 진짜 작업을 하나 더 갈라 낸 뒤 바로 끝난다
-        try:
-            os.close(r)
-            os.setsid()
-            pid = os.fork()
-            if pid == 0:
-                os.close(w)
-                fd = os.open(str(log), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
-                nul = os.open(os.devnull, os.O_RDONLY)
-                os.dup2(nul, 0); os.dup2(fd, 1); os.dup2(fd, 2)
-                os.chdir(str(ROOT))
-                os.execve(cmd[0], cmd, env)
-            os.write(w, str(pid).encode())
-        finally:
-            os._exit(0)
-    os.close(w)
-    got = os.read(r, 32)
-    os.close(r)
-    os.waitpid(mid, 0)
-    return int(got or b"0")
+    """부모와 끊긴 프로세스로 띄움 — engine/core/detach.py 로 옮김(MCP 작업 대기열과 같이 씀)"""
+    from detach import spawn_detached
+    return spawn_detached(cmd, log, env, ROOT)
 
 
 def _final_block(log: Path) -> tuple[list[str], int] | None:
@@ -312,6 +292,9 @@ def main() -> int:
     ap.add_argument("--preview-only", action="store_true", help="납품(master) 렌더 없이 초안만")
     ap.add_argument("--delivery", action="store_true", help="납품(master) 렌더까지(한 번 더 느림)")
     ap.add_argument("--fast", action="store_true", help="스킬 · review/refine 생략(가장 빠름)")
+    ap.add_argument("--judge", choices=["engine", "agent"], default="engine",
+                    help="판단(각본 · 연출 · 디자인 · 화면 검토)을 누가 하나. agent = MCP 로 부르는 에이전트가 한다 — 엔진은 LLM 을 부르지 않고, "
+                         "렌더 전에 에이전트의 화면 검토(review_submit)가 지금 빌드를 봤는지 확인한다(engine/mcp_server.py)")
     ap.add_argument("--prep", action="store_true", help="대본만 먼저: 이해 관문(시청자 · 각본가) · 음악 · 목소리 · 음성까지 하고 멈춘다 — "
                     "에이전트가 그동안 재료(2D 장면)를 짜고, 끝나면 그냥 produce 를 다시 부른다(대본이 그대로면 대본 단계는 건너뜀)")
     ap.add_argument("--prep-status", action="store_true", help="뒤에서 돌린 --prep 결과만 본다(돌는 중 · 끝 · 막힘과 이유)")
@@ -320,6 +303,9 @@ def main() -> int:
     if a.fast:
         a.no_skills = True
         a.preview_only = True
+    judge_agent = a.judge == "agent"
+    if judge_agent:                       # 판단은 에이전트 몫 — 엔진 안 LLM 단계(스킬 · 이해 관문 · 훅 다듬기 · 화면 검토)를 부르지 않는다
+        a.no_skills = True
     sys.path.insert(0, str(ROOT / "engine" / "core"))
     import quality_mode as qm  # noqa: E402
 
@@ -327,7 +313,7 @@ def main() -> int:
     use_draft = qm.use_draft_render() or (a.preview_only and not a.delivery)
     # 화면 검토(review, 렌더 전)는 --no-skills 에서도 돈다 — --no-skills 는 대본 단계(각본가 · 감독 · 디자이너)만 건너뛴다.
     # 2026-11-17: 빠르게 만들려고 --no-skills 로 돌리면 화면 검토까지 꺼져, 화면 밖으로 잘린 장면이 그대로 나갔다. 끄려면 --fast 또는 FLUMA_DEEP_REVIEW=0
-    deep = qm.deep_review() and not a.fast
+    deep = qm.deep_review() and not a.fast and not judge_agent
     sp = Path(a.storyboard)
     sp = sp if sp.is_absolute() else ROOT / sp
     if not sp.exists():
@@ -348,6 +334,13 @@ def main() -> int:
                 fail("produce", stage="autopilot", error="자동 진행: 이미 완성(막음 0)했고 다듬기 제작도 한 번 했다 — 더 렌더하지 말고 완성 영상을 media 로 보여 주며 끝낸다",
                      file=str(qf0.relative_to(ROOT)))
             pf0.write_text(json.dumps({"n": n0 + 1}), "utf-8")
+    if not a.prep_status:                               # 자동 진행: 단계를 마친 대화가 셸로 다음 단계를 돌리지 않게(MCP 도구와 같은 경계)
+        sys.path.insert(0, str(ROOT / "engine" / "mcp"))
+        import fluma_stage
+        try:
+            fluma_stage.check(sid, "prep_start" if a.prep else "produce_start")
+        except ValueError as e:
+            fail("produce", stage="stage", error=str(e))
     lock_f0 = ROOT / "data" / "workspace" / "tmp" / sid / "produce.lock"
     prep_f = ROOT / "data" / "compositions" / sid / "prep.json"
     if a.prep_status:
@@ -417,6 +410,26 @@ def main() -> int:
         save_times(sid)
         fail("produce", stage="scope", error=" / ".join(m for _, m in sc_bad), next="대본을 줄여 다시")
 
+    # 뒤에서 돈 대본 검토(bundle.py script) — 음성 전에 끝나기를 기다려 각본가가 고친 말을 콘티에 옮기고, 막혔으면 여기서 멈춘다(2026-11-25 속도 1)
+    if not a.scenes:
+        from story.bundle import script_gate
+        from story.skill_pass import is_approved as _approved
+        if (ROOT / "data" / "compositions" / sid / "skill_pass" / "script_bg.json").exists():
+            progress("script_review")
+            t_g = time.time()
+            g = script_gate(sid, wait=True)
+            if time.time() - t_g > 3:
+                print(f"[제작] 뒤에서 돈 대본 검토를 {time.time() - t_g:.0f}초 기다림", flush=True)
+            for x in g.get("adopted") or []:
+                print(f"[제작] 검토가 고친 말을 콘티에 옮김 — {x}", flush=True)
+            if not g["ok"]:
+                save_times(sid)
+                fail("produce", stage="script_review", error=g.get("error") or "대본 검토 막힘")
+            if g.get("status") == "ok" and not _approved(sp):
+                save_times(sid)
+                fail("produce", stage="script_review", error="S01 콘티의 대사 · 제목이 검토를 통과한 대본과 크게 다름 — bundle.py script 로 바뀐 대본을 다시 검토받는다")
+            sb = json.loads(sp.read_text("utf-8"))
+
     # 대본만 먼저 해 둔 기록(--prep) — 말(나레이션 · 화면 글자 · 제목)이 그대로면 대본 단계(이해 관문 · 각본가)는 다시 하지 않는다
     from story.skill_pass import is_approved, words_hash
     prepped = False
@@ -479,9 +492,14 @@ def main() -> int:
             print("\n".join(ln for ln in (r.stdout or "").splitlines() if ln.startswith("[스킬")), flush=True)
             _skill_fail(r, hard=hard_skills, sid=sid, skip_viewer=qm.skip_viewer_pass())
         sb = json.loads(sp.read_text("utf-8"))
-    dr = step("direction", [PY, "engine/story/direct.py", rel, "--write"], timeout=120)
-    if dr.returncode != 0:
-        print(f"[제작] direction 자동 기록 실패(계속): {(dr.stderr or dr.stdout).strip()[-200:]}", flush=True)
+    # 판단을 에이전트가 하면 방향(direction)은 prep 에서 한 번만 쓴다 — 완성 렌더에서 다시 쓰면 에이전트가 고친 색 · 배치를 카드 값으로 덮고
+    # 빌드 지문이 바뀌어 화면 검토가 낡는다(2026-11-24 실측: 완성 렌더가 바로 막혀 검토 · 렌더를 다시)
+    if judge_agent and not a.prep and (sb.get("direction") or {}):
+        print("[제작] 방향(direction)은 prep 에서 정한 것 · 에이전트가 고친 것 그대로", flush=True)
+    else:
+        dr = step("direction", [PY, "engine/story/direct.py", rel, "--write"], timeout=120)
+        if dr.returncode != 0:
+            print(f"[제작] direction 자동 기록 실패(계속): {(dr.stderr or dr.stdout).strip()[-200:]}", flush=True)
     sb = json.loads(sp.read_text("utf-8"))
     step("materials", [PY, "engine/story/material_evidence.py", rel], timeout=120)
     sb = json.loads(sp.read_text("utf-8"))
@@ -521,7 +539,9 @@ def main() -> int:
         prep_f.write_text(json.dumps({"status": "ok", "words": words_hash(sb), "at": time.strftime("%Y-%m-%dT%H:%M:%S"), "time": TIMES}, ensure_ascii=False), "utf-8")
         save_times(sid)
         ok("produce", stage="prep", sec=[round(float(x.get("sec") or 0), 2) for x in sb.get("scenes") or []],
-           next="재료(2D 장면 · $CUE)를 콘티에 넣고 python3 engine/produce.py " + rel + " (나레이션 · 화면 글자는 바꾸지 않는다 — 바꾸면 대본 단계를 다시 한다)",
+           next=("장면 길이가 정해졌다 — 재료(2D 장면 · $CUE)를 storyboard_patch 로 넣고 scene_build_start · scene_still 로 보며 다듬은 뒤 review_frames → review_submit → render_start(mode=final)"
+                 if judge_agent else
+                 "재료(2D 장면 · $CUE)를 콘티에 넣고 python3 engine/produce.py " + rel + " (나레이션 · 화면 글자는 바꾸지 않는다 — 바꾸면 대본 단계를 다시 한다)"),
            time=[f"{k}:{v}" for k, v in TIMES.items()])
         return 0
 
@@ -645,6 +665,27 @@ def main() -> int:
                      block=[qg.line(x)[:170] for x in rv_block[:8]], detail=f"data/compositions/{sid}/skill_pass/review.json",
                      next="장면 코드 · knob.py set 으로 전부 고친다(고친 장면만 다시 검토된다) → produce 한 번")
 
+    # 2.95) 판단이 에이전트일 때: 렌더 전 화면 검토를 에이전트가 지금 빌드(장면 프로젝트 지문)로 했나 — 안 했으면 렌더하지 않는다.
+    #       검토의 겹침 · 잘림 · 안전 영역은 엔진 검토와 같이 막음(D21)으로 쓴다
+    if judge_agent and not a.scenes and not a.keep_going and (sb.get("engine") or "craft") == "craft":
+        sys.path.insert(0, str(ROOT / "engine" / "mcp"))
+        import fluma_tools as _ft
+        fresh, why = _ft.review_fresh(sid)
+        if not fresh:
+            save_times(sid)
+            fail("produce", stage="review", error=why, next="MCP review_frames 로 정지 화면을 보고 review_submit(문제 목록) — 그다음 render_start(mode=final)")
+        import quality_gate as qg
+        rv_block = [x for x in qg.from_review(sid) if x.get("block") and not qg.waived(sb, x)]
+        if rv_block:
+            save_times(sid)
+            fail("produce", stage="review", error=f"화면 검토의 막는 문제 {len(rv_block)}건이 남아 렌더하지 않는다",
+                 block=[qg.line(x)[:170] for x in rv_block[:8]], next="고친 뒤 review_frames → review_submit 다시")
+        pre = _ft.precheck_blocks(sid)                          # 렌더 전 정지 화면으로 미리 잰 디자인 막음(멈춘 장면 등) — 렌더해도 관문에서 막힌다
+        if pre:
+            save_times(sid)
+            fail("produce", stage="review", error=f"렌더 전에 미리 잰 디자인 막음 {len(pre)}건 — 렌더하지 않는다(렌더해도 품질 관문에서 막힘)",
+                 block=[qg.line(x)[:170] for x in pre[:8]], next="고친 뒤 review_frames(design_precheck 확인) → review_submit → render_start(mode=final)")
+
     # 3) 재료 · 초안 렌더(재료는 렌더가 만든다 — engine/craft/materials.py)
     outfile_label = "완성" if not use_draft else "초안"
     cmd = [PY, "engine/render.py", rel] + (["--draft"] if use_draft else []) + (["--scenes", a.scenes] if a.scenes else []) + (["--aspect", a.aspect] if a.aspect else [])
@@ -674,8 +715,8 @@ def main() -> int:
     issues = [qg.issue("D03", n, f"{mid}: {why} — python3 engine/checks/refmatch.py sheet {rel} {mid} 로 그림을 보고 ok") for n, mid, why in refmatch.status(sb)] + issues
     from designcheck import findings as _df   # 렌더 결과를 재는 디자인 검사
     issues = [qg.issue(x["code"], x["scene"], x["msg"], x.get("block")) for x in (_df(video, sb) if not a.scenes else [])] + issues
-    if deep and not a.scenes:
-        issues += qg.from_review(sid)                                     # 디자이너 정지 화면 검토가 본 문제(겹침 · 잘림 · 안전 영역은 막음)
+    if (deep or judge_agent) and not a.scenes:
+        issues += qg.from_review(sid)                                     # 정지 화면 검토(엔진 디자이너 · 에이전트)가 본 문제(겹침 · 잘림 · 안전 영역은 막음)
     if (sb.get("engine") or "craft") == "craft" and not a.scenes:
         import visual_tell as vt
         issues += [qg.issue(x["code"], x["scene"], x["msg"], x["block"]) for x in vt.find(sb, sid)]

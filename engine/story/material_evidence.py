@@ -87,9 +87,25 @@ def _primary(mats: list[dict]) -> list[dict]:
     return [m for m in mats if isinstance(m, dict) and m.get("type") not in ("overlay", "stat", "text")]
 
 
+def _design_evidence(m: dict) -> bool:
+    """설계 언어 장면(script.run 의 code = "$DESIGN:…") 안에 실제 자료(capture · image · icon · form)가 있나 — 2026-11-25"""
+    import re as _re
+    for st in m.get("steps") or []:
+        ref = str(((st or {}).get("params") or {}).get("code") or "")
+        if ref.startswith("$DESIGN:"):
+            try:
+                txt = (ROOT / ref[8:].strip()).read_text("utf-8")
+            except OSError:
+                return False
+            return bool(_re.search(r'"kind"\s*:\s*"(capture|image|icon|form)"', txt))
+    return False
+
+
 def is_evidence(m: dict) -> bool:
     t = m.get("type")
     if t in EVIDENCE:
+        return True
+    if t == "craft" and _design_evidence(m):
         return True
     if t in ("icon", "illustration") and m.get("src"):
         return True

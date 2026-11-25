@@ -4,7 +4,8 @@
 2026-11-19 속도(한 편 15분): 콘티 · 장면 파일 · 형태를 따로 쓰고, 검사 → 고침 → 검사를 여러 번 돌아 도구 왕복이 수십 번이었다.
 음성을 만들기 전에 검사를 끝내면 음성 뒤 다시 고칠 일도 준다.
 
-  python3 engine/story/bundle.py script <대본.json>     # ① 대본만(제목 · 장면별 역할 · 대사 · 화면 글자 · 화면 한 줄) — 길이 검사 + 시청자 · 각본가 검토
+  python3 engine/story/bundle.py script <대본.json>     # ① 대본만(제목 · 장면별 역할 · 대사 · 화면 글자 · 화면 한 줄) — 길이 검사 + 시청자 · 각본가 검토(뒤에서 · --wait 이면 기다림)
+  python3 engine/story/bundle.py script-status <id> [--wait] # 뒤에서 돈 검토 결과(끝났으면 고친 말을 콘티에 옮김)
   python3 engine/story/bundle.py apply <묶음.json>      # ② 통과한 대본 그대로 콘티 · 장면 코드 · 형태 → 저장 + 검사 → 막힘(L)만 고쳐 다시 apply
   python3 engine/story/bundle.py check <id>             # 저장된 콘티를 다시 검사만
 2026-11-22 대본 먼저: 시청자 검토가 대본을 돌려보내면 콘티 · 장면 코드 · 형태까지 다시 썼다(한 번 80초~수 분). 대본을 먼저 통과시키면
@@ -66,6 +67,24 @@ def check(sid: str) -> tuple[list[str], list[str]]:
     except Exception as e:  # noqa: BLE001
         soft.append(f"V00 화면 AI 티 검사 못 함: {e}")
     return hard + _form_problems(sid) + _form_cuts(sid), soft
+
+
+def _unfilled(sid: str) -> list[str]:
+    """묶음 뼈대(kit.py)의 ◆ 칸이 남았나 — 콘티 · 콘티가 가리키는 장면 코드"""
+    import re
+    sp = ROOT / "data" / "storyboards" / f"{sid}.json"
+    if not sp.exists():
+        return []
+    txt = sp.read_text("utf-8")
+    out = []
+    if "◆" in txt:
+        keys = sorted(set(re.findall(r'"([^"]+)":\s*[\[{]?\s*"?◆', txt)))
+        out.append(f"S02 콘티에 채우지 않은 뼈대 칸(◆): {', '.join(keys[:12]) or '◆ 가 든 칸'}")
+    for rel in sorted(set(re.findall(r"\$FILE:([^\"]+)", txt))):
+        f = ROOT / rel
+        if f.exists() and "◆" in f.read_text("utf-8"):
+            out.append(f"S02 {rel} 에 채우지 않은 뼈대(◆)")
+    return out
 
 
 def _form_cuts(sid: str) -> list[str]:
@@ -206,6 +225,7 @@ def script_problems(sb: dict) -> list[str]:
         if len(str(x.get("caption") or "").replace("\n", "")) > 28:
             out.append(f"L01 장면{i} 화면 글자 28자 넘음")
     out += [f"{c} {m}" for c, m in lint.scope_problems(sb, estimate=True)]
+    out += _text_rules(sb, sp)
     cps = lint.voice_cps(sb)
     hook = next((i for i, x in enumerate(scenes) if x.get("role") == "hook"), None)
     if hook is not None:
@@ -217,6 +237,33 @@ def script_problems(sb: dict) -> list[str]:
         hk = lint._keywords(f"{scenes[hook].get('caption', '')} {scenes[hook].get('narration', '')}")
         if not hk & lint._keywords(f"{outro.get('caption', '')} {outro.get('narration', '')}"):
             out.append("L08 마지막 장면이 훅의 핵심어를 다시 말하지 않음")
+    return out
+
+
+def _text_rules(sb: dict, sp) -> list[str]:
+    """글자만 보고 바로 재는 대본 규칙 — 각본가(LLM)에게 넘기기 전에.
+    2026-11-24 실측: 각본가가 L51(긴 구절)을 고치려다 두 번 '변경 0 · 되돌림'으로 264초를 썼다(에이전트가 쓴 칸은 각본가가 못 고친다).
+    lint 가 막는 것과 같은 기준(refnorm · aitell)을 여기서 먼저 보여 주면 에이전트가 바로 고친다"""
+    import lint
+    out = []
+    probe = dict(sb)
+    if not probe.get("reference"):                    # 말 덩어리 기준은 레퍼런스에서 — 대본에 없으면 기획 기록의 것
+        try:
+            ref = json.loads((ROOT / "data" / "shotplans" / f"{sb.get('id')}.json").read_text("utf-8")).get("reference")
+            if isinstance(ref, list):
+                probe["reference"] = ref
+        except (OSError, ValueError):
+            pass
+    try:
+        import refnorm
+        out += [f"{c} {m}" for c, _, m in refnorm.check(probe) if c in ("L51", "L52")]
+    except Exception:  # noqa: BLE001 — 기준을 못 읽으면 lint 가 뒤에서 본다
+        pass
+    try:
+        import aitell
+        out += [f"L55 AI 티 · {f['rule']}: {f['where']} '{f['match']}' — {f['fix']}" for f in aitell.find(sb) if f["severity"] == "high"]
+    except Exception:  # noqa: BLE001
+        pass
     return out
 
 
@@ -241,8 +288,9 @@ def screen_rules() -> str:
     ])
 
 
-def script(path: Path) -> int:
-    """① 대본 단계 — 길이 검사(LLM 없음) → 시청자 → 각본가 → 시청자(produce 의 이해 관문과 같은 순서 · 횟수). 통과하면 확정 대본을 찍는다"""
+def script(path: Path, wait: bool = False) -> int:
+    """① 대본 단계 — 길이 검사(LLM 없음) → 시청자 → 각본가 → 시청자(produce 의 이해 관문과 같은 순서 · 횟수).
+    기본은 검토를 뒤에서 돌리고 바로 돌아온다(에이전트는 그동안 화면을 쓴다) — 결과는 apply · prep 이 받는다. --wait 이면 예전처럼 기다린다"""
     s = json.loads(path.read_text("utf-8"))
     s = s.get("storyboard") if isinstance(s.get("storyboard"), dict) else s
     sid = s.get("id")
@@ -271,6 +319,8 @@ def script(path: Path) -> int:
     sbp = ROOT / "data" / "compositions" / sid / "script.sb.json"
     sbp.parent.mkdir(parents=True, exist_ok=True)
     sbp.write_text(json.dumps(sb, ensure_ascii=False, indent=1), "utf-8")
+    if not wait:
+        return _script_bg(sid, sbp, sb, s)
     r = subprocess.run([sys.executable, "engine/story/skill_pass.py", "comprehension", str(sbp), "--write"], cwd=ROOT, capture_output=True, text=True, timeout=1500)
     err = next((ln[6:] for ln in r.stdout.splitlines() if ln.startswith("error=")), "")
     if r.returncode != 0:
@@ -293,19 +343,171 @@ def script(path: Path) -> int:
     return 0
 
 
+# ---------- 대본 검토를 뒤에서(2026-11-25 속도 1) ----------
+# 2026-11-24 실측: 대본 이해 관문(시청자 → 각본가 → 시청자, 엔진 안 LLM)을 에이전트가 7.2분 기다렸다. 검토는 대사만 보므로
+# 에이전트가 콘티 · 장면 코드를 쓰는 동안 뒤에서 돌리고, 음성(prep) 직전에 결과를 받는다 — 같은 검토 · 같은 기준, 기다림만 겹친다.
+# 각본가가 고친 말은 '에이전트가 낸 그대로인 칸'에만 옮긴다(그사이 에이전트가 손본 칸은 덮지 않는다 — 승인 비교가 다시 본다).
+def _bg_path(sid: str) -> Path:
+    return ROOT / "data" / "compositions" / sid / "skill_pass" / "script_bg.json"
+
+
+def _words(sb: dict) -> dict:
+    return {"title": sb.get("title") or "", "scenes": [{"narration": x.get("narration") or "", "caption": x.get("caption") or ""} for x in sb.get("scenes") or []]}
+
+
+def _bg_write(sid: str, **kv) -> dict:
+    p = _bg_path(sid)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        rec = json.loads(p.read_text("utf-8"))
+    except (OSError, ValueError):
+        rec = {}
+    rec.update(kv)
+    tmp = p.with_suffix(".tmp")
+    tmp.write_text(json.dumps(rec, ensure_ascii=False, indent=1), "utf-8")
+    tmp.replace(p)
+    return rec
+
+
+def _script_bg(sid: str, sbp: Path, sb: dict, inp: dict) -> int:
+    import os
+    import time
+    sys.path.insert(0, str(ROOT / "engine" / "core"))
+    from detach import alive, kill_tree, spawn_detached
+    try:
+        old = json.loads(_bg_path(sid).read_text("utf-8"))
+    except (OSError, ValueError):
+        old = {}
+    if old.get("status") == "running" and alive(old.get("pid")):   # 앞 대본의 검토는 끈다 — 새 대본이 이긴다
+        kill_tree(int(old["pid"]))
+    _bg_path(sid).unlink(missing_ok=True)
+    log = sbp.parent / "skill_pass" / "script_bg.log"
+    log.parent.mkdir(parents=True, exist_ok=True)
+    _bg_write(sid, status="running", submitted=_words(sb), started=time.time())
+    pid = spawn_detached([sys.executable, str(Path(__file__).resolve()), "_review", sid], log, dict(os.environ))
+    _bg_write(sid, pid=pid)
+    print("대본(시청자 · 각본가 검토는 뒤에서 도는 중 — 이 대본으로 바로 화면을 쓴다):")
+    print(f"- 제목: {sb.get('title')}")
+    for i, x in enumerate(sb["scenes"], 1):
+        print(f"- 장면{i} [{x.get('role')}] 말: {x.get('narration')} | 화면 글자: {x.get('caption')}")
+    if os.environ.get("FLUMA_NO_KIT") != "1":           # 굵은 도구(plan_submit)는 뼈대 대신 설계 언어를 쓴다
+        print(screen_rules())
+        import kit
+        print(kit.text(sid, inp, sb))
+    ok("bundle", stage="script", review="background", file=str(sbp.relative_to(ROOT)),
+       next="기다리지 말고 위 묶음 뼈대의 ◆ 칸을 채워(대본 글자는 그대로) bundle.py apply 한 번 — 검토 결과(각본가가 고친 말)는 apply · prep 이 받아 콘티에 옮긴다. "
+            "검토가 막으면 apply · prep 이 S01 로 알린다(그때 대사만 고쳐 다시 script)")
+    return 0
+
+
+def _review_worker(sid: str) -> int:
+    import time
+    sbp = ROOT / "data" / "compositions" / sid / "script.sb.json"
+    t0 = time.time()
+    try:
+        r = subprocess.run([sys.executable, "engine/story/skill_pass.py", "comprehension", str(sbp), "--write"], cwd=ROOT, capture_output=True, text=True, timeout=1500)
+        rc, out = r.returncode, r.stdout
+    except subprocess.TimeoutExpired:
+        rc, out = 1, "error=대본 검토가 25분 안에 끝나지 않음"
+    cur = json.loads(sbp.read_text("utf-8"))
+    err = next((ln[6:] for ln in out.splitlines() if ln.startswith("error=")), "")
+    if rc == 0:
+        probs = script_problems(cur)                    # 각본가가 고친 뒤에도 길이 검사 통과인지
+        if probs:
+            rc, err = 1, "각본가가 고친 대본이 길이 검사에 걸림: " + " · ".join(probs)
+    _bg_write(sid, status="ok" if rc == 0 else "error", final=_words(cur), error=None if rc == 0 else (err or "시청자 검토 막힘"),
+              secs=round(time.time() - t0, 1), finished=time.time())
+    print(out[-4000:])
+    return 0
+
+
+def adopt_reviewed(sid: str, rec: dict) -> list[str]:
+    """검토가 고친 말을 콘티에 옮긴다 — 콘티 칸이 낸 대본 그대로일 때만"""
+    sys.path.insert(0, str(ROOT / "engine" / "story"))
+    import copy
+    import sbio
+    sp = ROOT / "data" / "storyboards" / f"{sid}.json"
+    sub, fin = rec.get("submitted") or {}, rec.get("final") or {}
+    if not sp.exists() or not fin:
+        return []
+    base = sbio.load(sp)
+    sb = copy.deepcopy(base)
+    sc = sb.get("scenes") or []
+    if len(sc) != len(sub.get("scenes") or []) or len(sc) != len(fin.get("scenes") or []):
+        return []
+    out = []
+    if sb.get("title") == sub.get("title") and fin.get("title") != sub.get("title"):
+        sb["title"] = fin["title"]; out.append(f"제목: {fin['title']}")
+    for i, (x, s, f) in enumerate(zip(sc, sub["scenes"], fin["scenes"]), 1):
+        for k in ("narration", "caption"):
+            if (x.get(k) or "") == s[k] and f[k] != s[k]:
+                x[k] = f[k]; out.append(f"장면{i} {'말' if k == 'narration' else '화면 글자'}: {f[k]}")
+    if out:
+        sbio.save(sp, base, sb)
+    return out
+
+
+def script_gate(sid: str, wait: bool = True, timeout: float = 1500) -> dict:
+    """뒤에서 돈 대본 검토의 결과 — ok · status(none|running|ok|error) · adopted(콘티에 옮긴 말) · error.
+    wait 이면 끝날 때까지 기다린다(prep 이 음성 직전에). 뒤 검토 기록이 없으면(예전 흐름 · --wait) 아무것도 하지 않는다"""
+    import time
+    sys.path.insert(0, str(ROOT / "engine" / "core"))
+    from detach import alive
+    t0 = time.time()
+    while True:
+        try:
+            rec = json.loads(_bg_path(sid).read_text("utf-8"))
+        except (OSError, ValueError):
+            return {"ok": True, "status": "none"}
+        if rec.get("status") != "running":
+            break
+        if not alive(rec.get("pid")) and time.time() - float(rec.get("started") or 0) > 10:
+            rec = _bg_write(sid, status="error", error="대본 검토가 결과 없이 끝남(기록: data/compositions/" + sid + "/skill_pass/script_bg.log)")
+            break
+        if not wait:
+            return {"ok": True, "status": "running", "secs": round(time.time() - float(rec.get("started") or t0))}
+        if time.time() - t0 > timeout:
+            return {"ok": False, "status": "running", "error": "대본 검토를 기다리다 시간 초과"}
+        time.sleep(2)
+    if rec["status"] == "error":
+        fin = rec.get("final") or rec.get("submitted") or {}
+        cur = " / ".join(f"장면{i} 말: {x['narration']} | 화면 글자: {x['caption']}" for i, x in enumerate(fin.get("scenes") or [], 1))
+        why = str(rec.get("error") or "시청자 검토 막힘")
+        return {"ok": False, "status": "error", "error": f"대본 검토 막힘: {why[:330]} — 대사만 고쳐 다시 script",   # 이유가 앞(결과 블록은 끝 400자만)
+                "reason": why, "script": f"제목 {fin.get('title')} / {cur}"[:1800]}
+    adopted = [] if rec.get("adopted_at") else adopt_reviewed(sid, rec)
+    if adopted:
+        _bg_write(sid, adopted_at=time.time())
+    return {"ok": True, "status": "ok", "adopted": adopted, "secs": rec.get("secs")}
+
+
 def main() -> int:
     a = sys.argv[1:]
-    if len(a) < 2 or a[0] not in ("apply", "check", "script"):
+    if len(a) < 2 or a[0] not in ("apply", "check", "script", "script-status", "_review"):
         print(__doc__); return 2
     if a[0] == "script":
-        return script(Path(a[1]) if Path(a[1]).is_absolute() else ROOT / a[1])
+        return script(Path(a[1]) if Path(a[1]).is_absolute() else ROOT / a[1], wait="--wait" in a)
+    if a[0] == "_review":                               # 뒤에서 도는 대본 검토(script 가 띄운다)
+        return _review_worker(a[1])
+    if a[0] == "script-status":
+        r = script_gate(a[1], wait="--wait" in a)
+        (ok if r["ok"] else fail)("bundle", stage="script", **{k: (v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)) for k, v in r.items() if k != "ok"})
+        return 0
     sid = apply(Path(a[1]) if Path(a[1]).is_absolute() else ROOT / a[1]) if a[0] == "apply" else a[1]
     hard, soft = check(sid)
+    hard = _unfilled(sid) + hard
     if a[0] == "apply":
         sys.path.insert(0, str(ROOT / "engine" / "story"))
         import skill_pass as _sp
         sbp = ROOT / "data" / "storyboards" / f"{sid}.json"
-        if not _sp.is_approved(sbp):                    # 대본이 검토받은 것과 다르다(또는 검토 전) — 화면을 다 쓴 뒤 되돌아가지 않게
+        g = script_gate(sid, wait=False)                 # 뒤에서 도는 검토가 끝났으면 각본가가 고친 말을 콘티에 옮긴다
+        for x in g.get("adopted") or []:
+            print(f"✎ 검토가 고친 말을 콘티에 옮김 — {x}")
+        if g.get("status") == "running" and g.get("ok"):
+            soft.insert(0, "S01 대본 검토가 아직 뒤에서 도는 중 — 화면을 계속 쓴다(prep 이 끝날 때까지 기다렸다 결과를 콘티에 옮긴다)")
+        elif not g.get("ok"):
+            hard.insert(0, f"S01 {g.get('error')}")
+        elif not _sp.is_approved(sbp):                  # 대본이 검토받은 것과 다르다(또는 검토 전) — 화면을 다 쓴 뒤 되돌아가지 않게
             hard.insert(0, "S01 대사 · 제목이 검토를 통과한 대본과 다름(또는 검토 전) — bundle.py script 로 대본부터 통과시키고, 확정 대본을 글자 그대로 콘티에 옮긴다")
     for x in hard:
         print(f"✗ {x}")
@@ -314,7 +516,12 @@ def main() -> int:
     rel = f"data/storyboards/{sid}.json"
     if hard:
         fail("bundle", stage="check", error=f"막힘 {len(hard)}건 — 전부 한 번에 고친다(묶음을 Write 로 통째로 다시 쓰거나 Edit 를 한 응답에 나란히) → 다시 apply 한 번", file=rel, hard=str(len(hard)), soft=str(len(soft)))
-    ok("bundle", file=rel, soft=str(len(soft)), next=f"python3 engine/produce.py {rel} --prep --bg → 재료 · 장면 확인 → python3 engine/produce.py {rel}")
+    end = None
+    if a[0] == "apply":
+        sys.path.insert(0, str(ROOT / "engine" / "mcp"))
+        import fluma_stage
+        end = fluma_stage.mark(sid, "written")            # 자동 진행: 화면 쓰기 단계 끝 — 다음은 새 대화에서
+    ok("bundle", file=rel, soft=str(len(soft)), next=end or f"python3 engine/produce.py {rel} --prep --bg → 재료 · 장면 확인 → python3 engine/produce.py {rel}")
     return 0
 
 
