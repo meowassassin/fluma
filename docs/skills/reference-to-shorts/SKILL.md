@@ -3,12 +3,12 @@ name: reference-to-shorts
 description: Analyze a reference YouTube Short and its channel (structure, screen kinds, cut rhythm, music beat, tone, voice) and turn that grammar into a storyboard for the user's own topic. Use when the user shares a Shorts/Reels link and says "make mine like this". Works next to HyperFrames or Remotion skills.
 ---
 
-# Reference → Shorts (Fluma)
+# Reference → Shorts (DN GENEX)
 
 Goal: copy the **grammar** of a reference channel, never its content. Footage, voice and script of the reference are
 analysis material only.
 
-## 1. Build the cards (Fluma repo, Python venv)
+## 1. Build the cards (DN GENEX repo, Python venv)
 
 ```bash
 python3 engine/research/shorts_xray.py <shorts-url>          # cuts, speech (word timing), music beats, layers

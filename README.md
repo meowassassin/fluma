@@ -1,36 +1,44 @@
 <div align="center">
 
-<img src="docs/assets/fluma-spin.gif" width="148" alt="Fluma mascot" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/genex-logo-h-white.svg" />
+  <img src="docs/assets/genex-logo-h-black.svg" width="420" alt="DN GENEX" />
+</picture>
 
-# Fluma
+<br/><br/>
 
-**YouTube Shorts without generative models — Fluma re-edits 2D graphics, images and footage that already exist, the way an editor and a director would. Every frame is made locally.**
+<img src="docs/assets/genex-mark.gif" width="120" alt="DN GENEX symbol" />
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-5b5bd6)](LICENSE)
+
+# DN GENEX
+
+**YouTube Shorts without generative models — DN GENEX re-edits 2D graphics, images and footage that already exist, the way an editor and a director would. Every frame is made locally.**
+
+[![License](https://img.shields.io/badge/license-Apache--2.0-df1f2b)](LICENSE)
 [![Quick start](https://img.shields.io/badge/quick%20start-10%20min-2fb67c)](QUICKSTART.md)
 ![Tested on](https://img.shields.io/badge/tested-Linux%20·%20macOS%20·%20Windows%20·%20ARM-555)
 ![Generation cost](https://img.shields.io/badge/generation%20cost-%240-2fb67c)
 
-[Quick start](QUICKSTART.md) · [Why Fluma](#why-fluma) · [How it works](#how-it-works) · [Contributing](CONTRIBUTING.md)
+[Quick start](QUICKSTART.md) · [Why DN GENEX](#why-dn-genex) · [How it works](#how-it-works) · [Contributing](CONTRIBUTING.md)
 
 **English** · [한국어](README.ko.md)
 
 </div>
 
-<p align="center"><img src="docs/assets/screens/home.webp" alt="Fluma home" width="880" /></p>
+<p align="center"><img src="docs/assets/screens/home.webp" alt="DN GENEX home" width="880" /></p>
 
-## What is Fluma
+## What is DN GENEX
 
 A local agent workspace for vertical short-form video (YouTube Shorts, Reels, TikTok).
 You talk to the **Claude Code, Codex or Antigravity** you already use. The agent studies Shorts that work, then turns **real material** — web screens, documents, data, photos, sourced clips, stock footage — into a video with open-source creative apps.
 It uses no image or video generation model (no generation bill), and everything it makes stays an editable project file. Scenes that never happened are staged with drawings, diagrams, memes or metaphors instead of fake footage.
 
-## Why Fluma
+## Why DN GENEX
 
 Generative video models are great at scenes that don't exist. But a lot of Shorts are about **re-editing what already exists** — a real app screen, an original document, an exact number, a clip that went viral.
-That is the niche Fluma is built for.
+That is the niche DN GENEX is built for.
 
-| | Generative video models | Fluma |
+| | Generative video models | DN GENEX |
 |---|---|---|
 | Cost | Billed per second or per clip, more with every re-roll | **$0 generation** — your agent login, free voices, free stock |
 | Text, numbers, logos | Often garbled or invented | Real documents, real screens, the actual data |
@@ -84,6 +92,27 @@ That is the niche Fluma is built for.
 - 🌐 **Korean first, multilingual** — Korean tone analysis and caption grammar; UI in English, 한국어, 中文.
 - 🔐 **Local first** — keys and YouTube tokens live in `~/.shortsforge/` (0600), out of the agent's reach.
 
+## How the agent makes a video
+
+The agent makes the judgement calls; the DN GENEX MCP server (`engine/mcp_server.py`) runs the fixed order, measures and enforces the quality gate. A new video is **four calls**:
+
+```mermaid
+flowchart LR
+  P1["plan_submit<br/>script · sourced facts · assets"] --> J["server: script checks · background review<br/>voice · captures · icons · forms start at once"]
+  P1 --> P2["design_submit<br/>direction + every scene in the design language"]
+  J --> B
+  P2 --> B["server: compile → build → stills<br/>pre-render design checks"]
+  B --> P3["design_patch<br/>only the scenes to fix"]
+  P3 --> B
+  B --> P4["finish<br/>review → one final render → quality gate"]
+```
+
+- **Field-level errors before anything is written** — wrong values, missing pictures and cue words the voice never says come back one field at a time.
+- **Scene design language** (`engine/craft/design_lang.py`) — scenes are written as composable *what · where · on which word · how* (text, tags, shapes, captures, forms, icons; relations instead of pixel coordinates; enter / motion / camera verbs; any EffectCraft effect). It compiles to the same EffectCraft scene code, so render, cache and checks are unchanged; one element — or a whole scene — can still be hand-written code.
+- **Background script review** — the viewer / writer review runs while the agent designs. If it blocks, designs are kept; if it rewrites a line, cue words follow the new line.
+- **Light renders** — scene segments render with small EffectCraft caches (same frames; on a 35 s video peak memory 3.2 GB → 1.75 GB, scene drawing 112 s → 50 s).
+- The finer tools (`prep_start`, `review_frames`, `render_start`, …) stay for scene-by-scene work with a person.
+
 ## How it works
 
 ```mermaid
@@ -116,6 +145,7 @@ flowchart LR
 | Materials | `engine/craft/materials.py` + `engine/craft/adapters/<app>.py` | one adapter per Craft app; `type: craft` runs any command list |
 | Variety | `engine/craft/craft_catalog.py`, `craft_variety.py`, `.claude/skills/crafts/` | 9,000+ features searchable, recipes, repetition checks, usage per video |
 | Motion · sound · edit | `engine/craft/motion.py`, `audio.py`, `edit.py` | EffectCraft comps, SoundCraft mix, FilmCraft assembly |
+| Agent flow | `engine/mcp_server.py`, `engine/mcp/` | plan_submit → design_submit → design_patch → finish; jobs, field-level errors, background script review |
 | One command | `engine/produce.py` | voice → lint → materials → pre-render still review → one render at delivery size → quality gate |
 | Checks | `engine/checks/` | first second · freezes · pauses · cut density; visual AI-tell and quality gate (blocks stop the upload) |
 | Publish & learn | `engine/publish/`, `studio/youtube.mjs` | OAuth, resumable upload, Analytics mapped to scenes |
@@ -133,14 +163,14 @@ An IDE-style workspace: an **Explorer** tree of what the video is made of — *E
 
 ## The Craft apps
 
-Fluma drives the open-source **Craft** desktop/web apps (by [storytold](https://github.com/storytold), MIT / Apache-2.0) through their CLIs and MCP servers. They are **not bundled** — install the ones you want (about 1.6 GB download for all 16):
+DN GENEX drives the open-source **Craft** desktop/web apps (by [storytold](https://github.com/storytold), MIT / Apache-2.0) through their CLIs and MCP servers. They are **not bundled** — install the ones you want (about 1.6 GB download for all 16):
 
 ```bash
 python3 engine/craft/crafts.py plan all        # what would be downloaded, no download
 python3 engine/craft/crafts.py install all     # or pick: install effectcraft soundcraft filmcraft …
 ```
 
-| App | What Fluma uses it for |
+| App | What DN GENEX uses it for |
 |---|---|
 | EffectCraft | motion of every scene — built-in background · entrance · text presets, screen frames, push-ins |
 | SoundCraft | voice chain (EQ · compressor · de-esser), per-word sound effects, ducking, −14 LUFS |
@@ -163,7 +193,7 @@ Settings → **YouTube**: create an OAuth client in Google Cloud (enable *YouTub
 - **Publish · Results** in the editor uploads the latest render (private by default) or links a video you already uploaded;
 - **My channel videos** shows stats for any video on the channel.
 
-Analytics fill in 1–2 days after publishing; *viewed vs. swiped away* itself is only in YouTube Studio, so Fluma shows *stayed-to-watch* = engaged views ÷ views as the closest API value.
+Analytics fill in 1–2 days after publishing; *viewed vs. swiped away* itself is only in YouTube Studio, so DN GENEX shows *stayed-to-watch* = engaged views ÷ views as the closest API value.
 
 ## Quick start
 
@@ -204,7 +234,8 @@ fluma/
 ├─ engine/                 Python production engine
 │  ├─ produce.py           one command: storyboard → voice → lint → review → render → quality gate
 │  ├─ render.py · doctor.py · fluma_agent.py · mcp_server.py
-│  ├─ craft/               Craft pipeline — materials · motion · audio · edit · design.py (effects per video) · adapters/<app>.py
+│  ├─ mcp/                 MCP tools — four-call flow (fluma_flow.py) · jobs · project status · assets · stage
+│  ├─ craft/               Craft pipeline — materials · motion · audio · edit · design.py (effects per video) · design_lang.py (scene design language) · adapters/<app>.py
 │  │  ├─ apps/             the 16 Craft apps (craft.json each)
 │  │  ├─ renderer/         render-engine entry (engine.json · adapter)
 │  │  ├─ form/             shapes built from data (SDF) — styles, rigs, 3D render look
@@ -236,6 +267,7 @@ fluma/
 
 ## Roadmap
 
+- [x] Four-call MCP flow for agents (plan_submit → design_submit → design_patch → finish) and the scene design language
 - [x] Reference-first storyboard with enforced checks (L30 · L31)
 - [x] Craft app pipeline with editable project files and hand-edit protection
 - [x] IDE-style editor with per-item results

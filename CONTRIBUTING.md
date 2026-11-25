@@ -1,11 +1,11 @@
-# Contributing to Fluma
+# Contributing to DN GENEX
 
 **English** · [한국어](CONTRIBUTING.ko.md)
 
 **Come as you are.** Fork it, change it, break it, make it yours. Pull requests, new features, wild experiments,
 small fixes, typo fixes, translations, bug reports and half-baked ideas are all welcome — you don't need to ask first.
 
-Fluma is Apache-2.0, so you're also free to use and modify it in your own projects, commercial or not.
+DN GENEX is Apache-2.0, so you're also free to use and modify it in your own projects, commercial or not.
 
 ## Ways to jump in
 

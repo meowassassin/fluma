@@ -3,6 +3,11 @@
 
 ## Unreleased
 
+- DN GENEX 로 브랜드 변경: 로고 · 파비콘 · 앱 아이콘 · 진행 표시(재생 화살 · 빛줄기 · 속도선) · 글꼴 Saira(한글은 Pretendard) · 빨강 → 주황 그라데이션 테마(앱 · 영상 편집기), README 이미지 새로 / Rebranded to DN GENEX: logo, icons, progress motion, Saira type, red-to-orange theme across the app and video editor, new README images
+- 에이전트 제작 흐름: MCP 굵은 도구 네 번(`plan_submit` → `design_submit` → `design_patch` → `finish`, 재료는 `assets_start`) — 서버가 순서를 돌리고 칸별 오류를 저장 전에 돌려줌, 대본 검토는 뒤에서, 막혀도 설계는 남고 고친 대사에 낱말이 따라감 / Four-call MCP flow with field-level errors, background script review, kept designs and cue words that follow rewritten lines
+- 장면 설계 언어(`engine/craft/design_lang.py`): 무엇을 · 어디에 · 어느 말에 · 어떻게의 조합 → 같은 EffectCraft 장면 코드로 컴파일(콘티 재료 `$DESIGN:`), 요소 · 장면 단위 코드 탈출구 / Scene design language compiled to the same EffectCraft scene code
+- 렌더: 구간 렌더를 작은 EffectCraft 캐시로(같은 프레임, 최대 메모리 3.2GB → 1.75GB · 장면 그리기 112초 → 50초), 렌더 전 정지 화면으로 디자인 검사를 미리, 렌더 안쪽 시간 · 메모리 기록 / Lean-cache segment renders, pre-render design checks from stills, render profile log
+
 - 속도 · 정확: 3D 렌더 판 셰이딩(나무 결 노이즈 · 주변 빛)을 numba 로, 큰 흐림은 줄인 그림에서(판 한 장 16.4초 → 10.4초, 화소 차이 최대 4/255) · 음악 검색 결과 12시간 · 박자 잰 값 재사용, 검색 · 받기 시간 초과에도 다른 후보로 · `publish.py final` 은 막음 없는 produce 결과를 다시 렌더하지 않음 · 검토 상한 뒤에도 그림이 그대로인 장면의 문제는 계속 막음 · 쓰지 않던 의도 · 시안 승인 관문(`gate.py`) 제거 / Faster 3D render-style shading (numba) and downsampled large blurs, cached music searches and tempo measurements, no re-render on publish when produce already finished, review cap no longer waves through unchanged scenes, removed the unused approval gate
 - 호환성: Windows 에서 엔진이 돌지 않던 문제(리눅스 전용 파일 잠금 · 파이프 select · 프로세스 그룹 종료 · 다른 드라이브 경로)와 macOS 에서 VectorCraft 를 못 찾던 문제를 고침, `doctor --fix` 가 Craft 앱용 한글 글꼴(Noto Sans CJK KR)을 운영체제 글꼴 폴더에 설치, 남은 메모리는 psutil 로(macOS · Windows) · CI 세 운영체제 통과 / Compatibility: engine runs on Windows (portable file lock, pipe reads, process-tree kill, cross-drive paths), VectorCraft found on macOS, `doctor --fix` installs Noto Sans CJK KR for Craft apps, free memory via psutil; CI green on Linux, macOS and Windows
 - 정리: 화면에 나오지 않던 UI · vendor 패키지 · 서버 API · CSS · 번역 키 · npm 의존성 16개, 엔진의 쓰이지 않는 모듈 · 함수 · 옛 CLI 옵션(`produce.py --final`, `direct.py --no-cast`), 시리즈(n8n) 프리셋 파일 제거 / Cleanup: unreachable UI, unused vendor packages, routes, CSS, i18n keys, 16 npm deps, dead engine code and no-op CLI flags, leftover series (n8n) presets

@@ -2,7 +2,7 @@
 
 [English](QUICKSTART.md) · **한국어**
 
-Fluma 는 로컬에서 돕니다: 웹 스튜디오(Node) + 파이썬 파이프라인이 오픈소스 Craft 앱을 부립니다.
+DN GENEX 는 로컬에서 돕니다: 웹 스튜디오(Node) + 파이썬 파이프라인이 오픈소스 Craft 앱을 부립니다.
 
 ## 나에게 맞는 방법 고르기
 
@@ -11,7 +11,7 @@ Fluma 는 로컬에서 돕니다: 웹 스튜디오(Node) + 파이썬 파이프�
 | 내 에이전트에게 맡기기 | Claude Code · Codex 에게: *이 스킬을 써 줘: https://raw.githubusercontent.com/meowassassin/fluma/main/docs/skill/SKILL.md — "…" 쇼츠를 만들어 줘* | 손 안 댐 |
 | 가장 쉽게, 어느 운영체제든(Linux · macOS · Windows) | [Docker](#docker) — 명령 두 줄, 전부 들어 있음 | 처음 약 15GB 받기 |
 | 내 컴퓨터에 바로 설치 | [설치](#2-설치) — `doctor.py --fix` | 약 10분 + 내려받기 |
-| Fluma 자체를 고치기 | 설치 후 `npm --prefix studio run dev` 와 [시험](#확인--문제-해결) | — |
+| DN GENEX 자체를 고치기 | 설치 후 `npm --prefix studio run dev` 와 [시험](#확인--문제-해결) | — |
 
 어느 쪽이든 에이전트가 필요합니다: 내 컴퓨터에 로그인된 **Claude Code** · **Codex** · **Antigravity**(Docker 는 Claude Code · Codex 로그인을 그대로 씀),
 또는 API 키(Anthropic · OpenAI · Gemini · 로컬 Ollama)를 **설정 → 모델 · 공급자**에 넣습니다.
@@ -132,8 +132,8 @@ Windows 의 Docker Desktop 은 WSL 2 를 씁니다 — 물어보면 [WSL 설치]
 
 <details><summary>문제 해결</summary>
 
-- **`Bind for 127.0.0.1:4311 failed: port is already allocated`** — 다른 Fluma(또는 개발 서버)가 돌고 있습니다. `docker ps` 로 어느 것인지 보고, *그것을 띄운 폴더*에서 `docker compose down` 하거나 개발 서버를 끄세요.
-- **`service "fluma" is not running`** — Fluma 를 띄운 폴더와 다른 폴더에서 명령을 실행했습니다(compose 는 폴더 이름으로 프로젝트를 나눔). `docker/` 폴더에서 실행하거나 `docker ps` 로 컨테이너 이름을 찾으세요.
+- **`Bind for 127.0.0.1:4311 failed: port is already allocated`** — 다른 DN GENEX(또는 개발 서버)가 돌고 있습니다. `docker ps` 로 어느 것인지 보고, *그것을 띄운 폴더*에서 `docker compose down` 하거나 개발 서버를 끄세요.
+- **`service "fluma" is not running`** — DN GENEX 를 띄운 폴더와 다른 폴더에서 명령을 실행했습니다(compose 는 폴더 이름으로 프로젝트를 나눔). `docker/` 폴더에서 실행하거나 `docker ps` 로 컨테이너 이름을 찾으세요.
 - **에이전트가 로그인되지 않았다고 함**(예: Mac 의 Claude Code 는 로그인을 키체인에 둠): `docker compose exec -it fluma claude` → `/login` 한 번
 - **컨테이너가 만든 파일의 주인이 다름(Linux)** — `id -u` 가 1000 이 아니면 `.env` 에 `FLUMA_UID=…` · `FLUMA_GID=…` 를 넣고 다시 빌드
 

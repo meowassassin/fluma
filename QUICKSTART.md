@@ -2,7 +2,7 @@
 
 **English** · [한국어](QUICKSTART.ko.md)
 
-Fluma runs locally: a web Studio (Node) plus a Python pipeline, driving the open-source Craft apps.
+DN GENEX runs locally: a web Studio (Node) plus a Python pipeline, driving the open-source Craft apps.
 
 ## Pick a path
 
@@ -11,7 +11,7 @@ Fluma runs locally: a web Studio (Node) plus a Python pipeline, driving the open
 | Let your own agent do it | Give Claude Code or Codex: *Use this skill: https://raw.githubusercontent.com/meowassassin/fluma/main/docs/skill/SKILL.md — make a Short about "…"* | hands-off |
 | The easiest start, any OS (Linux · macOS · Windows) | [Docker](#docker) — two commands, everything included | download ~15 GB, once |
 | To run it directly on your machine | [Install](#2-install) — `doctor.py --fix` | ~10 min + downloads |
-| To change Fluma itself | Install, then `npm --prefix studio run dev` and the [tests](#check--troubleshoot) | — |
+| To change DN GENEX itself | Install, then `npm --prefix studio run dev` and the [tests](#check--troubleshoot) | — |
 
 Either way you need an agent: a logged-in **Claude Code**, **Codex** or **Antigravity** CLI on your computer (Docker reuses the Claude Code and Codex logins),
 or an API key (Anthropic, OpenAI, Gemini, or a local Ollama) entered in **Settings → Models · Providers**.
@@ -137,8 +137,8 @@ On Windows, Docker Desktop uses WSL 2 — [install WSL](https://learn.microsoft.
 
 <details><summary>Troubleshooting</summary>
 
-- **`Bind for 127.0.0.1:4311 failed: port is already allocated`** — another Fluma (or dev server) is running. `docker ps` shows which; stop it with `docker compose down` in *its* folder, or stop the dev server.
-- **`service "fluma" is not running`** — you ran the command in a different folder from the one you started Fluma in (compose names projects by folder). Run it in the `docker/` folder, or use `docker ps` to find the container name.
+- **`Bind for 127.0.0.1:4311 failed: port is already allocated`** — another DN GENEX (or dev server) is running. `docker ps` shows which; stop it with `docker compose down` in *its* folder, or stop the dev server.
+- **`service "fluma" is not running`** — you ran the command in a different folder from the one you started DN GENEX in (compose names projects by folder). Run it in the `docker/` folder, or use `docker ps` to find the container name.
 - **Agent says it is not logged in** (e.g. Claude Code on macOS keeps its login in the Keychain): `docker compose exec -it fluma claude` → `/login` once.
 - **Files created by the container belong to another user (Linux)** — if `id -u` is not 1000, set `FLUMA_UID=…` and `FLUMA_GID=…` in `.env` and rebuild.
 

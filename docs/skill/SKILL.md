@@ -1,14 +1,14 @@
 ---
 name: fluma-video
-description: Use when the user wants to install or run Fluma, or wants a short-form explainer video made with Fluma from a topic (especially developer / IT topics shown with real screens — real command output, real code and official docs). Installs Fluma, starts the Studio and kicks off the first video's planning chat. Also use when the user gives this skill URL.
+description: Use when the user wants to install or run DN GENEX, or wants a short-form explainer video made with DN GENEX from a topic (especially developer / IT topics shown with real screens — real command output, real code and official docs). Installs DN GENEX, starts the Studio and kicks off the first video's planning chat. Also use when the user gives this skill URL.
 compatibility: Needs a terminal, git, network and either Docker or Python 3.10+ / Node.js 20+ / ffmpeg. Linux, macOS, Windows (Docker Desktop / WSL 2).
 metadata:
   upstream: "https://github.com/meowassassin/fluma"
 ---
 
-# Fluma — install, start, first video
+# DN GENEX — install, start, first video
 
-Fluma is a local Shorts studio: an in-app agent (the user's own Claude Code, Codex or Antigravity login) plans with the user, studies
+DN GENEX is a local Shorts studio: an in-app agent (the user's own Claude Code, Codex or Antigravity login) plans with the user, studies
 reference Shorts, records real screens, checks the result and renders editable Craft projects. Your job is to get it
 running and hand the user a Studio with the first video already being planned. Do not try to make the video yourself.
 
@@ -33,9 +33,9 @@ running and hand the user a Studio with the first video already being planned. D
   checks the agent builds and renders it (the *자동 진행* autopilot switch lets it finish without asking). Finished videos: **Download** next to **Render** in the editor.
 - **10** `FLUMA_NEEDS_INPUT` — `needs=` / `how=`: usually "log in to Claude Code or Codex once" (`claude` → `/login`) or a system
   program (ffmpeg, Node.js). Ask once, then rerun the same command.
-- **1** `FLUMA_ERROR` — `stage=` / `error=`. Fix what the short error says (e.g. port 4311 used by another Fluma: stop it) and
+- **1** `FLUMA_ERROR` — `stage=` / `error=`. Fix what the short error says (e.g. port 4311 used by another DN GENEX: stop it) and
   rerun once. If it fails again, report the stage and the short error.
 
 ## Scope
-- One Fluma per machine (port 4311). Do not start a second copy.
-- Do not edit Fluma's code or settings files to work around errors.
+- One DN GENEX per machine (port 4311). Do not start a second copy.
+- Do not edit DN GENEX's code or settings files to work around errors.

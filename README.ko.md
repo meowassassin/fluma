@@ -1,36 +1,44 @@
 <div align="center">
 
-<img src="docs/assets/fluma-spin.gif" width="148" alt="Fluma 마스코트" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/genex-logo-h-white.svg" />
+  <img src="docs/assets/genex-logo-h-black.svg" width="420" alt="DN GENEX" />
+</picture>
 
-# Fluma
+<br/><br/>
+
+<img src="docs/assets/genex-mark.gif" width="120" alt="DN GENEX 심볼" />
+
+
+# DN GENEX
 
 **생성 모델 없이 만드는 유튜브 쇼츠 — 이미 있는 2D 그래픽 · 이미지 · 영상을 편집자처럼, 감독처럼 다시 엮습니다. 화면은 완전 로컬입니다.**
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-5b5bd6)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-df1f2b)](LICENSE)
 [![Quick start](https://img.shields.io/badge/quick%20start-10%20min-2fb67c)](QUICKSTART.ko.md)
 ![Tested on](https://img.shields.io/badge/tested-Linux%20·%20macOS%20·%20Windows%20·%20ARM-555)
 ![Generation cost](https://img.shields.io/badge/generation%20cost-%240-2fb67c)
 
-[빠른 시작](QUICKSTART.ko.md) · [왜 Fluma](#왜-fluma) · [작동 방식](#작동-방식) · [기여하기](CONTRIBUTING.ko.md)
+[빠른 시작](QUICKSTART.ko.md) · [왜 DN GENEX](#왜-dn-genex) · [작동 방식](#작동-방식) · [기여하기](CONTRIBUTING.ko.md)
 
 [English](README.md) · **한국어**
 
 </div>
 
-<p align="center"><img src="docs/assets/screens/home.webp" alt="Fluma 홈" width="880" /></p>
+<p align="center"><img src="docs/assets/screens/home.webp" alt="DN GENEX 홈" width="880" /></p>
 
-## Fluma 는
+## DN GENEX 는
 
 세로 숏폼(YouTube Shorts · 릴스 · 틱톡)을 만드는 로컬 에이전트 작업 공간입니다.
 이미 쓰고 있는 **Claude Code · Codex · Antigravity** 에게 말하면, 에이전트가 잘 되는 쇼츠를 먼저 분석하고 **실제 자료**(웹 화면 · 문서 · 데이터 · 사진 · 퍼온 클립 · 스톡 영상)를 오픈소스 제작 앱으로 다듬어 영상으로 엮습니다.
 그림 · 영상 생성 모델은 쓰지 않고(생성 비용 0), 결과는 전부 열어서 고칠 수 있는 프로젝트 파일로 남습니다. 세상에 없는 장면은 실사로 흉내 내지 않고 그림 · 도식 · 짤 · 비유로 연출합니다.
 
-## 왜 Fluma
+## 왜 DN GENEX
 
 생성 영상 모델은 "없는 장면"을 만드는 데 강하지만, 쇼츠의 많은 부분은 **이미 있는 것을 잘 엮는 일**입니다 — 실제 앱 화면, 원문 문서, 정확한 숫자, 화제가 된 클립.
-Fluma 는 이 틈새를 노립니다.
+DN GENEX 는 이 틈새를 노립니다.
 
-| | 생성 영상 모델 | Fluma |
+| | 생성 영상 모델 | DN GENEX |
 |---|---|---|
 | 비용 | 초 · 편 단위 과금, 다시 뽑을수록 더 | **생성 비용 0** — 내 에이전트 로그인 · 무료 음성 · 무료 스톡 |
 | 글자 · 숫자 · 로고 | 자주 깨지고 지어냄 | 실제 문서 · 실제 화면 · 데이터 그대로 |
@@ -84,6 +92,27 @@ Fluma 는 이 틈새를 노립니다.
 - 🌐 **한국어 우선, 다국어** — 한국어 말투 분석 · 자막 문법, 화면은 English · 한국어 · 中文.
 - 🔐 **로컬 우선** — 키와 YouTube 토큰은 `~/.shortsforge/`(0600)에 두고, 에이전트는 읽지 못합니다.
 
+## 에이전트가 영상을 만드는 방법
+
+판단은 에이전트가, 정해진 순서 · 측정 · 품질 관문은 DN GENEX MCP 서버(`engine/mcp_server.py`)가 맡습니다. 새 영상은 **도구 네 번**입니다:
+
+```mermaid
+flowchart LR
+  P1["plan_submit<br/>대본 · 출처 있는 사실 · 만들 재료"] --> J["서버: 대본 검사 · 뒤에서 검토<br/>음성 · 캡처 · 아이콘 · 형태를 바로 시작"]
+  P1 --> P2["design_submit<br/>영상 방향 + 모든 장면을 설계 언어로"]
+  J --> B
+  P2 --> B["서버: 컴파일 → 빌드 → 정지 화면<br/>렌더 전 디자인 검사"]
+  B --> P3["design_patch<br/>고칠 장면만"]
+  P3 --> B
+  B --> P4["finish<br/>검토 → 완성 렌더 1번 → 품질 관문"]
+```
+
+- **쓰기 전에 칸별 오류** — 틀린 값 · 없는 그림 · 음성에 없는 낱말을 저장 전에 그 칸만 돌려줍니다.
+- **장면 설계 언어**(`engine/craft/design_lang.py`) — 장면을 *무엇을 · 어디에 · 어느 말에 · 어떻게*의 조합으로 씁니다(글자 · 꼬리표 · 도형 · 캡처 · 형태 · 아이콘, 좌표 대신 관계, 등장 · 움직임 · 카메라 낱말, EffectCraft 효과 전부). 지금과 같은 EffectCraft 장면 코드로 컴파일되어 렌더 · 캐시 · 검사는 그대로이고, 요소 하나나 장면 전체를 코드로 직접 쓸 수도 있습니다.
+- **뒤에서 도는 대본 검토** — 시청자 · 각본가 검토가 에이전트가 설계하는 동안 돕니다. 막혀도 설계는 남고, 대사를 고치면 설계의 낱말이 고친 대사를 따라갑니다.
+- **가벼운 렌더** — 장면 구간을 작은 EffectCraft 캐시로 그립니다(결과 프레임은 같고, 35초 영상에서 최대 메모리 3.2GB → 1.75GB, 장면 그리기 112초 → 50초).
+- 잘게 나뉜 도구(`prep_start` · `review_frames` · `render_start` …)는 사람과 한 장면씩 다듬을 때 씁니다.
+
 ## 작동 방식
 
 ```mermaid
@@ -116,6 +145,7 @@ flowchart LR
 | 재료 | `engine/craft/materials.py` + `engine/craft/adapters/<앱>.py` | Craft 앱마다 어댑터 하나, `type: craft` 는 아무 명령 목록이나 실행 |
 | 다양성 | `engine/craft/craft_catalog.py` · `craft_variety.py`, `.claude/skills/crafts/` | 기능 9,000개 이상 검색, 레시피, 반복 검사, 영상별 사용 기록 |
 | 움직임 · 소리 · 편집 | `engine/craft/motion.py` · `audio.py` · `edit.py` | EffectCraft 컴포지션, SoundCraft 믹스, FilmCraft 조립 |
+| 에이전트 흐름 | `engine/mcp_server.py` · `engine/mcp/` | plan_submit → design_submit → design_patch → finish — 작업 · 칸별 오류 · 뒤에서 도는 대본 검토 |
 | 한 줄 제작 | `engine/produce.py` | 음성 → 검사 → 재료 → 렌더 전 정지 화면 검토 → 납품 해상도 1회 렌더 → 품질 관문 |
 | 검사 | `engine/checks/` | 첫 1초 · 멈춤 · 말 끊김 · 컷 밀도, 화면 AI 티 · 품질 관문(막음이 남으면 업로드 불가) |
 | 올리기 · 배우기 | `engine/publish/`, `studio/youtube.mjs` | OAuth, 재개 업로드, 분석을 장면에 매핑 |
@@ -133,14 +163,14 @@ VS Code 같은 작업 공간입니다. 왼쪽 **탐색기**는 영상이 무엇�
 
 ## Craft 앱
 
-Fluma 는 오픈소스 **Craft** 데스크톱 · 웹 앱([storytold](https://github.com/storytold), MIT / Apache-2.0)을 CLI 와 MCP 서버로 씁니다. **함께 들어 있지 않으니** 필요한 것을 설치하세요(16개 전부 약 1.6GB):
+DN GENEX 는 오픈소스 **Craft** 데스크톱 · 웹 앱([storytold](https://github.com/storytold), MIT / Apache-2.0)을 CLI 와 MCP 서버로 씁니다. **함께 들어 있지 않으니** 필요한 것을 설치하세요(16개 전부 약 1.6GB):
 
 ```bash
 python3 engine/craft/crafts.py plan all        # 받을 것만 보여 줌
 python3 engine/craft/crafts.py install all     # 또는 골라서: install effectcraft soundcraft filmcraft …
 ```
 
-| 앱 | Fluma 가 쓰는 곳 |
+| 앱 | DN GENEX 가 쓰는 곳 |
 |---|---|
 | EffectCraft | 모든 장면의 움직임 — 내장 배경 · 등장 · 글자 프리셋, 화면 액자, 밀기 |
 | SoundCraft | 음성 체인(EQ · 컴프레서 · 치찰음), 낱말마다 효과음, 덕킹, −14 LUFS |
@@ -163,7 +193,7 @@ python3 engine/craft/crafts.py install all     # 또는 골라서: install effec
 - 편집기 **게시 · 성과**: 마지막 렌더를 올리거나(기본 비공개) 이미 올린 영상과 연결
 - **내 채널 영상**: 채널의 아무 영상이나 통계 보기
 
-분석 숫자는 게시 1~2일 뒤부터 채워집니다. '시청 vs 스와이프'는 YouTube Studio 에만 있어서, Fluma 는 가장 가까운 API 값인 **참여 조회 ÷ 조회**를 보여 줍니다.
+분석 숫자는 게시 1~2일 뒤부터 채워집니다. '시청 vs 스와이프'는 YouTube Studio 에만 있어서, DN GENEX 는 가장 가까운 API 값인 **참여 조회 ÷ 조회**를 보여 줍니다.
 
 ## 빠른 시작
 
@@ -204,7 +234,8 @@ fluma/
 ├─ engine/                 파이썬 제작 엔진
 │  ├─ produce.py           한 줄 제작: 콘티 → 음성 → 검사 → 검토 → 렌더 → 품질 관문
 │  ├─ render.py · doctor.py · fluma_agent.py · mcp_server.py
-│  ├─ craft/               Craft 파이프라인 — 재료 · 움직임 · 소리 · 편집 · design.py(영상마다 효과) · adapters/<앱>.py
+│  ├─ mcp/                 MCP 도구 — 네 번 호출 흐름(fluma_flow.py) · 작업 · 프로젝트 상태 · 재료 · 단계
+│  ├─ craft/               Craft 파이프라인 — 재료 · 움직임 · 소리 · 편집 · design.py(영상마다 효과) · design_lang.py(장면 설계 언어) · adapters/<앱>.py
 │  │  ├─ apps/             Craft 앱 16개 등록(앱마다 craft.json)
 │  │  ├─ renderer/         렌더 엔진 등록(engine.json · adapter)
 │  │  ├─ form/             데이터로 빚는 형태(SDF) — 화풍 · 뼈대 · 3D 렌더
@@ -236,6 +267,7 @@ fluma/
 
 ## 로드맵
 
+- [x] 에이전트용 MCP 네 번 호출 흐름(plan_submit → design_submit → design_patch → finish)과 장면 설계 언어
 - [x] 레퍼런스 먼저 · 강제 검사(L30 · L31)
 - [x] 고칠 수 있는 프로젝트 파일이 남는 Craft 앱 파이프라인
 - [x] 항목별 결과를 보여 주는 IDE 형 편집기
