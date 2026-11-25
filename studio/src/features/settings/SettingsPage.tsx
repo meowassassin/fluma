@@ -270,7 +270,7 @@ const GenKeys: React.FC<{ keys?: GenKey[]; title: string; desc: string }> = ({ k
         <div className="gk-t"><b>{t(cur.title)}</b><small>{t(cur.what)}</small></div>
         <span className="gk-caps">{[...cur.caps.map((c) => t(c)), cur.paid ? t("유료") : t("무료")].join(" · ")}</span>
       </div>
-      {!cur.ready && <p className="gk-facts"><Icon n="info" s={12} /> {t("Fluma 연결은 준비 중이에요 — 키를 저장해 두면 연결되는 대로 에이전트가 씁니다.")}</p>}
+      {!cur.ready && <p className="gk-facts"><Icon n="info" s={12} /> {t("DN GENEX 연결은 준비 중이에요 — 키를 저장해 두면 연결되는 대로 에이전트가 씁니다.")}</p>}
       <Field label={t("API 키")} htmlFor="gk-key" hint={cur.hasKey
         ? t("{where} — 이 컴퓨터에만 저장되고 에이전트는 읽을 수 없습니다", { where: `${cur.source === "env.local" ? t(".env.local 에 있음") : cur.source === "env" ? t("환경 변수에 있음") : t("저장됨")}${cur.keyMasked ? ` (${cur.keyMasked})` : ""}` })
         : t("이 컴퓨터에만 저장되고 에이전트는 읽을 수 없습니다")}>
@@ -425,7 +425,7 @@ const MemorySec: React.FC<{ mem: Mem[] }> = ({ mem }) => {
 
 /* ---------- 정보 ---------- */
 const AboutSec: React.FC = () => <>
-  <Head t={t("정보")} d={t("Fluma — 에이전트가 2D 설명형 쇼츠를 만들고, 렌더 · 음성 엔진은 갈아 끼웁니다.")} />
+  <Head t={t("정보")} d={t("DN GENEX — 에이전트가 2D 설명형 쇼츠를 만들고, 렌더 · 음성 엔진은 갈아 끼웁니다.")} />
   <Row t={t("저장 위치")} d={t("콘티 storyboards/ · 화면 구성 compositions/ · 음성 public/audio/ · 렌더 결과 out/ · 설정 workspace/settings.json")}><span /></Row>
   <Row t={t("엔진 · 모델 추가")} d={t("렌더 엔진은 engines/<이름>/, 음성은 engine/voice/engines/<이름>/ 폴더만 두면 여기에 나타납니다.")}><span /></Row>
   <Row t={t("단축키")} d={t("어디서나 ? 를 누르면 단축키 표가 열립니다. Ctrl/⌘ K 로 화면 이동 · 명령을 찾을 수 있어요.")}><span /></Row>

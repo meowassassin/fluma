@@ -19,7 +19,7 @@ import { ShortPlayer } from "./ShortPlayer";
 
 type Mode = "glance" | "feed";
 type PickF = "all" | "none" | Pick;
-const HOOK_COLOR = ["#6a5cff", "#2dd4bf", "#f5a524", "#f472b6", "#38bdf8", "#a3e635", "#c084fc", "#fb7185"];
+const HOOK_COLOR = ["#ea4929", "#2dd4bf", "#f5a524", "#f472b6", "#38bdf8", "#a3e635", "#c084fc", "#fb7185"];
 const PICK_LABEL: Record<string, string> = { keep: "찜", maybe: "보류", skip: "제외", none: "안 봄" };
 
 async function dropRequest(r: Req) {
@@ -101,7 +101,7 @@ export const TrendsPage: React.FC = () => {
         {mode === "glance" && base.length > 0 && (
           <div className="dists">
             <Dist title={t("훅")} rows={hooks} total={base.length} on={hook} onPick={(k) => setHook(hook === k ? null : k)} label={(k) => t(k)} color={(k) => hookColor.get(k)!} />
-            <Dist title={t("화풍")} rows={viss} total={base.length} on={vis} onPick={(k) => setVis(vis === k ? null : k)} label={(k) => t(VIS[k] ?? "판별 전")} color={(k) => ({ "2d": "#6a5cff", pixel: "#c084fc", screen: "#38bdf8", live: "#f5a524", "3d": "#6e6e76" } as Record<string, string>)[k] ?? "#4a4a50"} />
+            <Dist title={t("화풍")} rows={viss} total={base.length} on={vis} onPick={(k) => setVis(vis === k ? null : k)} label={(k) => t(VIS[k] ?? "판별 전")} color={(k) => ({ "2d": "#ea4929", pixel: "#c084fc", screen: "#38bdf8", live: "#f5a524", "3d": "#6e6e76" } as Record<string, string>)[k] ?? "#4a4a50"} />
             <Dist title={t("판별")} rows={pks} total={base.length} on={pickF === "all" ? null : pickF} onPick={(k) => setPickF(pickF === k ? "all" : (k as PickF))} label={(k) => t(PICK_LABEL[k])}
               color={(k) => ({ keep: "var(--primary)", maybe: "#f5a524", skip: "#6e6e76", none: "#3c3c42" } as Record<string, string>)[k]} />
             {filtered && <button className="dist-clear" onClick={() => { setHook(null); setVis(null); setPickF("all"); }}>{t("거르기 풀기")}</button>}

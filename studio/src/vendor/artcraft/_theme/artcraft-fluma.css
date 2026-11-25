@@ -14,28 +14,28 @@
 /* ── 변수 ───────────────────────────────────────────────────────────── */
 /* shadcn 토큰(hsl 성분) — 두 범위 공통(영상 편집기 .ve-root 도 같은 값, Phase 1). 편집기만의 값은 features/veditor/veditor.css */
 :is(.ac-root, .ve-root) {
-  --background: 0 0% 12%;        /* --bg-0 #1e1e1e */
-  --foreground: 0 0% 89%;        /* --tx-1 #e2e2e2 */
-  --card: 240 2% 15%;            /* --bg-1 #252526 */
-  --card-foreground: 0 0% 89%;
-  --popover: 240 3% 20%;         /* --bg-3 #333337 */
+  --background: 240 3% 6%;       /* --bg-0 #0f0f10 */
+  --foreground: 30 12% 94%;      /* --tx-1 #f1efed */
+  --card: 240 2% 9%;             /* --bg-1 #161617 */
+  --card-foreground: 30 12% 94%;
+  --popover: 240 4% 16%;         /* --bg-3 #27272a */
   --popover-foreground: 0 0% 92%;
-  --popover-hover: 240 5% 25%;   /* --bg-4 */
-  --primary: 243 92% 64%;        /* --primary #5850f8 (흰 글자 5.4:1) */
+  --popover-hover: 240 4% 20%;   /* --bg-4 #323236 */
+  --primary: 356 76% 50%;        /* --primary #df1f2b (흰 글자 4.8:1) */
   --primary-foreground: 0 0% 100%;
-  --secondary: 0 0% 18%;         /* --bg-2 */
-  --secondary-foreground: 0 0% 89%;
-  --muted: 0 0% 18%;             /* --bg-2 #2d2d2d */
-  --muted-foreground: 0 0% 65%;  /* --tx-3 */
-  --accent: 240 3% 20%;
+  --secondary: 240 3% 12%;       /* --bg-2 #1e1e20 */
+  --secondary-foreground: 30 12% 94%;
+  --muted: 240 3% 12%;           /* --bg-2 #1e1e20 */
+  --muted-foreground: 30 4% 65%; /* --tx-3 #a9a5a1 */
+  --accent: 240 4% 16%;
   --accent-foreground: 0 0% 98%;
-  --destructive: 358 86% 64%;    /* --danger */
+  --destructive: 349 100% 65%;   /* --danger #ff4d6d */
   --destructive-foreground: 0 0% 98%;
-  --caution: 38 91% 55%;         /* --warn */
+  --caution: 43 74% 66%;         /* --warn #e9c46a */
   --constructive: 148 57% 52%;   /* --ok */
-  --border: 0 0% 24%;            /* --line-2 #3c3c3c */
-  --input: 0 0% 26%;
-  --ring: 249 100% 80%;          /* --focus */
+  --border: 240 4% 20%;          /* --line-2 #303034 */
+  --input: 240 3% 24%;
+  --ring: 32 100% 67%;           /* --focus #ffb257 */
   --radius: 6px;
 }
 :where(.ac-root, .ve-root) { font-family: var(--font); color: hsl(var(--foreground)); }

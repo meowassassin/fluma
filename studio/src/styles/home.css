@@ -3,7 +3,7 @@
 .hero h1 { font-size: var(--fs-3xl); line-height: var(--lh-3xl); font-weight: 800; letter-spacing: -0.02em; }
 .hero > p { margin: var(--s2) auto var(--s6); max-width: 560px; font-size: var(--fs-md); }
 .hero-logo { display: flex; justify-content: center; margin-bottom: var(--s8); }
-.hero-logo img { filter: drop-shadow(0 12px 28px rgba(88, 80, 248, 0.28)); }
+.hero-logo img { filter: drop-shadow(0 12px 28px rgba(223, 31, 43, 0.28)); }
 .prompt {
   text-align: left; border-radius: var(--r5); background: var(--bg-2); border: 1px solid var(--line-2);
   box-shadow: 0 20px 60px -30px rgba(0, 0, 0, 0.8); transition: border-color var(--t-fast), box-shadow var(--t-fast);

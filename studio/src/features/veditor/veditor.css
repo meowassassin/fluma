@@ -17,9 +17,9 @@
 @font-face { font-family: "Geist"; font-weight: 100 900; font-style: normal; src: url("/fonts/Geist.ttf") format("truetype"); font-display: swap; }
 @font-face { font-family: "Geist Mono"; font-weight: 100 900; font-style: normal; src: url("/fonts/GeistMono.ttf") format("truetype"); font-display: swap; }
 
-/* 편집기만의 바탕 — 색 토큰은 _theme 공통(--primary = Fluma #5850f8) */
+/* 편집기만의 바탕 — 색 토큰은 _theme 공통(--primary = DN GENEX #df1f2b) */
 .ve-root {
-  font-family: Pretendard, system-ui, sans-serif;
+  font-family: var(--font, Pretendard, system-ui, sans-serif);
   color: hsl(var(--foreground));
   background: hsl(var(--background));
   word-break: keep-all;          /* 한국어 낱말 중간에서 줄이 갈리지 않게 */

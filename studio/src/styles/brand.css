@@ -1,48 +1,50 @@
-/* Fluma 브랜드 층 — 로고(기울어진 둥근 카드 두 장 · 보라 · 크림 · 눈 두 개)의 디자인 언어를 화면 전체에 입힌다.
+/* DN GENEX 브랜드 층 — 로고(앞으로 겹쳐 나아가는 재생 화살 · 빨강 → 주황 그라데이션 · 넓은 글자 · X 의 사선)의 언어를 화면 전체에 입힌다.
    다른 스타일 파일 다음에 불러와 덮어쓴다. 규칙은 네 가지:
-   1) 선택됨 = '접힌 카드' — 옅은 보라 면 + 가장자리에 작게 기울어진 보라 카드 표식. 밑줄 · 왼쪽 막대 · 하늘색 테두리를 쓰지 않는다.
-   2) 태그 = 작은 카드 — 모서리 6px, 앞에 기울어진 색 카드 점, 글자는 Wanted Sans.
-   3) 글자 — 제목 · 숫자 · 버튼 · 브랜드 순간은 Wanted Sans(--display), 본문은 Pretendard(--font).
-   4) 카드는 겹쳐 보인다 — 고른 것 · 올려 둔 것 뒤로 보라 카드가 비친다(캔버스 · 장면 썸네일 · 영상 카드). */
+   1) 선택됨 = '사선 표식' — 옅은 주황 면 + 가장자리에 로고 X 처럼 기울어진 그라데이션 막대. 하늘색 테두리를 쓰지 않는다.
+   2) 태그 = 작은 판 — 모서리 4px, 앞에 기울어진 막대 점, 글자는 Saira(--display).
+   3) 글자 — 제목 · 숫자 · 버튼 · 브랜드 순간은 Saira 넓게(--display · --display-stretch), 본문 영문 · 숫자는 Saira, 한글은 Pretendard.
+   4) 주 행동 · 고른 것은 그라데이션 면(진한 쪽만 — 흰 글자 대비 유지), 장식 면은 로고 전체 그라데이션. */
 
 /* ---------- 1. 글자 ---------- */
 h1, h2, h3, .page-head h1, .dialog-t, .pg-sub, .set-nav h1,
 .btn, .seg button, .tab, .mode b, .set-item b, .clip, .ruler span, .dock-h b, .empty b {
-  font-family: var(--display);
+  font-family: var(--display); font-stretch: var(--display-stretch);
 }
-.page-head h1 { font-size: var(--fs-xl); font-weight: 800; letter-spacing: -0.01em; }
-.btn { font-weight: 650; letter-spacing: 0.005em; }
+.page-head h1 { font-size: var(--fs-xl); font-weight: 700; letter-spacing: 0.005em; }
+.btn { font-weight: 600; letter-spacing: 0.01em; }
 
-/* ---------- 2. 선택됨 = 접힌 카드 ---------- */
-:root { --fold: var(--primary); }
+/* ---------- 2. 선택됨 = 사선 표식 ---------- */
+:root { --fold: var(--brand-grad); }
 .seg button.on, .tab.on, .set-item.on,
 .mode.on, .ecard.on, .ibtn.on {
   background: var(--select-soft); color: var(--sel-tx); box-shadow: inset 0 0 0 1px var(--sel-line);
 }
 .set-item.on b, .mode.on b { color: var(--tx-1); }
 .mode.on, .ecard.on { border-color: var(--sel-line); }
-/* 가장자리 표식: 작게 기울어진 보라 카드 (로고의 뒤 카드) */
+/* 가장자리 표식: 로고 X 의 사선처럼 기울어진 그라데이션 막대 */
 .tab, .set-item, .rail-b { position: relative; }
 .tab.on::before, .set-item.on::before, .rail-b.on::before {
-  content: ""; position: absolute; left: -3px; top: 50%; width: 6px; height: 16px; margin-top: -8px;
-  border-radius: 3px; background: var(--fold); box-shadow: 0 2px 6px rgba(88, 80, 248, 0.45);
+  content: ""; position: absolute; left: -2px; top: 50%; width: 5px; height: 16px; margin-top: -8px;
+  border-radius: 1.5px; background: var(--fold); transform: skewY(-28deg); box-shadow: 0 2px 8px rgba(223, 31, 43, 0.45);
 }
 .rail-b.on::before { left: -6px; height: 20px; margin-top: -10px; }
-.tab.on::before { left: 8px; top: auto; bottom: -3px; width: 16px; height: 5px; margin: 0; }
+.tab.on::before { left: 8px; top: auto; bottom: -3px; width: 18px; height: 4px; margin: 0; transform: skewX(-28deg); }
 .tab.on { padding-left: 12px; }
-/* 세그먼트: 고른 칸이 카드처럼 떠오름 */
+/* 세그먼트: 고른 칸이 떠오름 */
 .seg { background: var(--bg-1); border-color: var(--line-1); }
-.seg button.on { box-shadow: inset 0 0 0 1px var(--sel-line), 0 2px 8px -2px rgba(88, 80, 248, 0.5); }
+.seg button.on { box-shadow: inset 0 0 0 1px var(--sel-line), 0 2px 10px -3px rgba(223, 31, 43, 0.5); }
 .seg button { transition: background var(--t-fast), color var(--t-fast), transform var(--t-mid) var(--ease); }
-/* 고른 카드형 항목(엔진 등) */
-.switch.on { background: var(--primary); border-color: var(--primary); }
+/* 켜짐 스위치 · 주 행동 버튼 = 진한 그라데이션 */
+.switch.on { background: var(--primary-grad); border-color: var(--primary); }
+.btn-primary { background: var(--primary-grad); border-color: transparent; }
+.btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #e8302a, #d2391e); }
 
-/* ---------- 3. 태그 = 작은 카드 ---------- */
+/* ---------- 3. 태그 = 작은 판 ---------- */
 .tag {
-  height: 20px; padding: 0 7px 0 6px; gap: 5px; border-radius: 6px;
-  font: 650 12.5px/1 var(--display); letter-spacing: 0.01em;
+  height: 20px; padding: 0 7px 0 6px; gap: 5px; border-radius: 4px;
+  font: 600 12.5px/1 var(--display); letter-spacing: 0.02em;
 }
-.tag::before { content: ""; width: 6px; height: 6px; border-radius: 2px; background: currentColor; transform: rotate(-16deg); flex: none; opacity: 0.9; }
+.tag::before { content: ""; width: 3px; height: 9px; border-radius: 1px; background: currentColor; transform: skewX(-24deg); flex: none; opacity: 0.9; }
 .tag-select { background: var(--select-soft); color: var(--sel-tx); }
 .tag-brand { background: var(--primary-soft); color: var(--sel-tx); }
 
@@ -54,27 +56,27 @@ h1, h2, h3, .page-head h1, .dialog-t, .pg-sub, .set-nav h1,
 .home { display: flex; flex-direction: column; justify-content: center; min-height: 100%; padding-bottom: 12vh; }
 .hero { padding-top: 0; }
 .hero-logo { margin-bottom: var(--s6); }
-.prompt { border-radius: 18px; position: relative; }
-.prompt::before {   /* 입력칸 뒤로 비치는 보라 카드 */
-  content: ""; position: absolute; inset: 10px -6px -8px 10px; z-index: -1; border-radius: 18px;
-  background: linear-gradient(160deg, rgba(104, 92, 255, 0.55), rgba(64, 56, 184, 0.35)); transform: rotate(-1.6deg);
+.prompt { border-radius: 14px; position: relative; }
+.prompt::before {   /* 입력칸 뒤로 비치는 그라데이션 판 — 로고 화살처럼 오른쪽으로 비스듬히 */
+  content: ""; position: absolute; inset: 10px -6px -8px 10px; z-index: -1; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(223, 31, 43, 0.5), rgba(243, 115, 34, 0.32) 60%, rgba(255, 178, 87, 0.18)); transform: skewX(-4deg);
 }
 .hero { position: relative; z-index: 0; }
-.prompt:focus-within { border-color: var(--sel-line); box-shadow: 0 0 0 3px rgba(104, 92, 255, 0.16), 0 20px 60px -30px rgba(0, 0, 0, 0.8); }
+.prompt:focus-within { border-color: var(--sel-line); box-shadow: 0 0 0 3px rgba(243, 115, 34, 0.16), 0 20px 60px -30px rgba(0, 0, 0, 0.85); }
 .ideas button { border-radius: 10px; }
 .ideas .ic { color: var(--brand); }
 
 /* ---------- 4. 편집기 ---------- */
 
-/* 캔버스: 영상 프레임 (뒤의 기울어진 보라 판은 없앰 — 영상 확인에 방해) */
-.frame { z-index: 1; border-radius: 10px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 30px 80px -30px rgba(0, 0, 0, 0.9); }
+/* 캔버스: 영상 프레임 */
+.frame { z-index: 1; border-radius: 10px; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 30px 80px -30px rgba(0, 0, 0, 0.95); }
 
-/* 타임라인: 장면 클립은 카드, 고른 클립은 보라 카드, 재생선은 크림 + 마스코트 머리 */
-.clip { border-radius: 9px; border: 0; background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-2); transition: background var(--t-fast), transform var(--t-fast); }
+/* 타임라인: 장면 클립은 판, 고른 클립은 그라데이션 판, 재생선은 밝은 주황빛 */
+.clip { border-radius: 8px; border: 0; background: var(--bg-3); box-shadow: inset 0 0 0 1px var(--line-2); transition: background var(--t-fast), transform var(--t-fast); }
 .clip:hover { background: var(--bg-4); transform: translateY(-1px); }
-.clip.on { background: linear-gradient(160deg, #6a5cff, #4a40d8); color: #fff; box-shadow: 0 6px 16px -8px rgba(88, 80, 248, 0.8); }
+.clip.on { background: var(--primary-grad); color: #fff; box-shadow: 0 6px 16px -8px rgba(223, 31, 43, 0.8); }
 .words button.on { background: var(--select-soft); color: var(--sel-tx); }
-.playhead::after { width: 2px; left: -1px; background: var(--playhead); box-shadow: 0 0 8px rgba(248, 240, 232, 0.35); }
+.playhead::after { width: 2px; left: -1px; background: var(--playhead); box-shadow: 0 0 8px rgba(255, 178, 87, 0.45); }
 
 /* 오른쪽 · 왼쪽 패널 */
 .left { background: var(--bg-1); }
@@ -91,12 +93,12 @@ h1, h2, h3, .page-head h1, .dialog-t, .pg-sub, .set-nav h1,
 /* 좁은 창에서 에이전트 서랍이 떠도 아래 플레이어 · 타임라인은 가리지 않는다 */
 .studio { --tl-h: clamp(168px, 24vh, 232px); }
 
-/* ---------- 선택은 기울이지 않는다(2026-11-02 사용자) · 호버하면 뒤에 은은한 빛 ---------- */
+/* ---------- 선택은 기울이지 않는다(2026-11-02 사용자) · 호버하면 뒤에 은은한 주황빛 ---------- */
 .btn, .gk-chip, .seg button, .choice, .set-item, .ecard, .clip, .rail-b, .ibtn, .mode, .yt-title, .chip {
   transition: box-shadow var(--t-mid, .2s) var(--ease, ease), background var(--t-fast, .12s), border-color var(--t-fast, .12s), color var(--t-fast, .12s);
 }
 .btn:hover:not(:disabled), .gk-chip:hover, .seg button:hover:not(.on), .choice:hover:not(:disabled), .set-item:hover,
 .ecard:hover, .clip:hover, .rail-b:hover, .ibtn:hover:not(:disabled), .mode:hover, .yt-title:hover:not(:disabled), .chip:hover {
-  box-shadow: 0 0 0 1px rgba(138, 180, 255, 0.28), 0 0 22px -6px rgba(138, 180, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(243, 115, 34, 0.26), 0 0 22px -6px rgba(243, 115, 34, 0.45);
 }
-.btn-primary:hover:not(:disabled) { box-shadow: 0 0 0 1px rgba(160, 150, 255, 0.5), 0 0 26px -4px rgba(120, 110, 255, 0.75); }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 0 0 1px rgba(255, 140, 90, 0.5), 0 0 26px -4px rgba(223, 31, 43, 0.7); }

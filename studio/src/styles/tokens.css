@@ -1,60 +1,66 @@
-/* Fluma 디자인 토큰 — 색은 '역할'로만 쓴다(한 색에 여러 뜻을 싣지 않는다).
-   대비: 본문 글자 ≥ 4.5:1 (text-3 이 최소). 브랜드 보라(로고 색)는 주 행동 · 브랜드 순간에만. */
+/* DN GENEX 디자인 토큰 — 색은 '역할'로만 쓴다(한 색에 여러 뜻을 싣지 않는다).
+   대비: 본문 글자 ≥ 4.5:1 (text-3 이 최소). 브랜드는 로고의 빨강 → 주황 그라데이션 — 주 행동 · 브랜드 순간에만.
+   주 행동 버튼 면은 그라데이션의 진한 쪽(#DF1F2B → #CB431A, 흰 글자 4.8:1), 글자 · 표식은 밝은 쪽(#F37322 · #FFB257). */
 
 @font-face { font-family: "Pretendard"; font-weight: 400; font-display: swap; src: url("../assets/fonts/Pretendard-Regular.woff2") format("woff2"); }
 @font-face { font-family: "Pretendard"; font-weight: 500; font-display: swap; src: url("../assets/fonts/Pretendard-Medium.woff2") format("woff2"); }
 @font-face { font-family: "Pretendard"; font-weight: 600; font-display: swap; src: url("../assets/fonts/Pretendard-SemiBold.woff2") format("woff2"); }
 @font-face { font-family: "Pretendard"; font-weight: 700; font-display: swap; src: url("../assets/fonts/Pretendard-Bold.woff2") format("woff2"); }
 @font-face { font-family: "Pretendard"; font-weight: 800; font-display: swap; src: url("../assets/fonts/Pretendard-ExtraBold.woff2") format("woff2"); }
-@font-face { font-family: "Wanted Sans"; font-weight: 400 900; font-display: swap; src: url("../assets/fonts/WantedSansVariable.woff2") format("woff2-variations"), url("../assets/fonts/WantedSansVariable.woff2") format("woff2"); }
+/* 로고 글자와 같은 계열(넓고 모서리가 둥근 사각) — Saira 가변(굵기 100~900 · 폭 50~125%, SIL OFL). 한글은 로고에 없어 Pretendard 가 잇는다 */
+@font-face { font-family: "Saira"; font-weight: 100 900; font-stretch: 50% 125%; font-display: swap; src: url("../assets/fonts/SairaVariable.woff2") format("woff2-variations"), url("../assets/fonts/SairaVariable.woff2") format("woff2"); }
 @font-face { font-family: "Geist Mono"; font-weight: 400 600; font-display: swap; src: url("../assets/fonts/GeistMono.ttf") format("truetype"); }
 
 :root {
   color-scheme: dark;
 
-  /* 면 — VS Code 다크(Dark+)처럼 색이 섞이지 않은 회색. 편집 영역이 가장 어둡고 패널이 한 단계 밝다 */
-  --bg-0: #1e1e1e;      /* 앱 바탕 · 캔버스 주변 (VS Code 편집기) */
-  --bg-1: #252526;      /* 패널 · 레일 (VS Code 사이드바) */
-  --bg-2: #2d2d2d;      /* 올라온 면 · 입력 */
-  --bg-3: #333337;      /* 떠 있는 면 · 메뉴 · 호버 */
-  --bg-4: #3c3c42;      /* 눌림 · 선택 행 */
+  /* 면 — 로고 글자색(#111111) 쪽으로 깊은 검정. 편집 영역이 가장 어둡고 패널이 한 단계 밝다 */
+  --bg-0: #0f0f10;      /* 앱 바탕 · 캔버스 주변 */
+  --bg-1: #161617;      /* 패널 · 레일 */
+  --bg-2: #1e1e20;      /* 올라온 면 · 입력 */
+  --bg-3: #27272a;      /* 떠 있는 면 · 메뉴 · 호버 */
+  --bg-4: #323236;      /* 눌림 · 선택 행 */
 
   /* 선 */
-  --line-1: #2b2b2b;
-  --line-2: #3c3c3c;
-  --line-3: #555555;
+  --line-1: #222224;
+  --line-2: #303034;
+  --line-3: #4a4a50;
 
   /* 글자 (bg-1 기준 대비) */
-  --tx-1: #e2e2e2;      /* 11.8:1 */
-  --tx-2: #cccccc;      /* 9.5:1 — VS Code 기본 글자색 */
-  --tx-3: #a6a6a6;      /* 6.3:1 — 글자 최소 (bg-4 위에서도 4.5:1) */
-  --tx-4: #6e6e6e;      /* 장식 전용(글자 금지) */
+  --tx-1: #f1efed;      /* 15.9:1 */
+  --tx-2: #d0cdca;      /* 11.6:1 */
+  --tx-3: #a9a5a1;      /* 7.4:1 — 글자 최소 (bg-4 위에서도 4.5:1) */
+  --tx-4: #6b6864;      /* 장식 전용(글자 금지) */
 
-  /* 역할 색 — 브랜드는 로고 보라. 보라와 헷갈리지 않게 선택은 하늘색, 에이전트는 청록 */
-  --brand: #8b80ff;               /* 로고 · 브랜드 순간 · 탭 표시 (글자로 써도 5.3:1) */
-  --primary: #5850f8;             /* 주 행동 버튼 = 로고 보라 (흰 글자 5.4:1) */
-  --primary-hover: #655cff;
-  --primary-soft: rgba(104, 92, 255, 0.16);
-  --select: #8b80ff;              /* 선택한 행 · 옵션 (로고 보라 계열 — brand.css '접힌 카드' 표식) */
-  --select-soft: rgba(104, 92, 255, 0.16);
-  --sel-line: rgba(139, 128, 255, 0.42);
-  --sel-tx: #d6d1ff;
+  /* 역할 색 — 브랜드는 로고 그라데이션. 선택은 주황, 에이전트는 청록(브랜드와 헷갈리지 않게) */
+  --brand: #f37322;               /* 로고 · 브랜드 순간 · 탭 표시 (글자로 써도 6.3:1) */
+  --brand-2: #ffb257;             /* 그라데이션 밝은 끝 · 하이라이트 */
+  --brand-grad: linear-gradient(135deg, #df1f2b 0%, #ea4929 42%, #f37322 72%, #ffb257 100%);   /* 로고 · 장식 면(글자 없는 곳) */
+  --primary: #df1f2b;             /* 주 행동 버튼 (흰 글자 4.8:1) */
+  --primary-hover: #cb431a;
+  --primary-grad: linear-gradient(135deg, #df1f2b, #cb431a);   /* 주 행동 버튼 면 — 진한 쪽만(흰 글자 대비 유지) */
+  --primary-soft: rgba(223, 31, 43, 0.16);
+  --select: #f37322;              /* 선택한 행 · 옵션 */
+  --select-soft: rgba(243, 115, 34, 0.14);
+  --sel-line: rgba(243, 115, 34, 0.46);
+  --sel-tx: #ffd3ad;
   --canvas-sel: #38bdf8;          /* 캔버스 안 요소 선택 — 영상 위에서 잘 보이도록 하늘색 */
-  --focus: #a99bff;               /* 키보드 초점 고리 — 절대 끄지 않음 */
-  --playhead: #f8f0e8;            /* 재생 위치 = 로고 크림 (머리는 마스코트) */
-  --comment: #f5a524;             /* 코멘트 핀 */
+  --focus: #ffb257;               /* 키보드 초점 고리 — 절대 끄지 않음 */
+  --playhead: #ffe2c2;            /* 재생 위치 */
+  --comment: #e9c46a;             /* 코멘트 핀 — 브랜드 주황과 구분되는 노랑 */
   --ok: #3ccb7f;
   --ok-soft: rgba(60, 203, 127, 0.13);
-  --warn: #f5a524;
-  --warn-soft: rgba(245, 165, 36, 0.13);
-  --danger: #f2555a;
-  --danger-soft: rgba(242, 85, 90, 0.13);
+  --warn: #e9c46a;
+  --warn-soft: rgba(233, 196, 106, 0.13);
+  --danger: #ff4d6d;              /* 브랜드 빨강과 구분되는 분홍빛 빨강 */
+  --danger-soft: rgba(255, 77, 109, 0.13);
   --agent: #2dd4bf;               /* 에이전트가 일하는 중 */
   --agent-soft: rgba(45, 212, 191, 0.13);
 
   /* 글자 */
-  --display: "Wanted Sans", "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;   /* 제목 · 숫자 · 버튼 · 브랜드 */
-  --font: "Pretendard", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --display: "Saira", "Pretendard", -apple-system, "Apple SD Gothic Neo", sans-serif;   /* 제목 · 숫자 · 버튼 · 브랜드 — 넓게(--display-stretch) */
+  --display-stretch: 118%;
+  --font: "Saira", "Pretendard", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;   /* 영문 · 숫자는 Saira, 한글은 Pretendard */
   --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --fs-xs: 12.5px; --lh-xs: 17px;    /* 보조 · 메타 (이보다 작게 쓰지 않음) */
   --fs-sm: 14px;   --lh-sm: 21px;    /* 패널 · 속성 */
@@ -69,7 +75,7 @@
 
   /* 모서리 · 그림자 */
   --r1: 4px; --r2: 6px; --r3: 8px; --r4: 12px; --r5: 16px;
-  --shadow-pop: 0 10px 30px -8px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--line-2);
+  --shadow-pop: 0 10px 30px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--line-2);
   --shadow-modal: 0 30px 80px -20px rgba(0, 0, 0, 0.75), 0 0 0 1px var(--line-2);
 
   /* 움직임 */

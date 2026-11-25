@@ -43,7 +43,7 @@ export function ArtcraftDevPage() {
     <div className="ac-root fixed inset-0 z-50 overflow-auto bg-background p-8 text-base-fg" data-testid="artcraft-dev">
       <div className="mx-auto flex max-w-[960px] flex-col gap-4">
         <header className="flex items-center justify-between">
-          <h1 className="font-display text-2xl">ArtCraft 부품 · Fluma 톤</h1>
+          <h1 className="font-display text-2xl">ArtCraft 부품 · DN GENEX 톤</h1>
           <Badge label="Phase 0" icon={<SparklesIcon className="h-3 w-3" />} />
         </header>
 
@@ -134,7 +134,7 @@ export function ArtcraftDevPage() {
 
       <Modal isOpen={modal} onClose={() => setModal(false)} title="모달 제목">
         <div className="flex flex-col gap-3 text-sm text-base-fg/80">
-          <p>ArtCraft Modal 이 Fluma 면 · 선 · 모서리로 그려집니다.</p>
+          <p>ArtCraft Modal 이 DN GENEX 면 · 선 · 모서리로 그려집니다.</p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" onClick={() => setModal(false)}>
               취소

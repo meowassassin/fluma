@@ -5,8 +5,8 @@ import React from "react";
 export type GlyphKind = "stats" | "film" | "motion" | "sound" | "voice" | "caption" | "music" | "sfx" | "vector" | "photo" | "grid" | "doc" | "video" | "scene" | "project";
 
 const C: Record<GlyphKind, string> = {
-  stats: "#ff5c8a", project: "#8b80ff", film: "#8b80ff", scene: "#8b80ff", motion: "#f2b84b", sound: "#3ec7a3", voice: "#3ec7a3", caption: "#5aa9ff", music: "#3ec7a3", sfx: "#3ec7a3",
-  vector: "#ff8f4d", photo: "#ff6b9a", grid: "#4fc05a", doc: "#ff5f56", video: "#8b80ff",
+  stats: "#ff5c8a", project: "#f37322", film: "#f37322", scene: "#f37322", motion: "#f2b84b", sound: "#3ec7a3", voice: "#3ec7a3", caption: "#5aa9ff", music: "#3ec7a3", sfx: "#3ec7a3",
+  vector: "#ff8f4d", photo: "#ff6b9a", grid: "#4fc05a", doc: "#ff5f56", video: "#f37322",
 };
 
 export const AppGlyph: React.FC<{ k: GlyphKind; s?: number }> = ({ k, s = 16 }) => {

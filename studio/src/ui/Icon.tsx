@@ -1,6 +1,6 @@
 import React, { useId } from "react";
-import flumaIcon64 from "../assets/brand/fluma-64.png";
-import flumaIcon192 from "../assets/brand/fluma-192.png";
+import genexSymbol from "../assets/brand/genex-symbol.svg";
+import genexLogoWhite from "../assets/brand/genex-logo-h-white.svg";
 
 /** 로고 언어 아이콘 (24 격자, 둥근 끝 선). 로고처럼 기울어진 '뒤 카드'(옅은 면)를 깔 수 있는 아이콘은 b 로 준다.
  *  이모지 · 글자 아이콘을 쓰지 않는다. 뒤 카드 색은 .ri-b (base.css) — 켜진 메뉴에서는 로고 보라. */
@@ -125,8 +125,13 @@ export const Icon: React.FC<{ n: string; s?: number; className?: string }> = ({ 
   );
 };
 
-/** Fluma 마스코트 아이콘 (보라 · 크림 두 장이 접힌 얼굴). 작은 크기는 64px, 큰 크기는 192px 원본에서 줄인다 */
+/** DN GENEX 심볼(재생 화살). SVG 원본이라 어느 크기에서도 선명하다 */
+/** 가로형 로고(심볼 + DN GENEX 글자, 어두운 바탕용 흰 글자) — 홈 첫 화면 */
+export const BrandLogo: React.FC<{ w?: number }> = ({ w = 320 }) => (
+  <img src={genexLogoWhite} width={w} height={Math.round(w * 115 / 744)} alt="DN GENEX" draggable={false} style={{ display: "block" }} />
+);
+
 export const FlumaMark: React.FC<{ s?: number }> = ({ s = 18 }) => (
-  <img src={s > 40 ? flumaIcon192 : flumaIcon64} width={s} height={s} alt="" aria-hidden draggable={false} style={{ display: "block" }} />
+  <img src={genexSymbol} width={s} height={s} alt="" aria-hidden draggable={false} style={{ display: "block", objectFit: "contain" }} />
 );
 

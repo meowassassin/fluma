@@ -204,7 +204,7 @@ export const VEditorPage: React.FC = () => {
         <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
           <div style={{ fontSize: "1.05rem" }}>{failed}</div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" onClick={() => setAttempt((n) => n + 1)} style={{ height: 32, padding: "0 14px", borderRadius: 8, border: 0, background: "#5850f8", color: "#fff", cursor: "pointer" }}>{t("다시 시도")}</button>
+            <button type="button" onClick={() => setAttempt((n) => n + 1)} style={{ height: 32, padding: "0 14px", borderRadius: 8, border: 0, background: "var(--primary-grad)", color: "#fff", cursor: "pointer" }}>{t("다시 시도")}</button>
             <a href="/videos" style={{ height: 32, lineHeight: "32px", padding: "0 14px", borderRadius: 8, background: "#2d2d2d", color: "#eee", textDecoration: "none" }}>{t("영상 목록")}</a>
           </div>
         </div>
@@ -217,7 +217,7 @@ export const VEditorPage: React.FC = () => {
       <div className="ve-page ve-loading" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#111", color: "#eee", fontFamily: "Pretendard, sans-serif" }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: "1.2rem", marginBottom: "0.5rem" }}>{loadingMsg}</div>
-          <div style={{ fontSize: "0.85rem", opacity: 0.6 }}>Fluma 영상 편집기</div>
+          <div style={{ fontSize: "0.85rem", opacity: 0.6 }}>DN GENEX 영상 편집기</div>
         </div>
       </div>
     );

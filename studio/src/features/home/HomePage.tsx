@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { FlumaMark, Icon } from "../../ui/Icon";
+import { BrandLogo, Icon } from "../../ui/Icon";
 import { Button, IconButton, Menu, Tip, composing, confirmDialog, cx } from "../../ui/kit";
 import { FlumaGlyph } from "../../ui/BrandIcons";
 import { errMsg } from "../../lib/api";
@@ -65,7 +65,7 @@ const HomeStart: React.FC = () => {
   return (
     <div className="page-body home">
       <section className="hero">
-        <h1 className="hero-logo"><FlumaMark s={88} /><span className="sr-only">Fluma</span></h1>
+        <h1 className="hero-logo"><BrandLogo w={340} /><span className="sr-only">DN GENEX</span></h1>
         <div className={cx("prompt", drop && "drop")}
           onDragOver={(e) => { if ([...e.dataTransfer.types].includes("Files")) { e.preventDefault(); setDrop(true); } }} onDragLeave={() => setDrop(false)}
           onDrop={(e) => { e.preventDefault(); setDrop(false); const f = [...e.dataTransfer.files].filter((x) => /^(image|video|audio)\//.test(x.type)); if (f.length) att.attach(f); }}>

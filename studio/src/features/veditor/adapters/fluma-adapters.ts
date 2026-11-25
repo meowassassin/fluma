@@ -361,7 +361,7 @@ export function createFlumaAssetGallery(
         const confirmBtn = document.createElement("button");
         confirmBtn.type = "button";
         confirmBtn.style.cssText =
-          "height:32px;padding:0 16px;border-radius:7px;border:0;background:#5850f8;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;";
+          "height:32px;padding:0 16px;border-radius:7px;border:0;background:linear-gradient(135deg,#df1f2b,#cb431a);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;";
         confirmBtn.onclick = () => {
           const picked = items.filter((i) => selected.has(i.id));
           for (const it of picked) {
@@ -395,8 +395,8 @@ export function createFlumaAssetGallery(
             b.textContent = g;
             const active = g === activeGroup;
             b.style.cssText = `height:26px;padding:0 10px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid ${
-              active ? "#5850f8" : "#2c2c35"
-            };background:${active ? "rgba(88,80,248,0.2)" : "#1c1c22"};color:${active ? "#fff" : "#aaa"};`;
+              active ? "#df1f2b" : "#2c2c35"
+            };background:${active ? "rgba(223,31,43,0.2)" : "#1c1c22"};color:${active ? "#fff" : "#aaa"};`;
             b.onclick = () => {
               activeGroup = g;
               renderTabs();
@@ -426,7 +426,7 @@ export function createFlumaAssetGallery(
             const card = document.createElement("button");
             card.type = "button";
             card.style.cssText = `display:flex;flex-direction:column;gap:6px;padding:8px;border-radius:8px;background:#1e1e26;border:2px solid ${
-              isSel ? "#5850f8" : "transparent"
+              isSel ? "#df1f2b" : "transparent"
             };color:#eee;text-align:left;cursor:pointer;overflow:hidden;transition:border-color 0.12s;`;
 
             const thumb = document.createElement("div");

@@ -94,7 +94,7 @@ export function buildSteps(p: Pipeline, live: PipelineLive | null): { steps: Ste
   const agentM: Model = { ...agent, name: live?.agent.model ? `${agent.name} · ${live.agent.model}` : agent.name };
   const voiceId = live?.models.voice || "edge";
   const voiceM: Model = { name: VOICE[voiceId] || voiceId, id: voiceId };
-  const editorM: Model = { name: "Fluma 편집기", src: I("fluma.svg"), dark: true };
+  const editorM: Model = { name: "DN GENEX 편집기", src: I("genex.svg"), dark: true };
   const ytM: Model = { name: "YouTube", src: I("youtube.svg") };
 
 

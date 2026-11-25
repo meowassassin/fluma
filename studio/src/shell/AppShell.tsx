@@ -31,7 +31,7 @@ export const AppShell: React.FC = () => {
   return (
     <div className="app">
       <nav className="rail" aria-label={t("주 메뉴")}>
-        <Link to="/" className="rail-logo" aria-label={t("Fluma 홈")}><FlumaMark s={28} /></Link>
+        <Link to="/" className="rail-logo" aria-label={t("DN GENEX 홈")}><FlumaMark s={28} /></Link>
         <RailLink to="/" icon="home" label={t("홈")} end />
         <VideosLink />
         <RailLink to="/trends" icon="trend" label={t("트렌드")} />
